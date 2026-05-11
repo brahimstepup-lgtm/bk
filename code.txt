@@ -55,12 +55,8 @@ function resolveTagFileId(refRaw) {
     // 1. Nettoyer le préfixe tags/ ou tag/
     var clean = String(refRaw).replace(/^tags?\//i, '').trim();
 
-    // 2. Extraire le numéro principal (premiers chiffres consécutifs)
-    var numMatch = clean.match(/^(\d+)/);
-    if (!numMatch) {
-      // Pas de numéro → essai recherche par nom exact nettoyé
-      numMatch = clean.match(/(\d{3,})/); // au moins 3 chiffres quelque part
-    }
+    // 2. Extraire le premier numéro rencontré (accepte "431.xxx", "photo_431", "ref-431.jpg", etc.)
+    var numMatch = clean.match(/(\d+)/);
 
     if (numMatch) {
       var num = numMatch[1];
@@ -93,8 +89,8 @@ function buildDriveTagsCache() {
       var name = file.getName();
       var id   = file.getId();
       count++;
-      // Extraire le numéro en début de nom : "431.Référence Photo..." → "431"
-      var m = name.match(/^(\d+)/);
+      // Extraire le premier numéro rencontré : "431.Référence...", "photo_431.jpg", "ref-431" → "431"
+      var m = name.match(/(\d+)/);
       if (m) {
         var num = m[1];
         if (!cache[num]) cache[num] = id; // Premier fichier pour ce numéro
@@ -328,9 +324,9 @@ function getData() {
       var refClean = refRaw.replace(/^tags?\//i, '').trim();
 
       // ── Résolution fileId depuis le cache Drive ───────────
-      // Extraire le numéro de la référence
+      // Extraire le premier numéro de la référence (ex: "photo_430" → "430")
       var driveFileId = '';
-      var numM = refClean.match(/^(\d+)/);
+      var numM = refClean.match(/(\d+)/);
       if (numM && driveCache[numM[1]]) {
         driveFileId = driveCache[numM[1]];
       }
