@@ -866,7 +866,7 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
     </div>
     <div class="modal-tabs">
       <button class="modal-tab on" onclick="switchTab('mTag','info',this)">📋 Infos</button>
-      <button class="modal-tab"    onclick="switchTab('mTag','photo',this)">📷 Photo Drive</button>
+      <button class="modal-tab" id="photoTabBtn" onclick="switchTab('mTag','photo',this)">📷 Photo Drive</button>
     </div>
     <div class="modal-body">
       <div id="mTag-info">
@@ -1275,7 +1275,7 @@ function openTagModal(tag) {
   var photoTabBtn = document.getElementById('photoTabBtn');
 
   if (tag.hasPhoto && tag.driveFileId) {
-    photoTabBtn.textContent = '📸 Photo Drive';
+    if (photoTabBtn) photoTabBtn.textContent = '📸 Photo Drive';
 
     // Loader pendant le chargement
     photoArea.innerHTML =
@@ -1313,7 +1313,7 @@ function openTagModal(tag) {
       .getTagPhotoForClient(tag.driveFileId);
 
   } else {
-    photoTabBtn.textContent = '📷 Photo Drive';
+    if (photoTabBtn) photoTabBtn.textContent = '📷 Photo Drive';
     photoArea.innerHTML =
       '<div class="photo-noimg">' +
       '<div style="font-size:52px;margin-bottom:14px">📷</div>' +
