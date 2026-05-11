@@ -621,10 +621,10 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
            placeholder="Rechercher description, zone, type, responsable, ID…"
            oninput="applyTagF()">
     <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+      <option value="id_desc" selected>ID ↓ récent</option>
+      <option value="id_asc">ID ↑ ancien</option>
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
-      <option value="id_asc">ID ↑</option>
-      <option value="id_desc">ID ↓</option>
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
@@ -1438,7 +1438,7 @@ function onTagPer(){
 }
 function clearTagFilters(){
   document.getElementById('tagSearch').value='';
-  document.getElementById('tagSort').value='date_desc';
+  document.getElementById('tagSort').value='id_desc';
   document.getElementById('tagPer').value='all';
   ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
   document.getElementById('tagFilterResp').value='all';
