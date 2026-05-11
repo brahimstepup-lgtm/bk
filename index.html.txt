@@ -1551,12 +1551,13 @@ function applyTagF(){
       ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
       :'<span style="color:var(--text3);font-size:9px">—</span>';
     // Bouton photo : 📸 si Drive résolu, 📷 sinon
-    var hasPhoto=!!(t.photoUrl&&t.photoUrl.indexOf('http')===0);
+    // Le serveur renvoie t.hasPhoto (bool) + t.driveFileId (ID Drive résolu)
+    var hasPhoto=!!(t.hasPhoto&&t.driveFileId);
     var photoCls=hasPhoto?'tag-btn has-photo':'tag-btn no-photo';
     var photoIco=hasPhoto?'📸':'📷';
     var photoTitle=hasPhoto
-      ?'Photo Drive disponible : '+t.photoRef
-      :(t.photoRef?'Pas de photo Drive : '+t.photoRef:'Pas de photo');
+      ?'Photo Drive disponible : '+(t.photoClean||t.photoRef)
+      :(t.photoRef?'Pas de photo Drive : '+(t.photoClean||t.photoRef):'Pas de photo');
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
       +'<td style="white-space:nowrap;font-size:10px">'+t.date+'</td>'
@@ -1566,7 +1567,13 @@ function applyTagF(){
       +'<td style="font-size:10px">'+respHtml+'</td>'
       +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
       +'<td><button class="'+photoCls+'" title="'+esc(photoTitle)+'">'+photoIco+'</button></td>';
-    tr.querySelector('.tag-btn').addEventListener('click',function(){openTagModal(t);});
+    tr.querySelector('.tag-btn').addEventListener('click',function(e){
+      e.stopPropagation();
+      openTagModal(t);
+      // Basculer directement sur l'onglet Photo
+      var photoTab=document.querySelectorAll('#tagModal .modal-tab')[1];
+      if(photoTab) switchTab('mTag','photo',photoTab);
+    });
     tb.appendChild(tr);
   });
 }
