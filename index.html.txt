@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOBCO 3 – HSE Master Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+
+/* ══ THÈME SOMBRE (défaut) ══ */
+:root{
+  --p1:#09637e;--p2:#0a7a9a;--p3:#0b91b5;--p4:#0da8d2;
+  --bg:#071820;--bg2:#0d2530;--bg3:#122e3a;--bg4:#183a48;--bg5:#1e4757;
+  --text:#e0f4f8;--text2:#8bbfcc;--text3:#4d8a9a;
+  --green:#10c985;--amber:#f5a623;--red:#e8445a;
+  --border:#1a4055;--radius:12px;--shadow:rgba(9,99,126,.2);
+  --card-bg:linear-gradient(135deg,var(--bg2),var(--bg3));
+  --pyr1a:#3d000c;--pyr1b:#8b0020;--pyr-txt1:#fff;
+  --pyr2a:#3d1200;--pyr2b:#8b3000;--pyr-txt2:#fff;
+  --pyr3a:#3d2d00;--pyr3b:#8b6200;--pyr-txt3:#fff;
+  --pyr4a:#001c30;--pyr4b:#003f6e;--pyr-txt4:#fff;
+  --pyr5a:#002d1a;--pyr5b:#005e35;--pyr-txt5:#fff;
+  --pyr-conn1:#3d000c;--pyr-conn2:#3d1200;--pyr-conn3:#3d2d00;--pyr-conn4:#001c30;
+  --pyr-leg:#4d8a9a;
+}
+
+/* ══ THÈME CLAIR ══ */
+html.light{
+  --bg:#f0f4f8;--bg2:#fff;--bg3:#f5f7fa;--bg4:#e8edf2;--bg5:#dde4ec;
+  --text:#1a2e3a;--text2:#2d5a72;--text3:#5a7a8a;
+  --border:#c8d8e4;--shadow:rgba(9,99,126,.1);
+  --card-bg:linear-gradient(135deg,#fff,#f5f7fa);
+  --pyr1a:#ffd6db;--pyr1b:#ff8599;--pyr-txt1:#7a0015;
+  --pyr2a:#ffe4cc;--pyr2b:#ffaa66;--pyr-txt2:#7a3000;
+  --pyr3a:#fff5cc;--pyr3b:#ffd966;--pyr-txt3:#5a3a00;
+  --pyr4a:#d6eef7;--pyr4b:#7abfdb;--pyr-txt4:#003a55;
+  --pyr5a:#ccf0e0;--pyr5b:#66c99a;--pyr-txt5:#00432a;
+  --pyr-conn1:#ff8599;--pyr-conn2:#ffaa66;--pyr-conn3:#ffd966;--pyr-conn4:#7abfdb;
+  --pyr-leg:#2d5a72;
+}
+html.light .hdr{background:linear-gradient(135deg,#fff,#f0f5f8)}
+html.light .kpi{background:linear-gradient(135deg,#fff,#f5f8fa)}
+html.light .card{background:linear-gradient(135deg,#fff,#f5f7fa)}
+html.light .iitem{background:#f5f7fa}
+html.light .iitem:hover{background:#e8edf2}
+html.light .tabs{background:#e8edf2}
+html.light .tab.on{background:linear-gradient(135deg,#fff,#f0f5f8)}
+html.light .pf-bar{background:#f5f7fa}
+html.light .tag-search-bar{background:#f5f7fa}
+html.light .modal-panel{background:#fff}
+html.light .modal-top{background:#f5f7fa}
+html.light .modal-tabs{background:#f0f4f8}
+html.light .modal-tab.on{background:#fff}
+html.light .info-item{background:#f0f4f8}
+html.light .desc-box{background:#f0f4f8}
+html.light .m5-card{background:#f0f4f8}
+html.light .act-item{background:#f0f4f8}
+html.light .tsc{background:linear-gradient(135deg,#f5f7fa,#edf1f5)}
+html.light th{background:#f0f4f8}
+html.light td{border-bottom-color:rgba(9,99,126,.1)}
+html.light tr:hover td{background:#e8f0f5}
+html.light .rbadge{background:#e0eaf2;color:var(--text2)}
+html.light .itag{background:#e0eaf2;color:var(--text2)}
+html.light .modal-bg{background:rgba(150,180,210,.75)}
+html.light .modal-close{background:#e8edf2}
+html.light .tag-btn{background:#e0eaf2}
+html.light .tag-filter-chip{background:#e0eaf2;color:var(--text2)}
+html.light .tag-filter-chip.on{color:#fff}
+html.light .photo-noimg{background:#f0f4f8}
+html.light .acc-row:hover td{background:rgba(9,99,126,.06)!important}
+html.light .notif-panel{background:#fff}
+html.light .notif-btn{background:#f5f7fa}
+html.light .acc-card{background:linear-gradient(135deg,#f5f7fa,#edf1f5)}
+html.light .ecard{background:linear-gradient(135deg,#f5f7fa,#edf1f5)}
+html.light .tag-search-input,.html.light .tag-dropdown,.html.light .tag-sort-sel{background:#fff}
+html.light .pf-sel,.html.light .kpi-sel{background:#fff}
+
+/* ══ BOUTON THÈME ══ */
+.theme-btn{width:32px;height:32px;border-radius:8px;background:var(--bg3);
+  border:1px solid var(--border);color:var(--text2);cursor:pointer;
+  font-size:16px;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0}
+.theme-btn:hover{background:var(--bg4);border-color:var(--p2);transform:scale(1.05)}
+
+body{background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',sans-serif;transition:background .3s,color .3s}
+.app{max-width:1440px;margin:0 auto;padding:18px}
+
+/* ══ LOGO ══ */
+.logo-wrap{width:52px;height:52px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.logo-img{height:52px;width:auto;max-width:130px;object-fit:contain;border-radius:6px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.3))}
+.logo-fb{width:52px;height:52px;border-radius:10px;background:linear-gradient(135deg,#c00018,#800010);
+  border:2px solid rgba(232,68,90,.5);display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:900;color:#fff;letter-spacing:-1px}
+
+/* ══ HEADER ══ */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;
+  background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:14px;flex-wrap:wrap;gap:10px;
+  box-shadow:0 4px 20px var(--shadow);transition:background .3s}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.hdr-sub{font-size:11px;font-weight:700;color:var(--p4);letter-spacing:.6px;margin-bottom:1px}
+.hdr-title{font-size:15px;font-weight:700;color:var(--text)}
+.hdr-meta{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px}
+.hdr-right{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.badge{padding:4px 10px;border-radius:20px;font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.b-r{background:rgba(232,68,90,.15);color:#e8445a;border:1px solid rgba(232,68,90,.3)}
+.b-a{background:rgba(245,166,35,.15);color:#f5a623;border:1px solid rgba(245,166,35,.3)}
+.b-b{background:rgba(9,99,126,.25);color:#0da8d2;border:1px solid rgba(9,99,126,.4)}
+.b-g{background:rgba(16,201,133,.15);color:#10c985;border:1px solid rgba(16,201,133,.3)}
+.btn{padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;
+  border:1px solid var(--border);background:var(--bg3);color:var(--text2);
+  transition:all .2s;font-family:'Inter',sans-serif}
+.btn:hover{background:var(--bg4);color:var(--text);border-color:var(--p2)}
+.btn-ai{background:linear-gradient(135deg,rgba(9,99,126,.3),rgba(13,168,210,.15));color:#7dd4e8;border-color:rgba(9,99,126,.5)}
+.modeBtn{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);transition:all .2s;font-family:'JetBrains Mono',monospace}
+.modeBtn.on{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;border-color:var(--p2)}
+.modeBtn:not(.on){background:var(--bg3);color:var(--text3)}
+
+/* ══ NOTIFICATIONS ══ */
+.notif-wrap{position:relative}
+.notif-btn{width:32px;height:32px;border-radius:8px;background:var(--bg3);
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+  font-size:16px;cursor:pointer;transition:all .2s;position:relative;flex-shrink:0}
+.notif-btn:hover{background:var(--bg4);border-color:var(--p2)}
+.notif-badge{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;
+  border-radius:9px;background:var(--red);color:#fff;font-size:9px;font-weight:700;
+  display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg)}
+.notif-badge.show{display:flex}
+.notif-badge-fum{position:absolute;top:-5px;left:-5px;min-width:17px;height:17px;
+  border-radius:9px;background:var(--amber);color:#fff;font-size:9px;font-weight:700;
+  display:none;align-items:center;justify-content:center;padding:0 3px;border:2px solid var(--bg)}
+.notif-badge-fum.show{display:flex}
+.notif-panel{position:absolute;top:42px;right:0;width:340px;background:var(--bg2);
+  border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.45);z-index:600;
+  display:none;overflow:hidden;transition:background .3s}
+.notif-panel.open{display:block;animation:slideDown .15s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.notif-hdr{padding:10px 14px;border-bottom:1px solid var(--border);font-size:11px;
+  font-weight:600;color:var(--text);display:flex;align-items:center;justify-content:space-between}
+.notif-scroll{max-height:320px;overflow-y:auto}
+.notif-scroll::-webkit-scrollbar{width:3px}
+.notif-scroll::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.notif-item{padding:10px 14px;border-bottom:1px solid rgba(26,64,85,.25);transition:background .15s}
+.notif-item:last-child{border-bottom:none}
+.notif-item:hover{background:var(--bg3)}
+.notif-item.today{border-left:3px solid var(--red)}
+.notif-item.tomorrow{border-left:3px solid var(--amber)}
+.notif-item.fumig-warn{border-left:3px solid #ff6b00}
+.notif-lbl{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;
+  font-weight:700;margin-bottom:3px;font-family:'JetBrains Mono',monospace}
+.lbl-today{background:rgba(232,68,90,.2);color:var(--red)}
+.lbl-tomorrow{background:rgba(245,166,35,.2);color:var(--amber)}
+.lbl-fumig{background:rgba(249,115,22,.2);color:#f97316}
+.notif-act{font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px}
+.notif-det{font-size:10px;color:var(--text3)}
+.notif-date{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3);margin-top:1px}
+.notif-empty{padding:18px;text-align:center;color:var(--text3);font-size:11px}
+.fumig-alert{display:none;background:linear-gradient(135deg,rgba(249,115,22,.12),rgba(249,115,22,.05));
+  border:1px solid rgba(249,115,22,.4);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.fumig-alert.show{display:flex;gap:9px;align-items:flex-start}
+.fumig-ico{font-size:20px;flex-shrink:0}
+.fumig-title{font-size:12px;font-weight:700;color:#f97316;margin-bottom:2px}
+.fumig-sub{font-size:11px;color:var(--text2);line-height:1.5}
+
+/* ══ TABS ══ */
+.tabs{display:flex;gap:3px;background:var(--bg2);padding:4px;border-radius:10px;
+  border:1px solid var(--border);margin-bottom:14px;overflow-x:auto;transition:background .3s}
+.tab{padding:6px 14px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;
+  color:var(--text3);border:none;background:transparent;white-space:nowrap;transition:all .2s}
+.tab.on{background:linear-gradient(135deg,var(--bg3),var(--bg4));color:var(--text);border:1px solid var(--border)}
+.tab:hover:not(.on){color:var(--text2)}
+.page{display:none}.page.on{display:block}
+
+/* ══ LOADER ══ */
+.loader{display:flex;align-items:center;justify-content:center;height:60vh;flex-direction:column;gap:14px}
+.spin{width:36px;height:36px;border:3px solid var(--bg4);border-top-color:var(--p3);
+  border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ══ KPI ══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:12px 14px;position:relative;overflow:hidden;transition:transform .15s,background .3s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.k-r::after{background:linear-gradient(90deg,var(--red),#ff6b80)}
+.k-a::after{background:linear-gradient(90deg,var(--amber),#ffc85c)}
+.k-g::after{background:linear-gradient(90deg,var(--green),#5dffc0)}
+.k-b::after{background:linear-gradient(90deg,var(--p1),var(--p4))}
+.kpi-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-weight:500;margin-bottom:6px}
+.kpi-val{font-size:21px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:3px}
+.kpi-val.r{color:var(--red)}.kpi-val.a{color:var(--amber)}.kpi-val.g{color:var(--green)}.kpi-val.b{color:var(--p4)}
+.kpi-sub{font-size:9px;color:var(--text3)}
+.kpi-bar{height:3px;background:var(--bg4);border-radius:2px;margin-top:5px;overflow:hidden}
+.kpi-bar-fill{height:3px;border-radius:2px;transition:width 1s ease}
+.kpi-pct{font-size:9px;font-family:'JetBrains Mono',monospace;margin-top:2px}
+
+/* ══ LAYOUT ══ */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.row3{display:grid;grid-template-columns:2fr 1.2fr;gap:12px;margin-bottom:12px}
+.card{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:15px;transition:background .3s}
+.ct{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ct-dot{width:6px;height:6px;border-radius:50%;background:var(--p3);flex-shrink:0}
+.cw{position:relative}
+.kpi-sel{background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);
+  font-size:10px;padding:3px 7px;font-family:'JetBrains Mono',monospace;cursor:pointer;outline:none;transition:background .3s}
+
+/* ══ ALERT ══ */
+.alert{display:flex;gap:9px;align-items:flex-start;background:rgba(232,68,90,.07);
+  border:1px solid rgba(232,68,90,.25);border-radius:10px;padding:10px 14px;margin-bottom:12px}
+.alert-ico{color:var(--red);font-size:16px;flex-shrink:0}
+.alert-txt{font-size:11px;color:var(--text2);line-height:1.6}
+.alert-txt strong{color:var(--red)}
+
+/* ══ PROGRESS ══ */
+.plist{display:flex;flex-direction:column;gap:8px}
+.prow{display:flex;flex-direction:column;gap:3px}
+.phdr{display:flex;justify-content:space-between;font-size:11px}
+.plbl{color:var(--text2)}.pnum{font-family:'JetBrains Mono',monospace;font-weight:500}
+.ok{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}
+.pbg{height:4px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.pb{height:4px;border-radius:3px;transition:width 1.2s ease}
+.bg{background:linear-gradient(90deg,var(--green),#5dffc0)}
+.ba{background:linear-gradient(90deg,var(--amber),#ffc85c)}
+.br{background:linear-gradient(90deg,var(--red),#ff6b80)}
+
+/* ══ FILTRES ══ */
+.pf-bar{display:flex;align-items:center;gap:6px;margin-bottom:11px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:8px;padding:7px 12px;flex-wrap:wrap;transition:background .3s}
+.pf-lbl{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.pf-sel{background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text2);
+  font-size:10px;padding:3px 7px;font-family:'JetBrains Mono',monospace;cursor:pointer;outline:none;transition:background .3s}
+.pf-input{background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text2);
+  font-size:10px;padding:3px 7px;cursor:pointer;outline:none;font-family:'JetBrains Mono',monospace;transition:background .3s}
+.pf-stat{font-size:10px;color:var(--p4);font-family:'JetBrains Mono',monospace;margin-left:auto;
+  padding:2px 8px;background:rgba(9,99,126,.15);border-radius:10px;border:1px solid rgba(9,99,126,.3)}
+
+/* ══ FILTRES TAGS ══ */
+.tag-search-bar{display:flex;align-items:center;gap:8px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:8px;padding:8px 12px;
+  margin-bottom:8px;flex-wrap:wrap;transition:background .3s}
+.tag-search-input{flex:1;min-width:160px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:11px;padding:5px 10px;
+  outline:none;font-family:'Inter',sans-serif;transition:background .3s}
+.tag-search-input:focus{border-color:var(--p2)}
+.tag-search-input::placeholder{color:var(--text3)}
+.tag-filter-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.tag-filter-group{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.tag-filter-lbl{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap;font-weight:600}
+.tag-chips{display:flex;gap:4px;flex-wrap:wrap}
+.tag-filter-chip{padding:3px 9px;border-radius:12px;font-size:10px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);background:var(--bg4);color:var(--text3);
+  transition:all .15s;font-family:'JetBrains Mono',monospace}
+.tag-filter-chip:hover{border-color:var(--p2);color:var(--text2)}
+.tag-filter-chip.on{color:#fff;border-color:transparent}
+.chip-all.on{background:var(--p1)}.chip-open.on{background:var(--red)}.chip-closed.on{background:var(--green)}
+.tag-dropdown{background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text2);
+  font-size:10px;padding:3px 7px;font-family:'JetBrains Mono',monospace;cursor:pointer;
+  outline:none;max-width:150px;transition:background .3s}
+.tag-sort-sel{background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text2);
+  font-size:10px;padding:3px 7px;font-family:'JetBrains Mono',monospace;cursor:pointer;outline:none;transition:background .3s}
+.tag-stats-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.tag-stat-pill{font-size:10px;padding:3px 9px;border-radius:10px;font-family:'JetBrains Mono',monospace;font-weight:600}
+.tsp-total{background:rgba(9,99,126,.15);color:var(--p4);border:1px solid rgba(9,99,126,.3)}
+.tsp-open{background:rgba(232,68,90,.12);color:var(--red);border:1px solid rgba(232,68,90,.3)}
+.tsp-closed{background:rgba(16,201,133,.12);color:var(--green);border:1px solid rgba(16,201,133,.3)}
+.tsp-filtered{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+
+/* ══ PYRAMIDE ══ */
+.pyr-outer{display:flex;flex-direction:column;align-items:center;padding:4px 0 8px}
+.pyr-levels{display:flex;flex-direction:column;align-items:center}
+.pyr-block{display:flex;align-items:center;justify-content:space-between;border-radius:6px;
+  padding:6px 10px;cursor:default;transition:filter .2s,background .3s;gap:6px;
+  border-width:1.5px;border-style:solid;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+.pyr-block:hover{filter:brightness(1.08)}
+.pL1{background:linear-gradient(135deg,var(--pyr1a),var(--pyr1b));border-color:rgba(232,68,90,.4)}
+.pL2{background:linear-gradient(135deg,var(--pyr2a),var(--pyr2b));border-color:rgba(249,115,22,.4)}
+.pL3{background:linear-gradient(135deg,var(--pyr3a),var(--pyr3b));border-color:rgba(245,166,35,.4)}
+.pL4{background:linear-gradient(135deg,var(--pyr4a),var(--pyr4b));border-color:rgba(9,99,126,.4)}
+.pL5{background:linear-gradient(135deg,var(--pyr5a),var(--pyr5b));border-color:rgba(16,201,133,.4)}
+.pL1 .pi,.pL1 .pn,.pL1 .pv{color:var(--pyr-txt1)}
+.pL2 .pi,.pL2 .pn,.pL2 .pv{color:var(--pyr-txt2)}
+.pL3 .pi,.pL3 .pn,.pL3 .pv{color:var(--pyr-txt3)}
+.pL4 .pi,.pL4 .pn,.pL4 .pv{color:var(--pyr-txt4)}
+.pL5 .pi,.pL5 .pn,.pL5 .pv{color:var(--pyr-txt5)}
+.pi{font-size:12px;flex-shrink:0}
+.pn{font-size:9px;font-weight:700;flex:1;text-align:center;white-space:nowrap;letter-spacing:.3px}
+.pv{font-size:15px;font-weight:900;font-family:'JetBrains Mono',monospace;flex-shrink:0;min-width:24px;text-align:right}
+.pyr-conn{height:5px;overflow:hidden;margin:0 auto}
+.pyr-leg{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:8px}
+.pyr-li{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--pyr-leg)}
+.pyr-ld{width:7px;height:7px;border-radius:2px}
+
+/* ══ INCIDENTS ══ */
+.ilist{display:flex;flex-direction:column;gap:7px;max-height:440px;overflow-y:auto;padding-right:3px}
+.ilist::-webkit-scrollbar{width:3px}.ilist::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.iitem{background:var(--bg3);border-radius:8px;padding:10px 12px;
+  border-left:3px solid var(--bg5);cursor:pointer;transition:all .18s;user-select:none}
+.iitem:hover{background:var(--bg4);border-left-color:var(--p3);transform:translateX(2px)}
+.is1{border-left-color:var(--p3)}.is2{border-left-color:var(--amber)}.is3{border-left-color:var(--red)}
+.ihdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.iid{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text3)}
+.isev{font-size:9px;padding:2px 6px;border-radius:4px;font-weight:700}
+.sv1{background:rgba(9,99,126,.2);color:var(--p4)}.sv2{background:rgba(245,166,35,.15);color:var(--amber)}
+.sv3{background:rgba(232,68,90,.15);color:var(--red)}
+.ivic{font-size:11px;font-weight:600;color:var(--text);margin-bottom:2px}
+.idesc{font-size:10px;color:var(--text3);line-height:1.4;margin-bottom:4px}
+.itags{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+.itag{font-size:9px;padding:2px 6px;background:var(--bg4);border-radius:4px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.s-open{background:rgba(232,68,90,.12);color:var(--red);padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700}
+.s-close{background:rgba(16,201,133,.12);color:var(--green);padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700}
+.iclick-hint{font-size:9px;color:var(--p4);margin-left:auto;flex-shrink:0}
+
+/* ══ TAGS ══ */
+.tsum{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+.tsc{background:linear-gradient(135deg,var(--bg3),var(--bg4));border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border)}
+.tsv{font-size:21px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+.tsl{font-size:9px;color:var(--text3)}
+.tblw{overflow-x:auto;max-height:420px;overflow-y:auto}
+.tblw::-webkit-scrollbar{width:3px;height:3px}.tblw::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{text-align:left;padding:7px 9px;color:var(--text3);font-size:9px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:var(--bg3);z-index:1}
+td{padding:7px 9px;border-bottom:1px solid rgba(26,64,85,.4);color:var(--text2);vertical-align:middle}
+tr:hover td{background:var(--bg3);color:var(--text)}
+.mono{font-family:'JetBrains Mono',monospace}
+.rbadge{display:inline-block;padding:2px 5px;border-radius:4px;font-size:9px;
+  font-family:'JetBrains Mono',monospace;background:var(--bg4);color:var(--text2)}
+/* Bouton photo TAG — différencié selon disponibilité Drive */
+.tag-btn{width:28px;height:28px;border-radius:6px;background:var(--bg4);
+  border:1px solid var(--border);cursor:pointer;display:inline-flex;
+  align-items:center;justify-content:center;font-size:14px;
+  transition:all .2s;color:var(--text2);position:relative}
+.tag-btn:hover{transform:scale(1.12)}
+.tag-btn.has-photo{background:rgba(9,99,126,.2);border-color:var(--p3);color:var(--p4)}
+.tag-btn.has-photo:hover{background:var(--p1);border-color:var(--p2);color:#fff}
+.tag-btn.no-photo{opacity:.6}
+.tag-btn.no-photo:hover{background:var(--bg5);color:var(--text3)}
+
+/* ══ ACCIDENTS ══ */
+.acc-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}
+.acc-card{background:linear-gradient(135deg,var(--bg3),var(--bg4));border-radius:10px;padding:12px;border:1px solid var(--border)}
+.acc-val{font-size:19px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+.acc-lbl{font-size:9px;color:var(--text3);text-transform:uppercase}
+.acc-row{cursor:pointer;transition:background .15s}
+.acc-row:hover td{background:rgba(9,99,126,.08)!important;color:var(--text)!important}
+
+/* ══ ENERGIE ══ */
+.egrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.ecard{background:linear-gradient(135deg,var(--bg3),var(--bg4));border-radius:10px;padding:13px;text-align:center;border:1px solid var(--border)}
+.eval{font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+.elbl{font-size:9px;color:var(--text3);text-transform:uppercase}
+.eratio{font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--p4);
+  margin-top:3px;padding:2px 5px;background:rgba(9,99,126,.15);border-radius:4px;display:inline-block}
+
+/* ══ AI ══ */
+.ai-panel{background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid rgba(9,99,126,.4);
+  border-radius:var(--radius);padding:14px;margin-bottom:12px;transition:background .3s}
+.ai-hdr{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ai-ico{width:30px;height:30px;background:linear-gradient(135deg,var(--p1),var(--p3));
+  border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.ai-title{font-size:12px;font-weight:600;color:var(--p4)}
+.ai-status{font-size:9px;color:var(--text3);margin-left:auto;font-family:'JetBrains Mono',monospace}
+.ai-resp{font-size:12px;color:var(--text2);line-height:1.7;background:var(--bg3);border-radius:7px;
+  padding:11px;min-height:50px;white-space:pre-wrap;max-height:250px;overflow-y:auto;
+  border:1px solid var(--border);transition:background .3s}
+.ai-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.ai-input{flex:1;min-width:140px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;
+  padding:7px 10px;color:var(--text);font-size:11px;font-family:'Inter',sans-serif;outline:none;transition:background .3s}
+.ai-input:focus{border-color:var(--p2)}.ai-input::placeholder{color:var(--text3)}
+.btn-send{padding:7px 12px;background:linear-gradient(135deg,var(--p1),var(--p2));
+  color:white;border:none;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer}
+.btn-send:disabled,.btn-ai:disabled{opacity:.45;cursor:not-allowed}
+.typing::after{content:'▋';animation:blink .7s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ══ MODAL ══ */
+.modal-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:9999;
+  display:flex;align-items:center;justify-content:center;padding:16px;
+  backdrop-filter:blur(6px);animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;
+  width:min(780px,100%);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 24px 80px rgba(0,0,0,.7);animation:slideUp .2s ease;transition:background .3s}
+.modal-top{display:flex;align-items:flex-start;gap:12px;padding:16px 18px 12px;
+  border-bottom:1px solid var(--border);flex-shrink:0;position:relative;background:var(--bg2);transition:background .3s}
+.modal-badge{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:20px;flex-shrink:0;border:1px solid transparent}
+.modal-hdr-info{flex:1;min-width:0}
+.modal-hdr-id{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);margin-bottom:3px}
+.modal-hdr-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.2}
+.modal-chips{display:flex;gap:5px;flex-wrap:wrap}
+.modal-chip{font-size:10px;padding:2px 8px;border-radius:4px;font-family:'JetBrains Mono',monospace;background:var(--bg4);color:var(--text2)}
+.modal-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:7px;
+  background:var(--bg4);border:1px solid var(--border);color:var(--text2);cursor:pointer;
+  font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.modal-close:hover{background:var(--bg5);color:var(--text);border-color:var(--red)}
+.modal-tabs{display:flex;gap:2px;padding:8px 18px;border-bottom:1px solid var(--border);
+  flex-shrink:0;background:var(--bg3);transition:background .3s}
+.modal-tab{padding:5px 14px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;
+  color:var(--text3);border:none;background:transparent;transition:all .2s}
+.modal-tab.on{background:var(--bg2);color:var(--text);border:1px solid var(--border)}
+.modal-body{overflow-y:auto;flex:1;padding:16px 18px}
+.modal-body::-webkit-scrollbar{width:4px}.modal-body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.modal-section{margin-bottom:16px}
+.modal-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--text3);margin-bottom:9px;display:flex;align-items:center;gap:6px;
+  padding-bottom:5px;border-bottom:1px solid var(--border)}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.info-item{background:var(--bg3);border-radius:8px;padding:9px 11px;transition:background .3s}
+.info-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;font-weight:600}
+.info-val{font-size:12px;color:var(--text2);line-height:1.5}
+.desc-box{background:var(--bg3);border-radius:8px;padding:11px 13px;font-size:12px;
+  color:var(--text2);line-height:1.7;border-left:3px solid var(--p2);transition:background .3s}
+.desc-box.amber{border-left-color:var(--amber)}
+.m5-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.m5-card{background:var(--bg3);border-radius:8px;padding:10px 12px;border-top:2px solid transparent;transition:background .3s}
+.m5-mo{border-top-color:var(--amber)}.m5-mat{border-top-color:var(--p3)}
+.m5-meth{border-top-color:#14b8a6}.m5-mil{border-top-color:var(--green)}.m5-mgmt{border-top-color:#8b5cf6}
+.m5-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+  margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.m5-val{font-size:11px;color:var(--text2);line-height:1.6}
+.act-list{display:flex;flex-direction:column;gap:6px}
+.act-item{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;background:var(--bg3);
+  border-radius:7px;font-size:11px;color:var(--text2);line-height:1.5;
+  border-left:3px solid var(--green);transition:background .3s}
+.act-num{width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;
+  font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.tag-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+/* Photo TAG */
+.photo-area{display:flex;flex-direction:column;align-items:center;gap:10px}
+.photo-img{max-width:100%;max-height:50vh;border-radius:8px;object-fit:contain;border:1px solid var(--border)}
+.photo-loading{display:flex;align-items:center;justify-content:center;height:120px;
+  color:var(--text3);font-size:12px;gap:8px}
+.photo-noimg{text-align:center;padding:24px 16px;background:var(--bg3);border-radius:8px;
+  color:var(--text3);width:100%;transition:background .3s}
+.photo-noimg .ref{font-size:14px;font-family:'JetBrains Mono',monospace;color:var(--p4);
+  margin-top:6px;word-break:break-all}
+/* Indicateur Drive dans le modal photo */
+.drive-indicator{display:inline-flex;align-items:center;gap:5px;font-size:10px;
+  padding:3px 9px;border-radius:10px;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.drive-ok{background:rgba(16,201,133,.12);color:var(--green);border:1px solid rgba(16,201,133,.3)}
+.drive-no{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+
+footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid var(--border);
+  font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+
+@media(max-width:768px){
+  .row2,.row3{grid-template-columns:1fr}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .tsum{grid-template-columns:repeat(2,1fr)}
+  .egrid{grid-template-columns:1fr}
+  .info-grid,.m5-grid,.tag-detail-grid{grid-template-columns:1fr}
+  .notif-panel{width:290px;right:-60px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div class="hdr-left">
+    <div class="logo-wrap">
+      <img id="logoImg" class="logo-img" src="" alt="Logo" style="display:none"
+           onerror="this.style.display='none';document.getElementById('logoFb').style.display='flex'">
+      <div id="logoFb" class="logo-fb">BK</div>
+    </div>
+    <div>
+      <div class="hdr-sub">SOBCO 3</div>
+      <div class="hdr-title">HSE MASTER DASHBOARD</div>
+      <div class="hdr-meta">Live · <span id="ts">—</span></div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <span class="badge b-r" id="h-at">AT: —</span>
+    <span class="badge b-a" id="h-tf">TF1: —</span>
+    <span class="badge b-b" id="h-tags">TAGs: —</span>
+    <span class="badge b-g">2026</span>
+    <!-- Cloche notifications -->
+    <div class="notif-wrap" id="notifWrap">
+      <button class="notif-btn" id="notifBtn" onclick="toggleNotif()" title="Notifications Planning HSE">
+        🔔
+        <span class="notif-badge" id="notifBadge"></span>
+        <span class="notif-badge-fum" id="notifBadgeFum">🚨</span>
+      </button>
+      <div class="notif-panel" id="notifPanel">
+        <div class="notif-hdr">
+          <span>📅 Planning HSE</span>
+          <span id="notifCount" style="font-size:10px;color:var(--text3)"></span>
+        </div>
+        <div class="notif-scroll" id="notifList"></div>
+      </div>
+    </div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Basculer thème">🌙</button>
+    <button class="btn btn-ai" onclick="goAI()">✨ IA</button>
+    <button class="btn" onclick="location.reload()">↻</button>
+  </div>
+</div>
+
+<div id="loader" class="loader">
+  <div class="spin"></div>
+  <div style="color:var(--text3);font-size:12px">Connexion Google Sheets + Drive…</div>
+</div>
+
+<div id="main" style="display:none">
+<div class="tabs">
+  <button class="tab on" onclick="goTab('dash',this)">📊 Vue Globale</button>
+  <button class="tab"    onclick="goTab('inc',this)">⚠️ Incidents</button>
+  <button class="tab"    onclick="goTab('tags',this)">🏷️ TAGs</button>
+  <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
+  <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
+  <button class="tab"    onclick="goTab('ai',this)">✨ IA Gemini</button>
+</div>
+
+<!-- ═══ VUE GLOBALE ═══ -->
+<div id="dash" class="page on">
+  <div class="fumig-alert" id="fumigAlert">
+    <span class="fumig-ico">🦟</span>
+    <div>
+      <div class="fumig-title" id="fumigTitle">Fumigation à venir</div>
+      <div class="fumig-sub" id="fumigSub"></div>
+    </div>
+  </div>
+  <div class="alert"><span class="alert-ico">⚠</span><div class="alert-txt" id="alertTxt">Chargement…</div></div>
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px;flex-wrap:wrap">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">MODE :</span>
+    <button class="modeBtn on" id="btnYtd" onclick="setMode('ytd')">YTD</button>
+    <button class="modeBtn"    id="btnMois" onclick="setMode('mois')">MOIS</button>
+  </div>
+  <div class="row2">
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span><span id="tC1">Accidents AT</span>
+        <select class="kpi-sel" id="selC1" onchange="updateC1()" style="margin-left:auto">
+          <option value="at">Accidents AT</option><option value="tf1">TF1</option><option value="tg">TG</option>
+          <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
+          <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
+          <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
+        </select>
+      </div>
+      <div class="cw" style="height:185px"><canvas id="c1"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span><span id="tC2">TF1 mensuel</span>
+        <select class="kpi-sel" id="selC2" onchange="updateC2()" style="margin-left:auto">
+          <option value="tf1">TF1</option><option value="tg">TG</option><option value="at">AT Total</option>
+          <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
+          <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
+          <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
+        </select>
+      </div>
+      <div class="cw" style="height:185px"><canvas id="c2"></canvas></div>
+    </div>
+  </div>
+  <div class="row3">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Conformité KPIs vs objectifs (YTD)</div><div class="plist" id="progList"></div></div>
+    <div class="card">
+      <div class="ct">
+        <span class="ct-dot" style="background:var(--red)"></span>Pyramide accidents
+        <button class="modeBtn on" id="pyrYB" onclick="setPyrMode('ytd')" style="margin-left:auto;font-size:9px">YTD</button>
+        <button class="modeBtn"    id="pyrMB" onclick="setPyrMode('mois')" style="font-size:9px">MOIS</button>
+        <select id="pyrSel" style="display:none" class="kpi-sel" onchange="renderPyramid()">
+          <option value="jan">Jan</option><option value="fev">Fév</option>
+          <option value="mar">Mar</option><option value="avr" selected>Avr</option>
+        </select>
+      </div>
+      <div id="pyrBox"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ INCIDENTS ═══ -->
+<div id="inc" class="page">
+  <div class="pf-bar">
+    <span class="pf-lbl">Période :</span>
+    <select class="pf-sel" id="incPer" onchange="onIncPer()">
+      <option value="all">Tout</option><option value="ytd">YTD 2026</option>
+      <option value="month">Mois</option><option value="custom">Personnalisé</option>
+    </select>
+    <select class="pf-sel" id="incMo" style="display:none" onchange="applyIncF()">
+      <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+      <option value="4" selected>Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+    </select>
+    <select class="pf-sel" id="incYr" style="display:none" onchange="applyIncF()">
+      <option value="2026" selected>2026</option><option value="2025">2025</option>
+    </select>
+    <input type="date" class="pf-input" id="incD1" style="display:none" onchange="applyIncF()">
+    <span id="incSep" style="display:none;color:var(--text3);font-size:10px">→</span>
+    <input type="date" class="pf-input" id="incD2" style="display:none" onchange="applyIncF()">
+    <span class="pf-stat" id="incStat">— incidents</span>
+  </div>
+  <div class="kpi-grid" id="incKpi"></div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Causes racines</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:7px" id="causeGrid"></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Zones à risque</div><div class="cw" style="height:185px"><canvas id="zoneC"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Registre incidents
+      <span style="color:var(--p4);font-size:9px;margin-left:4px">↗ Cliquer pour détails + 5M · Plus récent en haut</span>
+    </div>
+    <div class="ilist" id="incList"></div>
+  </div>
+</div>
+
+<!-- ═══ TAGS ═══ -->
+<div id="tags" class="page">
+  <div class="tsum" id="tagSum"></div>
+
+  <!-- Barre recherche + tri -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="tagSearch"
+           placeholder="Rechercher description, zone, type, responsable, ID…"
+           oninput="applyTagF()">
+    <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+      <option value="date_desc">Date ↓ récent</option>
+      <option value="date_asc">Date ↑ ancien</option>
+      <option value="id_asc">ID ↑</option>
+      <option value="id_desc">ID ↓</option>
+      <option value="zone_az">Zone A→Z</option>
+      <option value="resp_az">Resp. A→Z</option>
+    </select>
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearTagFilters()">↺ Reset</button>
+  </div>
+
+  <!-- Chips statut + période -->
+  <div class="tag-filter-row">
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">Statut :</span>
+      <div class="tag-chips" id="tagStatChips">
+        <button class="tag-filter-chip chip-all on" onclick="setTagStat('all',this)">Tous</button>
+        <button class="tag-filter-chip chip-open"   onclick="setTagStat('open',this)">⚠ Ouverts</button>
+        <button class="tag-filter-chip chip-closed" onclick="setTagStat('closed',this)">✓ Fermés</button>
+      </div>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">Période :</span>
+      <select class="pf-sel" id="tagPer" onchange="onTagPer()">
+        <option value="all">Tout</option><option value="ytd">YTD 2026</option>
+        <option value="month">Mois</option><option value="custom">Personnalisé</option>
+      </select>
+      <select class="pf-sel" id="tagYr" style="display:none" onchange="applyTagF()"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
+      <select class="pf-sel" id="tagMo" style="display:none" onchange="applyTagF()">
+        <option value="1">Jan</option><option value="2">Fév</option><option value="3">Mar</option>
+        <option value="4">Avr</option><option value="5">Mai</option><option value="6">Jun</option>
+        <option value="7">Jul</option><option value="8">Aoû</option><option value="9">Sep</option>
+        <option value="10">Oct</option><option value="11">Nov</option><option value="12">Déc</option>
+      </select>
+      <input type="date" class="pf-input" id="tagD1" style="display:none" onchange="applyTagF()">
+      <span id="tagSep" style="display:none;color:var(--text3);font-size:10px">→</span>
+      <input type="date" class="pf-input" id="tagD2" style="display:none" onchange="applyTagF()">
+    </div>
+  </div>
+
+  <!-- Filtres responsable + zone -->
+  <div class="tag-filter-row" style="margin-bottom:10px">
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">👤 Responsable :</span>
+      <select class="tag-dropdown" id="tagFilterResp" onchange="applyTagF()"><option value="all">Tous</option></select>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">📍 Zone :</span>
+      <select class="tag-dropdown" id="tagFilterZone" onchange="applyTagF()"><option value="all">Toutes</option></select>
+    </div>
+    <div class="tag-stats-row" id="tagStatsRow" style="margin-bottom:0;margin-left:auto"></div>
+  </div>
+
+  <div class="kpi-grid" id="tagKpi"></div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Types de dangers</div><div class="cw" style="height:195px"><canvas id="dangerC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>TAGs par zone</div><div class="cw" style="height:195px"><canvas id="tagZoneC"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Liste TAGs
+      <span id="tagListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+      <span style="color:var(--text3);font-size:9px">
+        📸 = photo Drive disponible · 📷 = pas de photo · Plus récents en haut
+      </span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Date ↓</th><th>Type</th><th>Zone</th>
+            <th>Description</th><th>Responsable</th><th>Statut</th><th>📷</th>
+          </tr>
+        </thead>
+        <tbody id="tagBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BILAN AT ═══ -->
+<div id="acc" class="page">
+  <div class="pf-bar">
+    <span class="pf-lbl">Période :</span>
+    <select class="pf-sel" id="accPer" onchange="onAccPer()">
+      <option value="all">Tout</option><option value="ytd">YTD</option>
+      <option value="month">Mois</option><option value="custom">Personnalisé</option>
+    </select>
+    <select class="pf-sel" id="accMo" style="display:none" onchange="applyAccF()">
+      <option value="Janvier">Janvier</option><option value="Février">Février</option>
+      <option value="Mars">Mars</option><option value="Avril" selected>Avril</option>
+    </select>
+    <input type="date" class="pf-input" id="accD1" style="display:none" onchange="applyAccF()">
+    <span id="accSep" style="display:none;color:var(--text3);font-size:10px">→</span>
+    <input type="date" class="pf-input" id="accD2" style="display:none" onchange="applyAccF()">
+    <span class="pf-stat" id="accStat">— accidents</span>
+  </div>
+  <div class="acc-summary" id="accSum"></div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>NJP / mois</div><div class="cw" style="height:185px"><canvas id="njpC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Par zone</div><div class="cw" style="height:185px"><canvas id="accZC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Causes</div><div class="cw" style="height:170px"><canvas id="accCC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Par fonction</div><div class="cw" style="height:170px"><canvas id="accFC"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Bilan AT — <span id="accCount">—</span>
+      <span style="color:var(--p4);font-size:9px;margin-left:4px">↗ Cliquer pour détails · Plus récent en haut</span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead><tr><th>Mois</th><th>Date ↓</th><th>Nom</th><th>Fonction</th><th>Lieu</th><th>Siège</th><th>Nature</th><th>NJP</th><th>Cause</th></tr></thead>
+        <tbody id="accBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ÉNERGIE ═══ -->
+<div id="env" class="page">
+  <div class="egrid" id="egrids"></div>
+  <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">VUE :</span>
+    <button class="modeBtn on" id="envC" onclick="setEnvMode('conso')">CONSOMMATION</button>
+    <button class="modeBtn"    id="envR" onclick="setEnvMode('ratio')">RATIOS /UP</button>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span><span id="tElt">Électricité kWh</span></div><div class="cw" style="height:185px"><canvas id="eltC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span><span id="tGaz">Gaz m³</span></div><div class="cw" style="height:185px"><canvas id="gazC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span><span id="tEau">Eau m³</span></div><div class="cw" style="height:170px"><canvas id="eauC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Ratios vs objectif −5%</div><div class="plist" id="ratioList"></div></div>
+  </div>
+</div>
+
+<!-- ═══ IA ═══ -->
+<div id="ai" class="page">
+  <div class="ai-panel">
+    <div class="ai-hdr">
+      <div class="ai-ico">✨</div>
+      <div><div class="ai-title">Analyse Gemini AI — SOBCO 3</div><div style="font-size:9px;color:var(--text3);margin-top:1px">Gemini 2.0 Flash · Données temps réel</div></div>
+      <div class="ai-status" id="aiSt">Prêt</div>
+    </div>
+    <div class="ai-resp" id="aiResp"><span style="color:var(--text3)">Cliquez <strong style="color:var(--p4)">"Analyser"</strong> pour une analyse IA complète.</span></div>
+    <div class="ai-row">
+      <button class="btn btn-ai" onclick="autoAI()" id="btnAuto">🔍 Analyser</button>
+      <button class="btn" onclick="askG('Top 3 risques HSE SOBCO 3 et actions urgentes')">🚨 Risques</button>
+      <button class="btn" onclick="askG('Analyse TF1 et TG tendances 2026 SOBCO 3')">📈 Tendances</button>
+      <button class="btn" onclick="askG('Résumé exécutif HSE SOBCO 3 2026 pour la direction')">📋 Rapport</button>
+    </div>
+    <div class="ai-row">
+      <input class="ai-input" id="aiIn" placeholder="Question HSE…" onkeydown="if(event.key==='Enter')sendAI()">
+      <button class="btn-send" id="btnSend" onclick="sendAI()">→</button>
+    </div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Historique</div>
+      <div id="aiHist" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto"></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Suggestions</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn" style="text-align:left;padding:8px 10px;font-size:10px" onclick="askG('Analyse incidents SOBCO 3 : causes dominantes et zones critiques')">💡 Incidents</button>
+        <button class="btn" style="text-align:left;padding:8px 10px;font-size:10px" onclick="askG('Plan amélioration taux résolution TAGs 58% vs objectif 95%')">🏷️ Plan TAGs</button>
+        <button class="btn" style="text-align:left;padding:8px 10px;font-size:10px" onclick="askG('TVM 57% vs objectif 95% — plan suivi médical SOBCO 3')">🏥 Plan TVM</button>
+        <button class="btn" style="text-align:left;padding:8px 10px;font-size:10px" onclick="askG('Optimisation énergie ratios ELT 245 kWh/UP SOBCO 3')">⚡ Énergie</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /main -->
+
+<!-- ═══ MODAL INCIDENT ═══ -->
+<div class="modal-bg" id="incModal" style="display:none" onclick="if(event.target===this)closeModal('incModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="mIncBadge">⚠️</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="mIncId">—</div>
+        <div class="modal-hdr-name" id="mIncVic">—</div>
+        <div class="modal-chips" id="mIncChips"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('incModal')">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab on" onclick="switchTab('mInc','info',this)">📋 Infos</button>
+      <button class="modal-tab"    onclick="switchTab('mInc','m5',this)">🔍 Analyse 5M</button>
+      <button class="modal-tab"    onclick="switchTab('mInc','actions',this)">✅ Actions</button>
+    </div>
+    <div class="modal-body">
+      <div id="mInc-info">
+        <div class="modal-section"><div class="modal-sec-title"><span>📌</span>Informations</div><div class="info-grid" id="mIncInfoGrid"></div></div>
+        <div class="modal-section" id="mIncDescSec"><div class="modal-sec-title"><span>📝</span>Description</div><div class="desc-box" id="mIncDesc"></div></div>
+        <div class="modal-section" id="mIncCauseSec"><div class="modal-sec-title"><span>🔎</span>Causes</div><div class="desc-box amber" id="mIncCauses"></div></div>
+      </div>
+      <div id="mInc-m5" style="display:none">
+        <div class="modal-section"><div class="modal-sec-title"><span>🔍</span>Méthode des 5M</div><div class="m5-grid" id="mIncM5"></div></div>
+      </div>
+      <div id="mInc-actions" style="display:none">
+        <div class="modal-section"><div class="modal-sec-title"><span>✅</span>Actions correctives</div><div class="act-list" id="mIncActions"></div></div>
+        <div class="info-grid" style="margin-top:10px">
+          <div class="info-item"><div class="info-lbl">Responsable</div><div class="info-val" id="mIncResp">—</div></div>
+          <div class="info-item"><div class="info-lbl">Délai</div><div class="info-val" id="mIncDelai">—</div></div>
+          <div class="info-item"><div class="info-lbl">Statut</div><div class="info-val" id="mIncStatut">—</div></div>
+          <div class="info-item"><div class="info-lbl">Date</div><div class="info-val" id="mIncDate2">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ACCIDENT ═══ -->
+<div class="modal-bg" id="accModal" style="display:none" onclick="if(event.target===this)closeModal('accModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(232,68,90,.2);border-color:var(--red)">🩺</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="mAccId">—</div>
+        <div class="modal-hdr-name" id="mAccNom">—</div>
+        <div class="modal-chips" id="mAccChips"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('accModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
+      <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
+      <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL TAG + PHOTO DRIVE ═══ -->
+<div class="modal-bg" id="tagModal" style="display:none" onclick="if(event.target===this)closeModal('tagModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(9,99,126,.2);border-color:var(--p3)">🏷️</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="mTagId">—</div>
+        <div class="modal-hdr-name" id="mTagDesc">—</div>
+        <div class="modal-chips" id="mTagChips"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('tagModal')">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab on" onclick="switchTab('mTag','info',this)">📋 Infos</button>
+      <button class="modal-tab"    onclick="switchTab('mTag','photo',this)">📷 Photo Drive</button>
+    </div>
+    <div class="modal-body">
+      <div id="mTag-info">
+        <div class="modal-section"><div class="modal-sec-title"><span>📌</span>Informations</div><div class="tag-detail-grid" id="mTagInfoGrid"></div></div>
+        <div class="modal-section" id="mTagRisqueSec"><div class="modal-sec-title"><span>⚠️</span>Risque</div><div class="desc-box" id="mTagRisque"></div></div>
+        <div class="modal-section" id="mTagActionSec"><div class="modal-sec-title"><span>🚨</span>Action urgente</div><div class="desc-box amber" id="mTagAction"></div></div>
+        <div class="modal-section" id="mTagPropSec"><div class="modal-sec-title"><span>💡</span>Propositions</div><div class="desc-box" style="border-left-color:var(--green)" id="mTagProp"></div></div>
+      </div>
+      <div id="mTag-photo" style="display:none">
+        <div class="photo-area" id="mTagPhotoArea"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer id="footer">SOBCO 3 – HSE Dashboard v9.2 · BK Design · BRAHIM KAOUACHI</footer>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+var D=null, viewMode='ytd', pyrMode='ytd', envMode='conso';
+var tagStatFilter='all';
+var charts={};
+var ML=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+var C={p1:'#09637e',p2:'#0a7a9a',p3:'#0b91b5',p4:'#0da8d2',
+  red:'#e8445a',amber:'#f5a623',green:'#10c985',
+  purple:'#8b5cf6',teal:'#14b8a6',orange:'#f97316',
+  grid:'rgba(26,64,85,0.65)',txt:'#4d8a9a'};
+var BASE={responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:false}},
+  scales:{x:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:10}}},
+          y:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:10}}}}};
+
+// Dates
+var TODAY_ISO='', TOMORROW_ISO='';
+(function(){
+  var n=new Date(); TODAY_ISO=n.toISOString().split('T')[0];
+  var t=new Date(n); t.setDate(t.getDate()+1); TOMORROW_ISO=t.toISOString().split('T')[0];
+})();
+function diffDays(iso1,iso2){ return Math.round((new Date(iso1)-new Date(iso2))/(86400000)); }
+
+// ══ THÈME ═════════════════════════════════════════════════════
+var isLight=false;
+function toggleTheme(){
+  isLight=!isLight;
+  document.documentElement.classList.toggle('light',isLight);
+  document.getElementById('themeBtn').textContent=isLight?'☀️':'🌙';
+  C.grid=isLight?'rgba(9,99,126,.1)':'rgba(26,64,85,0.65)';
+  C.txt=isLight?'#2d5a72':'#4d8a9a';
+  BASE.scales.x.grid.color=C.grid; BASE.scales.x.ticks.color=C.txt;
+  BASE.scales.y.grid.color=C.grid; BASE.scales.y.ticks.color=C.txt;
+  if(D){ updateC1();updateC2();updateEnvCharts();applyIncF();applyTagF();applyAccF();renderPyramid(); }
+  try{ localStorage.setItem('hse_theme',isLight?'light':'dark'); }catch(e){}
+}
+(function(){ try{ if(localStorage.getItem('hse_theme')==='light'){isLight=false;toggleTheme();} }catch(e){} })();
+
+// ══ NAVIGATION ════════════════════════════════════════════════
+function goTab(id,el){
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  document.getElementById(id).classList.add('on'); el.classList.add('on');
+}
+function goAI(){
+  document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',i===5);});
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.getElementById('ai').classList.add('on');
+}
+
+// ══ MODALS ════════════════════════════════════════════════════
+function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape') ['incModal','accModal','tagModal'].forEach(function(id){closeModal(id);});
+});
+function switchTab(prefix,tab,el){
+  var panel=el.closest('.modal-panel');
+  panel.querySelectorAll('[id^="'+prefix+'-"]').forEach(function(d){d.style.display='none';});
+  panel.querySelectorAll('.modal-tab').forEach(function(t){t.classList.remove('on');});
+  document.getElementById(prefix+'-'+tab).style.display='block'; el.classList.add('on');
+}
+
+// ══ NOTIFICATIONS ════════════════════════════════════════════
+function buildNotifications(){
+  if(!D||!D.planning) return;
+  var todayItems=[], tomorrowItems=[], fumigWarn=[];
+  D.planning.forEach(function(p){
+    if(!p.isoDate) return;
+    var isFumig=p.fumigation||p.activite.toLowerCase().indexOf('fumig')>-1;
+    if(p.isoDate===TODAY_ISO) todayItems.push(p);
+    else if(p.isoDate===TOMORROW_ISO) tomorrowItems.push(p);
+    if(isFumig&&p.isoDate>TODAY_ISO){
+      var j=diffDays(p.isoDate,TODAY_ISO);
+      if(j>=1&&j<=6) fumigWarn.push({p:p,jours:j});
+    }
+  });
+  var totalNormal=todayItems.length+tomorrowItems.length;
+  var badge=document.getElementById('notifBadge');
+  if(totalNormal>0){badge.textContent=totalNormal>9?'9+':String(totalNormal);badge.classList.add('show');}
+  else badge.classList.remove('show');
+  var badgeFum=document.getElementById('notifBadgeFum');
+  if(fumigWarn.length>0) badgeFum.classList.add('show'); else badgeFum.classList.remove('show');
+  var total=totalNormal+fumigWarn.length;
+  document.getElementById('notifCount').textContent=total+' événement'+(total>1?'s':'');
+  var list=document.getElementById('notifList');
+  if(total===0){
+    list.innerHTML='<div class="notif-empty">✅ Aucun événement aujourd\'hui ni demain</div>';
+  } else {
+    var html='';
+    fumigWarn.forEach(function(fw){
+      html+='<div class="notif-item fumig-warn"><span class="notif-lbl lbl-fumig">🦟 FUMIGATION J-'+fw.jours+'</span>'
+        +'<div class="notif-act">'+esc(fw.p.activite)+'</div>'
+        +'<div class="notif-det">'+esc(fw.p.details)+'</div>'
+        +'<div class="notif-date">📅 '+fw.p.date+'</div></div>';
+    });
+    todayItems.forEach(function(p){
+      html+='<div class="notif-item today"><span class="notif-lbl lbl-today">📅 Aujourd\'hui</span>'
+        +'<div class="notif-act">'+esc(p.activite)+(p.fumigation?' 🦟':'')+'</div>'
+        +'<div class="notif-det">'+esc(p.details)+'</div>'
+        +'<div class="notif-date">'+p.date+'</div></div>';
+    });
+    tomorrowItems.forEach(function(p){
+      html+='<div class="notif-item tomorrow"><span class="notif-lbl lbl-tomorrow">📅 Demain</span>'
+        +'<div class="notif-act">'+esc(p.activite)+(p.fumigation?' 🦟':'')+'</div>'
+        +'<div class="notif-det">'+esc(p.details)+'</div>'
+        +'<div class="notif-date">'+p.date+'</div></div>';
+    });
+    list.innerHTML=html;
+  }
+  // Alerte fumigation Vue Globale
+  var alert=document.getElementById('fumigAlert');
+  var fumigToday=todayItems.filter(function(p){return p.fumigation;});
+  if(fumigToday.length>0){
+    alert.classList.add('show');
+    document.getElementById('fumigTitle').textContent='🦟 FUMIGATION AUJOURD\'HUI';
+    document.getElementById('fumigSub').innerHTML='<strong>'+esc(fumigToday[0].activite)+'</strong> — Préparez toutes les zones.';
+  } else if(fumigWarn.length>0){
+    fumigWarn.sort(function(a,b){return a.jours-b.jours;});
+    var fw=fumigWarn[0];
+    alert.classList.add('show');
+    document.getElementById('fumigTitle').textContent='🦟 Fumigation dans '+fw.jours+' jour'+(fw.jours>1?'s':'');
+    document.getElementById('fumigSub').innerHTML='<strong>'+esc(fw.p.activite)+'</strong> prévue le <strong>'+fw.p.date+'</strong>.'
+      +(fw.jours<=2?' <span style="color:var(--red);font-weight:700">— PRÉPARATION URGENTE</span>':'');
+  } else alert.classList.remove('show');
+}
+function toggleNotif(){ document.getElementById('notifPanel').classList.toggle('open'); }
+document.addEventListener('click',function(e){
+  var wrap=document.getElementById('notifWrap');
+  if(wrap&&!wrap.contains(e.target)) document.getElementById('notifPanel').classList.remove('open');
+});
+
+// ══ HELPERS ═══════════════════════════════════════════════════
+function mkChart(id,type,labels,datasets,opts){
+  if(charts[id]) charts[id].destroy();
+  try{ charts[id]=new Chart(document.getElementById(id),{type:type,data:{labels:labels,datasets:datasets},options:opts||BASE}); }catch(e){}
+}
+function kpiCard(lbl,val,color,sub,cls,pct,bc){
+  var bar='';
+  if(pct!=null){ bar='<div class="kpi-bar"><div class="kpi-bar-fill" style="width:'+Math.min(pct,100)+'%;background:'+bc+'"></div></div><div class="kpi-pct" style="color:'+bc+'">'+Math.min(pct,100)+'% obj.</div>'; }
+  return'<div class="kpi '+cls+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val '+color+'">'+val+'</div><div class="kpi-sub">'+sub+'</div>'+bar+'</div>';
+}
+function prog(lbl,val,tgt,lower,isPct){
+  if(val===null||val===undefined) return'';
+  if(!tgt||tgt===0) tgt=1;
+  var pct=Math.min(Math.round(Math.abs(val)/Math.abs(tgt)*100),100);
+  var ok=lower?val<=tgt:val>=tgt;
+  var tc=ok?'ok':(pct>60?'warn':'bad'), bc=ok?'bg':(pct>60?'ba':'br');
+  return'<div class="prow"><div class="phdr"><span class="plbl">'+lbl+'</span><span class="pnum '+tc+'">'+(isPct?val+'%':val)+'</span></div><div class="pbg"><div class="pb '+bc+'" style="width:'+pct+'%"></div></div></div>';
+}
+function cleanMd(t){ if(!t||t==='null')return''; return t.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s*/g,'').replace(/\\n/g,'\n').replace(/\\-/g,'-').trim(); }
+function cleanMonths(arr,hdrs){
+  var lbs=[],dat=[];
+  for(var i=0;i<Math.min((arr||[]).length,12);i++){
+    if(arr[i]!==null&&arr[i]!==undefined){
+      lbs.push(hdrs&&hdrs[i]?hdrs[i].replace(/-\d{2,4}$/,'').trim():ML[i]);
+      dat.push(arr[i]);
+    }
+  }
+  return{labels:lbs,data:dat};
+}
+function infoItem(lbl,val){ return val&&String(val).trim()&&val!=='—'?'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+esc(String(val))+'</div></div>':''; }
+function infoItemF(lbl,val){ return'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+(val?esc(String(val)):'—')+'</div></div>'; }
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ══ MODES ═════════════════════════════════════════════════════
+function setMode(m){
+  viewMode=m;
+  document.getElementById('btnYtd').classList.toggle('on',m==='ytd');
+  document.getElementById('btnMois').classList.toggle('on',m==='mois');
+  if(D){updateC1();updateC2();}
+}
+function setPyrMode(m){
+  pyrMode=m;
+  document.getElementById('pyrYB').classList.toggle('on',m==='ytd');
+  document.getElementById('pyrMB').classList.toggle('on',m==='mois');
+  document.getElementById('pyrSel').style.display=m==='mois'?'inline-block':'none';
+  renderPyramid();
+}
+
+// ══ PYRAMIDE ══════════════════════════════════════════════════
+function getCSSVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function renderPyramid(){
+  if(!D) return;
+  var m=D.metrics, sel=document.getElementById('pyrSel').value;
+  var fatal,majeur,mineur,incident,tags;
+  if(pyrMode==='ytd'){ fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=m.tags_ytd; }
+  else{
+    var mp={jan:{f:0,mj:m.atM_jan||0,mn:m.atm_jan||0,i:m.inc_jan||0,t:m.tags_jan||0},
+            fev:{f:0,mj:m.atM_fev||0,mn:m.atm_fev||0,i:m.inc_fev||0,t:m.tags_fev||0},
+            mar:{f:0,mj:m.atM_mar||0,mn:m.atm_mar||0,i:m.inc_mar||0,t:m.tags_mar||0},
+            avr:{f:0,mj:m.atM_avr||0,mn:m.atm_avr||0,i:m.inc_avr||0,t:m.tags_avr||0}};
+    var md=mp[sel]||mp.avr;
+    fatal=md.f;majeur=md.mj;mineur=md.mn;incident=md.i;tags=md.t;
+  }
+  var W=[44,82,126,172,216];
+  var cc=['--pyr-conn1','--pyr-conn2','--pyr-conn3','--pyr-conn4'].map(function(v){return getCSSVar(v)||'#333';});
+  var legC=['--pyr1b','--pyr2b','--pyr3b','--pyr4b','--pyr5b'].map(function(v){return getCSSVar(v)||'#555';});
+  var lv=[{l:'FATAL',i:'💀',v:fatal,c:'pL1',w:W[0]},{l:'MAJEUR',i:'🔴',v:majeur,c:'pL2',w:W[1]},
+          {l:'MINEUR',i:'🟠',v:mineur,c:'pL3',w:W[2]},{l:'INCIDENTS',i:'🔵',v:incident,c:'pL4',w:W[3]},
+          {l:'TAGs',i:'🟢',v:tags,c:'pL5',w:W[4]}];
+  var html='<div class="pyr-outer"><div class="pyr-levels">';
+  lv.forEach(function(l,idx){
+    if(idx>0){
+      var wc=W[idx],df=Math.round((wc-W[idx-1])/2);
+      html+='<div class="pyr-conn" style="width:'+wc+'px;margin:0 auto">'
+        +'<svg width="'+wc+'" height="5"><polygon points="'+df+',0 '+(wc-df)+',0 '+wc+',5 0,5" fill="'+cc[idx-1]+'"/></svg></div>';
+    }
+    html+='<div style="display:flex;justify-content:center;width:216px;margin:0 auto">'
+      +'<div class="pyr-block '+l.c+'" style="width:'+l.w+'px;height:30px">'
+      +'<span class="pi">'+l.i+'</span><span class="pn">'+l.l+'</span><span class="pv">'+l.v+'</span>'
+      +'</div></div>';
+  });
+  html+='</div><div class="pyr-leg">';
+  ['Fatal','Majeur','Mineur','Incident','TAG'].forEach(function(n,i){
+    html+='<div class="pyr-li"><div class="pyr-ld" style="background:'+legC[i]+'"></div>'+n+'</div>';
+  });
+  html+='</div></div>';
+  document.getElementById('pyrBox').innerHTML=html;
+}
+
+// ══ GRAPHIQUES ════════════════════════════════════════════════
+function getCD(sel,m,hdrs){
+  var map={
+    at:{t:'Accidents AT',sp:'at'},
+    tf1:{t:'TF1',c:C.amber,arr:m.tf1_months,ytd:m.tf1_ytd,obj:30,lower:true},
+    tg: {t:'TG',c:C.red,  arr:m.tg_months, ytd:m.tg_ytd, obj:0.8,lower:true},
+    tvm:{t:'TVM %',c:C.p3,arr:m.tvm_months,ytd:m.tvm,    obj:95, lower:false},
+    inc:{t:'Incidents',c:C.purple,arr:m.inc_months,ytd:m.inc_ytd},
+    tags:{t:'TAGs',c:C.green,arr:m.tags_months,ytd:m.tags_ytd},
+    pres:{t:'Prestataires %',c:C.teal,arr:m.pres_months,ytd:m.prestataires,obj:95,lower:false},
+    relt:{t:'Ratio ELT',c:C.amber,arr:m.relt_months,ytd:m.ratio_elt_ytd,obj:350,lower:true},
+    rgaz:{t:'Ratio GAZ',c:C.red,  arr:m.rgaz_months,ytd:m.ratio_gaz_ytd,obj:1200,lower:true},
+    reau:{t:'Ratio EAU',c:C.p3,   arr:m.reau_months,ytd:m.ratio_eau_ytd,obj:5,lower:true}
+  };
+  return map[sel]||map.tf1;
+}
+function drawChart(cid,tid,sel,m,hdrs){
+  var dat=getCD(sel,m,hdrs);
+  document.getElementById(tid).textContent=dat.t;
+  if(dat.sp==='at'){
+    var mj=m.atM_months||[], mn=m.atm_months||[];
+    var lbs=[],mjD=[],mnD=[];
+    for(var i=0;i<Math.max(mj.length,mn.length);i++){
+      if(mj[i]!==null||mn[i]!==null){
+        lbs.push(hdrs&&hdrs[i]?hdrs[i].replace(/-\d{2,4}$/,'').trim():ML[i]);
+        mjD.push(mj[i]||0); mnD.push(mn[i]||0);
+      }
+    }
+    if(viewMode==='ytd'){lbs.push('YTD');mjD.push(m.at_majeur);mnD.push(m.at_mineur);}
+    mkChart(cid,'bar',lbs,
+      [{label:'Majeur',data:mjD,backgroundColor:'rgba(245,166,35,.85)',borderRadius:4},
+       {label:'Mineur',data:mnD,backgroundColor:'rgba(9,99,126,.7)',borderRadius:4}],
+      Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}},
+        scales:{x:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt}},
+                y:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt,stepSize:1}}}}));
+  } else {
+    var cd=cleanMonths(dat.arr||[],hdrs);
+    if(viewMode==='ytd'&&dat.ytd!=null){ cd.labels.push('YTD'); cd.data.push(dat.ytd); }
+    var ds=[{label:dat.t,data:cd.data,borderColor:dat.c,backgroundColor:dat.c+'22',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:dat.c}];
+    if(dat.obj) ds.push({label:'Obj.',data:cd.labels.map(function(){return dat.obj;}),borderColor:'rgba(232,68,90,.5)',borderDash:[5,4],borderWidth:1.5,pointRadius:0});
+    mkChart(cid,'line',cd.labels,ds,Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}}));
+  }
+}
+function updateC1(){ if(D) drawChart('c1','tC1',document.getElementById('selC1').value,D.metrics,D.monthHeaders); }
+function updateC2(){ if(D) drawChart('c2','tC2',document.getElementById('selC2').value,D.metrics,D.monthHeaders); }
+
+// ══ MODAL INCIDENT ════════════════════════════════════════════
+function parse5M(text){
+  var r={MO:'',MAT:'',METH:'',MIL:'',MGMT:''};
+  if(!text) return r;
+  var lines=text.split('\n'),curKey=null,cur=[];
+  var map=[{keys:["main d'oeuvre","main-d'oeuvre","main d'œuvre","main :"],k:'MO'},
+    {keys:['matière','matéri','matériel'],k:'MAT'},{keys:['méthode','methode'],k:'METH'},
+    {keys:['milieu','environnement'],k:'MIL'},{keys:['management','machine','mesure'],k:'MGMT'}];
+  lines.forEach(function(l){
+    var lo=l.toLowerCase().replace(/[*#\\]/g,'').trim(),found=null;
+    for(var i=0;i<map.length;i++){for(var j=0;j<map[i].keys.length;j++){if(lo.indexOf(map[i].keys[j])>-1){found=map[i].k;break;}}if(found)break;}
+    if(found){if(curKey)r[curKey]=cur.join(' ').trim();curKey=found;cur=[l.replace(/^[-•*#\\: ]+/,'').trim()];}
+    else if(curKey&&l.trim()) cur.push(l.replace(/^[-•*#\\ ]+/,'').trim());
+  });
+  if(curKey) r[curKey]=cur.join(' ').trim();
+  return r;
+}
+function openIncModal(inc){
+  var sev=String(inc.gravite||1);
+  var sevBg={1:'rgba(9,99,126,.25)',2:'rgba(245,166,35,.2)',3:'rgba(232,68,90,.2)'};
+  var sevIco={1:'🔵',2:'🟡',3:'🔴'};
+  var badge=document.getElementById('mIncBadge');
+  badge.textContent=sevIco[sev]||'⚠️';badge.style.background=sevBg[sev]||sevBg[1];
+  badge.style.borderColor=sev==='3'?'var(--red)':sev==='2'?'var(--amber)':'var(--p3)';
+  document.getElementById('mIncId').textContent='INC-'+inc.id+(inc.date?' · '+inc.date:'')+(inc.heure?' · '+inc.heure:'');
+  document.getElementById('mIncVic').textContent=inc.victime||'Victime non renseignée';
+  var chips='<span class="modal-chip">Gravité '+sev+'</span>';
+  if(inc.type) chips+='<span class="modal-chip">'+esc(inc.type)+'</span>';
+  if(inc.lieu) chips+='<span class="modal-chip">📍 '+esc(inc.lieu)+'</span>';
+  if(inc.statut) chips+='<span class="modal-chip" style="color:'+(inc.statut.toLowerCase().indexOf('clôt')>-1?'var(--green)':'var(--amber)')+'">'+esc(inc.statut)+'</span>';
+  document.getElementById('mIncChips').innerHTML=chips;
+  document.getElementById('mIncInfoGrid').innerHTML=[
+    infoItemF('Date & Heure',(inc.date||'')+(inc.heure?' à '+inc.heure:'')),
+    infoItemF('Lieu / Zone',inc.lieu||'—'),infoItemF('Type',inc.type||'—'),
+    infoItemF('Gravité','Niveau '+sev),infoItem('Responsable',inc.responsable),
+    infoItem('Délai',inc.delai),infoItemF('Statut',inc.statut||'—')
+  ].join('');
+  var desc=cleanMd(inc.description||''),dSec=document.getElementById('mIncDescSec');
+  if(desc){document.getElementById('mIncDesc').textContent=desc;dSec.style.display='block';}else dSec.style.display='none';
+  var causes=cleanMd(inc.causes||''),cSec=document.getElementById('mIncCauseSec');
+  if(causes){document.getElementById('mIncCauses').textContent=causes;cSec.style.display='block';}else cSec.style.display='none';
+  var m5=parse5M(cleanMd(inc.analyse5m||inc.causes||''));
+  var m5Def=[{key:'MO',lbl:"Main-d'œuvre",ico:'👷',cls:'m5-mo',col:'var(--amber)'},
+    {key:'MAT',lbl:'Matière/Matériel',ico:'📦',cls:'m5-mat',col:'var(--p3)'},
+    {key:'METH',lbl:'Méthode',ico:'📋',cls:'m5-meth',col:'#14b8a6'},
+    {key:'MIL',lbl:'Milieu/Env.',ico:'🏭',cls:'m5-mil',col:'var(--green)'},
+    {key:'MGMT',lbl:'Machine/Management',ico:'⚙️',cls:'m5-mgmt',col:'#8b5cf6'}];
+  document.getElementById('mIncM5').innerHTML=m5Def.map(function(d){
+    return'<div class="m5-card '+d.cls+'"><div class="m5-title" style="color:'+d.col+'"><span>'+d.ico+'</span>'+d.lbl+'</div><div class="m5-val">'+(m5[d.key]||'Non renseigné')+'</div></div>';
+  }).join('');
+  var acts=cleanMd(inc.actions||'');
+  var actLines=acts.split('\n').filter(function(l){return l.replace(/[-•*# ]/g,'').trim().length>5;});
+  document.getElementById('mIncActions').innerHTML=actLines.length
+    ?actLines.map(function(l,i){return'<div class="act-item"><div class="act-num">'+(i+1)+'</div>'+esc(l.replace(/^[-•*#\\ ]+/,'').trim())+'</div>';}).join('')
+    :'<div class="info-item"><div class="info-val" style="color:var(--text3)">Actions non renseignées</div></div>';
+  document.getElementById('mIncResp').textContent=inc.responsable||'—';
+  document.getElementById('mIncDelai').textContent=inc.delai||'—';
+  document.getElementById('mIncStatut').textContent=inc.statut||'—';
+  document.getElementById('mIncDate2').textContent=inc.date||'—';
+  switchTab('mInc','info',document.querySelector('#incModal .modal-tab'));
+  openModal('incModal');
+}
+
+// ══ MODAL ACCIDENT ════════════════════════════════════════════
+function openAccModal(acc){
+  document.getElementById('mAccId').textContent=(acc.mois?acc.mois+' · ':'')+acc.date;
+  document.getElementById('mAccNom').textContent=acc.nom||'—';
+  var chips='<span class="modal-chip">'+esc(acc.mois)+'</span>';
+  if(acc.njp>0) chips+='<span class="modal-chip" style="color:var(--red)">NJP : '+acc.njp+' jours</span>';
+  if(acc.structure) chips+='<span class="modal-chip">'+esc(acc.structure)+'</span>';
+  document.getElementById('mAccChips').innerHTML=chips;
+  document.getElementById('mAccInfoGrid').innerHTML=[
+    infoItemF('Date',acc.date),infoItemF('Nom',acc.nom),
+    infoItemF('Fonction',acc.fonction||'—'),infoItem('Structure',acc.structure),
+    infoItemF('Lieu',acc.lieu||'—'),infoItemF('Siège de lésion',acc.siege||'—'),
+    infoItemF('Nature de lésion',acc.nature||'—'),infoItemF('Jours Perdus',acc.njp+' jours')
+  ].join('');
+  var circSec=document.getElementById('mAccCircSec');
+  if(acc.circonstance){document.getElementById('mAccCirc').textContent=acc.circonstance;circSec.style.display='block';}else circSec.style.display='none';
+  var causeSec=document.getElementById('mAccCauseSec');
+  if(acc.cause){document.getElementById('mAccCause').textContent=acc.cause;causeSec.style.display='block';}else causeSec.style.display='none';
+  openModal('accModal');
+}
+
+// ══ MODAL TAG — Photo Drive automatique ═══════════════════════
+// photoRef = nom propre du fichier (sans "tags/")
+// photoUrl = URL Drive résolue par le serveur
+function openTagModal(tag) {
+  document.getElementById('mTagId').textContent  = 'TAG ' + tag.id + (tag.date ? ' · ' + tag.date : '');
+  document.getElementById('mTagDesc').textContent = tag.description || '—';
+  var isOpen = tag.statut.toLowerCase().indexOf('ouvert') > -1 || tag.statut.toLowerCase().indexOf('open') > -1;
+
+  var chips = '';
+  if (tag.type)        chips += '<span class="modal-chip">'+ esc(tag.type) +'</span>';
+  if (tag.gravite)     chips += '<span class="modal-chip">'+ esc(tag.gravite) +'</span>';
+  chips += '<span class="modal-chip" style="color:'+(isOpen?'var(--red)':'var(--green)')+'">'+esc(tag.statut)+'</span>';
+  if (tag.responsable) chips += '<span class="modal-chip">👤 '+esc(tag.responsable)+'</span>';
+  if (tag.hasPhoto)    chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
+  document.getElementById('mTagChips').innerHTML = chips;
+
+  document.getElementById('mTagInfoGrid').innerHTML = [
+    infoItemF('Date création', tag.date),
+    infoItem('Date cible', tag.dateCible),
+    infoItemF('Type', tag.type||'—'),
+    infoItem('Gravité', tag.gravite),
+    infoItemF('Zone', (tag.zone||tag.emplacement)||'—'),
+    infoItemF('Responsable', tag.responsable||'—'),
+    infoItemF('Statut', tag.statut),
+    infoItemF('Réf. photo', tag.photoClean||tag.photoRef||'—')
+  ].join('');
+
+  var rSec=document.getElementById('mTagRisqueSec');
+  if(tag.risque){document.getElementById('mTagRisque').textContent=tag.risque;rSec.style.display='block';}else rSec.style.display='none';
+  var aSec=document.getElementById('mTagActionSec');
+  if(tag.action){document.getElementById('mTagAction').textContent=tag.action;aSec.style.display='block';}else aSec.style.display='none';
+  var pSec=document.getElementById('mTagPropSec');
+  if(tag.propositions){document.getElementById('mTagProp').textContent=tag.propositions;pSec.style.display='block';}else pSec.style.display='none';
+
+  // ── PHOTO VIA PROXY BASE64 ───────────────────────────────
+  var photoArea   = document.getElementById('mTagPhotoArea');
+  var photoTabBtn = document.getElementById('photoTabBtn');
+
+  if (tag.hasPhoto && tag.driveFileId) {
+    photoTabBtn.textContent = '📸 Photo Drive';
+
+    // Loader pendant le chargement
+    photoArea.innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 20px">' +
+      '<div class="spin"></div>' +
+      '<p style="color:var(--text3);font-size:12px">Chargement depuis Google Drive…</p>' +
+      '</div>';
+
+    // Appel proxy — Apps Script lit le fichier Drive et retourne base64
+    google.script.run
+      .withSuccessHandler(function(dataUrl) {
+        if (!dataUrl) {
+          photoArea.innerHTML =
+            '<div class="photo-noimg">' +
+            '<div style="font-size:40px;margin-bottom:10px">⚠️</div>' +
+            '<p style="color:var(--amber);font-weight:600">Lecture impossible</p>' +
+            '<p style="font-size:11px;margin-top:8px;color:var(--text3)">Vérifiez que le compte Apps Script a accès au fichier.</p>' +
+            '<div class="ref" style="margin-top:8px">'+esc(tag.photoClean)+'</div>' +
+            '</div>';
+          return;
+        }
+        photoArea.innerHTML =
+          '<img src="'+dataUrl+'" style="max-width:100%;max-height:52vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
+          '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:4px">' +
+          '<p style="font-size:10px;color:var(--text3)">📁 '+esc(tag.photoClean)+'</p>' +
+          '</div>';
+      })
+      .withFailureHandler(function(err) {
+        photoArea.innerHTML =
+          '<div class="photo-noimg">' +
+          '<div style="font-size:40px;margin-bottom:10px">❌</div>' +
+          '<p style="color:var(--red)">'+esc(String(err.message||err))+'</p>' +
+          '</div>';
+      })
+      .getTagPhotoForClient(tag.driveFileId);
+
+  } else {
+    photoTabBtn.textContent = '📷 Photo Drive';
+    photoArea.innerHTML =
+      '<div class="photo-noimg">' +
+      '<div style="font-size:52px;margin-bottom:14px">📷</div>' +
+      (tag.photoRef
+        ? '<p style="color:var(--text2);margin-bottom:6px">Référence : <strong style="color:var(--p4)">' + esc(tag.photoClean||tag.photoRef) + '</strong></p>' +
+          '<p style="font-size:11px;color:var(--text3);margin-top:8px">Numéro recherché dans Drive : <strong>' +
+          esc(((tag.photoClean||'').match(/^\d+/)||['?'])[0]) + '</strong><br>Fichier non trouvé dans le dossier Tags.</p>'
+        : '<p style="color:var(--text3)">Aucune référence photo.</p>') +
+      '</div>';
+  }
+
+  switchTab('mTag', 'info', document.querySelector('#tagModal .modal-tab'));
+  openModal('tagModal');
+}
+
+// ══ FILTRES INCIDENTS ═════════════════════════════════════════
+function onIncPer(){
+  var p=document.getElementById('incPer').value;
+  document.getElementById('incMo').style.display=p==='month'?'inline-block':'none';
+  document.getElementById('incYr').style.display=p==='month'?'inline-block':'none';
+  document.getElementById('incD1').style.display=p==='custom'?'inline-block':'none';
+  document.getElementById('incSep').style.display=p==='custom'?'inline-block':'none';
+  document.getElementById('incD2').style.display=p==='custom'?'inline-block':'none';
+  applyIncF();
+}
+function applyIncF(){
+  if(!D) return;
+  var p=document.getElementById('incPer').value;
+  var mo=parseInt(document.getElementById('incMo').value)||4;
+  var yr=parseInt(document.getElementById('incYr').value)||2026;
+  var d1=document.getElementById('incD1').value,d2=document.getElementById('incD2').value;
+  var filtered=(D.incidents||[]).filter(function(inc){
+    if(!inc.id||inc._err) return false;
+    if(!inc.victime&&!inc.description) return false;
+    if(p==='all') return true;
+    var iso=inc.isoDate; if(!iso) return p==='ytd';
+    if(p==='ytd'){ var y=parseInt(iso.substring(0,4)); return y===2026||y===2025; }
+    if(p==='month'){ var pts=iso.split('-'); return parseInt(pts[0])===yr&&parseInt(pts[1])===mo; }
+    if(p==='custom'){ var ok=true; if(d1)ok=ok&&iso>=d1; if(d2)ok=ok&&iso<=d2; return ok; }
+    return true;
+  });
+  renderIncidents(filtered);
+}
+function renderIncidents(incs){
+  document.getElementById('incStat').textContent=incs.length+' incidents';
+  var s3=incs.filter(function(i){return String(i.gravite)==='3';}).length;
+  var s2=incs.filter(function(i){return String(i.gravite)==='2';}).length;
+  var s1=incs.filter(function(i){return String(i.gravite)==='1';}).length;
+  var cl=incs.filter(function(i){return i.statut&&i.statut.toLowerCase().indexOf('clôt')>-1;}).length;
+  document.getElementById('incKpi').innerHTML=[
+    kpiCard('Total',incs.length,'r','incidents','k-r',null,null),
+    kpiCard('Grave G3',s3,'r','Gravité 3','k-r',null,null),
+    kpiCard('Modéré G2',s2,'a','Gravité 2','k-a',null,null),
+    kpiCard('Faible G1',s1,'b','Gravité 1','k-b',null,null),
+    kpiCard('Clôturés',cl,'g','soldés','k-g',null,null)
+  ].join('');
+  // Zones
+  var zones={};
+  incs.forEach(function(i){if(i.lieu){var z=i.lieu.substring(0,25);zones[z]=(zones[z]||0)+1;}});
+  var zk=Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];}).slice(0,5);
+  mkChart('zoneC','bar',zk,[{data:zk.map(function(k){return zones[k];}),backgroundColor:[C.red,C.amber,C.p2,C.teal,C.purple],borderRadius:5}],
+    Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+  // Causes racines (statique)
+  document.getElementById('causeGrid').innerHTML=[
+    ['Sol mouillé / glissade'],['Bords tranchants / carton'],['Chute d\'objet / palette'],
+    ['Mauvaise méthode'],['Manque vigilance'],['Collision engin']
+  ].map(function(c,i){
+    return'<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;transition:background .3s">'
+      +'<div style="font-size:17px;font-weight:800;font-family:\'JetBrains Mono\',monospace;color:var(--amber);margin-bottom:1px">'+(6-i)+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">'+c[0]+'</div></div>';
+  }).join('');
+  // Liste
+  var il=document.getElementById('incList'); il.innerHTML='';
+  if(incs.length===0){il.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Aucun incident pour cette période</div>';return;}
+  incs.forEach(function(inc){
+    if(!inc.id||inc._err) return;
+    var sev=String(inc.gravite||1);
+    var stat=(inc.statut||'').toLowerCase().indexOf('clôt')>-1?'Clôturé':'En cours';
+    var el=document.createElement('div');
+    el.className='iitem is'+sev; el.tabIndex=0;
+    el.innerHTML='<div class="ihdr"><span class="iid">INC-'+esc(inc.id)+(inc.date?' · '+inc.date:'')+'</span><span class="isev sv'+sev+'">G'+sev+'</span></div>'
+      +'<div class="ivic">'+(inc.victime||'—')+'</div>'
+      +(inc.description?'<div class="idesc">'+esc(inc.description.substring(0,90))+(inc.description.length>90?'…':'')+'</div>':'')
+      +'<div class="itags">'+(inc.lieu?'<span class="itag">📍 '+esc(inc.lieu)+'</span>':'')+(inc.type?'<span class="itag">'+esc(inc.type)+'</span>':'')
+      +'<span class="'+(stat==='Clôturé'?'s-close':'s-open')+'">'+stat+'</span>'
+      +'<span class="iclick-hint">🔍 Voir détails</span></div>';
+    el.onclick=function(){openIncModal(inc);};
+    el.onkeydown=function(e){if(e.key==='Enter'||e.key===' ')openIncModal(inc);};
+    il.appendChild(el);
+  });
+}
+
+// ══ FILTRES TAGS ══════════════════════════════════════════════
+function populateTagDropdowns(){
+  if(!D||!D.tags) return;
+  var resps=new Set(),zones=new Set();
+  D.tags.forEach(function(t){
+    if(t.responsable&&t.responsable.trim()) resps.add(t.responsable.trim());
+    var z=(t.zone||t.emplacement||'').trim(); if(z) zones.add(z);
+  });
+  var rSel=document.getElementById('tagFilterResp');
+  rSel.innerHTML='<option value="all">Tous ('+resps.size+')</option>';
+  Array.from(resps).sort().forEach(function(r){rSel.innerHTML+='<option value="'+esc(r)+'">'+esc(r)+'</option>';});
+  var zSel=document.getElementById('tagFilterZone');
+  zSel.innerHTML='<option value="all">Toutes ('+zones.size+')</option>';
+  Array.from(zones).sort().forEach(function(z){zSel.innerHTML+='<option value="'+esc(z)+'">'+esc(z)+'</option>';});
+}
+function setTagStat(val,el){
+  tagStatFilter=val;
+  document.querySelectorAll('#tagStatChips .tag-filter-chip').forEach(function(c){c.classList.remove('on');});
+  el.classList.add('on');
+  applyTagF();
+}
+function onTagPer(){
+  var p=document.getElementById('tagPer').value;
+  document.getElementById('tagYr').style.display=p==='month'?'inline-block':'none';
+  document.getElementById('tagMo').style.display=p==='month'?'inline-block':'none';
+  document.getElementById('tagD1').style.display=p==='custom'?'inline-block':'none';
+  document.getElementById('tagSep').style.display=p==='custom'?'inline-block':'none';
+  document.getElementById('tagD2').style.display=p==='custom'?'inline-block':'none';
+  applyTagF();
+}
+function clearTagFilters(){
+  document.getElementById('tagSearch').value='';
+  document.getElementById('tagSort').value='date_desc';
+  document.getElementById('tagPer').value='all';
+  ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
+  document.getElementById('tagFilterResp').value='all';
+  document.getElementById('tagFilterZone').value='all';
+  tagStatFilter='all';
+  document.querySelectorAll('#tagStatChips .tag-filter-chip').forEach(function(c,i){c.classList.toggle('on',i===0);});
+  applyTagF();
+}
+function applyTagF(){
+  if(!D) return;
+  var p=document.getElementById('tagPer').value;
+  var yr=parseInt(document.getElementById('tagYr').value)||2026;
+  var mo=parseInt(document.getElementById('tagMo').value)||1;
+  var d1=document.getElementById('tagD1').value,d2=document.getElementById('tagD2').value;
+  var searchVal=(document.getElementById('tagSearch').value||'').toLowerCase().trim();
+  var sortVal=document.getElementById('tagSort').value;
+  var filterResp=document.getElementById('tagFilterResp').value;
+  var filterZone=document.getElementById('tagFilterZone').value;
+
+  var filtered=(D.tags||[]).filter(function(t){
+    if(!t.id||t._err) return false;
+    var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
+    if(tagStatFilter==='open'&&!isOpen) return false;
+    if(tagStatFilter==='closed'&&isOpen) return false;
+    if(filterResp!=='all'&&(t.responsable||'').trim()!==filterResp) return false;
+    if(filterZone!=='all'){var z=(t.zone||t.emplacement||'').trim();if(z!==filterZone)return false;}
+    if(p!=='all'){
+      if(!t.isoDate) return p==='ytd';
+      var pts=t.isoDate.split('-');
+      if(p==='ytd'&&parseInt(pts[0])!==2026) return false;
+      if(p==='month'&&(parseInt(pts[0])!==yr||parseInt(pts[1])!==mo)) return false;
+      if(p==='custom'){if(d1&&t.isoDate<d1)return false;if(d2&&t.isoDate>d2)return false;}
+    }
+    if(searchVal){
+      // Recherche dans tous les champs, SAUF "tag" et "tags" ignorés
+      var hay=(t.description+' '+(t.zone||t.emplacement||'')+' '+t.type+' '
+        +t.responsable+' '+t.id+' '+t.risque+' '
+        // photoRef sans "tag" ni "tags"
+        +(t.photoRef||'').replace(/\btags?\b/gi,'')).toLowerCase();
+      if(hay.indexOf(searchVal)===-1) return false;
+    }
+    return true;
+  });
+
+  // Tri
+  filtered.sort(function(a,b){
+    if(sortVal==='date_desc'){if(!a.isoDate)return 1;if(!b.isoDate)return -1;return b.isoDate.localeCompare(a.isoDate);}
+    if(sortVal==='date_asc'){ if(!a.isoDate)return 1;if(!b.isoDate)return -1;return a.isoDate.localeCompare(b.isoDate);}
+    if(sortVal==='id_asc')  return String(a.id).localeCompare(String(b.id),undefined,{numeric:true});
+    if(sortVal==='id_desc') return String(b.id).localeCompare(String(a.id),undefined,{numeric:true});
+    if(sortVal==='zone_az') return (a.zone||a.emplacement||'').localeCompare(b.zone||b.emplacement||'');
+    if(sortVal==='resp_az') return (a.responsable||'').localeCompare(b.responsable||'');
+    return 0;
+  });
+
+  var total=D.tags.length;
+  var openAll=D.tagsOpen.length,closedAll=total-openAll;
+  var openF=filtered.filter(function(t){return t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;}).length;
+  var closedF=filtered.length-openF;
+  var cloPct=filtered.length>0?Math.round(closedF/filtered.length*100):0;
+
+  document.getElementById('tagStatsRow').innerHTML=
+    '<span class="tag-stat-pill tsp-total">Total : '+total+'</span>'
+    +'<span class="tag-stat-pill tsp-open">Ouverts : '+openAll+'</span>'
+    +'<span class="tag-stat-pill tsp-closed">Fermés : '+closedAll+'</span>'
+    +(filtered.length!==total?'<span class="tag-stat-pill tsp-filtered">Filtrés : <strong>'+filtered.length+'</strong></span>':'');
+  document.getElementById('tagListCount').textContent=filtered.length+' résultats';
+
+  document.getElementById('tagKpi').innerHTML=[
+    kpiCard('Filtrés',filtered.length,'b','TAGs','k-b',null,null),
+    kpiCard('Fermés',closedF,'g','✓','k-g',cloPct,C.green),
+    kpiCard('Ouverts',openF,'r','⚠','k-r',filtered.length>0?Math.round(openF/filtered.length*100):0,C.red),
+    kpiCard('Clôture',cloPct+'%','g','obj.95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red)
+  ].join('');
+
+  // Types de dangers
+  var types={};
+  filtered.forEach(function(t){if(t.type){var ty=t.type.substring(0,22);types[ty]=(types[ty]||0)+1;}});
+  var tk=Object.keys(types).sort(function(a,b){return types[b]-types[a];}).slice(0,6);
+  if(charts['dangerC'])charts['dangerC'].destroy();
+  if(tk.length>0) new Chart(document.getElementById('dangerC'),{type:'doughnut',
+    data:{labels:tk,datasets:[{data:tk.map(function(k){return types[k];}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green,C.orange],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});
+
+  // Zones TAGs
+  var tzones={};
+  filtered.forEach(function(t){if(t.zone||t.emplacement){var z=(t.zone||t.emplacement).substring(0,18);tzones[z]=(tzones[z]||0)+1;}});
+  var tzk=Object.keys(tzones).sort(function(a,b){return tzones[b]-tzones[a];}).slice(0,6);
+  mkChart('tagZoneC','bar',tzk,[{data:tzk.map(function(k){return tzones[k];}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
+    Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+
+  // Table avec responsable + indicateur photo Drive
+  var tb=document.getElementById('tagBody'); tb.innerHTML='';
+  if(filtered.length===0){
+    var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
+      :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
+      :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
+      :'Aucun TAG pour ce filtre';
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
+    return;
+  }
+  function hl(str){
+    if(!searchVal||!str) return esc(str||'');
+    var re=new RegExp('('+searchVal.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+    return esc(str).replace(re,'<mark style="background:rgba(245,166,35,.35);border-radius:2px;padding:0 1px">$1</mark>');
+  }
+  filtered.forEach(function(t){
+    var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
+    var respHtml=t.responsable
+      ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
+      :'<span style="color:var(--text3);font-size:9px">—</span>';
+    // Bouton photo : 📸 si Drive résolu, 📷 sinon
+    var hasPhoto=!!(t.photoUrl&&t.photoUrl.indexOf('http')===0);
+    var photoCls=hasPhoto?'tag-btn has-photo':'tag-btn no-photo';
+    var photoIco=hasPhoto?'📸':'📷';
+    var photoTitle=hasPhoto
+      ?'Photo Drive disponible : '+t.photoRef
+      :(t.photoRef?'Pas de photo Drive : '+t.photoRef:'Pas de photo');
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
+      +'<td style="white-space:nowrap;font-size:10px">'+t.date+'</td>'
+      +'<td style="font-size:10px">'+hl(t.type)+'</td>'
+      +'<td><span class="rbadge">'+hl((t.zone||t.emplacement)||'—')+'</span></td>'
+      +'<td style="font-size:10px;max-width:130px">'+hl(t.description.substring(0,55))+(t.description.length>55?'…':'')+'</td>'
+      +'<td style="font-size:10px">'+respHtml+'</td>'
+      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
+      +'<td><button class="'+photoCls+'" title="'+esc(photoTitle)+'">'+photoIco+'</button></td>';
+    tr.querySelector('.tag-btn').addEventListener('click',function(){openTagModal(t);});
+    tb.appendChild(tr);
+  });
+}
+
+// ══ FILTRES ACCIDENTS ═════════════════════════════════════════
+function onAccPer(){
+  var p=document.getElementById('accPer').value;
+  document.getElementById('accMo').style.display=p==='month'?'inline-block':'none';
+  document.getElementById('accD1').style.display=p==='custom'?'inline-block':'none';
+  document.getElementById('accSep').style.display=p==='custom'?'inline-block':'none';
+  document.getElementById('accD2').style.display=p==='custom'?'inline-block':'none';
+  applyAccF();
+}
+function applyAccF(){
+  if(!D) return;
+  var p=document.getElementById('accPer').value,mois=document.getElementById('accMo').value;
+  var d1=document.getElementById('accD1').value,d2=document.getElementById('accD2').value;
+  var filtered=(D.accidents||[]).filter(function(a){
+    if(!a.nom||a._err||a.nom.length<3) return false;
+    if(p==='all') return true; if(p==='ytd') return true;
+    if(p==='month') return a.mois===mois;
+    if(p==='custom'){if(!a.isoDate)return true;var ok=true;if(d1)ok=ok&&a.isoDate>=d1;if(d2)ok=ok&&a.isoDate<=d2;return ok;}
+    return true;
+  });
+  renderAccidents(filtered);
+}
+function renderAccidents(accs){
+  document.getElementById('accStat').textContent=accs.length+' accidents';
+  var totalNJP=0; accs.forEach(function(a){totalNJP+=a.njp;});
+  var njpM={Janvier:0,Février:0,Mars:0,Avril:0};
+  accs.forEach(function(a){if(njpM[a.mois]!==undefined)njpM[a.mois]+=a.njp;});
+  var maxMois=Object.keys(njpM).reduce(function(a,b){return njpM[a]>njpM[b]?a:b;},'Janvier');
+  document.getElementById('accCount').textContent=accs.length+' accidents';
+  document.getElementById('accSum').innerHTML=
+    '<div class="acc-card"><div class="acc-val" style="color:var(--red)">'+accs.length+'</div><div class="acc-lbl">AT filtrés</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--amber)">'+totalNJP+'</div><div class="acc-lbl">NJP total</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+njpM[maxMois]+'</div><div class="acc-lbl">NJP max</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--green)">'+maxMois+'</div><div class="acc-lbl">Mois +accid.</div></div>';
+  var njpL=[],njpD=[];
+  ['Janvier','Février','Mars','Avril'].forEach(function(mo){if(njpM[mo]>=0){njpL.push(mo.substring(0,3));njpD.push(njpM[mo]);}});
+  if(njpL.length>0) mkChart('njpC','bar',njpL,[{data:njpD,backgroundColor:[C.red,'rgba(232,68,90,.7)','rgba(232,68,90,.5)','rgba(232,68,90,.4)'],borderRadius:5}],BASE);
+  var zones={};accs.forEach(function(a){if(a.lieu){var z=a.lieu.substring(0,25);zones[z]=(zones[z]||0)+1;}});
+  var zk=Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];}).slice(0,5);
+  if(zk.length>0) mkChart('accZC','bar',zk,[{data:zk.map(function(k){return zones[k];}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
+    Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+  var causes={};accs.forEach(function(a){if(a.cause){var c=a.cause.substring(0,35);causes[c]=(causes[c]||0)+1;}});
+  var ck=Object.keys(causes).sort(function(a,b){return causes[b]-causes[a];}).slice(0,5);
+  if(ck.length>0) mkChart('accCC','bar',ck,[{data:ck.map(function(k){return causes[k];}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.purple],borderRadius:4}],
+    Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+  var foncs={};accs.forEach(function(a){if(a.fonction){var f=a.fonction.substring(0,25);foncs[f]=(foncs[f]||0)+1;}});
+  var fk=Object.keys(foncs).sort(function(a,b){return foncs[b]-foncs[a];}).slice(0,5);
+  if(fk.length>0){if(charts['accFC'])charts['accFC'].destroy();new Chart(document.getElementById('accFC'),{type:'doughnut',
+    data:{labels:fk,datasets:[{data:fk.map(function(k){return foncs[k];}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});}
+  var ab=document.getElementById('accBody'); ab.innerHTML='';
+  if(accs.length===0){ab.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">Aucun accident</td></tr>';return;}
+  accs.forEach(function(a){
+    var tr=document.createElement('tr'); tr.className='acc-row'; tr.title='Cliquer pour détails';
+    tr.innerHTML='<td><span class="rbadge">'+esc(a.mois)+'</span></td>'
+      +'<td class="mono" style="font-size:9px;white-space:nowrap">'+a.date+'</td>'
+      +'<td style="font-weight:600;color:var(--text)">'+esc(a.nom)+'</td>'
+      +'<td style="font-size:10px">'+esc(a.fonction)+'</td>'
+      +'<td style="font-size:10px">'+esc(a.lieu)+'</td>'
+      +'<td style="font-size:10px">'+esc(a.siege)+'</td>'
+      +'<td style="font-size:10px">'+esc(a.nature)+'</td>'
+      +'<td class="mono" style="color:var(--red);font-weight:700;text-align:center">'+a.njp+'</td>'
+      +'<td style="font-size:10px;max-width:100px">'+esc(a.cause.substring(0,40))+(a.cause.length>40?'…':'')+'</td>';
+    tr.addEventListener('click',function(){openAccModal(a);});
+    ab.appendChild(tr);
+  });
+}
+
+// ══ ÉNERGIE ═══════════════════════════════════════════════════
+function setEnvMode(m){
+  envMode=m;
+  document.getElementById('envC').classList.toggle('on',m==='conso');
+  document.getElementById('envR').classList.toggle('on',m==='ratio');
+  if(D) updateEnvCharts();
+}
+function updateEnvCharts(){
+  var m=D.metrics,isR=envMode==='ratio',hdrs=D.monthHeaders||[];
+  document.getElementById('tElt').textContent=isR?'Ratio ELT kWh/UP':'Électricité kWh';
+  document.getElementById('tGaz').textContent=isR?'Ratio GAZ m³/UP':'Gaz m³';
+  document.getElementById('tEau').textContent=isR?'Ratio EAU m³/UP':'Eau m³';
+  var eA=isR?m.relt_months:m.elt_months,gA=isR?m.rgaz_months:m.gaz_months,wA=isR?m.reau_months:m.eau_months;
+  var ce=cleanMonths(eA||[],hdrs),cg=cleanMonths(gA||[],hdrs),cw=cleanMonths(wA||[],hdrs);
+  mkChart('eltC','line',ce.labels,[{data:ce.data,borderColor:C.amber,backgroundColor:'rgba(245,166,35,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.amber}],BASE);
+  mkChart('gazC','line',cg.labels,[{data:cg.data,borderColor:C.red,backgroundColor:'rgba(232,68,90,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.red}],BASE);
+  mkChart('eauC','bar',cw.labels,[{data:cw.data,backgroundColor:[C.p1,'rgba(9,99,126,.7)','rgba(9,99,126,.5)'],borderRadius:5}],BASE);
+}
+
+// ══ RENDU PRINCIPAL ═══════════════════════════════════════════
+function render(data){
+  D=data; var m=data.metrics;
+  if(data.logoUrl){var img=document.getElementById('logoImg');img.src=data.logoUrl;img.style.display='block';document.getElementById('logoFb').style.display='none';}
+  document.getElementById('loader').style.display='none';
+  document.getElementById('main').style.display='block';
+  document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
+  document.getElementById('h-at').textContent='AT: '+m.at_total;
+  document.getElementById('h-tf').textContent='TF1: '+m.tf1_ytd;
+  document.getElementById('h-tags').textContent='TAGs: '+m.tags_ytd;
+  document.getElementById('footer').textContent='SOBCO 3 – HSE Dashboard v9.2 · BK Design · '+new Date().toLocaleDateString('fr-FR')+' · BRAHIM KAOUACHI';
+  document.getElementById('alertTxt').innerHTML=
+    '<strong>SOBCO 3 HSE 2026 :</strong> TF1=<strong>'+m.tf1_ytd+'</strong>(obj≤30) · '
+    +'TG=<strong>'+m.tg_ytd+'</strong>(obj≤0.8) · TVM=<strong>'+m.tvm+'%</strong>(obj95%) · '
+    +'TAGs=<strong>'+m.taux_tags+'%</strong>(obj≥20%) · Résol.=<strong>'+m.taux_res_tags+'%</strong>(obj95%) · '
+    +'<strong>'+m.at_total+'</strong> AT YTD · NJP=<strong>'+m.jp_ytd+'</strong>';
+
+  function p(v,obj,lower){if(!obj)return null;return Math.min(Math.round(Math.abs(v)/Math.abs(obj)*100),100);}
+  function bc(v,obj,lower){var ok=lower?v<=obj:v>=obj;return ok?C.green:(p(v,obj,lower)>60?C.amber:C.red);}
+  document.getElementById('kpiGrid').innerHTML=[
+    kpiCard('AT Total',    m.at_total,       'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
+    kpiCard('TF1',         m.tf1_ytd,        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
+    kpiCard('TG',          m.tg_ytd,         'a','YTD·Obj.≤0.8', 'k-a',p(m.tg_ytd,0.8,true),  bc(m.tg_ytd,0.8,true)),
+    kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
+    kpiCard('Incidents',   m.inc_ytd,        'b','Sans AT·YTD',  'k-b',null,null),
+    kpiCard('TAGs',        m.tags_ytd,       'g','YTD cumulé',   'k-g',null,null),
+    kpiCard('Taux TAGs',   m.taux_tags+'%',  'r','Obj.≥20%',     'k-r',p(m.taux_tags,20,false),bc(m.taux_tags,20,false)),
+    kpiCard('TVM',         m.tvm+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
+    kpiCard('Résol.TAGs',  m.taux_res_tags+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
+  ].join('');
+
+  buildNotifications();
+  updateC1(); updateC2();
+
+  document.getElementById('progList').innerHTML=[
+    prog('TF1 (obj.≤30)',            m.tf1_ytd,       30,  true, false),
+    prog('TG (obj.≤0.8)',            m.tg_ytd,        0.8, true, false),
+    prog('Taux TAGs (obj.≥20%)',     m.taux_tags,     20,  false,true),
+    prog('Résolution TAGs (obj.95%)',m.taux_res_tags, 95,  false,true),
+    prog('TVM (obj.95%)',            m.tvm,           95,  false,true),
+    prog('Prestataires (obj.95%)',   m.prestataires,  95,  false,true),
+    prog('Clôture TAGs (obj.95%)',   m.taux_cloture,  95,  false,true),
+    prog('Ratio ELT (obj.≤350)',     m.ratio_elt_ytd, 350, true, false),
+    prog('Ratio GAZ (obj.≤1200)',    m.ratio_gaz_ytd, 1200,true, false)
+  ].filter(Boolean).join('');
+
+  renderPyramid();
+  applyIncF();
+
+  document.getElementById('tagSum').innerHTML=
+    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+m.total_tags+'</div><div class="tsl">Total TAGs</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+m.closed_tags+'</div><div class="tsl">Fermés ✓</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+m.open_tags+'</div><div class="tsl">Ouverts</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+m.taux_cloture+'%</div><div class="tsl">Clôture</div></div>';
+  populateTagDropdowns(); applyTagF();
+  applyAccF();
+
+  document.getElementById('egrids').innerHTML=
+    '<div class="ecard"><div class="eval" style="color:var(--amber)">'+(m.elt_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">kWh ELT YTD</div><div class="eratio">⚡ '+m.ratio_elt_ytd+' kWh/UP</div></div>'+
+    '<div class="ecard"><div class="eval" style="color:var(--red)">'+(m.gaz_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ GAZ YTD</div><div class="eratio">🔥 '+m.ratio_gaz_ytd+' m³/UP</div></div>'+
+    '<div class="ecard"><div class="eval" style="color:var(--p4)">'+(m.eau_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ EAU YTD</div><div class="eratio">💧 '+m.ratio_eau_ytd+' m³/UP</div></div>';
+  document.getElementById('ratioList').innerHTML=[
+    prog('ELT Jan',m.relt_jan,350,true,false),prog('ELT Fév',m.relt_fev,350,true,false),prog('ELT Mar',m.relt_mar,350,true,false),
+    prog('GAZ Jan',m.rgaz_jan,1200,true,false),prog('GAZ Fév',m.rgaz_fev,1200,true,false),prog('GAZ Mar',m.rgaz_mar,1200,true,false),
+    prog('EAU Jan',m.reau_jan,5,true,false),prog('EAU Fév',m.reau_fev,5,true,false),prog('EAU Mar',m.reau_mar,5,true,false)
+  ].filter(Boolean).join('');
+  updateEnvCharts();
+}
+
+// ══ IA ════════════════════════════════════════════════════════
+var aiH=[];
+function buildCtx(){
+  if(!D)return''; var m=D.metrics;
+  return'Expert HSE SOBCO 3. Réponds en français.\nYTD2026: AT='+m.at_total+' FATAL='+m.at_fatal+' MAJ='+m.at_majeur+' MIN='+m.at_mineur+' TF1='+m.tf1_ytd+'(obj≤30) TG='+m.tg_ytd+'(obj≤0.8) JP='+m.jp_ytd+' Inc='+m.inc_ytd+' TAGs='+m.tags_ytd+' TauxTAGs='+m.taux_tags+'%(obj≥20%) RésolTAGs='+m.taux_res_tags+'%(obj95%) TVM='+m.tvm+'%(obj95%) Prest='+m.prestataires+'% TAGsOuverts='+m.open_tags+'/'+m.total_tags+'\n\n';
+}
+function autoAI(){askG(buildCtx()+'Analyse HSE SOBCO 3: 1)Synthèse 2)Top3 risques 3)Actions urgentes 4)Points positifs 5)Prévisions','Auto-analyse');}
+function askG(prompt,display){
+  var dp=display||prompt.substring(0,55)+'…';
+  var resp=document.getElementById('aiResp'),st=document.getElementById('aiSt');
+  var btn=document.getElementById('btnSend'),bta=document.getElementById('btnAuto');
+  resp.innerHTML='<span class="typing">Gemini analyse…</span>';
+  st.textContent='⏳'; btn.disabled=true; bta.disabled=true;
+  google.script.run
+    .withSuccessHandler(function(txt){
+      resp.textContent=txt; st.textContent='✅'; btn.disabled=false; bta.disabled=false;
+      aiH.unshift({q:dp.substring(0,55),a:txt.substring(0,90)+'…'});
+      if(aiH.length>5) aiH.pop();
+      document.getElementById('aiHist').innerHTML=aiH.map(function(x){
+        return'<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;transition:background .3s">'
+          +'<div style="font-size:9px;color:var(--p4);margin-bottom:3px">❓ '+x.q+'</div>'
+          +'<div style="font-size:9px;color:var(--text3)">→ '+x.a+'</div></div>';
+      }).join('');
+    })
+    .withFailureHandler(function(err){resp.textContent='❌ '+err.message;st.textContent='❌';btn.disabled=false;bta.disabled=false;})
+    .askGeminiForClient(buildCtx()+prompt);
+}
+function sendAI(){var inp=document.getElementById('aiIn'),p=inp.value.trim();if(!p)return;inp.value='';askG(p);}
+
+window.onload=function(){
+  google.script.run
+    .withSuccessHandler(render)
+    .withFailureHandler(function(err){
+      document.getElementById('loader').innerHTML=
+        '<div style="color:var(--red);text-align:center;max-width:380px">'
+        +'<div style="font-size:36px;margin-bottom:10px">⚠️</div>'
+        +'<strong>Erreur de chargement</strong><br><br>'+esc(err.message)+'</div>';
+    })
+    .getDataForClient();
+};
+</script>
+</body>
+</html>

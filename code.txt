@@ -1,0 +1,476 @@
+// ============================================================
+// SOBCO 3 – HSE MASTER DASHBOARD v9.2 FINAL
+// PHOTOS : recherche Drive en temps réel par numéro de référence
+// Ref Sheet : "tags/431.Référence Photo.101113.jpg"
+//   → extrait "431" → searchFiles('title contains "431"')
+//   → retourne l'image en base64 via proxy Apps Script
+// RESPONSABLE : col[13] (détection dynamique confirmée)
+// ============================================================
+var SHEET_ID       = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
+var GEMINI_KEY     = 'VOTRE_CLE_GEMINI_ICI';
+var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';
+var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
+var PLANNING_GID   = 1312782146;
+
+// ── Point d'entrée HTTP ───────────────────────────────────────
+function doGet(e) {
+  var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
+  if (action === 'data') return ContentService
+    .createTextOutput(JSON.stringify(getData()))
+    .setMimeType(ContentService.MimeType.JSON);
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('SOBCO 3 – HSE Master Dashboard')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+// ════════════════════════════════════════════════════════════
+// ── PROXY IMAGE BASE64 ───────────────────────────────────────
+// Appelé depuis le client via google.script.run
+// Retourne "data:image/jpeg;base64,..." ou ''
+// ════════════════════════════════════════════════════════════
+function getTagPhotoForClient(fileId) {
+  if (!fileId || fileId === '') return '';
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var blob = file.getBlob();
+    var b64  = Utilities.base64Encode(blob.getBytes());
+    var mime = blob.getContentType() || 'image/jpeg';
+    return 'data:' + mime + ';base64,' + b64;
+  } catch(e) {
+    Logger.log('getTagPhotoForClient error: ' + e.message);
+    return '';
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── RÉSOLUTION PHOTO : référence → fileId Drive ──────────────
+// Stratégie : extraire le numéro de la référence (ex: "431")
+// puis chercher dans le dossier Drive avec title contains "431"
+// Évite totalement le préfixe "tags/" et les accents
+// ════════════════════════════════════════════════════════════
+function resolveTagFileId(refRaw) {
+  if (!refRaw || refRaw.trim() === '') return '';
+  try {
+    // 1. Nettoyer le préfixe tags/ ou tag/
+    var clean = String(refRaw).replace(/^tags?\//i, '').trim();
+
+    // 2. Extraire le numéro principal (premiers chiffres consécutifs)
+    var numMatch = clean.match(/^(\d+)/);
+    if (!numMatch) {
+      // Pas de numéro → essai recherche par nom exact nettoyé
+      numMatch = clean.match(/(\d{3,})/); // au moins 3 chiffres quelque part
+    }
+
+    if (numMatch) {
+      var num = numMatch[1];
+      var folder = DriveApp.getFolderById(TAGS_FOLDER_ID);
+      // Recherche Drive par numéro dans le titre — fonctionne avec accents
+      var files = folder.searchFiles('title contains "' + num + '"');
+      if (files.hasNext()) {
+        return files.next().getId();
+      }
+    }
+  } catch(e) {
+    Logger.log('resolveTagFileId error: ' + e.message + ' | ref: ' + refRaw);
+  }
+  return '';
+}
+
+// ════════════════════════════════════════════════════════════
+// ── SCAN INITIAL : pré-charger les IDs de tous les TAGs ──────
+// Appelé une seule fois dans getData() pour éviter N appels Drive
+// Construit un cache { "431": "fileId", "432": "fileId", ... }
+// ════════════════════════════════════════════════════════════
+function buildDriveTagsCache() {
+  var cache  = {};  // num → fileId
+  var count  = 0;
+  try {
+    var folder = DriveApp.getFolderById(TAGS_FOLDER_ID);
+    var files  = folder.getFiles();
+    while (files.hasNext()) {
+      var file = files.next();
+      var name = file.getName();
+      var id   = file.getId();
+      count++;
+      // Extraire le numéro en début de nom : "431.Référence Photo..." → "431"
+      var m = name.match(/^(\d+)/);
+      if (m) {
+        var num = m[1];
+        if (!cache[num]) cache[num] = id; // Premier fichier pour ce numéro
+      }
+    }
+    Logger.log('Drive cache: ' + count + ' fichiers, ' + Object.keys(cache).length + ' numéros');
+  } catch(e) {
+    Logger.log('buildDriveTagsCache error: ' + e.message);
+  }
+  return { cache: cache, count: count };
+}
+
+// ── Utilitaires ───────────────────────────────────────────────
+function isNull(v) {
+  if (v === null || v === undefined) return true;
+  var s = String(v).trim(); return s === '' || s === '/' || s === '-';
+}
+function toNum(v) {
+  if (isNull(v)) return null;
+  var n = parseFloat(String(v).replace(/\s/g,'').replace(/,/g,''));
+  return isNaN(n) ? null : n;
+}
+function toNumZ(v) { var n = toNum(v); return n === null ? 0 : n; }
+
+function parseDate(v) {
+  if (isNull(v)) return null;
+  if (v instanceof Date && !isNaN(v.getTime())) return v;
+  var s = String(v).trim();
+  var m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (m) {
+    var d = parseInt(m[1]), mo = parseInt(m[2]), yr = parseInt(m[3]);
+    if (d > 12)  return new Date(yr, mo-1, d);
+    if (mo > 12) return new Date(yr, d-1, mo);
+    return new Date(yr, mo-1, d);
+  }
+  try { var r = new Date(v); return isNaN(r.getTime()) ? null : r; } catch(e2) { return null; }
+}
+function fmtDate(v) {
+  if (isNull(v)) return '';
+  var d = (v instanceof Date) ? v : parseDate(v);
+  if (!d || isNaN(d.getTime())) return String(v).trim();
+  try { return Utilities.formatDate(d, 'GMT+1', 'dd/MM/yyyy'); } catch(e) { return String(v).trim(); }
+}
+function getIso(v) {
+  if (isNull(v)) return '';
+  var d = (v instanceof Date) ? v : parseDate(v);
+  if (!d || isNaN(d.getTime())) return '';
+  try { return d.toISOString().split('T')[0]; } catch(e) { return ''; }
+}
+function isFumigation(a) { return a && a.toLowerCase().indexOf('fumig') > -1; }
+function normalize(s) {
+  if (!s) return '';
+  return s.toLowerCase()
+    .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/[ç]/g,'c').replace(/[ñ]/g,'n')
+    .replace(/\s+/g,' ').trim();
+}
+
+// ── Planning ─────────────────────────────────────────────────
+function readPlanning(ss) {
+  var planning = [];
+  try {
+    var sheets = ss.getSheets();
+    var planSheet = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === PLANNING_GID) { planSheet = sheets[i]; break; }
+    }
+    if (!planSheet) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = sheets[i].getName().toLowerCase();
+        if (n.indexOf('planning') > -1 || n.indexOf('activit') > -1 || n.indexOf('suivi') > -1) {
+          planSheet = sheets[i]; break;
+        }
+      }
+    }
+    if (!planSheet) { Logger.log('Planning sheet NOT found'); return planning; }
+    Logger.log('Planning sheet found: ' + planSheet.getName());
+    var data = planSheet.getDataRange().getValues();
+    var startRow = 1;
+    for (var i = 0; i < Math.min(data.length, 10); i++) {
+      var h0 = String(data[i][0]||'').toLowerCase();
+      if (h0.indexOf('date') > -1) { startRow = i + 1; break; }
+    }
+    for (var i = startRow; i < data.length; i++) {
+      var r = data[i];
+      if (isNull(r[0])) continue;
+      var pd = parseDate(r[0]);
+      if (!pd || isNaN(pd.getTime())) continue;
+      var act = isNull(r[1]) ? '' : String(r[1]).trim();
+      if (!act) continue;
+      planning.push({
+        date: fmtDate(r[0]),
+        isoDate: pd.toISOString().split('T')[0],
+        activite: act,
+        details: isNull(r[2]) ? '' : String(r[2]).trim(),
+        fumigation: isFumigation(act)
+      });
+    }
+    Logger.log('Planning: ' + planning.length + ' entrées');
+  } catch(e) { Logger.log('Planning error: ' + e.message); }
+  return planning;
+}
+
+// ════════════════════════════════════════════════════════════
+// ── GETDATA ──────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+function getData() {
+  var ss     = SpreadsheetApp.openById(SHEET_ID);
+  var sheets = ss.getSheets();
+  var byName = {};
+  sheets.forEach(function(sh) {
+    byName[normalize(sh.getName())] = sh;
+  });
+  function findSheet(kwds) {
+    var keys = Object.keys(byName);
+    for (var k = 0; k < kwds.length; k++)
+      for (var i = 0; i < keys.length; i++)
+        if (keys[i].indexOf(kwds[k]) > -1) return byName[keys[i]];
+    return null;
+  }
+
+  var out = {
+    ts: new Date().toISOString(),
+    kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[],
+    monthHeaders:[],
+    logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
+  };
+
+  out.planning = readPlanning(ss);
+
+  // ── Cache Drive Tags ─────────────────────────────────────
+  var driveResult = buildDriveTagsCache();
+  var driveCache  = driveResult.cache;   // { "431": "fileId1", ... }
+  out.driveTagsCount = driveResult.count;
+
+  // ── KPI ──────────────────────────────────────────────────
+  var kpiSheet = findSheet(['kpi']) || sheets[0];
+  var kpiData  = kpiSheet.getDataRange().getValues();
+  var ytdIdx   = 15;
+  for (var c = 0; c < kpiData[0].length; c++)
+    if (String(kpiData[0][c]).toLowerCase().indexOf('ytd') > -1) { ytdIdx = c; break; }
+  for (var c = 3; c < ytdIdx; c++) out.monthHeaders.push(String(kpiData[0][c]||'').trim());
+  for (var i = 1; i < kpiData.length; i++) {
+    var r = kpiData[i];
+    var ind = String(r[0]||'').trim();
+    if (!ind) continue;
+    if (ind.toLowerCase() === 'date') break;
+    var months = [];
+    for (var c = 3; c < ytdIdx; c++) months.push(toNum(r[c]));
+    out.kpis[ind] = {
+      unite:String(r[1]||'').trim(), objectif:String(r[2]||'').trim(), months:months,
+      jan:toNum(r[3]),fev:toNum(r[4]),mar:toNum(r[5]),avr:toNum(r[6]),
+      mai:toNum(r[7]),juin:toNum(r[8]),juil:toNum(r[9]),aout:toNum(r[10]),
+      sep:toNum(r[11]),oct:toNum(r[12]),nov:toNum(r[13]),dec:toNum(r[14]),
+      ytd:toNum(r[ytdIdx])
+    };
+  }
+
+  // ── INCIDENTS ─────────────────────────────────────────────
+  var incSheet = findSheet(['incident']) || (sheets.length>1?sheets[1]:null);
+  if (incSheet) {
+    var incData = incSheet.getDataRange().getValues();
+    for (var i = 1; i < incData.length; i++) {
+      var r  = incData[i];
+      var id = String(r[0]||'').trim();
+      if (!id || (id.toLowerCase().indexOf('id')>-1 && id.length<6)) continue;
+      if (isNull(r[0]) && isNull(r[7]) && isNull(r[6])) continue;
+      var pd  = parseDate(r[1]);
+      var iso = (pd&&!isNaN(pd.getTime())) ? pd.toISOString().split('T')[0] : '';
+      out.incidents.push({
+        id:id, date:fmtDate(r[1]), isoDate:iso,
+        heure:isNull(r[2])?'':String(r[2]).trim(),
+        lieu:isNull(r[3])?'':String(r[3]).trim(),
+        type:isNull(r[4])?'':String(r[4]).trim(),
+        gravite:toNumZ(r[5])||1,
+        description:isNull(r[6])?'':String(r[6]).trim(),
+        victime:isNull(r[7])?'':String(r[7]).trim(),
+        causes:isNull(r[8])?'':String(r[8]).trim(),
+        responsable:isNull(r[9])?'':String(r[9]).trim(),
+        delai:isNull(r[10])?'':String(r[10]).trim(),
+        statut:isNull(r[11])?'':String(r[11]).trim(),
+        analyse5m:isNull(r[13])?'':String(r[13]).trim(),
+        actions:isNull(r[14])?'':String(r[14]).trim()
+      });
+    }
+    out.incidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
+  }
+
+  // ── TAGs ─────────────────────────────────────────────────
+  // Structure confirmée (0-based getValues) :
+  // r[0]=N°Cas  r[1]=DateCréation  r[2]=DateCible  r[3]=TypeDanger
+  // r[4]=Gravité  r[5]=Emplacement  r[6]=Zone  r[7]=Description
+  // r[8]=RisquePrincipal  r[9]=ActionUrgente  r[10]=Propositions
+  // r[11]=RéférencePhoto  r[12]=Statut  r[13]=Responsable
+  var tagSheet = findSheet(['tag','danger','situation']) || (sheets.length>2?sheets[2]:null);
+  if (tagSheet) {
+    var tagData = tagSheet.getDataRange().getValues();
+
+    // Détecter les colonnes depuis l'entête (ligne 0)
+    var hdr = tagData[0];
+    var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
+                emplacement:5, zone:6, description:7, risque:8,
+                action:9, propositions:10, photoRef:11, statut:12, responsable:13 };
+    for (var c = 0; c < hdr.length; c++) {
+      var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
+      if      (h.match(/^n.?\s*(cas|tag|$)/))            COL.id          = c;
+      else if (h.indexOf('date c') === 0 && h.indexOf('cible') < 0 && h.indexOf('cr') > -1) COL.dateCreate = c;
+      else if (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1) COL.dateCible   = c;
+      else if (h.indexOf('type') > -1 && h.indexOf('danger') > -1)     COL.type        = c;
+      else if (h.indexOf('gravit') > -1)                                 COL.gravite     = c;
+      else if (h.indexOf('emplace') > -1)                                COL.emplacement = c;
+      else if (h === 'zone')                                              COL.zone        = c;
+      else if (h.indexOf('description') > -1)                            COL.description = c;
+      else if (h.indexOf('risque') > -1)                                 COL.risque      = c;
+      else if (h.indexOf('action') > -1 && h.indexOf('urgente') > -1)   COL.action      = c;
+      else if (h.indexOf('proposition') > -1)                            COL.propositions= c;
+      else if (h.indexOf('reference') > -1 && h.indexOf('photo') > -1)  COL.photoRef    = c;
+      else if (h.indexOf('statut') > -1)                                 COL.statut      = c;
+      else if (h.indexOf('respens') > -1 || h.indexOf('respons') > -1)  COL.responsable = c;
+    }
+    Logger.log('TAGs COL: ' + JSON.stringify(COL));
+
+    for (var i = 1; i < tagData.length; i++) {
+      var r = tagData[i];
+      if (isNull(r[COL.id])) continue;
+
+      // Référence photo brute (ex: "tags/431.Référence Photo.101113.jpg")
+      var refRaw   = isNull(r[COL.photoRef]) ? '' : String(r[COL.photoRef]).trim();
+      // Nettoyée : "431.Référence Photo.101113.jpg"
+      var refClean = refRaw.replace(/^tags?\//i, '').trim();
+
+      // ── Résolution fileId depuis le cache Drive ───────────
+      // Extraire le numéro de la référence
+      var driveFileId = '';
+      var numM = refClean.match(/^(\d+)/);
+      if (numM && driveCache[numM[1]]) {
+        driveFileId = driveCache[numM[1]];
+      }
+
+      var tag = {
+        id:          String(r[COL.id]).trim(),
+        date:        fmtDate(r[COL.dateCreate]),
+        isoDate:     getIso(r[COL.dateCreate]),
+        dateCible:   isNull(r[COL.dateCible])   ? '' : String(r[COL.dateCible]).trim(),
+        type:        isNull(r[COL.type])         ? '' : String(r[COL.type]).trim(),
+        gravite:     isNull(r[COL.gravite])      ? '' : String(r[COL.gravite]).trim(),
+        emplacement: isNull(r[COL.emplacement])  ? '' : String(r[COL.emplacement]).trim(),
+        zone:        isNull(r[COL.zone])         ? '' : String(r[COL.zone]).trim(),
+        description: isNull(r[COL.description])  ? '' : String(r[COL.description]).trim(),
+        risque:      isNull(r[COL.risque])       ? '' : String(r[COL.risque]).trim(),
+        action:      isNull(r[COL.action])       ? '' : String(r[COL.action]).trim(),
+        propositions:isNull(r[COL.propositions]) ? '' : String(r[COL.propositions]).trim(),
+        photoRef:    refRaw,
+        photoClean:  refClean,
+        driveFileId: driveFileId,        // ID Drive résolu
+        hasPhoto:    driveFileId !== '', // true si photo disponible
+        statut:      isNull(r[COL.statut])       ? '' : String(r[COL.statut]).trim(),
+        responsable: isNull(r[COL.responsable])  ? '' : String(r[COL.responsable]).trim()
+      };
+      out.tags.push(tag);
+      if (tag.statut.toLowerCase().indexOf('ouvert') > -1 || tag.statut.toLowerCase().indexOf('open') > -1) {
+        out.tagsOpen.push(tag);
+      }
+    }
+    function sortISO(a){ a.sort(function(x,y){ return !x.isoDate?1:!y.isoDate?-1:y.isoDate.localeCompare(x.isoDate); }); }
+    sortISO(out.tags); sortISO(out.tagsOpen);
+  }
+
+  // ── ACCIDENTS ─────────────────────────────────────────────
+  var accSheet = findSheet(['bilan','accident']);
+  if (accSheet) {
+    var accData = accSheet.getDataRange().getValues();
+    var moisMap = {'janvier':'Janvier','fevrier':'Février','février':'Février','mars':'Mars','avril':'Avril','mai':'Mai','juin':'Juin','juillet':'Juillet'};
+    var curMois = '';
+    for (var i = 0; i < accData.length; i++) {
+      var r  = accData[i];
+      var c0 = normalize(String(r[0]||'').trim());
+      if (moisMap[c0]) { curMois = moisMap[c0]; continue; }
+      if (isNull(r[1])) continue;
+      var nom = String(r[1]).trim(); if (nom.length < 3) continue;
+      if (c0.indexOf('total')>-1||c0.indexOf('date')>-1||c0.indexOf('nom')>-1||c0.indexOf('fonction')>-1) continue;
+      var pd2  = parseDate(r[0]);
+      var iso2 = (pd2&&!isNaN(pd2.getTime())) ? pd2.toISOString().split('T')[0] : '';
+      out.accidents.push({
+        mois:curMois, date:String(r[0]).trim(), isoDate:iso2,
+        nom:nom,
+        fonction:isNull(r[2])?'':String(r[2]).trim(),
+        structure:isNull(r[3])?'':String(r[3]).trim(),
+        lieu:isNull(r[4])?'':String(r[4]).trim(),
+        siege:isNull(r[5])?'':String(r[5]).trim(),
+        nature:isNull(r[6])?'':String(r[6]).trim(),
+        njp:toNumZ(r[7]),
+        cause:isNull(r[8])?'':String(r[8]).trim(),
+        circonstance:isNull(r[9])?'':String(r[9]).trim()
+      });
+    }
+    out.accidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
+  }
+
+  out.metrics = calcMetrics(out);
+  return out;
+}
+
+// ── calcMetrics ───────────────────────────────────────────────
+function calcMetrics(d) {
+  var k = d.kpis;
+  function ytd(key){ return (k[key]&&k[key].ytd!==null)?k[key].ytd:0; }
+  function mon(key,m){ return (k[key]!==undefined&&k[key][m]!==null)?k[key][m]:null; }
+  function mths(key){ return k[key]?k[key].months:[]; }
+  var total=d.tags.length, open=d.tagsOpen.length;
+  var totalNJP=0; (d.accidents||[]).forEach(function(a){totalNJP+=(a.njp||0);});
+  return {
+    tf1_ytd:ytd('Taux de Fréquence (TF1)'),tg_ytd:ytd('Taux de Gravité (TG)'),
+    at_fatal:ytd('Accident Travail (FATAL)'),at_majeur:ytd('Accident Travail (MAJEUR)'),
+    at_mineur:ytd('Accident Travail (MINEUR)'),at_total:ytd('Accident Travail (AT) (Total)'),
+    jp_ytd:ytd('Jours Perdus'),inc_ytd:ytd('Accident Travail (SANS AT) - INCIDENT'),
+    tags_ytd:ytd('Situations dangereuses (TAGs)'),taux_tags:ytd('Taux de remontées TAGs'),
+    tvm:ytd('TVM - Taux de visite médicale'),prestataires:ytd('% prestataires conformes HSE'),
+    taux_res_tags:ytd('Taux de résolution Tags'),
+    ratio_elt_ytd:ytd('Ratio ELT (kWh/unité prod)'),ratio_gaz_ytd:ytd('Ratio GAZ (m3/unité prod)'),
+    ratio_eau_ytd:ytd('Ratio EAU (m3/unité prod)'),
+    elt_ytd:ytd('Consommation ELT (kWh)'),gaz_ytd:ytd('Consommation GAZ (m3)'),eau_ytd:ytd('Consommation EAU (m3)'),
+    tf1_jan:mon('Taux de Fréquence (TF1)','jan'),tf1_fev:mon('Taux de Fréquence (TF1)','fev'),tf1_mar:mon('Taux de Fréquence (TF1)','mar'),tf1_avr:mon('Taux de Fréquence (TF1)','avr'),
+    tg_jan:mon('Taux de Gravité (TG)','jan'),tg_fev:mon('Taux de Gravité (TG)','fev'),tg_mar:mon('Taux de Gravité (TG)','mar'),tg_avr:mon('Taux de Gravité (TG)','avr'),
+    tvm_jan:mon('TVM - Taux de visite médicale','jan'),tvm_fev:mon('TVM - Taux de visite médicale','fev'),tvm_mar:mon('TVM - Taux de visite médicale','mar'),
+    atM_jan:mon('Accident Travail (MAJEUR)','jan'),atM_fev:mon('Accident Travail (MAJEUR)','fev'),atM_mar:mon('Accident Travail (MAJEUR)','mar'),atM_avr:mon('Accident Travail (MAJEUR)','avr'),
+    atm_jan:mon('Accident Travail (MINEUR)','jan'),atm_fev:mon('Accident Travail (MINEUR)','fev'),atm_mar:mon('Accident Travail (MINEUR)','mar'),atm_avr:mon('Accident Travail (MINEUR)','avr'),
+    at_jan:mon('Accident Travail (AT) (Total)','jan'),at_fev:mon('Accident Travail (AT) (Total)','fev'),at_mar:mon('Accident Travail (AT) (Total)','mar'),at_avr:mon('Accident Travail (AT) (Total)','avr'),
+    inc_jan:mon('Accident Travail (SANS AT) - INCIDENT','jan'),inc_fev:mon('Accident Travail (SANS AT) - INCIDENT','fev'),inc_mar:mon('Accident Travail (SANS AT) - INCIDENT','mar'),inc_avr:mon('Accident Travail (SANS AT) - INCIDENT','avr'),
+    tags_jan:mon('Situations dangereuses (TAGs)','jan'),tags_fev:mon('Situations dangereuses (TAGs)','fev'),tags_mar:mon('Situations dangereuses (TAGs)','mar'),tags_avr:mon('Situations dangereuses (TAGs)','avr'),
+    pres_jan:mon('% prestataires conformes HSE','jan'),pres_fev:mon('% prestataires conformes HSE','fev'),pres_mar:mon('% prestataires conformes HSE','mar'),
+    relt_jan:mon('Ratio ELT (kWh/unité prod)','jan'),relt_fev:mon('Ratio ELT (kWh/unité prod)','fev'),relt_mar:mon('Ratio ELT (kWh/unité prod)','mar'),
+    rgaz_jan:mon('Ratio GAZ (m3/unité prod)','jan'),rgaz_fev:mon('Ratio GAZ (m3/unité prod)','fev'),rgaz_mar:mon('Ratio GAZ (m3/unité prod)','mar'),
+    reau_jan:mon('Ratio EAU (m3/unité prod)','jan'),reau_fev:mon('Ratio EAU (m3/unité prod)','fev'),reau_mar:mon('Ratio EAU (m3/unité prod)','mar'),
+    elt_jan:mon('Consommation ELT (kWh)','jan'),elt_fev:mon('Consommation ELT (kWh)','fev'),elt_mar:mon('Consommation ELT (kWh)','mar'),
+    gaz_jan:mon('Consommation GAZ (m3)','jan'),gaz_fev:mon('Consommation GAZ (m3)','fev'),gaz_mar:mon('Consommation GAZ (m3)','mar'),
+    eau_jan:mon('Consommation EAU (m3)','jan'),eau_fev:mon('Consommation EAU (m3)','fev'),eau_mar:mon('Consommation EAU (m3)','mar'),
+    tf1_months:mths('Taux de Fréquence (TF1)'),tg_months:mths('Taux de Gravité (TG)'),
+    at_months:mths('Accident Travail (AT) (Total)'),atM_months:mths('Accident Travail (MAJEUR)'),
+    atm_months:mths('Accident Travail (MINEUR)'),inc_months:mths('Accident Travail (SANS AT) - INCIDENT'),
+    tags_months:mths('Situations dangereuses (TAGs)'),tvm_months:mths('TVM - Taux de visite médicale'),
+    pres_months:mths('% prestataires conformes HSE'),
+    relt_months:mths('Ratio ELT (kWh/unité prod)'),rgaz_months:mths('Ratio GAZ (m3/unité prod)'),reau_months:mths('Ratio EAU (m3/unité prod)'),
+    elt_months:mths('Consommation ELT (kWh)'),gaz_months:mths('Consommation GAZ (m3)'),eau_months:mths('Consommation EAU (m3)'),
+    total_tags:total,open_tags:open,closed_tags:total-open,
+    taux_cloture:total>0?Math.round((total-open)/total*100):0,
+    nb_incidents:d.incidents.length,nb_accidents:d.accidents.length,total_njp:totalNJP
+  };
+}
+
+function callGemini(prompt) {
+  var models=['gemini-2.0-flash','gemini-1.5-flash'];
+  for (var i=0;i<models.length;i++) {
+    try {
+      var url='https://generativelanguage.googleapis.com/v1/models/'+models[i]+':generateContent?key='+GEMINI_KEY;
+      var resp=UrlFetchApp.fetch(url,{method:'post',contentType:'application/json',
+        payload:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.3,maxOutputTokens:1024}}),muteHttpExceptions:true});
+      var json=JSON.parse(resp.getContentText());
+      if (json.candidates&&json.candidates[0]&&json.candidates[0].content) return json.candidates[0].content.parts[0].text;
+      if (json.error&&json.error.code===404) continue;
+      if (json.error) return 'Erreur API : '+json.error.message;
+    } catch(ex) { return 'Erreur : '+ex.message; }
+  }
+  return 'Aucun modèle Gemini disponible.';
+}
+
+// ── Exposées au client ────────────────────────────────────────
+function getDataForClient()           { return getData(); }
+function askGeminiForClient(p)        { return callGemini(p); }
+// PHOTO PROXY — retourne base64 de l'image Drive
+function getTagPhotoForClient(fileId) { return getTagPhotoForClient_(fileId); }
+function getTagPhotoForClient_(fileId) {
+  if (!fileId) return '';
+  try {
+    var blob = DriveApp.getFileById(fileId).getBlob();
+    return 'data:' + (blob.getContentType()||'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
+  } catch(e) { Logger.log('photo error: '+e.message); return ''; }
+}
