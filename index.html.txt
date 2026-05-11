@@ -1320,7 +1320,7 @@ function openTagModal(tag) {
       (tag.photoRef
         ? '<p style="color:var(--text2);margin-bottom:6px">Référence : <strong style="color:var(--p4)">' + esc(tag.photoClean||tag.photoRef) + '</strong></p>' +
           '<p style="font-size:11px;color:var(--text3);margin-top:8px">Numéro recherché dans Drive : <strong>' +
-          esc(((tag.photoClean||'').match(/^\d+/)||['?'])[0]) + '</strong><br>Fichier non trouvé dans le dossier Tags.</p>'
+          esc(((tag.photoClean||'').match(/(\d+)/)||['?'])[0]) + '</strong><br>Fichier non trouvé dans le dossier Tags.</p>'
         : '<p style="color:var(--text3)">Aucune référence photo.</p>') +
       '</div>';
   }
