@@ -618,13 +618,13 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
   <div class="tag-search-bar">
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
     <input type="text" class="tag-search-input" id="tagSearch"
-           placeholder="Rechercher description, zone, type, responsable, ID…"
+           placeholder="Rechercher dans tous les champs (ID, date, type, zone, description, responsable, statut…)"
            oninput="applyTagF()">
     <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+      <option value="id_desc" selected>ID ↓ (dernier créé)</option>
+      <option value="id_asc">ID ↑</option>
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
-      <option value="id_asc">ID ↑</option>
-      <option value="id_desc">ID ↓</option>
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
@@ -682,14 +682,14 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
     <div class="ct"><span class="ct-dot"></span>Liste TAGs
       <span id="tagListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
       <span style="color:var(--text3);font-size:9px">
-        📸 = photo Drive disponible · 📷 = pas de photo · Plus récents en haut
+        📸 = photo Drive disponible · 📷 = pas de photo · Tri par défaut : ID ↓ (dernier créé en haut)
       </span>
     </div>
     <div class="tblw">
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>Date ↓</th><th>Type</th><th>Zone</th>
+            <th>ID ↓</th><th>Date</th><th>Type</th><th>Zone</th>
             <th>Description</th><th>Responsable</th><th>Statut</th><th>📷</th>
           </tr>
         </thead>
@@ -1438,7 +1438,7 @@ function onTagPer(){
 }
 function clearTagFilters(){
   document.getElementById('tagSearch').value='';
-  document.getElementById('tagSort').value='date_desc';
+  document.getElementById('tagSort').value='id_desc';
   document.getElementById('tagPer').value='all';
   ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
   document.getElementById('tagFilterResp').value='all';
@@ -1453,7 +1453,15 @@ function applyTagF(){
   var yr=parseInt(document.getElementById('tagYr').value)||2026;
   var mo=parseInt(document.getElementById('tagMo').value)||1;
   var d1=document.getElementById('tagD1').value,d2=document.getElementById('tagD2').value;
-  var searchVal=(document.getElementById('tagSearch').value||'').toLowerCase().trim();
+  var searchValRaw=(document.getElementById('tagSearch').value||'').trim();
+  var searchVal=searchValRaw.toLowerCase();
+  // Normalise (retire accents + minuscules) — la recherche matche même si l'utilisateur tape sans accent
+  function noAcc(s){
+    return String(s||'').toLowerCase()
+      .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e').replace(/[ìíîï]/g,'i')
+      .replace(/[òóôõö]/g,'o').replace(/[ùúûü]/g,'u').replace(/[ç]/g,'c').replace(/[ñ]/g,'n');
+  }
+  var searchNorm=noAcc(searchVal);
   var sortVal=document.getElementById('tagSort').value;
   var filterResp=document.getElementById('tagFilterResp').value;
   var filterZone=document.getElementById('tagFilterZone').value;
@@ -1472,26 +1480,45 @@ function applyTagF(){
       if(p==='month'&&(parseInt(pts[0])!==yr||parseInt(pts[1])!==mo)) return false;
       if(p==='custom'){if(d1&&t.isoDate<d1)return false;if(d2&&t.isoDate>d2)return false;}
     }
-    if(searchVal){
-      // Recherche dans tous les champs, SAUF "tag" et "tags" ignorés
-      var hay=(t.description+' '+(t.zone||t.emplacement||'')+' '+t.type+' '
-        +t.responsable+' '+t.id+' '+t.risque+' '
-        // photoRef sans "tag" ni "tags"
-        +(t.photoRef||'').replace(/\btags?\b/gi,'')).toLowerCase();
-      if(hay.indexOf(searchVal)===-1) return false;
+    if(searchNorm){
+      // Recherche globale : tous les champs visibles de la liste + modal détail
+      // ID, date, date cible, type, gravité, zone/emplacement, description,
+      // risque, action, propositions, responsable, statut, référence photo
+      var isOpen2=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
+      var statutTxt=t.statut+' '+(isOpen2?'ouvert':'ferme')+' '+(isOpen2?'open':'closed');
+      var photoSearchable=(t.photoRef||'').replace(/\btags?\b/gi,'')+' '+(t.photoClean||'');
+      var parts=[
+        t.id, t.date, t.isoDate, t.dateCible,
+        t.type, t.gravite,
+        t.zone, t.emplacement,
+        t.description, t.risque, t.action, t.propositions,
+        t.responsable, statutTxt, photoSearchable
+      ];
+      var hay=noAcc(parts.join(' '));
+      if(hay.indexOf(searchNorm)===-1) return false;
     }
     return true;
   });
 
-  // Tri
+  // Tri — tri secondaire systématique par ID décroissant
+  // (le dernier TAG créé apparaît toujours en haut, à chaque actualisation)
+  function idNum(v){ var n=parseInt(String(v||'').replace(/\D/g,''),10); return isNaN(n)?-Infinity:n; }
+  function cmpIdDesc(a,b){
+    var na=idNum(a.id), nb=idNum(b.id);
+    if(na!==nb) return nb-na;
+    return String(b.id).localeCompare(String(a.id),undefined,{numeric:true});
+  }
   filtered.sort(function(a,b){
-    if(sortVal==='date_desc'){if(!a.isoDate)return 1;if(!b.isoDate)return -1;return b.isoDate.localeCompare(a.isoDate);}
-    if(sortVal==='date_asc'){ if(!a.isoDate)return 1;if(!b.isoDate)return -1;return a.isoDate.localeCompare(b.isoDate);}
-    if(sortVal==='id_asc')  return String(a.id).localeCompare(String(b.id),undefined,{numeric:true});
-    if(sortVal==='id_desc') return String(b.id).localeCompare(String(a.id),undefined,{numeric:true});
-    if(sortVal==='zone_az') return (a.zone||a.emplacement||'').localeCompare(b.zone||b.emplacement||'');
-    if(sortVal==='resp_az') return (a.responsable||'').localeCompare(b.responsable||'');
-    return 0;
+    var r=0;
+    if(sortVal==='date_desc'){ r = !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); }
+    else if(sortVal==='date_asc'){ r = !a.isoDate?1:!b.isoDate?-1:a.isoDate.localeCompare(b.isoDate); }
+    else if(sortVal==='id_asc')  r = idNum(a.id)-idNum(b.id) || String(a.id).localeCompare(String(b.id),undefined,{numeric:true});
+    else if(sortVal==='id_desc') r = cmpIdDesc(a,b);
+    else if(sortVal==='zone_az') r = (a.zone||a.emplacement||'').localeCompare(b.zone||b.emplacement||'');
+    else if(sortVal==='resp_az') r = (a.responsable||'').localeCompare(b.responsable||'');
+    // Tie-break : toujours ID décroissant (dernier créé en haut)
+    if(r===0) r = cmpIdDesc(a,b);
+    return r;
   });
 
   var total=D.tags.length;
@@ -1533,7 +1560,7 @@ function applyTagF(){
   // Table avec responsable + indicateur photo Drive
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
   if(filtered.length===0){
-    var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
+    var msg=searchValRaw?'Aucun TAG pour "'+esc(searchValRaw)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
       :'Aucun TAG pour ce filtre';
@@ -1541,9 +1568,20 @@ function applyTagF(){
     return;
   }
   function hl(str){
-    if(!searchVal||!str) return esc(str||'');
-    var re=new RegExp('('+searchVal.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
-    return esc(str).replace(re,'<mark style="background:rgba(245,166,35,.35);border-radius:2px;padding:0 1px">$1</mark>');
+    if(!searchNorm||!str) return esc(str||'');
+    var orig=String(str);
+    var norm=noAcc(orig);
+    // Les diacritiques FR ne changent pas le nombre de caractères : on peut
+    // réutiliser les index trouvés sur la chaîne normalisée pour découper l'originale
+    var needle=searchNorm;
+    var out='', i=0;
+    while(i<norm.length){
+      var k=norm.indexOf(needle,i);
+      if(k<0){ out+=esc(orig.substring(i)); break; }
+      out+=esc(orig.substring(i,k))+'<mark style="background:rgba(245,166,35,.35);border-radius:2px;padding:0 1px">'+esc(orig.substring(k,k+needle.length))+'</mark>';
+      i=k+needle.length;
+    }
+    return out;
   }
   filtered.forEach(function(t){
     var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
@@ -1559,8 +1597,8 @@ function applyTagF(){
       ?'Photo Drive disponible : '+(t.photoClean||t.photoRef)
       :(t.photoRef?'Pas de photo Drive : '+(t.photoClean||t.photoRef):'Pas de photo');
     var tr=document.createElement('tr');
-    tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
-      +'<td style="white-space:nowrap;font-size:10px">'+t.date+'</td>'
+    tr.innerHTML='<td class="mono" style="color:var(--p4)">'+hl(t.id)+'</td>'
+      +'<td style="white-space:nowrap;font-size:10px">'+hl(t.date)+'</td>'
       +'<td style="font-size:10px">'+hl(t.type)+'</td>'
       +'<td><span class="rbadge">'+hl((t.zone||t.emplacement)||'—')+'</span></td>'
       +'<td style="font-size:10px;max-width:130px">'+hl(t.description.substring(0,55))+(t.description.length>55?'…':'')+'</td>'

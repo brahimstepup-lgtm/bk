@@ -356,8 +356,18 @@ function getData() {
         out.tagsOpen.push(tag);
       }
     }
-    function sortISO(a){ a.sort(function(x,y){ return !x.isoDate?1:!y.isoDate?-1:y.isoDate.localeCompare(x.isoDate); }); }
-    sortISO(out.tags); sortISO(out.tagsOpen);
+    // Tri systématique : ID décroissant (dernier TAG créé en haut)
+    function sortByIdDesc(a){
+      a.sort(function(x,y){
+        var nx = parseInt(String(x.id).replace(/\D/g,''),10);
+        var ny = parseInt(String(y.id).replace(/\D/g,''),10);
+        if (isNaN(nx) && isNaN(ny)) return String(y.id).localeCompare(String(x.id));
+        if (isNaN(nx)) return 1;
+        if (isNaN(ny)) return -1;
+        return ny - nx;
+      });
+    }
+    sortByIdDesc(out.tags); sortByIdDesc(out.tagsOpen);
   }
 
   // ── ACCIDENTS ─────────────────────────────────────────────
