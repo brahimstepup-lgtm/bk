@@ -1407,19 +1407,84 @@ function renderIncidents(incs){
 }
 
 // ══ FILTRES TAGS ══════════════════════════════════════════════
+// Prédicat unifié : on peut exclure certains axes pour calculer
+// les options en cascade (ex: liste zones SANS appliquer filtre zone).
+function tagMatchesFilters(t,skip){
+  skip=skip||{};
+  if(!t.id||t._err) return false;
+  var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
+  if(!skip.stat){
+    if(tagStatFilter==='open'&&!isOpen) return false;
+    if(tagStatFilter==='closed'&&isOpen) return false;
+  }
+  if(!skip.resp){
+    var filterResp=document.getElementById('tagFilterResp').value;
+    if(filterResp!=='all'&&(t.responsable||'').trim()!==filterResp) return false;
+  }
+  if(!skip.zone){
+    var filterZone=document.getElementById('tagFilterZone').value;
+    if(filterZone!=='all'){var z=(t.zone||t.emplacement||'').trim();if(z!==filterZone)return false;}
+  }
+  if(!skip.period){
+    var p=document.getElementById('tagPer').value;
+    var yr=parseInt(document.getElementById('tagYr').value)||2026;
+    var mo=parseInt(document.getElementById('tagMo').value)||1;
+    var d1=document.getElementById('tagD1').value,d2=document.getElementById('tagD2').value;
+    if(p!=='all'){
+      if(!t.isoDate) return p==='ytd';
+      var pts=t.isoDate.split('-');
+      if(p==='ytd'&&parseInt(pts[0])!==2026) return false;
+      if(p==='month'&&(parseInt(pts[0])!==yr||parseInt(pts[1])!==mo)) return false;
+      if(p==='custom'){if(d1&&t.isoDate<d1)return false;if(d2&&t.isoDate>d2)return false;}
+    }
+  }
+  if(!skip.search){
+    var searchVal=(document.getElementById('tagSearch').value||'').toLowerCase().trim();
+    if(searchVal){
+      var hay=(t.description+' '+(t.zone||t.emplacement||'')+' '+t.type+' '
+        +t.responsable+' '+t.id+' '+t.risque+' '
+        +(t.photoRef||'').replace(/\btags?\b/gi,'')).toLowerCase();
+      if(hay.indexOf(searchVal)===-1) return false;
+    }
+  }
+  return true;
+}
+
+// Repopule les dropdowns en cascade :
+//  - Responsable : options = valeurs présentes dans les tags passant tous
+//    les autres filtres (on ignore juste le filtre responsable lui-même).
+//  - Zone : idem, en ignorant le filtre zone.
+// Conserve la sélection active si elle reste valide.
 function populateTagDropdowns(){
   if(!D||!D.tags) return;
+  var rSel=document.getElementById('tagFilterResp');
+  var zSel=document.getElementById('tagFilterZone');
+  var curResp=rSel?rSel.value:'all';
+  var curZone=zSel?zSel.value:'all';
+
   var resps=new Set(),zones=new Set();
   D.tags.forEach(function(t){
-    if(t.responsable&&t.responsable.trim()) resps.add(t.responsable.trim());
-    var z=(t.zone||t.emplacement||'').trim(); if(z) zones.add(z);
+    if(tagMatchesFilters(t,{resp:true})){
+      var r=(t.responsable||'').trim();
+      if(r) resps.add(r);
+    }
+    if(tagMatchesFilters(t,{zone:true})){
+      var z=(t.zone||t.emplacement||'').trim();
+      if(z) zones.add(z);
+    }
   });
-  var rSel=document.getElementById('tagFilterResp');
-  rSel.innerHTML='<option value="all">Tous ('+resps.size+')</option>';
-  Array.from(resps).sort().forEach(function(r){rSel.innerHTML+='<option value="'+esc(r)+'">'+esc(r)+'</option>';});
-  var zSel=document.getElementById('tagFilterZone');
-  zSel.innerHTML='<option value="all">Toutes ('+zones.size+')</option>';
-  Array.from(zones).sort().forEach(function(z){zSel.innerHTML+='<option value="'+esc(z)+'">'+esc(z)+'</option>';});
+
+  var respList=Array.from(resps).sort();
+  var zoneList=Array.from(zones).sort();
+
+  rSel.innerHTML='<option value="all">Tous ('+respList.length+')</option>'
+    +respList.map(function(r){return'<option value="'+esc(r)+'">'+esc(r)+'</option>';}).join('');
+  zSel.innerHTML='<option value="all">Toutes ('+zoneList.length+')</option>'
+    +zoneList.map(function(z){return'<option value="'+esc(z)+'">'+esc(z)+'</option>';}).join('');
+
+  // Restaurer la sélection courante si elle existe toujours dans la liste filtrée
+  rSel.value=(curResp==='all'||respList.indexOf(curResp)>-1)?curResp:'all';
+  zSel.value=(curZone==='all'||zoneList.indexOf(curZone)>-1)?curZone:'all';
 }
 function setTagStat(val,el){
   tagStatFilter=val;
@@ -1449,41 +1514,18 @@ function clearTagFilters(){
 }
 function applyTagF(){
   if(!D) return;
-  var p=document.getElementById('tagPer').value;
-  var yr=parseInt(document.getElementById('tagYr').value)||2026;
-  var mo=parseInt(document.getElementById('tagMo').value)||1;
-  var d1=document.getElementById('tagD1').value,d2=document.getElementById('tagD2').value;
-  var searchVal=(document.getElementById('tagSearch').value||'').toLowerCase().trim();
+
+  // 1) Cascade : repopuler Responsable / Zone en fonction des autres filtres actifs
+  populateTagDropdowns();
+
+  // 2) Sous-ensemble filtré (tous filtres appliqués)
+  var filtered=(D.tags||[]).filter(function(t){return tagMatchesFilters(t);});
+
+  // 3) Tri
   var sortVal=document.getElementById('tagSort').value;
+  var searchVal=(document.getElementById('tagSearch').value||'').toLowerCase().trim();
   var filterResp=document.getElementById('tagFilterResp').value;
   var filterZone=document.getElementById('tagFilterZone').value;
-
-  var filtered=(D.tags||[]).filter(function(t){
-    if(!t.id||t._err) return false;
-    var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
-    if(tagStatFilter==='open'&&!isOpen) return false;
-    if(tagStatFilter==='closed'&&isOpen) return false;
-    if(filterResp!=='all'&&(t.responsable||'').trim()!==filterResp) return false;
-    if(filterZone!=='all'){var z=(t.zone||t.emplacement||'').trim();if(z!==filterZone)return false;}
-    if(p!=='all'){
-      if(!t.isoDate) return p==='ytd';
-      var pts=t.isoDate.split('-');
-      if(p==='ytd'&&parseInt(pts[0])!==2026) return false;
-      if(p==='month'&&(parseInt(pts[0])!==yr||parseInt(pts[1])!==mo)) return false;
-      if(p==='custom'){if(d1&&t.isoDate<d1)return false;if(d2&&t.isoDate>d2)return false;}
-    }
-    if(searchVal){
-      // Recherche dans tous les champs, SAUF "tag" et "tags" ignorés
-      var hay=(t.description+' '+(t.zone||t.emplacement||'')+' '+t.type+' '
-        +t.responsable+' '+t.id+' '+t.risque+' '
-        // photoRef sans "tag" ni "tags"
-        +(t.photoRef||'').replace(/\btags?\b/gi,'')).toLowerCase();
-      if(hay.indexOf(searchVal)===-1) return false;
-    }
-    return true;
-  });
-
-  // Tri
   filtered.sort(function(a,b){
     if(sortVal==='date_desc'){if(!a.isoDate)return 1;if(!b.isoDate)return -1;return b.isoDate.localeCompare(a.isoDate);}
     if(sortVal==='date_asc'){ if(!a.isoDate)return 1;if(!b.isoDate)return -1;return a.isoDate.localeCompare(b.isoDate);}
@@ -1500,11 +1542,11 @@ function applyTagF(){
   var closedF=filtered.length-openF;
   var cloPct=filtered.length>0?Math.round(closedF/filtered.length*100):0;
 
+  var isFiltered=filtered.length!==total;
   document.getElementById('tagStatsRow').innerHTML=
-    '<span class="tag-stat-pill tsp-total">Total : '+total+'</span>'
-    +'<span class="tag-stat-pill tsp-open">Ouverts : '+openAll+'</span>'
-    +'<span class="tag-stat-pill tsp-closed">Fermés : '+closedAll+'</span>'
-    +(filtered.length!==total?'<span class="tag-stat-pill tsp-filtered">Filtrés : <strong>'+filtered.length+'</strong></span>':'');
+    '<span class="tag-stat-pill tsp-total">Total : '+(isFiltered?('<strong>'+filtered.length+'</strong> / '+total):total)+'</span>'
+    +'<span class="tag-stat-pill tsp-open">Ouverts : '+(isFiltered?('<strong>'+openF+'</strong> / '+openAll):openAll)+'</span>'
+    +'<span class="tag-stat-pill tsp-closed">Fermés : '+(isFiltered?('<strong>'+closedF+'</strong> / '+closedAll):closedAll)+'</span>';
   document.getElementById('tagListCount').textContent=filtered.length+' résultats';
 
   document.getElementById('tagKpi').innerHTML=[
