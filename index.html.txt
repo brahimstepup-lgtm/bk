@@ -621,10 +621,10 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
            placeholder="Rechercher description, zone, type, responsable, ID…"
            oninput="applyTagF()">
     <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+      <option value="id_desc" selected>ID ↓ (dernier créé)</option>
+      <option value="id_asc">ID ↑</option>
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
-      <option value="id_asc">ID ↑</option>
-      <option value="id_desc">ID ↓</option>
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
@@ -682,14 +682,14 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
     <div class="ct"><span class="ct-dot"></span>Liste TAGs
       <span id="tagListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
       <span style="color:var(--text3);font-size:9px">
-        📸 = photo Drive disponible · 📷 = pas de photo · Plus récents en haut
+        📸 = photo Drive disponible · 📷 = pas de photo · Tri par défaut : ID ↓ (dernier créé en haut)
       </span>
     </div>
     <div class="tblw">
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>Date ↓</th><th>Type</th><th>Zone</th>
+            <th>ID ↓</th><th>Date</th><th>Type</th><th>Zone</th>
             <th>Description</th><th>Responsable</th><th>Statut</th><th>📷</th>
           </tr>
         </thead>
@@ -1438,7 +1438,7 @@ function onTagPer(){
 }
 function clearTagFilters(){
   document.getElementById('tagSearch').value='';
-  document.getElementById('tagSort').value='date_desc';
+  document.getElementById('tagSort').value='id_desc';
   document.getElementById('tagPer').value='all';
   ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
   document.getElementById('tagFilterResp').value='all';
@@ -1483,15 +1483,25 @@ function applyTagF(){
     return true;
   });
 
-  // Tri
+  // Tri — tri secondaire systématique par ID décroissant
+  // (le dernier TAG créé apparaît toujours en haut, à chaque actualisation)
+  function idNum(v){ var n=parseInt(String(v||'').replace(/\D/g,''),10); return isNaN(n)?-Infinity:n; }
+  function cmpIdDesc(a,b){
+    var na=idNum(a.id), nb=idNum(b.id);
+    if(na!==nb) return nb-na;
+    return String(b.id).localeCompare(String(a.id),undefined,{numeric:true});
+  }
   filtered.sort(function(a,b){
-    if(sortVal==='date_desc'){if(!a.isoDate)return 1;if(!b.isoDate)return -1;return b.isoDate.localeCompare(a.isoDate);}
-    if(sortVal==='date_asc'){ if(!a.isoDate)return 1;if(!b.isoDate)return -1;return a.isoDate.localeCompare(b.isoDate);}
-    if(sortVal==='id_asc')  return String(a.id).localeCompare(String(b.id),undefined,{numeric:true});
-    if(sortVal==='id_desc') return String(b.id).localeCompare(String(a.id),undefined,{numeric:true});
-    if(sortVal==='zone_az') return (a.zone||a.emplacement||'').localeCompare(b.zone||b.emplacement||'');
-    if(sortVal==='resp_az') return (a.responsable||'').localeCompare(b.responsable||'');
-    return 0;
+    var r=0;
+    if(sortVal==='date_desc'){ r = !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); }
+    else if(sortVal==='date_asc'){ r = !a.isoDate?1:!b.isoDate?-1:a.isoDate.localeCompare(b.isoDate); }
+    else if(sortVal==='id_asc')  r = idNum(a.id)-idNum(b.id) || String(a.id).localeCompare(String(b.id),undefined,{numeric:true});
+    else if(sortVal==='id_desc') r = cmpIdDesc(a,b);
+    else if(sortVal==='zone_az') r = (a.zone||a.emplacement||'').localeCompare(b.zone||b.emplacement||'');
+    else if(sortVal==='resp_az') r = (a.responsable||'').localeCompare(b.responsable||'');
+    // Tie-break : toujours ID décroissant (dernier créé en haut)
+    if(r===0) r = cmpIdDesc(a,b);
+    return r;
   });
 
   var total=D.tags.length;
