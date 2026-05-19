@@ -76,10 +76,13 @@ function resolveTagFileId(refRaw) {
 // ════════════════════════════════════════════════════════════
 // ── SCAN INITIAL : pré-charger les IDs de tous les TAGs ──────
 // Appelé une seule fois dans getData() pour éviter N appels Drive
-// Construit un cache { "431": "fileId", "432": "fileId", ... }
+// Construit un cache { "431": { avant:"fileId", apres:"fileId" }, ... }
+// La classification AVANT / APRÈS se fait par mot-clé dans le nom :
+//   - "apres" / "après" / "after"  → APRÈS
+//   - tout le reste (par défaut)   → AVANT
 // ════════════════════════════════════════════════════════════
 function buildDriveTagsCache() {
-  var cache  = {};  // num → fileId
+  var cache  = {};  // num → { avant: fileId, apres: fileId }
   var count  = 0;
   try {
     var folder = DriveApp.getFolderById(TAGS_FOLDER_ID);
@@ -93,7 +96,16 @@ function buildDriveTagsCache() {
       var m = name.match(/(\d+)/);
       if (m) {
         var num = m[1];
-        if (!cache[num]) cache[num] = id; // Premier fichier pour ce numéro
+        if (!cache[num]) cache[num] = { avant: '', apres: '' };
+        // Détection APRÈS — accents normalisés
+        var low = String(name).toLowerCase()
+          .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u');
+        var isApres = /(^|[^a-z])(apres|after|aft)([^a-z]|$)/.test(low);
+        if (isApres) {
+          if (!cache[num].apres) cache[num].apres = id;
+        } else {
+          if (!cache[num].avant) cache[num].avant = id;
+        }
       }
     }
     Logger.log('Drive cache: ' + count + ' fichiers, ' + Object.keys(cache).length + ' numéros');
@@ -325,10 +337,13 @@ function getData() {
 
       // ── Résolution fileId depuis le cache Drive ───────────
       // Extraire le premier numéro de la référence (ex: "photo_430" → "430")
-      var driveFileId = '';
+      // Cache = { "430": { avant: "...", apres: "..." } }
+      var driveFileIdAvant = '';
+      var driveFileIdApres = '';
       var numM = refClean.match(/(\d+)/);
       if (numM && driveCache[numM[1]]) {
-        driveFileId = driveCache[numM[1]];
+        driveFileIdAvant = driveCache[numM[1]].avant || '';
+        driveFileIdApres = driveCache[numM[1]].apres || '';
       }
 
       var tag = {
@@ -346,8 +361,12 @@ function getData() {
         propositions:isNull(r[COL.propositions]) ? '' : String(r[COL.propositions]).trim(),
         photoRef:    refRaw,
         photoClean:  refClean,
-        driveFileId: driveFileId,        // ID Drive résolu
-        hasPhoto:    driveFileId !== '', // true si photo disponible
+        driveFileId:      driveFileIdAvant,        // Rétro-compatibilité : pointe sur AVANT
+        driveFileIdAvant: driveFileIdAvant,        // ID Drive AVANT
+        driveFileIdApres: driveFileIdApres,        // ID Drive APRÈS
+        hasPhoto:         driveFileIdAvant !== '', // au moins la photo AVANT
+        hasPhotoAvant:    driveFileIdAvant !== '',
+        hasPhotoApres:    driveFileIdApres !== '',
         statut:      isNull(r[COL.statut])       ? '' : String(r[COL.statut]).trim(),
         responsable: isNull(r[COL.responsable])  ? '' : String(r[COL.responsable]).trim()
       };
