@@ -621,10 +621,10 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
            placeholder="Rechercher description, zone, type, responsable, ID…"
            oninput="applyTagF()">
     <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+      <option value="id_desc" selected>ID ↓ récent</option>
+      <option value="id_asc">ID ↑</option>
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
-      <option value="id_asc">ID ↑</option>
-      <option value="id_desc">ID ↓</option>
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
@@ -1283,9 +1283,10 @@ function openTagModal(tag) {
 
   // Stockage des IDs Drive pour les boutons AVANT/APRÈS
   currentTagPhotoData = {
-    avantId:    tag.driveFileIdAvant || tag.driveFileId || '',
-    apresId:    tag.driveFileIdApres || '',
-    photoClean: tag.photoClean || tag.photoRef || ''
+    avantId:         tag.driveFileIdAvant || tag.driveFileId || '',
+    apresId:         tag.driveFileIdApres || '',
+    photoClean:      tag.photoClean      || tag.photoRef      || '',
+    photoCleanApres: tag.photoCleanApres || tag.photoRefApres || ''
   };
 
   // Libellé du bouton de l'onglet : indique ce qui est dispo
@@ -1328,7 +1329,10 @@ function loadTagPhoto(which) {
 
   var photoArea = document.getElementById('mTagPhotoArea');
   var label     = which === 'apres' ? 'APRÈS' : 'AVANT';
-  var refClean  = currentTagPhotoData.photoClean || '';
+  // Référence affichée : si APRÈS et qu'on a une réf dédiée, on l'utilise ; sinon on affiche celle d'AVANT
+  var refClean  = which === 'apres'
+                    ? (currentTagPhotoData.photoCleanApres || currentTagPhotoData.photoClean || '')
+                    : (currentTagPhotoData.photoClean || '');
   var num       = ((refClean.match(/(\d+)/))||['?'])[0];
 
   // Pas de fichier Drive pour cette variante
@@ -1341,10 +1345,9 @@ function loadTagPhoto(which) {
                          '<strong style="color:var(--p4)">AVANT</strong>') +
       ' » trouvée pour ce TAG.</p>' +
       '<p style="font-size:11px;color:var(--text3);margin-top:8px">' +
-      'Numéro recherché dans Drive : <strong>' + esc(num) + '</strong><br>' +
       (which==='apres'
-        ? 'Pour qu\'un fichier soit reconnu comme APRÈS, son nom doit contenir <strong>"apres"</strong>, <strong>"après"</strong> ou <strong>"after"</strong>.'
-        : 'Aucun fichier sans le mot-clé après dans le dossier « tags ».') +
+        ? 'Renseignez la colonne <strong>« Référence Photo Après »</strong> de la feuille, ou ajoutez le mot-clé <strong>"apres"</strong> / <strong>"après"</strong> / <strong>"after"</strong> dans le nom du fichier Drive.'
+        : 'Numéro recherché dans Drive : <strong>' + esc(num) + '</strong>') +
       '</p>' +
       (refClean ? '<div class="ref" style="margin-top:8px">' + esc(refClean) + '</div>' : '') +
       '</div>';
@@ -1496,7 +1499,7 @@ function onTagPer(){
 }
 function clearTagFilters(){
   document.getElementById('tagSearch').value='';
-  document.getElementById('tagSort').value='date_desc';
+  document.getElementById('tagSort').value='id_desc';
   document.getElementById('tagPer').value='all';
   ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
   document.getElementById('tagFilterResp').value='all';
