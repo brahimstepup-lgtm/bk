@@ -443,6 +443,35 @@ tr:hover td{background:var(--bg3);color:var(--text)}
   color:var(--text3);width:100%;transition:background .3s}
 .photo-noimg .ref{font-size:14px;font-family:'JetBrains Mono',monospace;color:var(--p4);
   margin-top:6px;word-break:break-all}
+/* Paire AVANT / APRÈS côte à côte */
+.photo-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.photo-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  display:flex;flex-direction:column;overflow:hidden;transition:background .3s}
+.photo-card-title{font-size:10px;font-weight:700;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--text2);padding:8px 10px;
+  background:var(--bg4);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:6px}
+.photo-card-body{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:10px;min-height:200px;text-align:center}
+.photo-slot-img{max-width:100%;max-height:42vh;border-radius:8px;object-fit:contain;
+  border:1px solid var(--border)}
+.photo-slot-cap{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  margin-top:8px;padding:4px 8px;background:var(--bg4);border-radius:6px;
+  word-break:break-all;max-width:100%}
+.photo-slot-loader{display:flex;flex-direction:column;align-items:center;gap:10px;padding:30px 10px}
+.photo-slot-loader p{color:var(--text3);font-size:11px}
+.photo-slot-msg{display:flex;flex-direction:column;align-items:center;gap:4px;padding:18px 10px;color:var(--text3)}
+.photo-slot-msg .ico{font-size:36px;margin-bottom:4px}
+.photo-slot-msg .t{font-size:12px;font-weight:600;color:var(--text2)}
+.photo-slot-msg .s{font-size:10px;color:var(--text3);line-height:1.5;max-width:240px}
+.photo-slot-msg .ref{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--p4);
+  word-break:break-all;margin-top:6px}
+.photo-slot-msg.amber .t{color:var(--amber)}
+.photo-slot-msg.red   .t{color:var(--red)}
+@media(max-width:640px){
+  .photo-pair{grid-template-columns:1fr}
+  .photo-slot-img{max-height:48vh}
+}
 /* Indicateur Drive dans le modal photo */
 .drive-indicator{display:inline-flex;align-items:center;gap:5px;font-size:10px;
   padding:3px 9px;border-radius:10px;margin-top:4px;font-family:'JetBrains Mono',monospace}
@@ -682,7 +711,7 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
     <div class="ct"><span class="ct-dot"></span>Liste TAGs
       <span id="tagListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
       <span style="color:var(--text3);font-size:9px">
-        📸 = photo Drive disponible · 📷 = pas de photo · Plus récents en haut
+        📸 Photo Après dispo · 📷 Avant uniquement · Clic icône → photos Avant + Après
       </span>
     </div>
     <div class="tblw">
@@ -866,7 +895,7 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
     </div>
     <div class="modal-tabs">
       <button class="modal-tab on" onclick="switchTab('mTag','info',this)">📋 Infos</button>
-      <button class="modal-tab" id="photoTabBtn" onclick="switchTab('mTag','photo',this)">📷 Photo Drive</button>
+      <button class="modal-tab" id="photoTabBtn" onclick="switchTab('mTag','photo',this)">📷 Photos Avant / Après</button>
     </div>
     <div class="modal-body">
       <div id="mTag-info">
@@ -1237,19 +1266,22 @@ function openAccModal(acc){
 }
 
 // ══ MODAL TAG — Photo Drive automatique ═══════════════════════
-// photoRef = nom propre du fichier (sans "tags/")
-// photoUrl = URL Drive résolue par le serveur
+// photoRef       = nom du fichier "avant" (sans "tags/")
+// photoApresRef  = nom du fichier "après" (colonne "Photo après")
+// driveFileId / driveFileIdApres = IDs Drive résolus côté serveur
 function openTagModal(tag) {
+  window._curTag = tag; // mémorisé pour le toggle Avant/Après
   document.getElementById('mTagId').textContent  = 'TAG ' + tag.id + (tag.date ? ' · ' + tag.date : '');
   document.getElementById('mTagDesc').textContent = tag.description || '—';
   var isOpen = tag.statut.toLowerCase().indexOf('ouvert') > -1 || tag.statut.toLowerCase().indexOf('open') > -1;
 
   var chips = '';
-  if (tag.type)        chips += '<span class="modal-chip">'+ esc(tag.type) +'</span>';
-  if (tag.gravite)     chips += '<span class="modal-chip">'+ esc(tag.gravite) +'</span>';
+  if (tag.type)             chips += '<span class="modal-chip">'+ esc(tag.type) +'</span>';
+  if (tag.gravite)          chips += '<span class="modal-chip">'+ esc(tag.gravite) +'</span>';
   chips += '<span class="modal-chip" style="color:'+(isOpen?'var(--red)':'var(--green)')+'">'+esc(tag.statut)+'</span>';
-  if (tag.responsable) chips += '<span class="modal-chip">👤 '+esc(tag.responsable)+'</span>';
-  if (tag.hasPhoto)    chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
+  if (tag.responsable)      chips += '<span class="modal-chip">👤 '+esc(tag.responsable)+'</span>';
+  if (tag.hasPhoto)         chips += '<span class="modal-chip" style="color:var(--p4)">📷 Avant</span>';
+  if (tag.hasPhotoApres)    chips += '<span class="modal-chip" style="color:var(--green)">📸 Après</span>';
   document.getElementById('mTagChips').innerHTML = chips;
 
   document.getElementById('mTagInfoGrid').innerHTML = [
@@ -1260,7 +1292,8 @@ function openTagModal(tag) {
     infoItemF('Zone', (tag.zone||tag.emplacement)||'—'),
     infoItemF('Responsable', tag.responsable||'—'),
     infoItemF('Statut', tag.statut),
-    infoItemF('Réf. photo', tag.photoClean||tag.photoRef||'—')
+    infoItemF('Réf. photo (avant)', tag.photoClean||tag.photoRef||'—'),
+    infoItemF('Réf. photo (après)', tag.photoApresClean||tag.photoApresRef||'—')
   ].join('');
 
   var rSec=document.getElementById('mTagRisqueSec');
@@ -1270,63 +1303,140 @@ function openTagModal(tag) {
   var pSec=document.getElementById('mTagPropSec');
   if(tag.propositions){document.getElementById('mTagProp').textContent=tag.propositions;pSec.style.display='block';}else pSec.style.display='none';
 
-  // ── PHOTO VIA PROXY BASE64 ───────────────────────────────
-  var photoArea   = document.getElementById('mTagPhotoArea');
-  var photoTabBtn = document.getElementById('photoTabBtn');
-
-  if (tag.hasPhoto && tag.driveFileId) {
-    if (photoTabBtn) photoTabBtn.textContent = '📸 Photo Drive';
-
-    // Loader pendant le chargement
-    photoArea.innerHTML =
-      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 20px">' +
-      '<div class="spin"></div>' +
-      '<p style="color:var(--text3);font-size:12px">Chargement depuis Google Drive…</p>' +
-      '</div>';
-
-    // Appel proxy — Apps Script lit le fichier Drive et retourne base64
-    google.script.run
-      .withSuccessHandler(function(dataUrl) {
-        if (!dataUrl) {
-          photoArea.innerHTML =
-            '<div class="photo-noimg">' +
-            '<div style="font-size:40px;margin-bottom:10px">⚠️</div>' +
-            '<p style="color:var(--amber);font-weight:600">Lecture impossible</p>' +
-            '<p style="font-size:11px;margin-top:8px;color:var(--text3)">Vérifiez que le compte Apps Script a accès au fichier.</p>' +
-            '<div class="ref" style="margin-top:8px">'+esc(tag.photoClean)+'</div>' +
-            '</div>';
-          return;
-        }
-        photoArea.innerHTML =
-          '<img src="'+dataUrl+'" style="max-width:100%;max-height:52vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
-          '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:4px">' +
-          '<p style="font-size:10px;color:var(--text3)">📁 '+esc(tag.photoClean)+'</p>' +
-          '</div>';
-      })
-      .withFailureHandler(function(err) {
-        photoArea.innerHTML =
-          '<div class="photo-noimg">' +
-          '<div style="font-size:40px;margin-bottom:10px">❌</div>' +
-          '<p style="color:var(--red)">'+esc(String(err.message||err))+'</p>' +
-          '</div>';
-      })
-      .getTagPhotoForClient(tag.driveFileId);
-
-  } else {
-    if (photoTabBtn) photoTabBtn.textContent = '📷 Photo Drive';
-    photoArea.innerHTML =
-      '<div class="photo-noimg">' +
-      '<div style="font-size:52px;margin-bottom:14px">📷</div>' +
-      (tag.photoRef
-        ? '<p style="color:var(--text2);margin-bottom:6px">Référence : <strong style="color:var(--p4)">' + esc(tag.photoClean||tag.photoRef) + '</strong></p>' +
-          '<p style="font-size:11px;color:var(--text3);margin-top:8px">Numéro recherché dans Drive : <strong>' +
-          esc(((tag.photoClean||'').match(/(\d+)/)||['?'])[0]) + '</strong><br>Fichier non trouvé dans le dossier Tags.</p>'
-        : '<p style="color:var(--text3)">Aucune référence photo.</p>') +
-      '</div>';
-  }
+  // ── PHOTO : on charge TOUJOURS Avant + Après en parallèle.
+  //   - Photo non disponible → message d'état (avant : pas encore prise ;
+  //     après : "TAG toujours ouvert")
+  renderTagPhotos(tag);
 
   switchTab('mTag', 'info', document.querySelector('#tagModal .modal-tab'));
   openModal('tagModal');
+}
+
+// ══ Affiche AVANT + APRÈS côte à côte dans le modal TAG ══════
+function renderTagPhotos(tag) {
+  if (!tag) tag = window._curTag;
+  if (!tag) return;
+
+  var photoArea   = document.getElementById('mTagPhotoArea');
+  var photoTabBtn = document.getElementById('photoTabBtn');
+  if (photoTabBtn) photoTabBtn.textContent = (tag.hasPhotoApres || tag.hasPhoto)
+    ? '📸 Photos Avant / Après' : '📷 Photos Drive';
+
+  var isOpen = tag.statut.toLowerCase().indexOf('ouvert') > -1
+            || tag.statut.toLowerCase().indexOf('open')   > -1;
+
+  // Squelette : 2 cartes "Avant" et "Après" rendues d'un coup
+  photoArea.innerHTML =
+    '<div class="photo-pair">' +
+      '<div class="photo-card">' +
+        '<div class="photo-card-title"><span>📷</span> Avant</div>' +
+        '<div class="photo-card-body" id="mTagPhotoAvant"></div>' +
+      '</div>' +
+      '<div class="photo-card">' +
+        '<div class="photo-card-title"><span>📸</span> Après</div>' +
+        '<div class="photo-card-body" id="mTagPhotoApres"></div>' +
+      '</div>' +
+    '</div>';
+
+  // Charge la "Avant"
+  fillTagPhotoSlot('mTagPhotoAvant', tag, 'avant', isOpen);
+  // Charge la "Après"
+  fillTagPhotoSlot('mTagPhotoApres', tag, 'apres', isOpen);
+}
+
+// ══ Remplit une carte (Avant ou Après) de la zone photo ══════
+function fillTagPhotoSlot(slotId, tag, mode, isOpen) {
+  var slot = document.getElementById(slotId);
+  if (!slot) return;
+
+  var fileId    = mode === 'apres' ? tag.driveFileIdApres : tag.driveFileId;
+  var hasPhoto  = mode === 'apres' ? tag.hasPhotoApres    : tag.hasPhoto;
+  var refRaw    = mode === 'apres' ? tag.photoApresRef    : tag.photoRef;
+  var refClean  = mode === 'apres'
+    ? (tag.photoApresClean || tag.photoApresRef)
+    : (tag.photoClean      || tag.photoRef);
+  var label     = mode === 'apres' ? 'Après' : 'Avant';
+  var labelIco  = mode === 'apres' ? '📸' : '📷';
+
+  // ── Cas 1 : photo dispo → loader + appel proxy
+  if (hasPhoto && fileId) {
+    slot.innerHTML =
+      '<div class="photo-slot-loader">' +
+        '<div class="spin"></div>' +
+        '<p>Chargement Photo '+label+'…</p>' +
+      '</div>';
+
+    google.script.run
+      .withSuccessHandler(function(dataUrl) {
+        // Si l'utilisateur a fermé/changé de tag entre temps, on ignore
+        if (window._curTag !== tag) return;
+        if (!dataUrl) {
+          slot.innerHTML =
+            '<div class="photo-slot-msg amber">' +
+              '<div class="ico">⚠️</div>' +
+              '<p class="t">Lecture impossible</p>' +
+              '<p class="s">Le compte Apps Script doit avoir accès au fichier.</p>' +
+              '<div class="ref">'+esc(refClean)+'</div>' +
+            '</div>';
+          return;
+        }
+        slot.innerHTML =
+          '<img class="photo-slot-img" src="'+dataUrl+'" alt="Photo '+label+'">' +
+          '<div class="photo-slot-cap">'+labelIco+' '+label+' · 📁 '+esc(refClean)+'</div>';
+      })
+      .withFailureHandler(function(err) {
+        if (window._curTag !== tag) return;
+        slot.innerHTML =
+          '<div class="photo-slot-msg red">' +
+            '<div class="ico">❌</div>' +
+            '<p class="t">'+esc(String(err.message||err))+'</p>' +
+          '</div>';
+      })
+      .getTagPhotoForClient(fileId);
+    return;
+  }
+
+  // ── Cas 2 : photo "Après" manquante MAIS le tag est encore ouvert
+  //   → on signale juste que le tag n'est pas encore traité
+  if (mode === 'apres' && isOpen) {
+    slot.innerHTML =
+      '<div class="photo-slot-msg amber">' +
+        '<div class="ico">⏳</div>' +
+        '<p class="t">TAG toujours ouvert</p>' +
+        '<p class="s">Photo « Après » non encore disponible — l\'action corrective n\'a pas été soldée.</p>' +
+      '</div>';
+    return;
+  }
+
+  // ── Cas 3 : photo "Après" manquante mais tag clôturé
+  //   → on indique qu'aucune photo n'a été archivée
+  if (mode === 'apres' && !isOpen) {
+    slot.innerHTML =
+      '<div class="photo-slot-msg">' +
+        '<div class="ico">📭</div>' +
+        '<p class="t">Aucune photo « Après »</p>' +
+        '<p class="s">Tag clôturé sans photo de vérification archivée.</p>' +
+      '</div>';
+    return;
+  }
+
+  // ── Cas 4 : photo "Avant" manquante
+  if (refRaw) {
+    slot.innerHTML =
+      '<div class="photo-slot-msg amber">' +
+        '<div class="ico">'+labelIco+'</div>' +
+        '<p class="t">Photo Avant introuvable sur Drive</p>' +
+        '<p class="s">Référence sheet : <strong style="color:var(--p4)">'+esc(refClean)+'</strong></p>' +
+        '<p class="s" style="margin-top:4px">Numéro recherché : <strong>'+
+          esc(((refClean||'').match(/(\d+)/)||['?'])[0])+'</strong></p>' +
+      '</div>';
+  } else {
+    slot.innerHTML =
+      '<div class="photo-slot-msg">' +
+        '<div class="ico">'+labelIco+'</div>' +
+        '<p class="t">Aucune référence photo « Avant »</p>' +
+      '</div>';
+  }
 }
 
 // ══ FILTRES INCIDENTS ═════════════════════════════════════════
@@ -1476,8 +1586,9 @@ function applyTagF(){
       // Recherche dans tous les champs, SAUF "tag" et "tags" ignorés
       var hay=(t.description+' '+(t.zone||t.emplacement||'')+' '+t.type+' '
         +t.responsable+' '+t.id+' '+t.risque+' '
-        // photoRef sans "tag" ni "tags"
-        +(t.photoRef||'').replace(/\btags?\b/gi,'')).toLowerCase();
+        // photoRef + photoApresRef sans "tag" ni "tags"
+        +(t.photoRef||'').replace(/\btags?\b/gi,'')+' '
+        +(t.photoApresRef||'').replace(/\btags?\b/gi,'')).toLowerCase();
       if(hay.indexOf(searchVal)===-1) return false;
     }
     return true;
@@ -1550,14 +1661,21 @@ function applyTagF(){
     var respHtml=t.responsable
       ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
       :'<span style="color:var(--text3);font-size:9px">—</span>';
-    // Bouton photo : 📸 si Drive résolu, 📷 sinon
-    // Le serveur renvoie t.hasPhoto (bool) + t.driveFileId (ID Drive résolu)
-    var hasPhoto=!!(t.hasPhoto&&t.driveFileId);
-    var photoCls=hasPhoto?'tag-btn has-photo':'tag-btn no-photo';
-    var photoIco=hasPhoto?'📸':'📷';
-    var photoTitle=hasPhoto
-      ?'Photo Drive disponible : '+(t.photoClean||t.photoRef)
-      :(t.photoRef?'Pas de photo Drive : '+(t.photoClean||t.photoRef):'Pas de photo');
+    // Bouton photo : 📸 si "Après" dispo, sinon "Avant", sinon 📷
+    // Le serveur renvoie t.hasPhoto / t.driveFileId (avant) et
+    // t.hasPhotoApres / t.driveFileIdApres (après)
+    var hasApres=!!(t.hasPhotoApres&&t.driveFileIdApres);
+    var hasAvant=!!(t.hasPhoto&&t.driveFileId);
+    var hasAny=hasApres||hasAvant;
+    var photoCls=hasAny?'tag-btn has-photo':'tag-btn no-photo';
+    var photoIco=hasApres?'📸':(hasAvant?'📷':'📷');
+    var photoTitle=hasApres
+      ?'Photo Après disponible : '+(t.photoApresClean||t.photoApresRef)
+      :hasAvant
+        ?'Photo Avant disponible : '+(t.photoClean||t.photoRef)
+        :(t.photoApresRef||t.photoRef
+            ?'Aucun fichier Drive trouvé'
+            :'Aucune photo');
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
       +'<td style="white-space:nowrap;font-size:10px">'+t.date+'</td>'
@@ -1569,8 +1687,9 @@ function applyTagF(){
       +'<td><button class="'+photoCls+'" title="'+esc(photoTitle)+'">'+photoIco+'</button></td>';
     tr.querySelector('.tag-btn').addEventListener('click',function(e){
       e.stopPropagation();
+      // Ouvre le modal — openTagModal charge par défaut la photo "Après"
       openTagModal(t);
-      // Basculer directement sur l'onglet Photo
+      // Bascule directement sur l'onglet Photo
       var photoTab=document.querySelectorAll('#tagModal .modal-tab')[1];
       if(photoTab) switchTab('mTag','photo',photoTab);
     });

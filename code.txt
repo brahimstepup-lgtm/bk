@@ -76,10 +76,15 @@ function resolveTagFileId(refRaw) {
 // ════════════════════════════════════════════════════════════
 // ── SCAN INITIAL : pré-charger les IDs de tous les TAGs ──────
 // Appelé une seule fois dans getData() pour éviter N appels Drive
-// Construit un cache { "431": "fileId", "432": "fileId", ... }
+// Construit plusieurs index :
+//  - cache  : num → premier fileId (rétro-compat)
+//  - byName : nom normalisé sans extension → fileId (match exact)
+//  - byNum  : num → liste de {id, normName} (pour scoring)
 // ════════════════════════════════════════════════════════════
 function buildDriveTagsCache() {
-  var cache  = {};  // num → fileId
+  var cache  = {};  // num → fileId (rétro-compat)
+  var byName = {};  // nom normalisé sans extension → fileId
+  var byNum  = {};  // num → [{id, normName}]
   var count  = 0;
   try {
     var folder = DriveApp.getFolderById(TAGS_FOLDER_ID);
@@ -89,18 +94,67 @@ function buildDriveTagsCache() {
       var name = file.getName();
       var id   = file.getId();
       count++;
-      // Extraire le premier numéro rencontré : "431.Référence...", "photo_431.jpg", "ref-431" → "431"
+      // Index par nom normalisé (sans accents, sans extension)
+      var nm = normalize(name).replace(/\.(jpe?g|png|gif|webp|bmp)$/i, '');
+      if (!byName[nm]) byName[nm] = id;
+      // Index par numéro
       var m = name.match(/(\d+)/);
       if (m) {
         var num = m[1];
         if (!cache[num]) cache[num] = id; // Premier fichier pour ce numéro
+        if (!byNum[num]) byNum[num] = [];
+        byNum[num].push({ id: id, normName: nm });
       }
     }
     Logger.log('Drive cache: ' + count + ' fichiers, ' + Object.keys(cache).length + ' numéros');
   } catch(e) {
     Logger.log('buildDriveTagsCache error: ' + e.message);
   }
-  return { cache: cache, count: count };
+  return { cache: cache, byName: byName, byNum: byNum, count: count };
+}
+
+// ════════════════════════════════════════════════════════════
+// ── RÉSOLUTION INTELLIGENTE D'UN FICHIER DRIVE ───────────────
+// Permet de différencier deux fichiers partageant le même numéro
+// (ex: "431.Référence Photo.jpg" vs "431.Photo Apres.jpg")
+//
+// Stratégie :
+//  1. Match par nom complet normalisé (sans accents, sans ext)
+//  2. Sinon, match par numéro avec scoring par mots-clés
+//     (compte les mots de la référence présents dans le nom)
+//  3. Sinon, retombe sur le premier fichier du numéro
+// ════════════════════════════════════════════════════════════
+function resolveDriveFile(refRaw, driveData) {
+  if (!refRaw || String(refRaw).trim() === '') return '';
+  var clean = String(refRaw).replace(/^tags?\//i, '').trim();
+  var nm    = normalize(clean).replace(/\.(jpe?g|png|gif|webp|bmp)$/i, '');
+
+  // 1. Match nom exact (le plus précis)
+  if (driveData.byName && driveData.byName[nm]) return driveData.byName[nm];
+
+  // 2. Match par numéro avec scoring
+  var numM = clean.match(/(\d+)/);
+  if (numM) {
+    var num = numM[1];
+    var candidates = (driveData.byNum && driveData.byNum[num]) || [];
+    if (candidates.length === 1) return candidates[0].id;
+    if (candidates.length > 1) {
+      // Mots significatifs de la référence (>2 lettres)
+      var refWords = nm.split(/[\s\.\-_/]+/).filter(function(w){ return w.length > 2; });
+      var best = candidates[0], bestScore = -1;
+      candidates.forEach(function(c) {
+        var score = 0;
+        refWords.forEach(function(w) {
+          if (c.normName.indexOf(w) > -1) score++;
+        });
+        if (score > bestScore) { bestScore = score; best = c; }
+      });
+      return best.id;
+    }
+    // 3. Fallback rétro-compat
+    if (driveData.cache && driveData.cache[num]) return driveData.cache[num];
+  }
+  return '';
 }
 
 // ── Utilitaires ───────────────────────────────────────────────
@@ -224,7 +278,6 @@ function getData() {
 
   // ── Cache Drive Tags ─────────────────────────────────────
   var driveResult = buildDriveTagsCache();
-  var driveCache  = driveResult.cache;   // { "431": "fileId1", ... }
   out.driveTagsCount = driveResult.count;
 
   // ── KPI ──────────────────────────────────────────────────
@@ -294,7 +347,8 @@ function getData() {
     var hdr = tagData[0];
     var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
                 emplacement:5, zone:6, description:7, risque:8,
-                action:9, propositions:10, photoRef:11, statut:12, responsable:13 };
+                action:9, propositions:10, photoRef:11, statut:12, responsable:13,
+                photoApres:-1 };
     for (var c = 0; c < hdr.length; c++) {
       var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
       if      (h.match(/^n.?\s*(cas|tag|$)/))            COL.id          = c;
@@ -308,6 +362,8 @@ function getData() {
       else if (h.indexOf('risque') > -1)                                 COL.risque      = c;
       else if (h.indexOf('action') > -1 && h.indexOf('urgente') > -1)   COL.action      = c;
       else if (h.indexOf('proposition') > -1)                            COL.propositions= c;
+      // "Photo après" / "Photo after" — testé AVANT la règle "reference photo"
+      else if (h.indexOf('photo') > -1 && (h.indexOf('apres') > -1 || h.indexOf('after') > -1)) COL.photoApres = c;
       else if (h.indexOf('reference') > -1 && h.indexOf('photo') > -1)  COL.photoRef    = c;
       else if (h.indexOf('statut') > -1)                                 COL.statut      = c;
       else if (h.indexOf('respens') > -1 || h.indexOf('respons') > -1)  COL.responsable = c;
@@ -318,18 +374,20 @@ function getData() {
       var r = tagData[i];
       if (isNull(r[COL.id])) continue;
 
+      // ── Photo "AVANT" (colonne Référence Photo) ─────────────
       // Référence photo brute (ex: "tags/431.Référence Photo.101113.jpg")
       var refRaw   = isNull(r[COL.photoRef]) ? '' : String(r[COL.photoRef]).trim();
       // Nettoyée : "431.Référence Photo.101113.jpg"
       var refClean = refRaw.replace(/^tags?\//i, '').trim();
 
-      // ── Résolution fileId depuis le cache Drive ───────────
-      // Extraire le premier numéro de la référence (ex: "photo_430" → "430")
-      var driveFileId = '';
-      var numM = refClean.match(/(\d+)/);
-      if (numM && driveCache[numM[1]]) {
-        driveFileId = driveCache[numM[1]];
-      }
+      // Résolution intelligente (nom exact prioritaire, sinon scoring numéro)
+      var driveFileId = resolveDriveFile(refRaw, driveResult);
+
+      // ── Photo "APRÈS" (colonne Photo après) ─────────────────
+      var apresRaw   = (COL.photoApres >= 0 && !isNull(r[COL.photoApres]))
+                       ? String(r[COL.photoApres]).trim() : '';
+      var apresClean = apresRaw.replace(/^tags?\//i, '').trim();
+      var driveFileIdApres = resolveDriveFile(apresRaw, driveResult);
 
       var tag = {
         id:          String(r[COL.id]).trim(),
@@ -344,10 +402,16 @@ function getData() {
         risque:      isNull(r[COL.risque])       ? '' : String(r[COL.risque]).trim(),
         action:      isNull(r[COL.action])       ? '' : String(r[COL.action]).trim(),
         propositions:isNull(r[COL.propositions]) ? '' : String(r[COL.propositions]).trim(),
+        // Photo "AVANT"
         photoRef:    refRaw,
         photoClean:  refClean,
         driveFileId: driveFileId,        // ID Drive résolu
         hasPhoto:    driveFileId !== '', // true si photo disponible
+        // Photo "APRÈS"
+        photoApresRef:    apresRaw,
+        photoApresClean:  apresClean,
+        driveFileIdApres: driveFileIdApres,
+        hasPhotoApres:    driveFileIdApres !== '',
         statut:      isNull(r[COL.statut])       ? '' : String(r[COL.statut]).trim(),
         responsable: isNull(r[COL.responsable])  ? '' : String(r[COL.responsable]).trim()
       };
