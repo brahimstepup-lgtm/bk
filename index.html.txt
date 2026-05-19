@@ -621,10 +621,10 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
            placeholder="Rechercher description, zone, type, responsable, ID…"
            oninput="applyTagF()">
     <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+      <option value="id_desc" selected>ID ↓ récent</option>
+      <option value="id_asc">ID ↑</option>
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
-      <option value="id_asc">ID ↑</option>
-      <option value="id_desc">ID ↓</option>
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
@@ -876,6 +876,10 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
         <div class="modal-section" id="mTagPropSec"><div class="modal-sec-title"><span>💡</span>Propositions</div><div class="desc-box" style="border-left-color:var(--green)" id="mTagProp"></div></div>
       </div>
       <div id="mTag-photo" style="display:none">
+        <div style="display:flex;gap:6px;margin-bottom:12px;justify-content:center;flex-wrap:wrap">
+          <button class="modeBtn on" id="photoAvantBtn" onclick="loadTagPhoto('avant')">📷 AVANT</button>
+          <button class="modeBtn"    id="photoApresBtn" onclick="loadTagPhoto('apres')">📸 APRÈS</button>
+        </div>
         <div class="photo-area" id="mTagPhotoArea"></div>
       </div>
     </div>
@@ -1249,7 +1253,11 @@ function openTagModal(tag) {
   if (tag.gravite)     chips += '<span class="modal-chip">'+ esc(tag.gravite) +'</span>';
   chips += '<span class="modal-chip" style="color:'+(isOpen?'var(--red)':'var(--green)')+'">'+esc(tag.statut)+'</span>';
   if (tag.responsable) chips += '<span class="modal-chip">👤 '+esc(tag.responsable)+'</span>';
-  if (tag.hasPhoto)    chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
+  if (tag.hasPhoto || tag.hasPhotoApres) {
+    var photoLbl = (tag.hasPhoto && tag.hasPhotoApres) ? '📸 Avant + Après'
+                 : (tag.hasPhotoApres ? '📸 Après' : '📸 Avant');
+    chips += '<span class="modal-chip" style="color:var(--green)">'+photoLbl+'</span>';
+  }
   document.getElementById('mTagChips').innerHTML = chips;
 
   document.getElementById('mTagInfoGrid').innerHTML = [
@@ -1270,63 +1278,116 @@ function openTagModal(tag) {
   var pSec=document.getElementById('mTagPropSec');
   if(tag.propositions){document.getElementById('mTagProp').textContent=tag.propositions;pSec.style.display='block';}else pSec.style.display='none';
 
-  // ── PHOTO VIA PROXY BASE64 ───────────────────────────────
-  var photoArea   = document.getElementById('mTagPhotoArea');
+  // ── PHOTO VIA PROXY BASE64 (AVANT + APRÈS) ───────────────
   var photoTabBtn = document.getElementById('photoTabBtn');
 
-  if (tag.hasPhoto && tag.driveFileId) {
-    if (photoTabBtn) photoTabBtn.textContent = '📸 Photo Drive';
+  // Stockage des IDs Drive pour les boutons AVANT/APRÈS
+  currentTagPhotoData = {
+    avantId:         tag.driveFileIdAvant || tag.driveFileId || '',
+    apresId:         tag.driveFileIdApres || '',
+    photoClean:      tag.photoClean      || tag.photoRef      || '',
+    photoCleanApres: tag.photoCleanApres || tag.photoRefApres || ''
+  };
 
-    // Loader pendant le chargement
-    photoArea.innerHTML =
-      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 20px">' +
-      '<div class="spin"></div>' +
-      '<p style="color:var(--text3);font-size:12px">Chargement depuis Google Drive…</p>' +
-      '</div>';
-
-    // Appel proxy — Apps Script lit le fichier Drive et retourne base64
-    google.script.run
-      .withSuccessHandler(function(dataUrl) {
-        if (!dataUrl) {
-          photoArea.innerHTML =
-            '<div class="photo-noimg">' +
-            '<div style="font-size:40px;margin-bottom:10px">⚠️</div>' +
-            '<p style="color:var(--amber);font-weight:600">Lecture impossible</p>' +
-            '<p style="font-size:11px;margin-top:8px;color:var(--text3)">Vérifiez que le compte Apps Script a accès au fichier.</p>' +
-            '<div class="ref" style="margin-top:8px">'+esc(tag.photoClean)+'</div>' +
-            '</div>';
-          return;
-        }
-        photoArea.innerHTML =
-          '<img src="'+dataUrl+'" style="max-width:100%;max-height:52vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
-          '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:4px">' +
-          '<p style="font-size:10px;color:var(--text3)">📁 '+esc(tag.photoClean)+'</p>' +
-          '</div>';
-      })
-      .withFailureHandler(function(err) {
-        photoArea.innerHTML =
-          '<div class="photo-noimg">' +
-          '<div style="font-size:40px;margin-bottom:10px">❌</div>' +
-          '<p style="color:var(--red)">'+esc(String(err.message||err))+'</p>' +
-          '</div>';
-      })
-      .getTagPhotoForClient(tag.driveFileId);
-
-  } else {
-    if (photoTabBtn) photoTabBtn.textContent = '📷 Photo Drive';
-    photoArea.innerHTML =
-      '<div class="photo-noimg">' +
-      '<div style="font-size:52px;margin-bottom:14px">📷</div>' +
-      (tag.photoRef
-        ? '<p style="color:var(--text2);margin-bottom:6px">Référence : <strong style="color:var(--p4)">' + esc(tag.photoClean||tag.photoRef) + '</strong></p>' +
-          '<p style="font-size:11px;color:var(--text3);margin-top:8px">Numéro recherché dans Drive : <strong>' +
-          esc(((tag.photoClean||'').match(/(\d+)/)||['?'])[0]) + '</strong><br>Fichier non trouvé dans le dossier Tags.</p>'
-        : '<p style="color:var(--text3)">Aucune référence photo.</p>') +
-      '</div>';
+  // Libellé du bouton de l'onglet : indique ce qui est dispo
+  if (photoTabBtn) {
+    if (currentTagPhotoData.avantId && currentTagPhotoData.apresId) {
+      photoTabBtn.textContent = '📸 Photos Avant/Après';
+    } else if (currentTagPhotoData.avantId) {
+      photoTabBtn.textContent = '📸 Photo Drive';
+    } else if (currentTagPhotoData.apresId) {
+      photoTabBtn.textContent = '📸 Photo Après';
+    } else {
+      photoTabBtn.textContent = '📷 Photo Drive';
+    }
   }
+
+  // Charge l'AVANT par défaut (ou APRÈS s'il n'y a que ça)
+  var defaultWhich = currentTagPhotoData.avantId ? 'avant'
+                   : (currentTagPhotoData.apresId ? 'apres' : 'avant');
+  loadTagPhoto(defaultWhich);
 
   switchTab('mTag', 'info', document.querySelector('#tagModal .modal-tab'));
   openModal('tagModal');
+}
+
+// ══ Chargement photo TAG (AVANT ou APRÈS) ═════════════════════
+// Même méthode pour les deux : proxy base64 sur le fileId Drive
+// résolu côté serveur depuis le dossier "tags".
+var currentTagPhotoData = null;
+function loadTagPhoto(which) {
+  if (!currentTagPhotoData) return;
+  var fileId = which === 'apres'
+    ? currentTagPhotoData.apresId
+    : currentTagPhotoData.avantId;
+
+  // État visuel des boutons
+  var btnAv = document.getElementById('photoAvantBtn');
+  var btnAp = document.getElementById('photoApresBtn');
+  if (btnAv) btnAv.classList.toggle('on', which === 'avant');
+  if (btnAp) btnAp.classList.toggle('on', which === 'apres');
+
+  var photoArea = document.getElementById('mTagPhotoArea');
+  var label     = which === 'apres' ? 'APRÈS' : 'AVANT';
+  // Référence affichée : si APRÈS et qu'on a une réf dédiée, on l'utilise ; sinon on affiche celle d'AVANT
+  var refClean  = which === 'apres'
+                    ? (currentTagPhotoData.photoCleanApres || currentTagPhotoData.photoClean || '')
+                    : (currentTagPhotoData.photoClean || '');
+  var num       = ((refClean.match(/(\d+)/))||['?'])[0];
+
+  // Pas de fichier Drive pour cette variante
+  if (!fileId) {
+    photoArea.innerHTML =
+      '<div class="photo-noimg">' +
+      '<div style="font-size:52px;margin-bottom:14px">📷</div>' +
+      '<p style="color:var(--text2);margin-bottom:6px">Aucune photo « ' +
+        (which==='apres'?'<strong style="color:var(--amber)">APRÈS</strong>':
+                         '<strong style="color:var(--p4)">AVANT</strong>') +
+      ' » trouvée pour ce TAG.</p>' +
+      '<p style="font-size:11px;color:var(--text3);margin-top:8px">' +
+      (which==='apres'
+        ? 'Renseignez la colonne <strong>« Référence Photo Après »</strong> de la feuille, ou ajoutez le mot-clé <strong>"apres"</strong> / <strong>"après"</strong> / <strong>"after"</strong> dans le nom du fichier Drive.'
+        : 'Numéro recherché dans Drive : <strong>' + esc(num) + '</strong>') +
+      '</p>' +
+      (refClean ? '<div class="ref" style="margin-top:8px">' + esc(refClean) + '</div>' : '') +
+      '</div>';
+    return;
+  }
+
+  // Loader pendant le chargement
+  photoArea.innerHTML =
+    '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 20px">' +
+    '<div class="spin"></div>' +
+    '<p style="color:var(--text3);font-size:12px">Chargement '+label+' depuis Google Drive…</p>' +
+    '</div>';
+
+  google.script.run
+    .withSuccessHandler(function(dataUrl) {
+      if (!dataUrl) {
+        photoArea.innerHTML =
+          '<div class="photo-noimg">' +
+          '<div style="font-size:40px;margin-bottom:10px">⚠️</div>' +
+          '<p style="color:var(--amber);font-weight:600">Lecture impossible (' + label + ')</p>' +
+          '<p style="font-size:11px;margin-top:8px;color:var(--text3)">Vérifiez que le compte Apps Script a accès au fichier.</p>' +
+          '<div class="ref" style="margin-top:8px">' + esc(refClean) + '</div>' +
+          '</div>';
+        return;
+      }
+      photoArea.innerHTML =
+        '<img src="' + dataUrl + '" style="max-width:100%;max-height:52vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
+        '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:4px">' +
+        '<p style="font-size:10px;color:var(--text3)">📁 ' + esc(refClean) +
+        ' — <strong style="color:'+(which==='apres'?'var(--amber)':'var(--p4)')+'">'+label+'</strong></p>' +
+        '</div>';
+    })
+    .withFailureHandler(function(err) {
+      photoArea.innerHTML =
+        '<div class="photo-noimg">' +
+        '<div style="font-size:40px;margin-bottom:10px">❌</div>' +
+        '<p style="color:var(--red)">' + esc(String(err.message||err)) + '</p>' +
+        '</div>';
+    })
+    .getTagPhotoForClient(fileId);
 }
 
 // ══ FILTRES INCIDENTS ═════════════════════════════════════════
@@ -1438,7 +1499,7 @@ function onTagPer(){
 }
 function clearTagFilters(){
   document.getElementById('tagSearch').value='';
-  document.getElementById('tagSort').value='date_desc';
+  document.getElementById('tagSort').value='id_desc';
   document.getElementById('tagPer').value='all';
   ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
   document.getElementById('tagFilterResp').value='all';

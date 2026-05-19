@@ -76,10 +76,13 @@ function resolveTagFileId(refRaw) {
 // ════════════════════════════════════════════════════════════
 // ── SCAN INITIAL : pré-charger les IDs de tous les TAGs ──────
 // Appelé une seule fois dans getData() pour éviter N appels Drive
-// Construit un cache { "431": "fileId", "432": "fileId", ... }
+// Construit un cache { "431": { avant:"fileId", apres:"fileId" }, ... }
+// La classification AVANT / APRÈS se fait par mot-clé dans le nom :
+//   - "apres" / "après" / "after"  → APRÈS
+//   - tout le reste (par défaut)   → AVANT
 // ════════════════════════════════════════════════════════════
 function buildDriveTagsCache() {
-  var cache  = {};  // num → fileId
+  var cache  = {};  // num → { any: fileId, avant: fileId, apres: fileId }
   var count  = 0;
   try {
     var folder = DriveApp.getFolderById(TAGS_FOLDER_ID);
@@ -93,7 +96,18 @@ function buildDriveTagsCache() {
       var m = name.match(/(\d+)/);
       if (m) {
         var num = m[1];
-        if (!cache[num]) cache[num] = id; // Premier fichier pour ce numéro
+        if (!cache[num]) cache[num] = { any: '', avant: '', apres: '' };
+        // Tout premier fichier rencontré pour ce numéro → "any"
+        if (!cache[num].any) cache[num].any = id;
+        // Détection APRÈS — accents normalisés
+        var low = String(name).toLowerCase()
+          .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u');
+        var isApres = /(^|[^a-z])(apres|after|aft)([^a-z]|$)/.test(low);
+        if (isApres) {
+          if (!cache[num].apres) cache[num].apres = id;
+        } else {
+          if (!cache[num].avant) cache[num].avant = id;
+        }
       }
     }
     Logger.log('Drive cache: ' + count + ' fichiers, ' + Object.keys(cache).length + ' numéros');
@@ -294,9 +308,16 @@ function getData() {
     var hdr = tagData[0];
     var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
                 emplacement:5, zone:6, description:7, risque:8,
-                action:9, propositions:10, photoRef:11, statut:12, responsable:13 };
+                action:9, propositions:10, photoRef:11, photoRefApres:-1,
+                statut:12, responsable:13 };
     for (var c = 0; c < hdr.length; c++) {
       var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
+      // ── PHOTO APRÈS — colonne dédiée (à tester AVANT photoRef pour ne pas la voler)
+      if ((h.indexOf('photo') > -1 || h.indexOf('reference') > -1) &&
+          (h.indexOf('apres') > -1 || h.indexOf('after') > -1)) {
+        COL.photoRefApres = c;
+        continue;
+      }
       if      (h.match(/^n.?\s*(cas|tag|$)/))            COL.id          = c;
       else if (h.indexOf('date c') === 0 && h.indexOf('cible') < 0 && h.indexOf('cr') > -1) COL.dateCreate = c;
       else if (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1) COL.dateCible   = c;
@@ -318,17 +339,40 @@ function getData() {
       var r = tagData[i];
       if (isNull(r[COL.id])) continue;
 
-      // Référence photo brute (ex: "tags/431.Référence Photo.101113.jpg")
+      // ── Référence photo AVANT (colonne principale) ────────
       var refRaw   = isNull(r[COL.photoRef]) ? '' : String(r[COL.photoRef]).trim();
-      // Nettoyée : "431.Référence Photo.101113.jpg"
       var refClean = refRaw.replace(/^tags?\//i, '').trim();
 
+      // ── Référence photo APRÈS (colonne dédiée si présente) ─
+      var refApresRaw   = (COL.photoRefApres >= 0 && !isNull(r[COL.photoRefApres]))
+                            ? String(r[COL.photoRefApres]).trim() : '';
+      var refApresClean = refApresRaw.replace(/^tags?\//i, '').trim();
+
       // ── Résolution fileId depuis le cache Drive ───────────
-      // Extraire le premier numéro de la référence (ex: "photo_430" → "430")
-      var driveFileId = '';
-      var numM = refClean.match(/(\d+)/);
-      if (numM && driveCache[numM[1]]) {
-        driveFileId = driveCache[numM[1]];
+      var driveFileIdAvant = '';
+      var driveFileIdApres = '';
+
+      // AVANT : extraire le numéro de la réf principale et chercher le fichier
+      // Priorité : fichier sans mot-clé "après" → puis n'importe quel fichier avec ce numéro
+      var numAvant = refClean.match(/(\d+)/);
+      if (numAvant && driveCache[numAvant[1]]) {
+        var entryAv = driveCache[numAvant[1]];
+        driveFileIdAvant = entryAv.avant || entryAv.any || '';
+      }
+
+      // APRÈS : 2 cas selon que la feuille a une colonne dédiée
+      if (refApresClean) {
+        // Cas 1 — Colonne « Réf. photo après » fournie : on prend le fichier
+        // qui porte ce numéro, sans contrainte de mot-clé (l'utilisateur a explicité)
+        var numApres = refApresClean.match(/(\d+)/);
+        if (numApres && driveCache[numApres[1]]) {
+          var entryAp = driveCache[numApres[1]];
+          driveFileIdApres = entryAp.apres || entryAp.any || '';
+        }
+      } else if (numAvant && driveCache[numAvant[1]]) {
+        // Cas 2 — Une seule colonne photo : la photo « après » doit avoir
+        // un mot-clé apres/après/after dans son nom, sinon il n'y en a pas.
+        driveFileIdApres = driveCache[numAvant[1]].apres || '';
       }
 
       var tag = {
@@ -344,10 +388,16 @@ function getData() {
         risque:      isNull(r[COL.risque])       ? '' : String(r[COL.risque]).trim(),
         action:      isNull(r[COL.action])       ? '' : String(r[COL.action]).trim(),
         propositions:isNull(r[COL.propositions]) ? '' : String(r[COL.propositions]).trim(),
-        photoRef:    refRaw,
-        photoClean:  refClean,
-        driveFileId: driveFileId,        // ID Drive résolu
-        hasPhoto:    driveFileId !== '', // true si photo disponible
+        photoRef:        refRaw,
+        photoClean:      refClean,
+        photoRefApres:   refApresRaw,
+        photoCleanApres: refApresClean,
+        driveFileId:      driveFileIdAvant,        // Rétro-compatibilité : pointe sur AVANT
+        driveFileIdAvant: driveFileIdAvant,        // ID Drive AVANT
+        driveFileIdApres: driveFileIdApres,        // ID Drive APRÈS
+        hasPhoto:         driveFileIdAvant !== '', // au moins la photo AVANT
+        hasPhotoAvant:    driveFileIdAvant !== '',
+        hasPhotoApres:    driveFileIdApres !== '',
         statut:      isNull(r[COL.statut])       ? '' : String(r[COL.statut]).trim(),
         responsable: isNull(r[COL.responsable])  ? '' : String(r[COL.responsable]).trim()
       };
@@ -356,8 +406,19 @@ function getData() {
         out.tagsOpen.push(tag);
       }
     }
-    function sortISO(a){ a.sort(function(x,y){ return !x.isoDate?1:!y.isoDate?-1:y.isoDate.localeCompare(x.isoDate); }); }
-    sortISO(out.tags); sortISO(out.tagsOpen);
+    // ── Tri haut → bas : numéro de TAG décroissant (plus récent en haut) ──
+    function sortByIdDesc(a){
+      a.sort(function(x,y){
+        var nx = parseInt(String(x.id).match(/\d+/), 10);
+        var ny = parseInt(String(y.id).match(/\d+/), 10);
+        if (isNaN(nx) && isNaN(ny)) return String(y.id).localeCompare(String(x.id));
+        if (isNaN(nx)) return 1;
+        if (isNaN(ny)) return -1;
+        return ny - nx;
+      });
+    }
+    sortByIdDesc(out.tags);
+    sortByIdDesc(out.tagsOpen);
   }
 
   // ── ACCIDENTS ─────────────────────────────────────────────
