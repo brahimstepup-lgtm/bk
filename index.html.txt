@@ -1021,8 +1021,9 @@ function mkChart(id,type,labels,datasets,opts){
 }
 function kpiCard(lbl,val,color,sub,cls,pct,bc){
   var bar='';
-  if(pct!=null){ bar='<div class="kpi-bar"><div class="kpi-bar-fill" style="width:'+Math.min(pct,100)+'%;background:'+bc+'"></div></div><div class="kpi-pct" style="color:'+bc+'">'+Math.min(pct,100)+'% obj.</div>'; }
-  return'<div class="kpi '+cls+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val '+color+'">'+val+'</div><div class="kpi-sub">'+sub+'</div>'+bar+'</div>';
+  var dv=(typeof val==='number')?fmtNum(val):val;
+  if(pct!=null){ bar='<div class="kpi-bar"><div class="kpi-bar-fill" style="width:'+Math.min(pct,100)+'%;background:'+bc+'"></div></div><div class="kpi-pct" style="color:'+bc+'">'+fmtNum(Math.min(pct,100))+'% obj.</div>'; }
+  return'<div class="kpi '+cls+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val '+color+'">'+dv+'</div><div class="kpi-sub">'+sub+'</div>'+bar+'</div>';
 }
 function prog(lbl,val,tgt,lower,isPct){
   if(val===null||val===undefined) return'';
@@ -1030,7 +1031,7 @@ function prog(lbl,val,tgt,lower,isPct){
   var pct=Math.min(Math.round(Math.abs(val)/Math.abs(tgt)*100),100);
   var ok=lower?val<=tgt:val>=tgt;
   var tc=ok?'ok':(pct>60?'warn':'bad'), bc=ok?'bg':(pct>60?'ba':'br');
-  return'<div class="prow"><div class="phdr"><span class="plbl">'+lbl+'</span><span class="pnum '+tc+'">'+(isPct?val+'%':val)+'</span></div><div class="pbg"><div class="pb '+bc+'" style="width:'+pct+'%"></div></div></div>';
+  return'<div class="prow"><div class="phdr"><span class="plbl">'+lbl+'</span><span class="pnum '+tc+'">'+(isPct?fmtNum(val)+'%':fmtNum(val))+'</span></div><div class="pbg"><div class="pb '+bc+'" style="width:'+pct+'%"></div></div></div>';
 }
 function cleanMd(t){ if(!t||t==='null')return''; return t.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s*/g,'').replace(/\\n/g,'\n').replace(/\\-/g,'-').trim(); }
 function cleanMonths(arr,hdrs){
@@ -1046,6 +1047,11 @@ function cleanMonths(arr,hdrs){
 function infoItem(lbl,val){ return val&&String(val).trim()&&val!=='—'?'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+esc(String(val))+'</div></div>':''; }
 function infoItemF(lbl,val){ return'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+(val?esc(String(val)):'—')+'</div></div>'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtNum(v){
+  if(v===null||v===undefined||v==='') return v;
+  var n=parseFloat(v); if(isNaN(n)) return v;
+  var s=n.toFixed(2); return s.replace(/\.00$/,'');
+}
 
 // ══ MODES ═════════════════════════════════════════════════════
 function setMode(m){
@@ -1122,7 +1128,7 @@ function renderPyramid(){
     }
     html+='<div style="display:flex;justify-content:center;width:216px;margin:0 auto">'
       +'<div class="pyr-block '+l.c+'" style="width:'+l.w+'px;height:30px">'
-      +'<span class="pi">'+l.i+'</span><span class="pn">'+l.l+'</span><span class="pv">'+l.v+'</span>'
+      +'<span class="pi">'+l.i+'</span><span class="pn">'+l.l+'</span><span class="pv">'+fmtNum(l.v)+'</span>'
       +'</div></div>';
   });
   html+='</div><div class="pyr-leg">';
@@ -1594,7 +1600,7 @@ function applyTagF(){
     kpiCard('Filtrés',filtered.length,'b','TAGs','k-b',null,null),
     kpiCard('Fermés',closedF,'g','✓','k-g',cloPct,C.green),
     kpiCard('Ouverts',openF,'r','⚠','k-r',filtered.length>0?Math.round(openF/filtered.length*100):0,C.red),
-    kpiCard('Clôture',cloPct+'%','g','obj.95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red)
+    kpiCard('Clôture',fmtNum(cloPct)+'%','g','obj.95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red)
   ].join('');
 
   // Types de dangers
@@ -1692,9 +1698,9 @@ function renderAccidents(accs){
   var maxMois=Object.keys(njpM).reduce(function(a,b){return njpM[a]>njpM[b]?a:b;},'Janvier');
   document.getElementById('accCount').textContent=accs.length+' accidents';
   document.getElementById('accSum').innerHTML=
-    '<div class="acc-card"><div class="acc-val" style="color:var(--red)">'+accs.length+'</div><div class="acc-lbl">AT filtrés</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--amber)">'+totalNJP+'</div><div class="acc-lbl">NJP total</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+njpM[maxMois]+'</div><div class="acc-lbl">NJP max</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--red)">'+fmtNum(accs.length)+'</div><div class="acc-lbl">AT filtrés</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--amber)">'+fmtNum(totalNJP)+'</div><div class="acc-lbl">NJP total</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+fmtNum(njpM[maxMois])+'</div><div class="acc-lbl">NJP max</div></div>'+
     '<div class="acc-card"><div class="acc-val" style="color:var(--green)">'+maxMois+'</div><div class="acc-lbl">Mois +accid.</div></div>';
   var njpL=[],njpD=[];
   ['Janvier','Février','Mars','Avril'].forEach(function(mo){if(njpM[mo]>=0){njpL.push(mo.substring(0,3));njpD.push(njpM[mo]);}});
@@ -1723,7 +1729,7 @@ function renderAccidents(accs){
       +'<td style="font-size:10px">'+esc(a.lieu)+'</td>'
       +'<td style="font-size:10px">'+esc(a.siege)+'</td>'
       +'<td style="font-size:10px">'+esc(a.nature)+'</td>'
-      +'<td class="mono" style="color:var(--red);font-weight:700;text-align:center">'+a.njp+'</td>'
+      +'<td class="mono" style="color:var(--red);font-weight:700;text-align:center">'+fmtNum(a.njp)+'</td>'
       +'<td style="font-size:10px;max-width:100px">'+esc(a.cause.substring(0,40))+(a.cause.length>40?'…':'')+'</td>';
     tr.addEventListener('click',function(){openAccModal(a);});
     ab.appendChild(tr);
@@ -1756,15 +1762,15 @@ function render(data){
   document.getElementById('loader').style.display='none';
   document.getElementById('main').style.display='block';
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
-  document.getElementById('h-at').textContent='AT: '+m.at_total;
-  document.getElementById('h-tf').textContent='TF1: '+m.tf1_ytd;
-  document.getElementById('h-tags').textContent='TAGs: '+m.tags_ytd;
+  document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
+  document.getElementById('h-tf').textContent='TF1: '+fmtNum(m.tf1_ytd);
+  document.getElementById('h-tags').textContent='TAGs: '+fmtNum(m.tags_ytd);
   document.getElementById('footer').textContent='SOBCO 3 – HSE Dashboard v9.2 · BK Design · '+new Date().toLocaleDateString('fr-FR')+' · BRAHIM KAOUACHI';
   document.getElementById('alertTxt').innerHTML=
-    '<strong>SOBCO 3 HSE 2026 :</strong> TF1=<strong>'+m.tf1_ytd+'</strong>(obj≤30) · '
-    +'TG=<strong>'+m.tg_ytd+'</strong>(obj≤0.8) · TVM=<strong>'+m.tvm+'%</strong>(obj95%) · '
-    +'TAGs=<strong>'+m.taux_tags+'%</strong>(obj≥20%) · Résol.=<strong>'+m.taux_res_tags+'%</strong>(obj95%) · '
-    +'<strong>'+m.at_total+'</strong> AT YTD · NJP=<strong>'+m.jp_ytd+'</strong>';
+    '<strong>SOBCO 3 HSE 2026 :</strong> TF1=<strong>'+fmtNum(m.tf1_ytd)+'</strong>(obj≤30) · '
+    +'TG=<strong>'+fmtNum(m.tg_ytd)+'</strong>(obj≤0.8) · TVM=<strong>'+fmtNum(m.tvm)+'%</strong>(obj95%) · '
+    +'TAGs=<strong>'+fmtNum(m.taux_tags)+'%</strong>(obj≥20%) · Résol.=<strong>'+fmtNum(m.taux_res_tags)+'%</strong>(obj95%) · '
+    +'<strong>'+fmtNum(m.at_total)+'</strong> AT YTD · NJP=<strong>'+fmtNum(m.jp_ytd)+'</strong>';
 
   function p(v,obj,lower){if(!obj)return null;return Math.min(Math.round(Math.abs(v)/Math.abs(obj)*100),100);}
   function bc(v,obj,lower){var ok=lower?v<=obj:v>=obj;return ok?C.green:(p(v,obj,lower)>60?C.amber:C.red);}
@@ -1775,9 +1781,9 @@ function render(data){
     kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
     kpiCard('Incidents',   m.inc_ytd,        'b','Sans AT·YTD',  'k-b',null,null),
     kpiCard('TAGs',        m.tags_ytd,       'g','YTD cumulé',   'k-g',null,null),
-    kpiCard('Taux TAGs',   m.taux_tags+'%',  'r','Obj.≥20%',     'k-r',p(m.taux_tags,20,false),bc(m.taux_tags,20,false)),
-    kpiCard('TVM',         m.tvm+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
-    kpiCard('Résol.TAGs',  m.taux_res_tags+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
+    kpiCard('Taux TAGs',   fmtNum(m.taux_tags)+'%',  'r','Obj.≥20%',     'k-r',p(m.taux_tags,20,false),bc(m.taux_tags,20,false)),
+    kpiCard('TVM',         fmtNum(m.tvm)+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
+    kpiCard('Résol.TAGs',  fmtNum(m.taux_res_tags)+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
   ].join('');
 
   buildNotifications();
@@ -1799,17 +1805,17 @@ function render(data){
   applyIncF();
 
   document.getElementById('tagSum').innerHTML=
-    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+m.total_tags+'</div><div class="tsl">Total TAGs</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+m.closed_tags+'</div><div class="tsl">Fermés ✓</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+m.open_tags+'</div><div class="tsl">Ouverts</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+m.taux_cloture+'%</div><div class="tsl">Clôture</div></div>';
+    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(m.total_tags)+'</div><div class="tsl">Total TAGs</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(m.closed_tags)+'</div><div class="tsl">Fermés ✓</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(m.open_tags)+'</div><div class="tsl">Ouverts</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(m.taux_cloture)+'%</div><div class="tsl">Clôture</div></div>';
   populateTagDropdowns(); applyTagF();
   applyAccF();
 
   document.getElementById('egrids').innerHTML=
-    '<div class="ecard"><div class="eval" style="color:var(--amber)">'+(m.elt_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">kWh ELT YTD</div><div class="eratio">⚡ '+m.ratio_elt_ytd+' kWh/UP</div></div>'+
-    '<div class="ecard"><div class="eval" style="color:var(--red)">'+(m.gaz_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ GAZ YTD</div><div class="eratio">🔥 '+m.ratio_gaz_ytd+' m³/UP</div></div>'+
-    '<div class="ecard"><div class="eval" style="color:var(--p4)">'+(m.eau_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ EAU YTD</div><div class="eratio">💧 '+m.ratio_eau_ytd+' m³/UP</div></div>';
+    '<div class="ecard"><div class="eval" style="color:var(--amber)">'+fmtNum(m.elt_ytd||0)+'</div><div class="elbl">kWh ELT YTD</div><div class="eratio">⚡ '+fmtNum(m.ratio_elt_ytd)+' kWh/UP</div></div>'+
+    '<div class="ecard"><div class="eval" style="color:var(--red)">'+fmtNum(m.gaz_ytd||0)+'</div><div class="elbl">m³ GAZ YTD</div><div class="eratio">🔥 '+fmtNum(m.ratio_gaz_ytd)+' m³/UP</div></div>'+
+    '<div class="ecard"><div class="eval" style="color:var(--p4)">'+fmtNum(m.eau_ytd||0)+'</div><div class="elbl">m³ EAU YTD</div><div class="eratio">💧 '+fmtNum(m.ratio_eau_ytd)+' m³/UP</div></div>';
   document.getElementById('ratioList').innerHTML=[
     prog('ELT Jan',m.relt_jan,350,true,false),prog('ELT Fév',m.relt_fev,350,true,false),prog('ELT Mar',m.relt_mar,350,true,false),
     prog('GAZ Jan',m.rgaz_jan,1200,true,false),prog('GAZ Fév',m.rgaz_fev,1200,true,false),prog('GAZ Mar',m.rgaz_mar,1200,true,false),
