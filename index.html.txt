@@ -84,8 +84,37 @@ html.light .pf-sel,.html.light .kpi-sel{background:#fff}
   transition:all .2s;flex-shrink:0}
 .theme-btn:hover{background:var(--bg4);border-color:var(--p2);transform:scale(1.05)}
 
-body{background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',sans-serif;transition:background .3s,color .3s}
-.app{max-width:1440px;margin:0 auto;padding:18px}
+body{background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter',sans-serif;transition:background .3s,color .3s;position:relative}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 18px,
+    rgba(255,204,0,.04) 18px,
+    rgba(255,204,0,.04) 20px,
+    transparent 20px,
+    transparent 38px,
+    rgba(20,20,20,.06) 38px,
+    rgba(20,20,20,.06) 40px
+  );
+  opacity:1}
+html.light body::before{
+  background:repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 18px,
+    rgba(255,204,0,.07) 18px,
+    rgba(255,204,0,.07) 20px,
+    transparent 20px,
+    transparent 38px,
+    rgba(20,20,20,.04) 38px,
+    rgba(20,20,20,.04) 40px
+  )}
+body>*{position:relative;z-index:1}
+.app{max-width:1440px;margin:0 auto;padding:18px;
+  border-left:3px solid transparent;border-right:3px solid transparent;
+  border-image:repeating-linear-gradient(
+    180deg,#ffcc00 0,#ffcc00 10px,#1a1a1a 10px,#1a1a1a 20px) 3}
 
 /* ══ LOGO ══ */
 .logo-wrap{width:52px;height:52px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
@@ -523,9 +552,21 @@ html.light .notif-full-top{background:#f5f7fa}
 html.light .notif-full-item{background:#f5f7fa}
 html.light .notif-full-item:hover{background:#e8edf2}
 html.light .notif-full-filters .pf-sel{background:#fff}
+/* ══ BANDES SÉCURITÉ (haut & bas) ══ */
+.safety-stripe-top,.safety-stripe-bottom{
+  position:fixed;left:0;right:0;height:5px;z-index:9998;pointer-events:none;
+  background:repeating-linear-gradient(
+    90deg,#ffcc00 0,#ffcc00 12px,#1a1a1a 12px,#1a1a1a 24px)}
+.safety-stripe-top{top:0}
+.safety-stripe-bottom{bottom:0}
+html.light .safety-stripe-top,html.light .safety-stripe-bottom{
+  background:repeating-linear-gradient(
+    90deg,#ffd900 0,#ffd900 12px,#2a2a2a 12px,#2a2a2a 24px)}
 </style>
 </head>
 <body>
+<div class="safety-stripe-top"></div>
+<div class="safety-stripe-bottom"></div>
 <div class="app">
 
 <!-- ══ HEADER ══ -->
