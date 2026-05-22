@@ -567,10 +567,7 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
         <span class="ct-dot" style="background:var(--red)"></span>Pyramide accidents
         <button class="modeBtn on" id="pyrYB" onclick="setPyrMode('ytd')" style="margin-left:auto;font-size:9px">YTD</button>
         <button class="modeBtn"    id="pyrMB" onclick="setPyrMode('mois')" style="font-size:9px">MOIS</button>
-        <select id="pyrSel" style="display:none" class="kpi-sel" onchange="renderPyramid()">
-          <option value="jan">Jan</option><option value="fev">Fév</option>
-          <option value="mar">Mar</option><option value="avr" selected>Avr</option>
-        </select>
+        <select id="pyrSel" style="display:none" class="kpi-sel" onchange="renderPyramid()"></select>
       </div>
       <div id="pyrBox"></div>
     </div>
@@ -1067,18 +1064,48 @@ function setPyrMode(m){
 
 // ══ PYRAMIDE ══════════════════════════════════════════════════
 function getCSSVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function populatePyrMonths(){
+  var sel=document.getElementById('pyrSel');
+  if(!sel||!D) return;
+  var m=D.metrics, hdrs=D.monthHeaders||[];
+  var aMj=m.atM_months||[], aMn=m.atm_months||[], aI=m.inc_months||[], aT=m.tags_months||[];
+  var n=Math.max(hdrs.length, aMj.length, aMn.length, aI.length, aT.length, 12);
+  var prev=sel.value;
+  var opts='', firstVal=null, lastVal=null, hasPrev=false;
+  for(var i=0;i<n;i++){
+    var hasData=(aMj[i]!=null)||(aMn[i]!=null)||(aI[i]!=null)||(aT[i]!=null);
+    if(!hasData) continue;
+    var lbl=(hdrs[i]?String(hdrs[i]).replace(/-\d{2,4}$/,'').trim():'')||ML[i]||('M'+(i+1));
+    var v=String(i);
+    opts+='<option value="'+v+'">'+esc(lbl)+'</option>';
+    if(firstVal===null) firstVal=v;
+    lastVal=v;
+    if(v===prev) hasPrev=true;
+  }
+  sel.innerHTML=opts;
+  if(hasPrev) sel.value=prev;
+  else if(lastVal!==null) sel.value=lastVal;
+}
 function renderPyramid(){
   if(!D) return;
-  var m=D.metrics, sel=document.getElementById('pyrSel').value;
+  var m=D.metrics;
+  populatePyrMonths();
+  var sel=document.getElementById('pyrSel');
   var fatal,majeur,mineur,incident,tags;
   if(pyrMode==='ytd'){ fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=m.tags_ytd; }
   else{
-    var mp={jan:{f:0,mj:m.atM_jan||0,mn:m.atm_jan||0,i:m.inc_jan||0,t:m.tags_jan||0},
-            fev:{f:0,mj:m.atM_fev||0,mn:m.atm_fev||0,i:m.inc_fev||0,t:m.tags_fev||0},
-            mar:{f:0,mj:m.atM_mar||0,mn:m.atm_mar||0,i:m.inc_mar||0,t:m.tags_mar||0},
-            avr:{f:0,mj:m.atM_avr||0,mn:m.atm_avr||0,i:m.inc_avr||0,t:m.tags_avr||0}};
-    var md=mp[sel]||mp.avr;
-    fatal=md.f;majeur=md.mj;mineur=md.mn;incident=md.i;tags=md.t;
+    var idx=parseInt(sel&&sel.value,10);
+    if(isNaN(idx)){
+      // Aucun mois disponible : on bascule sur YTD
+      fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=m.tags_ytd;
+    } else {
+      var aMj=m.atM_months||[], aMn=m.atm_months||[], aI=m.inc_months||[], aT=m.tags_months||[];
+      fatal=0;
+      majeur  = aMj[idx]!=null ? aMj[idx] : 0;
+      mineur  = aMn[idx]!=null ? aMn[idx] : 0;
+      incident= aI[idx] !=null ? aI[idx]  : 0;
+      tags    = aT[idx] !=null ? aT[idx]  : 0;
+    }
   }
   var W=[44,82,126,172,216];
   var cc=['--pyr-conn1','--pyr-conn2','--pyr-conn3','--pyr-conn4'].map(function(v){return getCSSVar(v)||'#333';});
