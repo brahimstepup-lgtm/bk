@@ -856,325 +856,15 @@ html.light .notif-full-filters .pf-sel{background:#fff}
 <!-- ═══ VEILLE RÉGLEMENTAIRE ═══ -->
 <div id="veille" class="page">
   <div class="card" style="margin-bottom:14px">
-    <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>Recueil et Évaluation des Exigences Légales Applicables et Autres Exigences — SOBCO 3</div>
+    <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>Recueil et Évaluation des Exigences Légales Applicables — SOBCO 3</div>
     <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
-      Ce tableau recense l'ensemble des prescriptions réglementaires applicables à l'entreprise en matière d'hygiène, sécurité, environnement et gestion des risques,
-      avec leur niveau de conformité et les actions à mener.
+      Données synchronisées en temps réel depuis la feuille <strong style="color:var(--p4)">« Veille réglementaire-SOBCO3 »</strong>.
     </p>
   </div>
 
-  <!-- KPI conformité -->
-  <div class="kpi-grid" style="margin-bottom:14px">
-    <div class="kpi k-b"><div class="kpi-lbl">Total Prescriptions</div><div class="kpi-val b">25</div><div class="kpi-sub">Textes réglementaires</div></div>
-    <div class="kpi k-g"><div class="kpi-lbl">Conformité ≥ 75%</div><div class="kpi-val g">12</div><div class="kpi-sub">Textes conformes</div></div>
-    <div class="kpi k-a"><div class="kpi-lbl">Conformité 25-74%</div><div class="kpi-val a">10</div><div class="kpi-sub">À améliorer</div></div>
-    <div class="kpi k-r"><div class="kpi-lbl">Conformité &lt; 25%</div><div class="kpi-val r">3</div><div class="kpi-sub">Non conformes</div></div>
-  </div>
-
-  <div class="card">
-    <div class="ct"><span class="ct-dot"></span>Tableau de Veille Réglementaire
-      <span style="color:var(--text3);font-size:9px;margin-left:6px">Champ d'application · Prescription · Conformité · Actions</span>
-    </div>
-    <div class="tblw" style="max-height:600px">
-      <table id="veilleTable">
-        <thead>
-          <tr>
-            <th>Champ</th>
-            <th>Prescription N°/Date/Titre</th>
-            <th>Synthèse du Contenu</th>
-            <th>Autorisation</th>
-            <th>Expiration</th>
-            <th>Conf. %</th>
-            <th>Action</th>
-            <th>Réf. Doc.</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- CPHS -->
-          <tr>
-            <td rowspan="2" style="font-weight:700;color:var(--p4)">CPHS</td>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 05-09 du 8 Janvier 2005 relatif aux commissions paritaires et aux préposés à l'hygiène et à la sécurité</td>
-            <td style="font-size:10px">Commissions paritaires H&S : institution (>9 travailleurs CDI), attributions, composition, organisation</td>
-            <td><span class="rbadge">Permis</span></td>
-            <td class="mono">3 ans renouv.</td>
-            <td><span style="color:var(--green);font-weight:700">100%</span></td>
-            <td style="font-size:10px">CPHS/unité mise en place</td>
-            <td class="mono" style="font-size:9px">01-CPHS-05-09.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 05-11 du 8 janvier 2005 fixant les conditions de création du service d'hygiène et de sécurité</td>
-            <td style="font-size:10px">Service H&S : création, organisation, fonctionnement, attributions. Registres obligatoires.</td>
-            <td><span class="rbadge">Registres</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">75%</span></td>
-            <td style="font-size:10px">Observations et avis des membres experts mentionnés dans le registre HSE</td>
-            <td class="mono" style="font-size:9px">02-CPHS-05-11.pdf</td>
-          </tr>
-          <!-- SST -->
-          <tr>
-            <td rowspan="7" style="font-weight:700;color:var(--p4)">SST</td>
-            <td class="mono" style="font-size:10px">Loi n° 88-07 du 26 janvier 1988 relative à l'hygiène, sécurité et médecine du travail</td>
-            <td style="font-size:10px">Définit les voies et moyens d'assurer les meilleures conditions en matière d'hygiène, sécurité et médecine du travail</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">75%</span></td>
-            <td style="font-size:10px">En cours d'exécution (Reprise après COVID-19)</td>
-            <td class="mono" style="font-size:9px">17-SST 88-07.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 91-05 du 19 Janvier 1991 – Prescriptions H&S en milieu de travail</td>
-            <td style="font-size:10px">Hygiène des locaux, mesures de sécurité levage/manutention, prévention incendie, visites machines dangereuses</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Installation aérations ateliers, revoir éclairage, vérifications périodiques appareils de levage et installations électriques</td>
-            <td class="mono" style="font-size:9px">03-HS en MT 91-05.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 01-342 du 28 octobre 2001 – Protection contre risques électriques</td>
-            <td style="font-size:10px">Prescriptions de protection et sécurité contre risques électriques, classement des installations, mesures de protection</td>
-            <td><span class="rbadge">Registres</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Formation habilitation électrique, vérification installations électriques</td>
-            <td class="mono" style="font-size:9px">18-SST-risque électr_01-342.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 02-427 du 7 décembre 2002 – Formation prévention risques professionnels</td>
-            <td style="font-size:10px">Conditions d'organisation de l'instruction, information et formation des travailleurs en prévention des risques</td>
-            <td><span class="rbadge">Registres</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Préparation de formation, plan de formation annuel en matière de sécurité</td>
-            <td class="mono" style="font-size:9px">19-SST 02-427.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 05-08 du 8 janvier 2005 – Substances et produits dangereux en milieu de travail</td>
-            <td style="font-size:10px">Prescriptions de sécurité pour substances/produits dangereux : étiquetage, stockage, FDS obligatoires</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">FDS pour produits chimiques, étiquetage bidons, local conforme avec rétention</td>
-            <td class="mono" style="font-size:9px">20-SST 05-08.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 09-335 du 20 octobre 2009 – Plans internes d'intervention (PII)</td>
-            <td style="font-size:10px">Modalités d'élaboration et mise en œuvre des PII : alarme, évaluation risques, moyens, exercices ≥2/an</td>
-            <td><span class="rbadge">PII</span></td>
-            <td class="mono">5 ans MAJ</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Mise à jour PII, planifier exercices de simulation annuelle (≥2 fois/an)</td>
-            <td class="mono" style="font-size:9px">29-PII 09-335.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 05-12 du 8 janvier 2005 – H&S secteurs BTPH</td>
-            <td style="font-size:10px">Prescriptions H&S applicables aux secteurs bâtiment, travaux publics, hydraulique</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--green);font-weight:700">85%</span></td>
-            <td style="font-size:10px">À exiger en cas de travaux de bâtiments pour les chantiers en cours</td>
-            <td class="mono" style="font-size:9px">40-SST 05-12.pdf</td>
-          </tr>
-          <!-- Environnement -->
-          <tr>
-            <td rowspan="4" style="font-weight:700;color:var(--p4)">Environnement</td>
-            <td class="mono" style="font-size:10px">Loi n° 03-10 du 19 Juillet 2003 – Protection de l'environnement / développement durable</td>
-            <td style="font-size:10px">Règles de protection de l'environnement, prévention pollution, utilisation rationnelle des ressources, EIE</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--green);font-weight:700">95%</span></td>
-            <td style="font-size:10px">Sensibilisation travailleurs, EIE réalisée</td>
-            <td class="mono" style="font-size:9px">27-SST 03-10.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 07-144 du 19 mai 2007 – Nomenclature installations classées</td>
-            <td style="font-size:10px">Fixe la nomenclature des installations classées pour la protection de l'environnement</td>
-            <td><span class="rbadge">Autor. min. + EIE + EDD</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--green);font-weight:700">100%</span></td>
-            <td style="font-size:10px">Autorisation ministérielle, EDD et EIE réalisées</td>
-            <td class="mono" style="font-size:9px">28-SST 07-144.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 06-141 du 19 Avril 2006 – Valeurs limites rejets effluents liquides industriels</td>
-            <td style="font-size:10px">Prescriptions techniques pour minimiser les rejets, méthodes de contrôle, registre d'analyses obligatoire</td>
-            <td><span class="rbadge">Registre analyses</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Analyses laboratoire déversements chimiques, STEP en cours de réalisation</td>
-            <td class="mono" style="font-size:9px">07-ENV_06-141.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 93-160 du 10 juillet 1993 – Réglementation rejets effluents liquides</td>
-            <td style="font-size:10px">Conditions techniques, valeurs maximales, autorisation de rejet par le ministre de l'environnement</td>
-            <td><span class="rbadge">Autorisation rejet</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--red);font-weight:700">25%</span></td>
-            <td style="font-size:10px">Demander une autorisation de rejet</td>
-            <td class="mono" style="font-size:9px">04-ENV 93-160.pdf</td>
-          </tr>
-          <!-- Gestion des déchets -->
-          <tr>
-            <td rowspan="5" style="font-weight:700;color:var(--p4)">Gestion des déchets</td>
-            <td class="mono" style="font-size:10px">Loi n° 01-19 – Gestion, contrôle et élimination des déchets</td>
-            <td style="font-size:10px">Modalités de gestion, contrôle et traitement des déchets. Stockage conforme, signalisation, interdiction de mélange</td>
-            <td><span class="rbadge">Plan gestion déchets</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Signalisation avertissement, mise en place déchetterie conforme</td>
-            <td class="mono" style="font-size:9px">21-ENV 01-19.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 03-478 du 9 décembre 2003 – Déchets d'activités de soins</td>
-            <td style="font-size:10px">Gestion déchets de soins : anatomiques (vert), infectieux (jaune), toxiques (rouge). Pré-collecte, tri, étiquetage</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--red);font-weight:700">25%</span></td>
-            <td style="font-size:10px">Organisation conteneurs, gestion déchets infirmerie, bac huiles usagées, prise en charge solvants/acides</td>
-            <td class="mono" style="font-size:9px">05-Dechets_03-478.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 05-315 du 10 Septembre 2005 – Déclaration déchets spéciaux dangereux</td>
-            <td style="font-size:10px">Déclaration annuelle des déchets spéciaux dangereux, transmise sous 3 mois après clôture de l'année</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--red);font-weight:700">0%</span></td>
-            <td style="font-size:10px">Déclaration annuelle + canevas à transmettre à la direction de l'environnement de la wilaya</td>
-            <td class="mono" style="font-size:9px">06-Dechets_05-315.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 07-205 du 30 juin 2007 – Schéma communal gestion DMA</td>
-            <td style="font-size:10px">Modalités et procédures d'élaboration du schéma communal de gestion des déchets ménagers et assimilés</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Organisation conteneurs DMA, convention avec récupérateur agréé</td>
-            <td class="mono" style="font-size:9px">22-ENV 07-205.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 04-409 – Transport des déchets spéciaux dangereux</td>
-            <td style="font-size:10px">Conditions d'emballage, moyens de transport, autorisation de transport, documents de mouvement</td>
-            <td><span class="rbadge">Autorisation transport</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Organisation conteneurs DD et DSD, convention avec récupérateur agréé</td>
-            <td class="mono" style="font-size:9px">23-ENV 04-409.pdf</td>
-          </tr>
-          <!-- Déchet emballage -->
-          <tr>
-            <td style="font-weight:700;color:var(--p4)">Déchets emballage</td>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 02-372 – Déchets d'emballages</td>
-            <td style="font-size:10px">Modalités de valorisation des déchets d'emballages par leur générateur/détenteur</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Organisation conteneurs DEMB, convention avec récupérateur agréé</td>
-            <td class="mono" style="font-size:9px">24-ENV 02-372.pdf</td>
-          </tr>
-          <!-- Risque Majeur -->
-          <tr>
-            <td rowspan="3" style="font-weight:700;color:var(--p4)">Risque Majeur</td>
-            <td class="mono" style="font-size:10px">Loi n° 04-20 du 25 décembre 2004 – Prévention risques majeurs et gestion catastrophes</td>
-            <td style="font-size:10px">Principes fondateurs, liste des risques majeurs, plan général de prévention, PII obligatoire, étude de danger</td>
-            <td><span class="rbadge">POI</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--red);font-weight:700">0%</span></td>
-            <td style="font-size:10px">Réaliser un PII</td>
-            <td class="mono" style="font-size:9px">08-risq.maj_04-20.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 85-231 du 25 août 1985 – Interventions et secours en cas de catastrophes</td>
-            <td style="font-size:10px">Conditions et modalités d'organisation des interventions et secours, plan approuvé par le wali</td>
-            <td><span class="rbadge">Plan interventions</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Fabrication plan/procédure d'urgence en cours</td>
-            <td class="mono" style="font-size:9px">25-GES.CATAS_85-231.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 85-232 du 25 août 1985 – Prévention des risques de catastrophes</td>
-            <td style="font-size:10px">Dispositif de prévention, gestion du plan d'organisation des interventions et secours</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">50%</span></td>
-            <td style="font-size:10px">Fabrication plan/procédure d'urgence en cours</td>
-            <td class="mono" style="font-size:9px">26-GES.CATAS_85-232.pdf</td>
-          </tr>
-          <!-- Étude d'impact -->
-          <tr>
-            <td style="font-weight:700;color:var(--p4)">Étude d'impact</td>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 07-145 du 19 mai 2007 – Études et notices d'impact sur l'environnement</td>
-            <td style="font-size:10px">Champ d'application, contenu et modalités d'approbation des études/notices d'impact</td>
-            <td><span class="rbadge">EIE</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--green);font-weight:700">100%</span></td>
-            <td style="font-size:10px">EIE réalisée</td>
-            <td class="mono" style="font-size:9px">09-etude impact_07-145.pdf</td>
-          </tr>
-          <!-- Installation classée -->
-          <tr>
-            <td rowspan="2" style="font-weight:700;color:var(--p4)">Installation classée</td>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 06-198 du 31 Mai 2006 – Réglementation établissements classés</td>
-            <td style="font-size:10px">Régimes d'autorisation et déclaration d'exploitation, modalités de délivrance, suspension, retrait et contrôle</td>
-            <td><span class="rbadge">Autorisation + EIE</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--green);font-weight:700">95%</span></td>
-            <td style="font-size:10px">Autorisation d'exploitation obtenue</td>
-            <td class="mono" style="font-size:9px">10-install classé_06-198.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 07-144 du 19 Mai 2007 – Nomenclature installations classées</td>
-            <td style="font-size:10px">Classification des installations classées, structure du numéro de rubrique</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--green);font-weight:700">100%</span></td>
-            <td style="font-size:10px">—</td>
-            <td class="mono" style="font-size:9px">11-install classé_07-144.pdf</td>
-          </tr>
-          <!-- Consommation d'énergie -->
-          <tr>
-            <td rowspan="3" style="font-weight:700;color:var(--p4)">Consommation d'énergie</td>
-            <td class="mono" style="font-size:10px">Loi n° 99-09 du 28 juillet 1999 – Maîtrise de l'énergie</td>
-            <td style="font-size:10px">Système de consommation énergétique, préservation ressources, amélioration productivité, audit énergétique obligatoire</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--red);font-weight:700">0%</span></td>
-            <td style="font-size:10px">Établir un bilan énergétique, assurer suivi des consommations</td>
-            <td class="mono" style="font-size:9px">12-conso énergie_99-09.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 05-495 du 26 Décembre 2005 – Audit énergétique grands consommateurs</td>
-            <td style="font-size:10px">Seuils de consommation, périodicité de l'audit, conditions et modalités d'agrément des auditeurs</td>
-            <td><span class="rbadge">Déclaration APRUE</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--text3);font-weight:700">N/A</span></td>
-            <td style="font-size:10px">Effectuer périodiquement un audit énergétique par bureau agréé</td>
-            <td class="mono" style="font-size:9px">13-conso énergie_05-495.pdf</td>
-          </tr>
-          <tr>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 13-424 du 18 décembre 2013 – Modifiant le décret 05-495 audit énergétique</td>
-            <td style="font-size:10px">Exercice d'activité d'audit, périodicité (3 ans industrie/transport, 5 ans tertiaire), agrément auditeurs</td>
-            <td><span class="rbadge">Audit Énergétique</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--text3);font-weight:700">N/A</span></td>
-            <td style="font-size:10px">Attente communication liste des experts/bureaux agréés par l'APRUE</td>
-            <td class="mono" style="font-size:9px">14-conso énergie_13-424.pdf</td>
-          </tr>
-          <!-- Nuisance -->
-          <tr>
-            <td style="font-weight:700;color:var(--p4)">Nuisance</td>
-            <td class="mono" style="font-size:10px">Décret exécutif n° 93-184 du 27 juillet 1993 – Réglementation émission des bruits</td>
-            <td style="font-size:10px">Niveaux sonores admis jour/nuit, dispositifs d'insonorisation obligatoires si dépassement</td>
-            <td><span class="rbadge">Néant</span></td>
-            <td class="mono">Néant</td>
-            <td><span style="color:var(--amber);font-weight:700">75%</span></td>
-            <td style="font-size:10px">EPI adéquats, signalisation, cartographie du bruit, zones à risque</td>
-            <td class="mono" style="font-size:9px">15-nuisance_93-184.pdf</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <div class="kpi-grid" id="veilleKpi" style="margin-bottom:14px"></div>
+  <div class="pf-bar" style="margin-bottom:12px"><span class="pf-lbl">Domaine :</span><select class="pf-sel" id="veilleFilter" onchange="renderVeille()"><option value="all">Tous</option></select><span class="pf-stat" id="veilleStat">—</span></div>
+  <div class="card"><div class="ct"><span class="ct-dot"></span>Tableau de Veille Réglementaire</div><div class="tblw" style="max-height:620px"><table id="veilleTable"><thead><tr><th style="min-width:80px">Champ</th><th style="min-width:180px">Prescription</th><th style="min-width:150px">Synthèse</th><th>Autorisation</th><th>Expiration</th><th style="text-align:center;min-width:55px">Conf.</th><th style="min-width:150px">Action</th><th>Réf.</th></tr></thead><tbody id="veilleBody"></tbody></table></div></div>
 </div>
 
 </div><!-- /main -->
@@ -2181,6 +1871,56 @@ function updateEnvCharts(){
   mkChart('eauC','bar',cw.labels,[{data:cw.data,backgroundColor:[C.p1,'rgba(9,99,126,.7)','rgba(9,99,126,.5)'],borderRadius:5}],BASE);
 }
 
+// ══ VEILLE RÉGLEMENTAIRE (dynamique) ══════════════════════════
+function renderVeille(){
+  if(!D||!D.veille) return;
+  var filter=document.getElementById('veilleFilter').value;
+  var items=D.veille;
+  if(filter!=='all') items=items.filter(function(v){return v.champ===filter;});
+  // KPI
+  var total=items.length;
+  var conf75=items.filter(function(v){return v.confPct!==null&&v.confPct>=75;}).length;
+  var conf25=items.filter(function(v){return v.confPct!==null&&v.confPct>=25&&v.confPct<75;}).length;
+  var confLow=items.filter(function(v){return v.confPct!==null&&v.confPct<25;}).length;
+  var confNA=items.filter(function(v){return v.confPct===null;}).length;
+  document.getElementById('veilleKpi').innerHTML=
+    kpiCard('Total',total,'b','prescriptions','k-b',null,null)
+    +kpiCard('Conf. ≥75%',conf75,'g','conformes','k-g',total>0?Math.round(conf75/total*100):0,C.green)
+    +kpiCard('Conf. 25-74%',conf25,'a','à améliorer','k-a',total>0?Math.round(conf25/total*100):0,C.amber)
+    +kpiCard('Conf. <25%',confLow,'r','non conformes','k-r',total>0?Math.round(confLow/total*100):0,C.red);
+  document.getElementById('veilleStat').textContent=items.length+' prescriptions';
+  // Table
+  var tb=document.getElementById('veilleBody');
+  if(items.length===0){tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Aucune prescription</td></tr>';return;}
+  var html='';var lastChamp='';
+  items.forEach(function(v,idx){
+    var showChamp=(v.champ!==lastChamp);
+    lastChamp=v.champ;
+    var confColor=v.confPct===null?'var(--text3)':v.confPct>=75?'var(--green)':v.confPct>=50?'var(--amber)':'var(--red)';
+    var confTxt=v.confPct!==null?v.confPct+'%':(v.niveauConf||'N/A');
+    var confBar=v.confPct!==null?'<div style="height:3px;background:var(--bg4);border-radius:2px;margin-top:3px;overflow:hidden"><div style="height:3px;width:'+Math.min(v.confPct,100)+'%;background:'+confColor+';border-radius:2px"></div></div>':'';
+    html+='<tr style="border-left:3px solid '+(showChamp?'var(--p2)':'transparent')+'">';
+    html+='<td style="font-weight:'+(showChamp?'700':'400')+';color:var(--p4);font-size:10px;vertical-align:top">'+(showChamp?esc(v.champ):'')+'</td>';
+    html+='<td class="mono" style="font-size:10px;line-height:1.4">'+esc(v.prescription)+'</td>';
+    html+='<td style="font-size:10px;line-height:1.4;max-width:200px">'+esc(v.synthese.substring(0,120))+(v.synthese.length>120?'…':'')+'</td>';
+    html+='<td>'+(v.autorisation?'<span class="rbadge">'+esc(v.autorisation)+'</span>':'<span style="color:var(--text3);font-size:9px">—</span>')+'</td>';
+    html+='<td class="mono" style="font-size:9px">'+esc(v.expiration||'—')+'</td>';
+    html+='<td style="text-align:center"><span style="color:'+confColor+';font-weight:700;font-size:12px">'+confTxt+'</span>'+confBar+'</td>';
+    html+='<td style="font-size:10px;line-height:1.4">'+esc(v.action.substring(0,100))+(v.action.length>100?'…':'')+'</td>';
+    html+='<td class="mono" style="font-size:9px;max-width:100px;word-break:break-all">'+esc(v.docRef)+'</td>';
+    html+='</tr>';
+  });
+  tb.innerHTML=html;
+}
+function populateVeilleFilter(){
+  if(!D||!D.veille) return;
+  var champs=[];
+  D.veille.forEach(function(v){if(v.champ&&champs.indexOf(v.champ)===-1)champs.push(v.champ);});
+  var sel=document.getElementById('veilleFilter');
+  sel.innerHTML='<option value="all">Tous ('+champs.length+' domaines)</option>';
+  champs.forEach(function(c){sel.innerHTML+='<option value="'+esc(c)+'">'+esc(c)+'</option>';});
+}
+
 // ══ RENDU PRINCIPAL ═══════════════════════════════════════════
 function render(data){
   D=data; var m=data.metrics;
@@ -2248,6 +1988,8 @@ function render(data){
     prog('EAU Jan',m.reau_jan,5,true,false),prog('EAU Fév',m.reau_fev,5,true,false),prog('EAU Mar',m.reau_mar,5,true,false)
   ].filter(Boolean).join('');
   updateEnvCharts();
+  populateVeilleFilter();
+  renderVeille();
 }
 
 // ══ IA ════════════════════════════════════════════════════════

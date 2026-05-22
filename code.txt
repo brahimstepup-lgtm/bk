@@ -209,6 +209,88 @@ function readPlanning(ss) {
   return planning;
 }
 
+// ── Veille Réglementaire ──────────────────────────────────────
+function readVeille(ss) {
+  var veille = [];
+  try {
+    var sheets = ss.getSheets();
+    var vSheet = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('veille') > -1 && n.indexOf('sobco') > -1) { vSheet = sheets[i]; break; }
+    }
+    if (!vSheet) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('veille') > -1 || n.indexOf('reglementaire') > -1) { vSheet = sheets[i]; break; }
+      }
+    }
+    if (!vSheet) { Logger.log('Veille sheet NOT found'); return veille; }
+    Logger.log('Veille sheet found: ' + vSheet.getName());
+    var data = vSheet.getDataRange().getValues();
+    // Trouver la ligne d'entête (contient "Champ" ou "Prescription")
+    var startRow = 1;
+    for (var i = 0; i < Math.min(data.length, 10); i++) {
+      var row = data[i].map(function(c){return normalize(String(c||''));});
+      if (row.join(' ').indexOf('prescription') > -1 || row.join(' ').indexOf('champ') > -1) {
+        startRow = i + 1; break;
+      }
+    }
+    var lastChamp = '';
+    for (var i = startRow; i < data.length; i++) {
+      var r = data[i];
+      // Détecter le champ d'application (colonne 0)
+      var champ = isNull(r[0]) ? '' : String(r[0]).trim();
+      if (champ) lastChamp = champ;
+      // Prescription (colonne 1)
+      var prescription = isNull(r[1]) ? '' : String(r[1]).trim();
+      if (!prescription) continue; // Ignorer les lignes sans prescription
+      // Synthèse (colonne 2)
+      var synthese = isNull(r[2]) ? '' : String(r[2]).trim();
+      // Autorisation (colonne 3)
+      var autorisation = isNull(r[3]) ? '' : String(r[3]).trim();
+      // Date expiration (colonne 4)
+      var expiration = isNull(r[4]) ? '' : String(r[4]).trim();
+      // Conformité (colonne 5) — peut être "Oui/Non" ou un pourcentage
+      var conformiteRaw = isNull(r[5]) ? '' : String(r[5]).trim();
+      // Niveau conformité % (colonne 6)
+      var niveauConf = isNull(r[6]) ? '' : String(r[6]).trim();
+      // Essayer d'extraire un nombre du niveau de conformité
+      var confPct = null;
+      if (niveauConf) {
+        var m = niveauConf.match(/(\d+)/);
+        if (m) confPct = parseInt(m[1]);
+      }
+      if (confPct === null && conformiteRaw) {
+        var m2 = conformiteRaw.match(/(\d+)/);
+        if (m2) confPct = parseInt(m2[1]);
+      }
+      // Note (colonne 7)
+      var note = isNull(r[7]) ? '' : String(r[7]).trim();
+      // Action (colonne 8)
+      var action = isNull(r[8]) ? '' : String(r[8]).trim();
+      // Document de référence (colonne 9)
+      var docRef = isNull(r[9]) ? '' : String(r[9]).trim();
+
+      veille.push({
+        champ: lastChamp,
+        prescription: prescription,
+        synthese: synthese,
+        autorisation: autorisation,
+        expiration: expiration,
+        conformite: conformiteRaw,
+        niveauConf: niveauConf,
+        confPct: confPct,
+        note: note,
+        action: action,
+        docRef: docRef
+      });
+    }
+    Logger.log('Veille: ' + veille.length + ' prescriptions');
+  } catch(e) { Logger.log('Veille error: ' + e.message); }
+  return veille;
+}
+
 // ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
@@ -229,12 +311,13 @@ function getData() {
 
   var out = {
     ts: new Date().toISOString(),
-    kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[],
+    kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[], veille:[],
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
 
   out.planning = readPlanning(ss);
+  out.veille = readVeille(ss);
 
   // ── Cache Drive Tags ─────────────────────────────────────
   var driveResult = buildDriveTagsCache();
