@@ -1297,47 +1297,80 @@ function openTagModal(tag) {
   var pSec=document.getElementById('mTagPropSec');
   if(tag.propositions){document.getElementById('mTagProp').textContent=tag.propositions;pSec.style.display='block';}else pSec.style.display='none';
 
-  // ── PHOTO VIA PROXY BASE64 ───────────────────────────────
+  // ── PHOTOS AVANT / APRÈS — même enregistrement (même TAG ID) ──
+  // Les deux fileId proviennent du même objet tag (même ligne de la feuille),
+  // ce qui garantit que Avant et Après correspondent à la même anomalie.
   var photoArea   = document.getElementById('mTagPhotoArea');
   var photoTabBtn = document.getElementById('photoTabBtn');
 
-  if (tag.hasPhoto && tag.driveFileId) {
-    if (photoTabBtn) photoTabBtn.textContent = '📸 Photo Drive';
+  var hasAvant = !!(tag.hasPhotoAvant && tag.driveFileIdAvant);
+  var hasApres = !!(tag.hasPhotoApres && tag.driveFileIdApres);
+  var hasAny   = hasAvant || hasApres;
 
-    // Loader pendant le chargement
+  if (hasAny) {
+    if (photoTabBtn) photoTabBtn.textContent = '📸 Photos' + (hasAvant && hasApres ? ' (Avant / Après)' : hasApres ? ' (Après)' : ' (Avant)');
+
+    // Structure côte à côte pour Avant / Après
     photoArea.innerHTML =
-      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 20px">' +
-      '<div class="spin"></div>' +
-      '<p style="color:var(--text3);font-size:12px">Chargement depuis Google Drive…</p>' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;align-items:flex-start">' +
+        (hasAvant ? '<div id="mTagPhotoAvant" style="flex:1;min-width:220px;text-align:center">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📷 Avant</div>' +
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px">' +
+          '<div class="spin"></div><p style="color:var(--text3);font-size:11px">Chargement…</p></div></div>' : '') +
+        (hasApres ? '<div id="mTagPhotoApres" style="flex:1;min-width:220px;text-align:center">' +
+          '<div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">✅ Après</div>' +
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px">' +
+          '<div class="spin"></div><p style="color:var(--text3);font-size:11px">Chargement…</p></div></div>' : '') +
+      '</div>' +
+      '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:10px;text-align:center">' +
+      '<p style="font-size:10px;color:var(--text3)">🏷️ TAG ' + esc(tag.id) + ' — Les photos Avant et Après proviennent du même enregistrement.</p>' +
       '</div>';
 
-    // Appel proxy — Apps Script lit le fichier Drive et retourne base64
-    google.script.run
-      .withSuccessHandler(function(dataUrl) {
-        if (!dataUrl) {
-          photoArea.innerHTML =
-            '<div class="photo-noimg">' +
-            '<div style="font-size:40px;margin-bottom:10px">⚠️</div>' +
-            '<p style="color:var(--amber);font-weight:600">Lecture impossible</p>' +
-            '<p style="font-size:11px;margin-top:8px;color:var(--text3)">Vérifiez que le compte Apps Script a accès au fichier.</p>' +
-            '<div class="ref" style="margin-top:8px">'+esc(tag.photoClean)+'</div>' +
-            '</div>';
-          return;
-        }
-        photoArea.innerHTML =
-          '<img src="'+dataUrl+'" style="max-width:100%;max-height:52vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
-          '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:4px">' +
-          '<p style="font-size:10px;color:var(--text3)">📁 '+esc(tag.photoClean)+'</p>' +
-          '</div>';
-      })
-      .withFailureHandler(function(err) {
-        photoArea.innerHTML =
-          '<div class="photo-noimg">' +
-          '<div style="font-size:40px;margin-bottom:10px">❌</div>' +
-          '<p style="color:var(--red)">'+esc(String(err.message||err))+'</p>' +
-          '</div>';
-      })
-      .getTagPhotoForClient(tag.driveFileId);
+    // Charger photo AVANT
+    if (hasAvant) {
+      google.script.run
+        .withSuccessHandler(function(dataUrl) {
+          var el = document.getElementById('mTagPhotoAvant');
+          if (!el) return;
+          if (!dataUrl) {
+            el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📷 Avant</div>' +
+              '<div class="photo-noimg" style="padding:20px"><p style="color:var(--amber)">Lecture impossible</p></div>';
+            return;
+          }
+          el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📷 Avant</div>' +
+            '<img src="'+dataUrl+'" style="max-width:100%;max-height:44vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
+            '<p style="font-size:9px;color:var(--text3);margin-top:6px">📁 '+esc(tag.photoClean||tag.photoRef||'')+'</p>';
+        })
+        .withFailureHandler(function(err) {
+          var el = document.getElementById('mTagPhotoAvant');
+          if (el) el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📷 Avant</div>' +
+            '<div class="photo-noimg"><p style="color:var(--red)">'+esc(String(err.message||err))+'</p></div>';
+        })
+        .getTagPhotoForClient(tag.driveFileIdAvant);
+    }
+
+    // Charger photo APRÈS
+    if (hasApres) {
+      google.script.run
+        .withSuccessHandler(function(dataUrl) {
+          var el = document.getElementById('mTagPhotoApres');
+          if (!el) return;
+          if (!dataUrl) {
+            el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">✅ Après</div>' +
+              '<div class="photo-noimg" style="padding:20px"><p style="color:var(--amber)">Lecture impossible</p></div>';
+            return;
+          }
+          el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">✅ Après</div>' +
+            '<img src="'+dataUrl+'" style="max-width:100%;max-height:44vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
+            '<p style="font-size:9px;color:var(--text3);margin-top:6px">📁 '+esc(tag.photoCleanApres||tag.photoRefApres||'après')+'</p>';
+        })
+        .withFailureHandler(function(err) {
+          var el = document.getElementById('mTagPhotoApres');
+          if (el) el.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">✅ Après</div>' +
+            '<div class="photo-noimg"><p style="color:var(--red)">'+esc(String(err.message||err))+'</p></div>';
+        })
+        .getTagPhotoForClient(tag.driveFileIdApres);
+    }
 
   } else {
     if (photoTabBtn) photoTabBtn.textContent = '📷 Photo Drive';
@@ -1577,13 +1610,13 @@ function applyTagF(){
     var respHtml=t.responsable
       ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
       :'<span style="color:var(--text3);font-size:9px">—</span>';
-    // Bouton photo : 📸 si Drive résolu, 📷 sinon
-    // Le serveur renvoie t.hasPhoto (bool) + t.driveFileId (ID Drive résolu)
-    var hasPhoto=!!(t.hasPhoto&&t.driveFileId);
+    // Bouton photo : 📸 si Drive résolu (Avant ou Après), 📷 sinon
+    // Le serveur renvoie t.hasPhotoAvant / t.hasPhotoApres + t.driveFileIdAvant / t.driveFileIdApres
+    var hasPhoto=!!(t.hasPhotoAvant||t.hasPhotoApres);
     var photoCls=hasPhoto?'tag-btn has-photo':'tag-btn no-photo';
     var photoIco=hasPhoto?'📸':'📷';
     var photoTitle=hasPhoto
-      ?'Photo Drive disponible : '+(t.photoClean||t.photoRef)
+      ?'Photo Drive'+(t.hasPhotoAvant&&t.hasPhotoApres?' (Avant + Après)':t.hasPhotoApres?' (Après)':' (Avant)')+' : '+(t.photoClean||t.photoRef)
       :(t.photoRef?'Pas de photo Drive : '+(t.photoClean||t.photoRef):'Pas de photo');
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
