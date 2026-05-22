@@ -679,7 +679,7 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
     <div class="ct"><span class="ct-dot"></span>Liste TAGs
       <span id="tagListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
       <span style="color:var(--text3);font-size:9px">
-        📸 = photo Drive disponible · 📷 = pas de photo · Plus récents en haut
+        📸 = photo Drive (Avant/Après) · 📷 = pas de photo · Plus récents en haut
       </span>
     </div>
     <div class="tblw">
@@ -1297,11 +1297,15 @@ function openTagModal(tag) {
   var pSec=document.getElementById('mTagPropSec');
   if(tag.propositions){document.getElementById('mTagProp').textContent=tag.propositions;pSec.style.display='block';}else pSec.style.display='none';
 
-  // ── PHOTO VIA PROXY BASE64 ───────────────────────────────
+  // ── PHOTO VIA PROXY BASE64 — AVANT + APRÈS ──────────────
   var photoArea   = document.getElementById('mTagPhotoArea');
   var photoTabBtn = document.getElementById('photoTabBtn');
 
-  if (tag.hasPhoto && tag.driveFileId) {
+  var hasAvant = !!(tag.hasPhotoAvant && tag.driveFileIdAvant);
+  var hasApres = !!(tag.hasPhotoApres && tag.driveFileIdApres);
+  var hasAny   = hasAvant || hasApres;
+
+  if (hasAny) {
     if (photoTabBtn) photoTabBtn.textContent = '📸 Photo Drive';
 
     // Loader pendant le chargement
@@ -1311,33 +1315,85 @@ function openTagModal(tag) {
       '<p style="color:var(--text3);font-size:12px">Chargement depuis Google Drive…</p>' +
       '</div>';
 
-    // Appel proxy — Apps Script lit le fichier Drive et retourne base64
-    google.script.run
-      .withSuccessHandler(function(dataUrl) {
-        if (!dataUrl) {
-          photoArea.innerHTML =
-            '<div class="photo-noimg">' +
-            '<div style="font-size:40px;margin-bottom:10px">⚠️</div>' +
-            '<p style="color:var(--amber);font-weight:600">Lecture impossible</p>' +
-            '<p style="font-size:11px;margin-top:8px;color:var(--text3)">Vérifiez que le compte Apps Script a accès au fichier.</p>' +
-            '<div class="ref" style="margin-top:8px">'+esc(tag.photoClean)+'</div>' +
-            '</div>';
-          return;
+    // Compteur pour savoir quand les deux (ou une seule) photos sont chargées
+    var photoResults = { avant: null, apres: null };
+    var photosExpected = (hasAvant ? 1 : 0) + (hasApres ? 1 : 0);
+    var photosLoaded = 0;
+
+    function renderPhotos() {
+      var html = '<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;width:100%">';
+
+      // Photo AVANT
+      if (hasAvant) {
+        html += '<div style="flex:1;min-width:220px;max-width:48%;display:flex;flex-direction:column;align-items:center;gap:6px">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);border-radius:6px">⚠️ Avant</div>';
+        if (photoResults.avant) {
+          html += '<img src="'+photoResults.avant+'" style="max-width:100%;max-height:44vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">';
+        } else {
+          html += '<div class="photo-noimg" style="padding:16px"><div style="font-size:28px;margin-bottom:6px">⚠️</div><p style="color:var(--amber);font-size:11px">Lecture impossible</p></div>';
         }
-        photoArea.innerHTML =
-          '<img src="'+dataUrl+'" style="max-width:100%;max-height:52vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">' +
-          '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:4px">' +
-          '<p style="font-size:10px;color:var(--text3)">📁 '+esc(tag.photoClean)+'</p>' +
-          '</div>';
-      })
-      .withFailureHandler(function(err) {
-        photoArea.innerHTML =
-          '<div class="photo-noimg">' +
-          '<div style="font-size:40px;margin-bottom:10px">❌</div>' +
-          '<p style="color:var(--red)">'+esc(String(err.message||err))+'</p>' +
-          '</div>';
-      })
-      .getTagPhotoForClient(tag.driveFileId);
+        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(tag.photoClean||tag.photoRef||'—')+'</p>';
+        html += '</div>';
+      }
+
+      // Photo APRÈS
+      if (hasApres) {
+        html += '<div style="flex:1;min-width:220px;max-width:48%;display:flex;flex-direction:column;align-items:center;gap:6px">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;background:rgba(16,201,133,.12);border:1px solid rgba(16,201,133,.3);border-radius:6px">✅ Après</div>';
+        if (photoResults.apres) {
+          html += '<img src="'+photoResults.apres+'" style="max-width:100%;max-height:44vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">';
+        } else {
+          html += '<div class="photo-noimg" style="padding:16px"><div style="font-size:28px;margin-bottom:6px">⚠️</div><p style="color:var(--amber);font-size:11px">Lecture impossible</p></div>';
+        }
+        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(tag.photoCleanApres||tag.photoRefApres||'après')+'</p>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+
+      // Barre infos
+      html += '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+      html += '<span style="font-size:10px;color:var(--text3)">🏷️ TAG '+esc(tag.id)+'</span>';
+      if (hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(245,166,35,.12);color:var(--amber)">Avant ✓</span>';
+      if (hasApres) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(16,201,133,.12);color:var(--green)">Après ✓</span>';
+      if (!hasApres && hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(232,68,90,.12);color:var(--red)">Après : non disponible</span>';
+      html += '</div>';
+
+      photoArea.innerHTML = html;
+    }
+
+    function onPhotoLoaded() {
+      photosLoaded++;
+      if (photosLoaded >= photosExpected) renderPhotos();
+    }
+
+    // Charger photo AVANT
+    if (hasAvant) {
+      google.script.run
+        .withSuccessHandler(function(dataUrl) {
+          photoResults.avant = dataUrl || null;
+          onPhotoLoaded();
+        })
+        .withFailureHandler(function(err) {
+          photoResults.avant = null;
+          onPhotoLoaded();
+        })
+        .getTagPhotoForClient(tag.driveFileIdAvant);
+    }
+
+    // Charger photo APRÈS
+    if (hasApres) {
+      google.script.run
+        .withSuccessHandler(function(dataUrl) {
+          photoResults.apres = dataUrl || null;
+          onPhotoLoaded();
+        })
+        .withFailureHandler(function(err) {
+          photoResults.apres = null;
+          onPhotoLoaded();
+        })
+        .getTagPhotoForClient(tag.driveFileIdApres);
+    }
 
   } else {
     if (photoTabBtn) photoTabBtn.textContent = '📷 Photo Drive';
@@ -1578,12 +1634,13 @@ function applyTagF(){
       ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
       :'<span style="color:var(--text3);font-size:9px">—</span>';
     // Bouton photo : 📸 si Drive résolu, 📷 sinon
-    // Le serveur renvoie t.hasPhoto (bool) + t.driveFileId (ID Drive résolu)
+    // Le serveur renvoie t.hasPhotoAvant / t.hasPhotoApres + driveFileIdAvant / driveFileIdApres
     var hasPhoto=!!(t.hasPhoto&&t.driveFileId);
+    var hasApresPhoto=!!(t.hasPhotoApres&&t.driveFileIdApres);
     var photoCls=hasPhoto?'tag-btn has-photo':'tag-btn no-photo';
-    var photoIco=hasPhoto?'📸':'📷';
+    var photoIco=hasPhoto?(hasApresPhoto?'📸':'📸'):'📷';
     var photoTitle=hasPhoto
-      ?'Photo Drive disponible : '+(t.photoClean||t.photoRef)
+      ?'Photo Avant'+(hasApresPhoto?' + Après':'')+' : '+(t.photoClean||t.photoRef)
       :(t.photoRef?'Pas de photo Drive : '+(t.photoClean||t.photoRef):'Pas de photo');
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
