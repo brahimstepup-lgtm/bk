@@ -1025,12 +1025,25 @@ function kpiCard(lbl,val,color,sub,cls,pct,bc){
   return'<div class="kpi '+cls+'"><div class="kpi-lbl">'+lbl+'</div><div class="kpi-val '+color+'">'+val+'</div><div class="kpi-sub">'+sub+'</div>'+bar+'</div>';
 }
 function prog(lbl,val,tgt,lower,isPct){
-  if(val===null||val===undefined) return'';
+  if(val===null||val===undefined||val==='—') return'';
+  var numVal=parseFloat(val);
+  if(isNaN(numVal)) return'';
   if(!tgt||tgt===0) tgt=1;
-  var pct=Math.min(Math.round(Math.abs(val)/Math.abs(tgt)*100),100);
-  var ok=lower?val<=tgt:val>=tgt;
+  var pct=Math.min(Math.round(Math.abs(numVal)/Math.abs(tgt)*100),100);
+  var ok=lower?numVal<=tgt:numVal>=tgt;
   var tc=ok?'ok':(pct>60?'warn':'bad'), bc=ok?'bg':(pct>60?'ba':'br');
-  return'<div class="prow"><div class="phdr"><span class="plbl">'+lbl+'</span><span class="pnum '+tc+'">'+(isPct?val+'%':val)+'</span></div><div class="pbg"><div class="pb '+bc+'" style="width:'+pct+'%"></div></div></div>';
+  var display=isPct?formatNum(numVal)+'%':formatNum(numVal);
+  return'<div class="prow"><div class="phdr"><span class="plbl">'+lbl+'</span><span class="pnum '+tc+'">'+display+'</span></div><div class="pbg"><div class="pb '+bc+'" style="width:'+pct+'%"></div></div></div>';
+}
+function formatNum(v){
+  if(v===null||v===undefined||v==='') return '—';
+  var n=parseFloat(v);
+  if(isNaN(n)) return String(v);
+  if(Number.isInteger(n)) return String(n);
+  var fixed=n.toFixed(2);
+  if(fixed.endsWith('00')) return String(Math.round(n));
+  if(fixed.endsWith('0')) return n.toFixed(1);
+  return fixed;
 }
 function cleanMd(t){ if(!t||t==='null')return''; return t.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#+\s*/g,'').replace(/\\n/g,'\n').replace(/\\-/g,'-').trim(); }
 function cleanMonths(arr,hdrs){
@@ -1122,7 +1135,7 @@ function renderPyramid(){
     }
     html+='<div style="display:flex;justify-content:center;width:216px;margin:0 auto">'
       +'<div class="pyr-block '+l.c+'" style="width:'+l.w+'px;height:30px">'
-      +'<span class="pi">'+l.i+'</span><span class="pn">'+l.l+'</span><span class="pv">'+l.v+'</span>'
+      +'<span class="pi">'+l.i+'</span><span class="pn">'+l.l+'</span><span class="pv">'+formatNum(l.v)+'</span>'
       +'</div></div>';
   });
   html+='</div><div class="pyr-leg">';
@@ -1391,27 +1404,36 @@ function renderIncidents(incs){
   var s1=incs.filter(function(i){return String(i.gravite)==='1';}).length;
   var cl=incs.filter(function(i){return i.statut&&i.statut.toLowerCase().indexOf('clôt')>-1;}).length;
   document.getElementById('incKpi').innerHTML=[
-    kpiCard('Total',incs.length,'r','incidents','k-r',null,null),
-    kpiCard('Grave G3',s3,'r','Gravité 3','k-r',null,null),
-    kpiCard('Modéré G2',s2,'a','Gravité 2','k-a',null,null),
-    kpiCard('Faible G1',s1,'b','Gravité 1','k-b',null,null),
-    kpiCard('Clôturés',cl,'g','soldés','k-g',null,null)
+    kpiCard('Total',formatNum(incs.length),'r','incidents','k-r',null,null),
+    kpiCard('Grave G3',formatNum(s3),'r','Gravité 3','k-r',null,null),
+    kpiCard('Modéré G2',formatNum(s2),'a','Gravité 2','k-a',null,null),
+    kpiCard('Faible G1',formatNum(s1),'b','Gravité 1','k-b',null,null),
+    kpiCard('Clôturés',formatNum(cl),'g','soldés','k-g',null,null)
   ].join('');
-  // Zones
+  // Zones à risque (dynamique depuis les incidents filtrés)
   var zones={};
   incs.forEach(function(i){if(i.lieu){var z=i.lieu.substring(0,25);zones[z]=(zones[z]||0)+1;}});
   var zk=Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];}).slice(0,5);
-  mkChart('zoneC','bar',zk,[{data:zk.map(function(k){return zones[k];}),backgroundColor:[C.red,C.amber,C.p2,C.teal,C.purple],borderRadius:5}],
-    Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
-  // Causes racines (statique)
-  document.getElementById('causeGrid').innerHTML=[
-    ['Sol mouillé / glissade'],['Bords tranchants / carton'],['Chute d\'objet / palette'],
-    ['Mauvaise méthode'],['Manque vigilance'],['Collision engin']
-  ].map(function(c,i){
-    return'<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;transition:background .3s">'
-      +'<div style="font-size:17px;font-weight:800;font-family:\'JetBrains Mono\',monospace;color:var(--amber);margin-bottom:1px">'+(6-i)+'</div>'
-      +'<div style="font-size:10px;color:var(--text3)">'+c[0]+'</div></div>';
-  }).join('');
+  if(zk.length>0){
+    mkChart('zoneC','bar',zk,[{data:zk.map(function(k){return zones[k];}),backgroundColor:[C.red,C.amber,C.p2,C.teal,C.purple],borderRadius:5}],
+      Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+  } else {
+    if(charts['zoneC']) charts['zoneC'].destroy();
+    document.getElementById('zoneC').parentNode.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:185px;color:var(--text3);font-size:11px">Aucune zone renseignée</div>';
+  }
+  // Causes racines (dynamique depuis les incidents filtrés)
+  var causes={};
+  incs.forEach(function(i){if(i.causes){var c=i.causes.substring(0,35);causes[c]=(causes[c]||0)+1;}});
+  var cKeys=Object.keys(causes).sort(function(a,b){return causes[b]-causes[a];}).slice(0,6);
+  if(cKeys.length>0){
+    document.getElementById('causeGrid').innerHTML=cKeys.map(function(c,i){
+      return'<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;transition:background .3s">'
+        +'<div style="font-size:17px;font-weight:800;font-family:\'JetBrains Mono\',monospace;color:var(--amber);margin-bottom:1px">'+formatNum(causes[c])+'</div>'
+        +'<div style="font-size:10px;color:var(--text3)">'+esc(c)+'</div></div>';
+    }).join('');
+  } else {
+    document.getElementById('causeGrid').innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text3);font-size:11px;padding:12px">Aucune cause renseignée</div>';
+  }
   // Liste
   var il=document.getElementById('incList'); il.innerHTML='';
   if(incs.length===0){il.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Aucun incident pour cette période</div>';return;}
@@ -1535,10 +1557,10 @@ function applyTagF(){
   document.getElementById('tagListCount').textContent=filtered.length+' résultats';
 
   document.getElementById('tagKpi').innerHTML=[
-    kpiCard('Filtrés',filtered.length,'b','TAGs','k-b',null,null),
-    kpiCard('Fermés',closedF,'g','✓','k-g',cloPct,C.green),
-    kpiCard('Ouverts',openF,'r','⚠','k-r',filtered.length>0?Math.round(openF/filtered.length*100):0,C.red),
-    kpiCard('Clôture',cloPct+'%','g','obj.95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red)
+    kpiCard('Filtrés',formatNum(filtered.length),'b','TAGs','k-b',null,null),
+    kpiCard('Fermés',formatNum(closedF),'g','✓','k-g',cloPct,C.green),
+    kpiCard('Ouverts',formatNum(openF),'r','⚠','k-r',filtered.length>0?Math.round(openF/filtered.length*100):0,C.red),
+    kpiCard('Clôture',formatNum(cloPct)+'%','g','obj.95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red)
   ].join('');
 
   // Types de dangers
@@ -1635,9 +1657,9 @@ function renderAccidents(accs){
   var maxMois=Object.keys(njpM).reduce(function(a,b){return njpM[a]>njpM[b]?a:b;},'Janvier');
   document.getElementById('accCount').textContent=accs.length+' accidents';
   document.getElementById('accSum').innerHTML=
-    '<div class="acc-card"><div class="acc-val" style="color:var(--red)">'+accs.length+'</div><div class="acc-lbl">AT filtrés</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--amber)">'+totalNJP+'</div><div class="acc-lbl">NJP total</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+njpM[maxMois]+'</div><div class="acc-lbl">NJP max</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--red)">'+formatNum(accs.length)+'</div><div class="acc-lbl">AT filtrés</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--amber)">'+formatNum(totalNJP)+'</div><div class="acc-lbl">NJP total</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+formatNum(njpM[maxMois])+'</div><div class="acc-lbl">NJP max</div></div>'+
     '<div class="acc-card"><div class="acc-val" style="color:var(--green)">'+maxMois+'</div><div class="acc-lbl">Mois +accid.</div></div>';
   var njpL=[],njpD=[];
   ['Janvier','Février','Mars','Avril'].forEach(function(mo){if(njpM[mo]>=0){njpL.push(mo.substring(0,3));njpD.push(njpM[mo]);}});
@@ -1666,7 +1688,7 @@ function renderAccidents(accs){
       +'<td style="font-size:10px">'+esc(a.lieu)+'</td>'
       +'<td style="font-size:10px">'+esc(a.siege)+'</td>'
       +'<td style="font-size:10px">'+esc(a.nature)+'</td>'
-      +'<td class="mono" style="color:var(--red);font-weight:700;text-align:center">'+a.njp+'</td>'
+      +'<td class="mono" style="color:var(--red);font-weight:700;text-align:center">'+formatNum(a.njp)+'</td>'
       +'<td style="font-size:10px;max-width:100px">'+esc(a.cause.substring(0,40))+(a.cause.length>40?'…':'')+'</td>';
     tr.addEventListener('click',function(){openAccModal(a);});
     ab.appendChild(tr);
@@ -1699,64 +1721,64 @@ function render(data){
   document.getElementById('loader').style.display='none';
   document.getElementById('main').style.display='block';
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
-  document.getElementById('h-at').textContent='AT: '+m.at_total;
-  document.getElementById('h-tf').textContent='TF1: '+m.tf1_ytd;
-  document.getElementById('h-tags').textContent='TAGs: '+m.tags_ytd;
+  document.getElementById('h-at').textContent='AT: '+formatNum(m.at_total);
+  document.getElementById('h-tf').textContent='TF1: '+formatNum(m.tf1_ytd);
+  document.getElementById('h-tags').textContent='TAGs: '+formatNum(m.tags_ytd);
   document.getElementById('footer').textContent='SOBCO 3 – HSE Dashboard v9.2 · BK Design · '+new Date().toLocaleDateString('fr-FR')+' · BRAHIM KAOUACHI';
   document.getElementById('alertTxt').innerHTML=
-    '<strong>SOBCO 3 HSE 2026 :</strong> TF1=<strong>'+m.tf1_ytd+'</strong>(obj≤30) · '
-    +'TG=<strong>'+m.tg_ytd+'</strong>(obj≤0.8) · TVM=<strong>'+m.tvm+'%</strong>(obj95%) · '
-    +'TAGs=<strong>'+m.taux_tags+'%</strong>(obj≥20%) · Résol.=<strong>'+m.taux_res_tags+'%</strong>(obj95%) · '
-    +'<strong>'+m.at_total+'</strong> AT YTD · NJP=<strong>'+m.jp_ytd+'</strong>';
+    '<strong>SOBCO 3 HSE 2026 :</strong> TF1=<strong>'+formatNum(m.tf1_ytd)+'</strong>(obj≤30) · '
+    +'TG=<strong>'+formatNum(m.tg_ytd)+'</strong>(obj≤0.8) · TVM=<strong>'+formatNum(m.tvm)+'%</strong>(obj95%) · '
+    +'TAGs=<strong>'+formatNum(m.taux_tags)+'%</strong>(obj≥20%) · Résol.=<strong>'+formatNum(m.taux_res_tags)+'%</strong>(obj95%) · '
+    +'<strong>'+formatNum(m.at_total)+'</strong> AT YTD · NJP=<strong>'+formatNum(m.jp_ytd)+'</strong>';
 
   function p(v,obj,lower){if(!obj)return null;return Math.min(Math.round(Math.abs(v)/Math.abs(obj)*100),100);}
   function bc(v,obj,lower){var ok=lower?v<=obj:v>=obj;return ok?C.green:(p(v,obj,lower)>60?C.amber:C.red);}
   document.getElementById('kpiGrid').innerHTML=[
-    kpiCard('AT Total',    m.at_total,       'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
-    kpiCard('TF1',         m.tf1_ytd,        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
-    kpiCard('TG',          m.tg_ytd,         'a','YTD·Obj.≤0.8', 'k-a',p(m.tg_ytd,0.8,true),  bc(m.tg_ytd,0.8,true)),
-    kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
-    kpiCard('Incidents',   m.inc_ytd,        'b','Sans AT·YTD',  'k-b',null,null),
-    kpiCard('TAGs',        m.tags_ytd,       'g','YTD cumulé',   'k-g',null,null),
-    kpiCard('Taux TAGs',   m.taux_tags+'%',  'r','Obj.≥20%',     'k-r',p(m.taux_tags,20,false),bc(m.taux_tags,20,false)),
-    kpiCard('TVM',         m.tvm+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
-    kpiCard('Résol.TAGs',  m.taux_res_tags+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
+    kpiCard('AT Total',    formatNum(m.at_total),       'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
+    kpiCard('TF1',         formatNum(m.tf1_ytd),        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
+    kpiCard('TG',          formatNum(m.tg_ytd),         'a','YTD·Obj.≤0.8', 'k-a',p(m.tg_ytd,0.8,true),  bc(m.tg_ytd,0.8,true)),
+    kpiCard('Jours Perdus',formatNum(m.jp_ytd),         'b','YTD',          'k-b',null,null),
+    kpiCard('Incidents',   formatNum(m.inc_ytd),        'b','Sans AT·YTD',  'k-b',null,null),
+    kpiCard('TAGs',        formatNum(m.tags_ytd),       'g','YTD cumulé',   'k-g',null,null),
+    kpiCard('Taux TAGs',   formatNum(m.taux_tags)+'%',  'r','Obj.≥20%',     'k-r',p(m.taux_tags,20,false),bc(m.taux_tags,20,false)),
+    kpiCard('TVM',         formatNum(m.tvm)+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
+    kpiCard('Résol.TAGs',  formatNum(m.taux_res_tags)+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
   ].join('');
 
   buildNotifications();
   updateC1(); updateC2();
 
   document.getElementById('progList').innerHTML=[
-    prog('TF1 (obj.≤30)',            m.tf1_ytd,       30,  true, false),
-    prog('TG (obj.≤0.8)',            m.tg_ytd,        0.8, true, false),
-    prog('Taux TAGs (obj.≥20%)',     m.taux_tags,     20,  false,true),
-    prog('Résolution TAGs (obj.95%)',m.taux_res_tags, 95,  false,true),
-    prog('TVM (obj.95%)',            m.tvm,           95,  false,true),
-    prog('Prestataires (obj.95%)',   m.prestataires,  95,  false,true),
-    prog('Clôture TAGs (obj.95%)',   m.taux_cloture,  95,  false,true),
-    prog('Ratio ELT (obj.≤350)',     m.ratio_elt_ytd, 350, true, false),
-    prog('Ratio GAZ (obj.≤1200)',    m.ratio_gaz_ytd, 1200,true, false)
+    prog('TF1 (obj.≤30)',            formatNum(m.tf1_ytd),       30,  true, false),
+    prog('TG (obj.≤0.8)',            formatNum(m.tg_ytd),        0.8, true, false),
+    prog('Taux TAGs (obj.≥20%)',     formatNum(m.taux_tags),     20,  false,true),
+    prog('Résolution TAGs (obj.95%)',formatNum(m.taux_res_tags), 95,  false,true),
+    prog('TVM (obj.95%)',            formatNum(m.tvm),           95,  false,true),
+    prog('Prestataires (obj.95%)',   formatNum(m.prestataires),  95,  false,true),
+    prog('Clôture TAGs (obj.95%)',   formatNum(m.taux_cloture),  95,  false,true),
+    prog('Ratio ELT (obj.≤350)',     formatNum(m.ratio_elt_ytd), 350, true, false),
+    prog('Ratio GAZ (obj.≤1200)',    formatNum(m.ratio_gaz_ytd), 1200,true, false)
   ].filter(Boolean).join('');
 
   renderPyramid();
   applyIncF();
 
   document.getElementById('tagSum').innerHTML=
-    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+m.total_tags+'</div><div class="tsl">Total TAGs</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+m.closed_tags+'</div><div class="tsl">Fermés ✓</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+m.open_tags+'</div><div class="tsl">Ouverts</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+m.taux_cloture+'%</div><div class="tsl">Clôture</div></div>';
+    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+formatNum(m.total_tags)+'</div><div class="tsl">Total TAGs</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+formatNum(m.closed_tags)+'</div><div class="tsl">Fermés ✓</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+formatNum(m.open_tags)+'</div><div class="tsl">Ouverts</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+formatNum(m.taux_cloture)+'%</div><div class="tsl">Clôture</div></div>';
   populateTagDropdowns(); applyTagF();
   applyAccF();
 
   document.getElementById('egrids').innerHTML=
-    '<div class="ecard"><div class="eval" style="color:var(--amber)">'+(m.elt_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">kWh ELT YTD</div><div class="eratio">⚡ '+m.ratio_elt_ytd+' kWh/UP</div></div>'+
-    '<div class="ecard"><div class="eval" style="color:var(--red)">'+(m.gaz_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ GAZ YTD</div><div class="eratio">🔥 '+m.ratio_gaz_ytd+' m³/UP</div></div>'+
-    '<div class="ecard"><div class="eval" style="color:var(--p4)">'+(m.eau_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ EAU YTD</div><div class="eratio">💧 '+m.ratio_eau_ytd+' m³/UP</div></div>';
+    '<div class="ecard"><div class="eval" style="color:var(--amber)">'+(m.elt_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">kWh ELT YTD</div><div class="eratio">⚡ '+formatNum(m.ratio_elt_ytd)+' kWh/UP</div></div>'+
+    '<div class="ecard"><div class="eval" style="color:var(--red)">'+(m.gaz_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ GAZ YTD</div><div class="eratio">🔥 '+formatNum(m.ratio_gaz_ytd)+' m³/UP</div></div>'+
+    '<div class="ecard"><div class="eval" style="color:var(--p4)">'+(m.eau_ytd||0).toLocaleString('fr-FR')+'</div><div class="elbl">m³ EAU YTD</div><div class="eratio">💧 '+formatNum(m.ratio_eau_ytd)+' m³/UP</div></div>';
   document.getElementById('ratioList').innerHTML=[
-    prog('ELT Jan',m.relt_jan,350,true,false),prog('ELT Fév',m.relt_fev,350,true,false),prog('ELT Mar',m.relt_mar,350,true,false),
-    prog('GAZ Jan',m.rgaz_jan,1200,true,false),prog('GAZ Fév',m.rgaz_fev,1200,true,false),prog('GAZ Mar',m.rgaz_mar,1200,true,false),
-    prog('EAU Jan',m.reau_jan,5,true,false),prog('EAU Fév',m.reau_fev,5,true,false),prog('EAU Mar',m.reau_mar,5,true,false)
+    prog('ELT Jan',formatNum(m.relt_jan),350,true,false),prog('ELT Fév',formatNum(m.relt_fev),350,true,false),prog('ELT Mar',formatNum(m.relt_mar),350,true,false),
+    prog('GAZ Jan',formatNum(m.rgaz_jan),1200,true,false),prog('GAZ Fév',formatNum(m.rgaz_fev),1200,true,false),prog('GAZ Mar',formatNum(m.rgaz_mar),1200,true,false),
+    prog('EAU Jan',formatNum(m.reau_jan),5,true,false),prog('EAU Fév',formatNum(m.reau_fev),5,true,false),prog('EAU Mar',formatNum(m.reau_mar),5,true,false)
   ].filter(Boolean).join('');
   updateEnvCharts();
 }
