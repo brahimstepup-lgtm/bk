@@ -12,6 +12,14 @@ var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
 var PLANNING_GID   = 1312782146;
 
+// ── NETTOYAGE ────────────────────────────────────────────────
+// Feuille source : "Nettoyage " (gid=1543533109)
+// Photos : dossier Drive racine 1IOv87AtD21q7l7yVIK6bJubkfaJf7AWw
+//   → sous-dossier nommé "Suivi de Nettoyage - Sobco 3_Images"
+var CLEAN_SHEET_GID         = 1543533109;
+var CLEAN_PARENT_FOLDER_ID  = '1IOv87AtD21q7l7yVIK6bJubkfaJf7AWw';
+var CLEAN_IMAGES_FOLDER_NAME= 'Suivi de Nettoyage - Sobco 3_Images';
+
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
@@ -210,6 +218,287 @@ function readPlanning(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── CACHE PHOTOS NETTOYAGE ───────────────────────────────────
+// Construit un index { numéro → { any, avant, apres } } pour le
+// sous-dossier "Suivi de Nettoyage - Sobco 3_Images" du dossier
+// parent CLEAN_PARENT_FOLDER_ID.
+// Si le sous-dossier n'est pas trouvé, on scanne aussi le parent
+// directement (et ses sous-dossiers en récursif, profondeur 2).
+// La distinction AVANT / APRÈS suit la même règle que pour les
+// TAGs : mot-clé apres / après / after dans le nom de fichier.
+// ════════════════════════════════════════════════════════════
+function buildCleaningPhotosCache() {
+  var cache  = {};   // num → { any, avant, apres }
+  var byName = {};   // nom de fichier (lowercased) → fileId
+  var count  = 0;
+
+  function scanFolder(folder, depth) {
+    if (!folder || depth < 0) return;
+    var files = folder.getFiles();
+    while (files.hasNext()) {
+      var file = files.next();
+      var name = file.getName();
+      var id   = file.getId();
+      count++;
+
+      // Index par nom (utile si la feuille référence le nom complet)
+      byName[String(name).toLowerCase()] = id;
+
+      // Extraire le premier numéro rencontré
+      var m = name.match(/(\d+)/);
+      if (m) {
+        var num = m[1];
+        if (!cache[num]) cache[num] = { any: '', avant: '', apres: '' };
+        if (!cache[num].any) cache[num].any = id;
+        var low = String(name).toLowerCase()
+          .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u');
+        var isApres = /(^|[^a-z])(apres|after|aft)([^a-z]|$)/.test(low);
+        if (isApres) {
+          if (!cache[num].apres) cache[num].apres = id;
+        } else {
+          if (!cache[num].avant) cache[num].avant = id;
+        }
+      }
+    }
+    if (depth > 0) {
+      var subs = folder.getFolders();
+      while (subs.hasNext()) scanFolder(subs.next(), depth - 1);
+    }
+  }
+
+  try {
+    var parent = DriveApp.getFolderById(CLEAN_PARENT_FOLDER_ID);
+
+    // 1. Chercher le sous-dossier nommé "Suivi de Nettoyage - Sobco 3_Images"
+    var targetFolder = null;
+    var subs = parent.getFolders();
+    while (subs.hasNext()) {
+      var sf = subs.next();
+      if (normalize(sf.getName()) === normalize(CLEAN_IMAGES_FOLDER_NAME)) {
+        targetFolder = sf; break;
+      }
+    }
+    if (targetFolder) {
+      scanFolder(targetFolder, 1);
+    } else {
+      // Fallback : scanner le dossier parent + tous ses sous-dossiers
+      Logger.log('Cleaning subfolder not found by name, scanning parent recursively');
+      scanFolder(parent, 2);
+    }
+    Logger.log('Cleaning cache: ' + count + ' fichiers, ' + Object.keys(cache).length + ' numéros');
+  } catch(e) {
+    Logger.log('buildCleaningPhotosCache error: ' + e.message);
+  }
+  return { cache: cache, byName: byName, count: count };
+}
+
+// ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLE "Nettoyage " ─────────────────────────────
+// Détection automatique des colonnes depuis la ligne d'entête.
+// Mappe ensuite chaque ligne sur un objet exposé au client.
+// ════════════════════════════════════════════════════════════
+function readCleaning(ss, photoCache) {
+  var entries = [];
+  try {
+    // 1. Trouver la feuille (par GID puis par nom)
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === CLEAN_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('nettoyage') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) { Logger.log('Cleaning sheet NOT found'); return entries; }
+    Logger.log('Cleaning sheet found: ' + sh.getName());
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 2) return entries;
+
+    // 2. Détecter la ligne d'entête (première ligne contenant "date" ou "n°")
+    var hdrRow = 0;
+    for (var i = 0; i < Math.min(data.length, 6); i++) {
+      var row = data[i];
+      var foundKeys = 0;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||''));
+        if (h.indexOf('date') > -1 || h.indexOf('zone') > -1 ||
+            h.indexOf('description') > -1 || h.indexOf('observation') > -1 ||
+            h.indexOf('statut') > -1 || h.indexOf('responsable') > -1) {
+          foundKeys++;
+        }
+      }
+      if (foundKeys >= 2) { hdrRow = i; break; }
+    }
+
+    var hdr = data[hdrRow];
+    var COL = {
+      id:-1, date:-1, dateCible:-1, zone:-1, emplacement:-1,
+      description:-1, observation:-1, action:-1, responsable:-1,
+      statut:-1, photoAvant:-1, photoApres:-1, photoGen:-1, type:-1, frequence:-1
+    };
+    for (var c = 0; c < hdr.length; c++) {
+      var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
+      if (!h) continue;
+
+      // PHOTO APRÈS — tester en premier pour éviter le piège "photoRef"
+      if ((h.indexOf('photo') > -1 || h.indexOf('image') > -1 || h.indexOf('reference') > -1) &&
+          (h.indexOf('apres') > -1 || h.indexOf('after') > -1)) {
+        if (COL.photoApres < 0) COL.photoApres = c;
+        continue;
+      }
+      // PHOTO AVANT
+      if ((h.indexOf('photo') > -1 || h.indexOf('image') > -1 || h.indexOf('reference') > -1) &&
+          (h.indexOf('avant') > -1 || h.indexOf('before') > -1)) {
+        if (COL.photoAvant < 0) COL.photoAvant = c;
+        continue;
+      }
+      // PHOTO générique (sans précision avant/après)
+      if (h.indexOf('photo') > -1 || h.indexOf('image') > -1) {
+        if (COL.photoGen < 0) COL.photoGen = c;
+        continue;
+      }
+
+      if      (h.match(/^n.?\s*(cas|tag|ordre|$)/) || h === 'n')    { if (COL.id < 0) COL.id = c; }
+      else if (h.indexOf('date') > -1 && (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1)) { if (COL.dateCible < 0) COL.dateCible = c; }
+      else if (h.indexOf('date') > -1)                              { if (COL.date < 0) COL.date = c; }
+      else if (h.indexOf('zone') > -1)                              { if (COL.zone < 0) COL.zone = c; }
+      else if (h.indexOf('emplacement') > -1 || h.indexOf('lieu') > -1) { if (COL.emplacement < 0) COL.emplacement = c; }
+      else if (h.indexOf('description') > -1)                       { if (COL.description < 0) COL.description = c; }
+      else if (h.indexOf('observation') > -1 || h.indexOf('constat') > -1) { if (COL.observation < 0) COL.observation = c; }
+      else if (h.indexOf('action') > -1 || h.indexOf('mesure') > -1 || h.indexOf('correctif') > -1) { if (COL.action < 0) COL.action = c; }
+      else if (h.indexOf('respons') > -1 || h.indexOf('charg') > -1) { if (COL.responsable < 0) COL.responsable = c; }
+      else if (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)  { if (COL.statut < 0) COL.statut = c; }
+      else if (h.indexOf('type') > -1 || h.indexOf('nature') > -1)  { if (COL.type < 0) COL.type = c; }
+      else if (h.indexOf('frequen') > -1 || h.indexOf('periodicit') > -1) { if (COL.frequence < 0) COL.frequence = c; }
+    }
+    // Fallback : si on n'a pas trouvé d'ID, prendre la première colonne
+    if (COL.id < 0) COL.id = 0;
+    Logger.log('Cleaning COL: ' + JSON.stringify(COL));
+
+    // 3. Helper : résoudre un fileId Drive depuis une référence photo
+    function resolveCleanPhoto(refRaw, prefer) {
+      if (isNull(refRaw)) return '';
+      var ref = String(refRaw).trim();
+      if (!ref) return '';
+      // Recherche directe par nom de fichier
+      var byNameKey = ref.toLowerCase();
+      if (photoCache.byName[byNameKey]) return photoCache.byName[byNameKey];
+      // Recherche tolérante (avec / sans extension)
+      var keys = Object.keys(photoCache.byName);
+      for (var k = 0; k < keys.length; k++) {
+        if (keys[k].indexOf(byNameKey) > -1 || byNameKey.indexOf(keys[k]) > -1) {
+          return photoCache.byName[keys[k]];
+        }
+      }
+      // Recherche par numéro
+      var m = ref.match(/(\d+)/);
+      if (m && photoCache.cache[m[1]]) {
+        var entry = photoCache.cache[m[1]];
+        if (prefer === 'apres' && entry.apres) return entry.apres;
+        if (prefer === 'avant' && entry.avant) return entry.avant;
+        return entry.any || entry.avant || entry.apres || '';
+      }
+      return '';
+    }
+
+    // 4. Parcourir les lignes de données
+    for (var i = hdrRow + 1; i < data.length; i++) {
+      var r = data[i];
+
+      // Filtrer les lignes vides ou de type "total" / "sous-total"
+      var idVal = (COL.id >= 0) ? r[COL.id] : '';
+      var firstText = '';
+      for (var c = 0; c < r.length; c++) {
+        if (!isNull(r[c])) { firstText = String(r[c]).trim(); break; }
+      }
+      if (!firstText) continue;
+      var lc = firstText.toLowerCase();
+      if (lc.indexOf('total') === 0 || lc.indexOf('sous-total') > -1) continue;
+
+      // Récupérer toutes les valeurs avec fallbacks
+      function val(c) { return (c >= 0 && !isNull(r[c])) ? String(r[c]).trim() : ''; }
+
+      var id          = val(COL.id) || ('NET-' + (i+1));
+      var dateRaw     = (COL.date >= 0) ? r[COL.date] : '';
+      var dateCible   = (COL.dateCible >= 0) ? r[COL.dateCible] : '';
+      var zone        = val(COL.zone);
+      var emplacement = val(COL.emplacement);
+      var description = val(COL.description);
+      var observation = val(COL.observation);
+      var action      = val(COL.action);
+      var responsable = val(COL.responsable);
+      var statut      = val(COL.statut);
+      var type        = val(COL.type);
+      var frequence   = val(COL.frequence);
+
+      // Photos : 3 colonnes possibles
+      var refAvant = val(COL.photoAvant) || val(COL.photoGen);
+      var refApres = val(COL.photoApres);
+
+      // Si une seule colonne photo (générique), les fichiers à mot-clé "après"
+      // dans Drive serviront d'image après automatiquement
+      var fileIdAvant = resolveCleanPhoto(refAvant, 'avant');
+      var fileIdApres = resolveCleanPhoto(refApres, 'apres');
+      if (!fileIdApres && refAvant) {
+        // fallback : si pas de réf après explicite, chercher une photo "après"
+        // qui partage le même numéro que la ref avant
+        var m2 = String(refAvant).match(/(\d+)/);
+        if (m2 && photoCache.cache[m2[1]] && photoCache.cache[m2[1]].apres) {
+          fileIdApres = photoCache.cache[m2[1]].apres;
+        }
+      }
+
+      // Sauter les lignes complètement vides (pas de zone, description, ni photo, ni statut)
+      if (!zone && !emplacement && !description && !observation && !statut && !fileIdAvant && !fileIdApres && !val(COL.id)) continue;
+
+      var pd = parseDate(dateRaw);
+      entries.push({
+        id:          String(id),
+        date:        fmtDate(dateRaw),
+        isoDate:     getIso(dateRaw),
+        dateCible:   fmtDate(dateCible),
+        zone:        zone,
+        emplacement: emplacement,
+        type:        type,
+        frequence:   frequence,
+        description: description,
+        observation: observation,
+        action:      action,
+        responsable: responsable,
+        statut:      statut,
+        photoRefAvant:    refAvant,
+        photoRefApres:    refApres,
+        driveFileIdAvant: fileIdAvant,
+        driveFileIdApres: fileIdApres,
+        hasPhotoAvant:    fileIdAvant !== '',
+        hasPhotoApres:    fileIdApres !== '',
+        hasPhoto:         (fileIdAvant !== '' || fileIdApres !== '')
+      });
+    }
+
+    // Tri : date décroissante puis ID décroissant
+    entries.sort(function(a, b) {
+      if (a.isoDate && b.isoDate && a.isoDate !== b.isoDate) return b.isoDate.localeCompare(a.isoDate);
+      var na = parseInt(String(a.id).match(/\d+/), 10);
+      var nb = parseInt(String(b.id).match(/\d+/), 10);
+      if (isNaN(na) && isNaN(nb)) return String(b.id).localeCompare(String(a.id));
+      if (isNaN(na)) return 1;
+      if (isNaN(nb)) return -1;
+      return nb - na;
+    });
+
+    Logger.log('Cleaning entries: ' + entries.length);
+  } catch(e) {
+    Logger.log('readCleaning error: ' + e.message);
+  }
+  return entries;
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 function getData() {
@@ -230,6 +519,7 @@ function getData() {
   var out = {
     ts: new Date().toISOString(),
     kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[],
+    cleaning:[],
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
@@ -240,6 +530,11 @@ function getData() {
   var driveResult = buildDriveTagsCache();
   var driveCache  = driveResult.cache;   // { "431": "fileId1", ... }
   out.driveTagsCount = driveResult.count;
+
+  // ── Cache Drive Photos Nettoyage + lecture feuille ───────
+  var cleanPhotos = buildCleaningPhotosCache();
+  out.cleaning = readCleaning(ss, cleanPhotos);
+  out.cleaningPhotosCount = cleanPhotos.count;
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
@@ -464,6 +759,20 @@ function calcMetrics(d) {
   function mths(key){ return k[key]?k[key].months:[]; }
   var total=d.tags.length, open=d.tagsOpen.length;
   var totalNJP=0; (d.accidents||[]).forEach(function(a){totalNJP+=(a.njp||0);});
+
+  // ── NETTOYAGE ─────────────────────────────────────────────
+  var clTotal = (d.cleaning||[]).length;
+  var clOpen  = 0;
+  (d.cleaning||[]).forEach(function(c){
+    var s = String(c.statut||'').toLowerCase();
+    if (s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 ||
+        s.indexOf('en cours') > -1 || s.indexOf('a faire') > -1 ||
+        s.indexOf('à faire') > -1 || s.indexOf('non') > -1 ||
+        s.indexOf('plani') > -1 || s.indexOf('attente') > -1) {
+      clOpen++;
+    }
+  });
+  var clClosed = clTotal - clOpen;
   return {
     tf1_ytd:ytd('Taux de Fréquence (TF1)'),tg_ytd:ytd('Taux de Gravité (TG)'),
     at_fatal:ytd('Accident Travail (FATAL)'),at_majeur:ytd('Accident Travail (MAJEUR)'),
@@ -499,7 +808,11 @@ function calcMetrics(d) {
     elt_months:mths('Consommation ELT (kWh)'),gaz_months:mths('Consommation GAZ (m3)'),eau_months:mths('Consommation EAU (m3)'),
     total_tags:total,open_tags:open,closed_tags:total-open,
     taux_cloture:total>0?Math.round((total-open)/total*100):0,
-    nb_incidents:d.incidents.length,nb_accidents:d.accidents.length,total_njp:totalNJP
+    nb_incidents:d.incidents.length,nb_accidents:d.accidents.length,total_njp:totalNJP,
+    cleaning_total: clTotal,
+    cleaning_open: clOpen,
+    cleaning_closed: clClosed,
+    cleaning_rate: clTotal > 0 ? Math.round(clClosed / clTotal * 100) : 0
   };
 }
 

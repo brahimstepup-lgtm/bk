@@ -582,6 +582,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('ai',this)">✨ IA Gemini</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
+  <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -1177,6 +1178,78 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 </div>
 
+<!-- ═══ NETTOYAGE ═══ -->
+<div id="cln" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Suivi de Nettoyage — SOBCO 3</div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Suivi des opérations de nettoyage par zone : observations, actions, responsables, et photos
+      <strong style="color:var(--green)">Avant</strong> / <strong style="color:var(--p4)">Après</strong> issues du dossier Drive
+      <em style="color:var(--text3)">Suivi de Nettoyage - Sobco 3_Images</em>.
+    </p>
+  </div>
+
+  <div class="tsum" id="clnSum"></div>
+
+  <!-- Barre recherche + tri -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="clnSearch"
+           placeholder="Rechercher zone, description, responsable, ID…"
+           oninput="applyClnF()">
+    <select class="tag-sort-sel" id="clnSort" onchange="applyClnF()">
+      <option value="date_desc">Date ↓ récent</option>
+      <option value="date_asc">Date ↑ ancien</option>
+      <option value="id_desc">ID ↓</option>
+      <option value="id_asc">ID ↑</option>
+      <option value="zone_az">Zone A→Z</option>
+      <option value="resp_az">Resp. A→Z</option>
+    </select>
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearClnFilters()">↺ Reset</button>
+  </div>
+
+  <!-- Chips statut -->
+  <div class="tag-filter-row">
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">Statut :</span>
+      <div class="tag-chips" id="clnStatChips">
+        <button class="tag-filter-chip chip-all on"   onclick="setClnStat('all',this)">Tous</button>
+        <button class="tag-filter-chip chip-open"     onclick="setClnStat('open',this)">⚠ En cours</button>
+        <button class="tag-filter-chip chip-closed"   onclick="setClnStat('closed',this)">✓ Terminés</button>
+      </div>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">📍 Zone :</span>
+      <select class="tag-dropdown" id="clnFilterZone" onchange="applyClnF()"><option value="all">Toutes</option></select>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">👤 Responsable :</span>
+      <select class="tag-dropdown" id="clnFilterResp" onchange="applyClnF()"><option value="all">Tous</option></select>
+    </div>
+    <div class="tag-stats-row" id="clnStatsRow" style="margin-bottom:0;margin-left:auto"></div>
+  </div>
+
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Liste Nettoyage
+      <span id="clnListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+      <span style="color:var(--text3);font-size:9px">
+        📸 = photos disponibles · 📷 = pas de photo · Plus récents en haut
+      </span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Date ↓</th><th>Zone</th>
+            <th>Description / Observation</th><th>Action</th><th>Responsable</th><th>Statut</th><th>📷</th>
+          </tr>
+        </thead>
+        <tbody id="clnBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 </div><!-- /main -->
 
 <!-- ═══ MODAL INCIDENT ═══ -->
@@ -1268,6 +1341,35 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 </div>
 
+<!-- ═══ MODAL NETTOYAGE + PHOTOS DRIVE ═══ -->
+<div class="modal-bg" id="cleanModal" style="display:none" onclick="if(event.target===this)closeModal('cleanModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(16,201,133,.2);border-color:var(--green)">🧹</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="mClnId">—</div>
+        <div class="modal-hdr-name" id="mClnDesc">—</div>
+        <div class="modal-chips" id="mClnChips"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('cleanModal')">✕</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab on" onclick="switchTab('mCln','info',this)">📋 Infos</button>
+      <button class="modal-tab" id="clnPhotoTabBtn" onclick="switchTab('mCln','photo',this)">📷 Photos Drive</button>
+    </div>
+    <div class="modal-body">
+      <div id="mCln-info">
+        <div class="modal-section"><div class="modal-sec-title"><span>📌</span>Informations</div><div class="tag-detail-grid" id="mClnInfoGrid"></div></div>
+        <div class="modal-section" id="mClnObsSec"><div class="modal-sec-title"><span>👁️</span>Observation / Constat</div><div class="desc-box" id="mClnObs"></div></div>
+        <div class="modal-section" id="mClnActionSec"><div class="modal-sec-title"><span>🛠️</span>Action / Mesure corrective</div><div class="desc-box amber" id="mClnAction"></div></div>
+      </div>
+      <div id="mCln-photo" style="display:none">
+        <div class="photo-area" id="mClnPhotoArea"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <footer id="footer">SOBCO 3 – HSE Dashboard v9.2 · BK Design · BRAHIM KAOUACHI</footer>
 </div>
 
@@ -1307,6 +1409,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
 // ════════════════════════════════════════════════════════════
 var D=null, viewMode='ytd', pyrMode='ytd', envMode='conso';
 var tagStatFilter='all';
+var clnStatFilter='all';
 var charts={};
 var ML=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 var C={p1:'#09637e',p2:'#0a7a9a',p3:'#0b91b5',p4:'#0da8d2',
@@ -1362,7 +1465,7 @@ function goVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -2181,6 +2284,272 @@ function updateEnvCharts(){
   mkChart('eauC','bar',cw.labels,[{data:cw.data,backgroundColor:[C.p1,'rgba(9,99,126,.7)','rgba(9,99,126,.5)'],borderRadius:5}],BASE);
 }
 
+// ══ NETTOYAGE ═════════════════════════════════════════════════
+function isClnOpen(c){
+  var s = String((c && c.statut) || '').toLowerCase();
+  if (!s) return false;
+  return s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 ||
+         s.indexOf('en cours') > -1 || s.indexOf('a faire') > -1 ||
+         s.indexOf('à faire') > -1 || s.indexOf('non') > -1 ||
+         s.indexOf('plani') > -1 || s.indexOf('attente') > -1;
+}
+function isClnClosed(c){
+  var s = String((c && c.statut) || '').toLowerCase();
+  if (!s) return false;
+  return s.indexOf('ferme') > -1 || s.indexOf('fermé') > -1 || s.indexOf('clos') > -1 ||
+         s.indexOf('termin') > -1 || s.indexOf('done') > -1 || s.indexOf('fait') > -1 ||
+         s.indexOf('ok') > -1 || s.indexOf('résolu') > -1 || s.indexOf('resolu') > -1;
+}
+function setClnStat(s,el){
+  clnStatFilter = s;
+  document.querySelectorAll('#clnStatChips .tag-filter-chip').forEach(function(c){c.classList.remove('on');});
+  el.classList.add('on');
+  applyClnF();
+}
+function clearClnFilters(){
+  document.getElementById('clnSearch').value = '';
+  document.getElementById('clnSort').value   = 'date_desc';
+  document.getElementById('clnFilterZone').value = 'all';
+  document.getElementById('clnFilterResp').value = 'all';
+  clnStatFilter = 'all';
+  document.querySelectorAll('#clnStatChips .tag-filter-chip').forEach(function(c,i){c.classList.toggle('on',i===0);});
+  applyClnF();
+}
+function populateClnDropdowns(){
+  if (!D || !D.cleaning) return;
+  var zones = {}, resps = {};
+  D.cleaning.forEach(function(c){
+    var z = (c.zone || c.emplacement || '').trim();
+    if (z) zones[z] = (zones[z]||0) + 1;
+    if (c.responsable) resps[c.responsable] = (resps[c.responsable]||0) + 1;
+  });
+  var zSel = document.getElementById('clnFilterZone');
+  var rSel = document.getElementById('clnFilterResp');
+  if (zSel) {
+    var prev = zSel.value;
+    zSel.innerHTML = '<option value="all">Toutes</option>' +
+      Object.keys(zones).sort().map(function(z){return '<option value="'+esc(z)+'">'+esc(z)+' ('+zones[z]+')</option>';}).join('');
+    if (prev) zSel.value = prev;
+  }
+  if (rSel) {
+    var prev2 = rSel.value;
+    rSel.innerHTML = '<option value="all">Tous</option>' +
+      Object.keys(resps).sort().map(function(r){return '<option value="'+esc(r)+'">'+esc(r)+' ('+resps[r]+')</option>';}).join('');
+    if (prev2) rSel.value = prev2;
+  }
+}
+function applyClnF(){
+  if (!D || !D.cleaning) return;
+  var search    = (document.getElementById('clnSearch').value || '').trim().toLowerCase();
+  var sort      = document.getElementById('clnSort').value;
+  var fZone     = document.getElementById('clnFilterZone').value;
+  var fResp     = document.getElementById('clnFilterResp').value;
+
+  var filtered = D.cleaning.filter(function(c){
+    if (clnStatFilter === 'open'   && !isClnOpen(c)) return false;
+    if (clnStatFilter === 'closed' && !isClnClosed(c)) return false;
+    if (fZone !== 'all' && (c.zone||c.emplacement||'').trim() !== fZone) return false;
+    if (fResp !== 'all' && (c.responsable||'') !== fResp) return false;
+    if (search) {
+      var hay = [c.id, c.zone, c.emplacement, c.description, c.observation,
+                 c.action, c.responsable, c.statut, c.type].join(' ').toLowerCase();
+      if (hay.indexOf(search) < 0) return false;
+    }
+    return true;
+  });
+
+  filtered.sort(function(a,b){
+    if (sort === 'date_desc') return (b.isoDate||'').localeCompare(a.isoDate||'') || 0;
+    if (sort === 'date_asc')  return (a.isoDate||'').localeCompare(b.isoDate||'') || 0;
+    if (sort === 'id_asc' || sort === 'id_desc') {
+      var na = parseInt(String(a.id).match(/\d+/),10), nb = parseInt(String(b.id).match(/\d+/),10);
+      var diff = (isNaN(na)||isNaN(nb)) ? String(a.id).localeCompare(String(b.id)) : (na - nb);
+      return sort === 'id_asc' ? diff : -diff;
+    }
+    if (sort === 'zone_az') return (a.zone||a.emplacement||'').localeCompare(b.zone||b.emplacement||'');
+    if (sort === 'resp_az') return (a.responsable||'').localeCompare(b.responsable||'');
+    return 0;
+  });
+
+  // Stats pills
+  var total = D.cleaning.length;
+  var open  = D.cleaning.filter(isClnOpen).length;
+  var closed= D.cleaning.filter(isClnClosed).length;
+  var statsRow = document.getElementById('clnStatsRow');
+  if (statsRow) {
+    statsRow.innerHTML =
+      '<span class="tag-stat-pill tsp-total">'+total+' total</span>' +
+      '<span class="tag-stat-pill tsp-open">'+open+' en cours</span>' +
+      '<span class="tag-stat-pill tsp-closed">'+closed+' terminés</span>' +
+      (filtered.length !== total ? '<span class="tag-stat-pill tsp-filtered">'+filtered.length+' filtrés</span>' : '');
+  }
+  document.getElementById('clnListCount').textContent = filtered.length + ' / ' + total;
+
+  renderClnTable(filtered, search);
+}
+function renderClnTable(items, searchVal){
+  var tb = document.getElementById('clnBody');
+  if (!tb) return;
+  if (items.length === 0) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Aucune entrée pour ce filtre</td></tr>';
+    return;
+  }
+  function hl(str){
+    if (!searchVal || !str) return esc(str||'');
+    var re = new RegExp('('+searchVal.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+    return esc(str).replace(re,'<mark style="background:rgba(245,166,35,.35);border-radius:2px;padding:0 1px">$1</mark>');
+  }
+  tb.innerHTML = '';
+  items.forEach(function(c){
+    var open  = isClnOpen(c);
+    var closed= isClnClosed(c);
+    var statClass = closed ? 's-close' : (open ? 's-open' : 's-open');
+    var statTxt   = c.statut || (closed ? 'Terminé' : (open ? 'En cours' : '—'));
+    var respHtml  = c.responsable
+      ? '<span class="rbadge" style="color:var(--p4)">'+hl(c.responsable)+'</span>'
+      : '<span style="color:var(--text3);font-size:9px">—</span>';
+    var hasPhoto  = !!(c.hasPhotoAvant || c.hasPhotoApres);
+    var photoCls  = hasPhoto ? 'tag-btn has-photo' : 'tag-btn no-photo';
+    var photoIco  = hasPhoto ? '📸' : '📷';
+    var pParts = [];
+    if (c.hasPhotoAvant) pParts.push('Avant');
+    if (c.hasPhotoApres) pParts.push('Après');
+    var photoTitle= hasPhoto ? 'Photo '+pParts.join(' + ') : 'Pas de photo Drive';
+
+    var descTxt = c.description || c.observation || '';
+    var actTxt  = c.action || '';
+    var zoneTxt = c.zone || c.emplacement || '—';
+    var tr = document.createElement('tr');
+    tr.style.cursor = 'pointer';
+    tr.innerHTML =
+      '<td class="mono" style="color:var(--p4)">'+esc(c.id)+'</td>' +
+      '<td style="white-space:nowrap;font-size:10px">'+esc(c.date||'—')+'</td>' +
+      '<td><span class="rbadge">'+hl(zoneTxt)+'</span></td>' +
+      '<td style="font-size:10px;max-width:170px">'+hl(descTxt.substring(0,80))+(descTxt.length>80?'…':'')+'</td>' +
+      '<td style="font-size:10px;max-width:130px">'+hl(actTxt.substring(0,55))+(actTxt.length>55?'…':'')+'</td>' +
+      '<td style="font-size:10px">'+respHtml+'</td>' +
+      '<td><span class="'+statClass+'">'+esc(statTxt)+'</span></td>' +
+      '<td><button class="'+photoCls+'" title="'+esc(photoTitle)+'">'+photoIco+'</button></td>';
+
+    tr.querySelector('.tag-btn').addEventListener('click', function(e){
+      e.stopPropagation();
+      openCleanModal(c);
+      var photoTab = document.querySelectorAll('#cleanModal .modal-tab')[1];
+      if (photoTab) switchTab('mCln','photo',photoTab);
+    });
+    tr.addEventListener('click', function(){ openCleanModal(c); });
+    tb.appendChild(tr);
+  });
+}
+function openCleanModal(c){
+  document.getElementById('mClnId').textContent   = 'NET ' + c.id + (c.date ? ' · ' + c.date : '');
+  document.getElementById('mClnDesc').textContent = c.description || c.observation || c.zone || c.emplacement || '—';
+
+  var open   = isClnOpen(c);
+  var closed = isClnClosed(c);
+  var chips  = '';
+  if (c.zone || c.emplacement) chips += '<span class="modal-chip">📍 '+esc(c.zone||c.emplacement)+'</span>';
+  if (c.type)        chips += '<span class="modal-chip">'+esc(c.type)+'</span>';
+  if (c.frequence)   chips += '<span class="modal-chip">⏱ '+esc(c.frequence)+'</span>';
+  if (c.statut)      chips += '<span class="modal-chip" style="color:'+(closed?'var(--green)':(open?'var(--red)':'var(--text2)'))+'">'+esc(c.statut)+'</span>';
+  if (c.responsable) chips += '<span class="modal-chip">👤 '+esc(c.responsable)+'</span>';
+  if (c.hasPhotoAvant || c.hasPhotoApres) chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
+  document.getElementById('mClnChips').innerHTML = chips;
+
+  document.getElementById('mClnInfoGrid').innerHTML = [
+    infoItemF('ID',          c.id),
+    infoItemF('Date',        c.date || '—'),
+    infoItem ('Date cible',  c.dateCible),
+    infoItemF('Zone',        c.zone || c.emplacement || '—'),
+    infoItem ('Emplacement', c.emplacement && c.emplacement !== c.zone ? c.emplacement : ''),
+    infoItem ('Type',        c.type),
+    infoItem ('Fréquence',   c.frequence),
+    infoItemF('Responsable', c.responsable || '—'),
+    infoItemF('Statut',      c.statut || '—'),
+    infoItem ('Réf. photo',  c.photoRefAvant || c.photoRefApres)
+  ].join('');
+
+  var oSec = document.getElementById('mClnObsSec');
+  var obsText = c.observation || c.description || '';
+  if (obsText) { document.getElementById('mClnObs').textContent = obsText; oSec.style.display = 'block'; }
+  else oSec.style.display = 'none';
+
+  var aSec = document.getElementById('mClnActionSec');
+  if (c.action) { document.getElementById('mClnAction').textContent = c.action; aSec.style.display = 'block'; }
+  else aSec.style.display = 'none';
+
+  // ── Photos (Avant + Après) via proxy base64 ─────────────
+  var photoArea     = document.getElementById('mClnPhotoArea');
+  var photoTabBtn   = document.getElementById('clnPhotoTabBtn');
+  var hasAvant = !!(c.hasPhotoAvant && c.driveFileIdAvant);
+  var hasApres = !!(c.hasPhotoApres && c.driveFileIdApres);
+  var hasAny   = hasAvant || hasApres;
+
+  if (hasAny) {
+    if (photoTabBtn) photoTabBtn.textContent = '📸 Photos Drive';
+    photoArea.innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px 20px">' +
+      '<div class="spin"></div>' +
+      '<p style="color:var(--text3);font-size:12px">Chargement depuis Google Drive…</p>' +
+      '</div>';
+
+    var results = { avant: null, apres: null };
+    var expected = (hasAvant ? 1 : 0) + (hasApres ? 1 : 0);
+    var loaded = 0;
+
+    function renderPhotos(){
+      var html = '<div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;width:100%">';
+      if (hasAvant) {
+        html += '<div style="flex:1;min-width:220px;max-width:48%;display:flex;flex-direction:column;align-items:center;gap:6px">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);border-radius:6px">⚠️ Avant</div>';
+        if (results.avant) html += '<img src="'+results.avant+'" style="max-width:100%;max-height:44vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">';
+        else html += '<div class="photo-noimg" style="padding:16px"><div style="font-size:28px;margin-bottom:6px">⚠️</div><p style="color:var(--amber);font-size:11px">Lecture impossible</p></div>';
+        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(c.photoRefAvant||'avant')+'</p></div>';
+      }
+      if (hasApres) {
+        html += '<div style="flex:1;min-width:220px;max-width:48%;display:flex;flex-direction:column;align-items:center;gap:6px">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;background:rgba(16,201,133,.12);border:1px solid rgba(16,201,133,.3);border-radius:6px">✅ Après</div>';
+        if (results.apres) html += '<img src="'+results.apres+'" style="max-width:100%;max-height:44vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">';
+        else html += '<div class="photo-noimg" style="padding:16px"><div style="font-size:28px;margin-bottom:6px">⚠️</div><p style="color:var(--amber);font-size:11px">Lecture impossible</p></div>';
+        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(c.photoRefApres||'après')+'</p></div>';
+      }
+      html += '</div>';
+      html += '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+      html += '<span style="font-size:10px;color:var(--text3)">🧹 Nettoyage '+esc(c.id)+'</span>';
+      if (hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(245,166,35,.12);color:var(--amber)">Avant ✓</span>';
+      if (hasApres) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(16,201,133,.12);color:var(--green)">Après ✓</span>';
+      if (!hasApres && hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(232,68,90,.12);color:var(--red)">Après : non disponible</span>';
+      html += '</div>';
+      photoArea.innerHTML = html;
+    }
+    function onLoad(){ loaded++; if (loaded >= expected) renderPhotos(); }
+
+    if (hasAvant) {
+      google.script.run
+        .withSuccessHandler(function(d){ results.avant = d || null; onLoad(); })
+        .withFailureHandler(function(){ results.avant = null; onLoad(); })
+        .getTagPhotoForClient(c.driveFileIdAvant);
+    }
+    if (hasApres) {
+      google.script.run
+        .withSuccessHandler(function(d){ results.apres = d || null; onLoad(); })
+        .withFailureHandler(function(){ results.apres = null; onLoad(); })
+        .getTagPhotoForClient(c.driveFileIdApres);
+    }
+  } else {
+    if (photoTabBtn) photoTabBtn.textContent = '📷 Photos Drive';
+    photoArea.innerHTML =
+      '<div class="photo-noimg">' +
+      '<div style="font-size:52px;margin-bottom:14px">📷</div>' +
+      '<p style="color:var(--text3)">Aucune photo associée à cette entrée.</p>' +
+      (c.photoRefAvant ? '<p style="font-size:11px;color:var(--text3);margin-top:8px">Référence cherchée : <strong style="color:var(--p4)">'+esc(c.photoRefAvant)+'</strong></p>' : '') +
+      '</div>';
+  }
+
+  switchTab('mCln','info',document.querySelector('#cleanModal .modal-tab'));
+  openModal('cleanModal');
+}
+
 // ══ RENDU PRINCIPAL ═══════════════════════════════════════════
 function render(data){
   D=data; var m=data.metrics;
@@ -2237,6 +2606,15 @@ function render(data){
     '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(m.taux_cloture)+'%</div><div class="tsl">Clôture</div></div>';
   populateTagDropdowns(); applyTagF();
   applyAccF();
+
+  // ── NETTOYAGE ───────────────────────────────────────────
+  document.getElementById('clnSum').innerHTML =
+    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(m.cleaning_total)+'</div><div class="tsl">Total Nettoyage</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(m.cleaning_closed)+'</div><div class="tsl">Terminés ✓</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(m.cleaning_open)+'</div><div class="tsl">En cours</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(m.cleaning_rate)+'%</div><div class="tsl">Taux clôture</div></div>';
+  populateClnDropdowns();
+  applyClnF();
 
   document.getElementById('egrids').innerHTML=
     '<div class="ecard"><div class="eval" style="color:var(--amber)">'+fmtNum(m.elt_ytd||0)+'</div><div class="elbl">kWh ELT YTD</div><div class="eratio">⚡ '+fmtNum(m.ratio_elt_ytd)+' kWh/UP</div></div>'+
