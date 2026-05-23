@@ -434,6 +434,18 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .act-num{width:18px;height:18px;border-radius:50%;background:var(--green);color:#fff;
   font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 .tag-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+/* Vignettes inline dans la liste Nettoyage */
+.cln-thumb-cell{text-align:center;width:88px}
+.cln-thumb{width:74px;height:54px;border-radius:6px;object-fit:cover;border:1px solid var(--border);
+  cursor:pointer;background:var(--bg4);display:block;margin:0 auto;transition:transform .15s,border-color .15s}
+.cln-thumb:hover{transform:scale(1.06);border-color:var(--p3)}
+.cln-thumb-ph{width:74px;height:54px;border-radius:6px;border:1px dashed var(--border);background:var(--bg4);
+  display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:18px;margin:0 auto}
+.cln-thumb-load{width:74px;height:54px;border-radius:6px;border:1px solid var(--border);background:var(--bg4);
+  display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative}
+.cln-thumb-load::after{content:'';width:14px;height:14px;border:2px solid var(--bg5);
+  border-top-color:var(--p3);border-radius:50%;animation:spin .8s linear infinite}
+html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
 /* Photo TAG */
 .photo-area{display:flex;flex-direction:column;align-items:center;gap:10px}
 .photo-img{max-width:100%;max-height:50vh;border-radius:8px;object-fit:contain;border:1px solid var(--border)}
@@ -1195,13 +1207,11 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <div class="tag-search-bar">
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
     <input type="text" class="tag-search-input" id="clnSearch"
-           placeholder="Rechercher zone, description, responsable, ID…"
+           placeholder="Rechercher zone, description, responsable…"
            oninput="applyClnF()">
     <select class="tag-sort-sel" id="clnSort" onchange="applyClnF()">
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
-      <option value="id_desc">ID ↓</option>
-      <option value="id_asc">ID ↑</option>
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
@@ -1233,15 +1243,16 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Liste Nettoyage
       <span id="clnListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
       <span style="color:var(--text3);font-size:9px">
-        📸 = photos disponibles · 📷 = pas de photo · Plus récents en haut
+        Photos Avant / Après chargées automatiquement depuis Drive · Cliquez sur une vignette pour l'agrandir · Plus récents en haut
       </span>
     </div>
     <div class="tblw">
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>Date ↓</th><th>Zone</th>
-            <th>Description / Observation</th><th>Action</th><th>Responsable</th><th>Statut</th><th>📷</th>
+            <th>Zone</th><th>Date ↓</th>
+            <th>Description / Observation</th><th>Action</th><th>Responsable</th><th>Statut</th>
+            <th style="text-align:center">Avant</th><th style="text-align:center">Après</th>
           </tr>
         </thead>
         <tbody id="clnBody"></tbody>
@@ -2400,7 +2411,8 @@ function renderClnTable(items, searchVal){
     return esc(str).replace(re,'<mark style="background:rgba(245,166,35,.35);border-radius:2px;padding:0 1px">$1</mark>');
   }
   tb.innerHTML = '';
-  items.forEach(function(c){
+  var pendingThumbs = [];   // { fid, imgId } → chargement asynchrone groupé
+  items.forEach(function(c, idx){
     var open  = isClnOpen(c);
     var closed= isClnClosed(c);
     var statClass = closed ? 's-close' : (open ? 's-open' : 's-open');
@@ -2408,38 +2420,77 @@ function renderClnTable(items, searchVal){
     var respHtml  = c.responsable
       ? '<span class="rbadge" style="color:var(--p4)">'+hl(c.responsable)+'</span>'
       : '<span style="color:var(--text3);font-size:9px">—</span>';
-    var hasPhoto  = !!(c.hasPhotoAvant || c.hasPhotoApres);
-    var photoCls  = hasPhoto ? 'tag-btn has-photo' : 'tag-btn no-photo';
-    var photoIco  = hasPhoto ? '📸' : '📷';
-    var pParts = [];
-    if (c.hasPhotoAvant) pParts.push('Avant');
-    if (c.hasPhotoApres) pParts.push('Après');
-    var photoTitle= hasPhoto ? 'Photo '+pParts.join(' + ') : 'Pas de photo Drive';
 
     var descTxt = c.description || c.observation || '';
     var actTxt  = c.action || '';
     var zoneTxt = c.zone || c.emplacement || '—';
+
+    // ── Cellules vignettes Avant / Après ──────────────────────
+    function thumbCell(label, has, fid, ref){
+      var cellId = 'clnThumb_' + idx + '_' + label;
+      if (!has || !fid) {
+        return '<td class="cln-thumb-cell"><div class="cln-thumb-ph" title="Pas de photo '+label+'">📷</div></td>';
+      }
+      pendingThumbs.push({ fid: fid, cellId: cellId, label: label, ref: ref || '', cln: c });
+      return '<td class="cln-thumb-cell"><div id="'+cellId+'" class="cln-thumb-load" title="Chargement photo '+label+' depuis Drive…"></div></td>';
+    }
+    var avantCellHtml = thumbCell('Avant', c.hasPhotoAvant, c.driveFileIdAvant, c.photoRefAvant);
+    var apresCellHtml = thumbCell('Après', c.hasPhotoApres, c.driveFileIdApres, c.photoRefApres);
+
     var tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
     tr.innerHTML =
-      '<td class="mono" style="color:var(--p4)">'+esc(c.id)+'</td>' +
-      '<td style="white-space:nowrap;font-size:10px">'+esc(c.date||'—')+'</td>' +
       '<td><span class="rbadge">'+hl(zoneTxt)+'</span></td>' +
+      '<td style="white-space:nowrap;font-size:10px">'+esc(c.date||'—')+'</td>' +
       '<td style="font-size:10px;max-width:170px">'+hl(descTxt.substring(0,80))+(descTxt.length>80?'…':'')+'</td>' +
       '<td style="font-size:10px;max-width:130px">'+hl(actTxt.substring(0,55))+(actTxt.length>55?'…':'')+'</td>' +
       '<td style="font-size:10px">'+respHtml+'</td>' +
       '<td><span class="'+statClass+'">'+esc(statTxt)+'</span></td>' +
-      '<td><button class="'+photoCls+'" title="'+esc(photoTitle)+'">'+photoIco+'</button></td>';
+      avantCellHtml + apresCellHtml;
 
-    tr.querySelector('.tag-btn').addEventListener('click', function(e){
-      e.stopPropagation();
-      openCleanModal(c);
-      var photoTab = document.querySelectorAll('#cleanModal .modal-tab')[1];
-      if (photoTab) switchTab('mCln','photo',photoTab);
-    });
     tr.addEventListener('click', function(){ openCleanModal(c); });
     tb.appendChild(tr);
   });
+
+  // ── Chargement asynchrone des vignettes (avec cache) ───────────
+  if (!window._clnPhotoCache) window._clnPhotoCache = {};
+  pendingThumbs.forEach(function(p){
+    var slot = document.getElementById(p.cellId);
+    if (!slot) return;
+    var cached = window._clnPhotoCache[p.fid];
+    if (cached) {
+      replaceThumb(slot, cached, p);
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(function(d){
+        if (d) {
+          window._clnPhotoCache[p.fid] = d;
+          replaceThumb(slot, d, p);
+        } else {
+          slot.outerHTML = '<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>';
+        }
+      })
+      .withFailureHandler(function(){
+        slot.outerHTML = '<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>';
+      })
+      .getTagPhotoForClient(p.fid);
+  });
+}
+function replaceThumb(slot, dataUrl, p){
+  if (!slot || !slot.parentNode) return;
+  var img = document.createElement('img');
+  img.src = dataUrl;
+  img.className = 'cln-thumb';
+  img.alt = p.label;
+  img.title = p.label + (p.ref ? ' · ' + p.ref : '') + ' (cliquer pour agrandir)';
+  img.addEventListener('click', function(e){
+    e.stopPropagation();
+    openCleanModal(p.cln);
+    var photoTab = document.querySelectorAll('#cleanModal .modal-tab')[1];
+    if (photoTab) switchTab('mCln','photo',photoTab);
+  });
+  slot.parentNode.replaceChild(img, slot);
 }
 function openCleanModal(c){
   document.getElementById('mClnId').textContent   = 'NET ' + c.id + (c.date ? ' · ' + c.date : '');
