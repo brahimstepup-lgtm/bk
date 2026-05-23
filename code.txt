@@ -10,6 +10,7 @@ var SHEET_ID       = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
 var GEMINI_KEY     = 'AIzaSyDdp7ZxwL1f3_OsvjbXB39_u_MadHul8q8';
 var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
+var NETT_FOLDER_ID = '1IOv87AtD21q7l7yVIK6bJubkfaJf7AWw';
 var PLANNING_GID   = 1312782146;
 
 // ── Point d'entrée HTTP ───────────────────────────────────────
@@ -164,6 +165,86 @@ function normalize(s) {
     .replace(/\s+/g,' ').trim();
 }
 
+// ── Nettoyage ────────────────────────────────────────────────
+function readNettoyage(ss) {
+  var nettoyage = [];
+  try {
+    var sheets = ss.getSheets();
+    var nettSheet = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = sheets[i].getName().toLowerCase();
+      if (n.indexOf('nettoyage') > -1) { nettSheet = sheets[i]; break; }
+    }
+    if (!nettSheet) { Logger.log('Nettoyage sheet NOT found'); return nettoyage; }
+    Logger.log('Nettoyage sheet found: ' + nettSheet.getName());
+    var data = nettSheet.getDataRange().getValues();
+    if (data.length < 2) return nettoyage;
+
+    // Détection dynamique des colonnes depuis l'entête (ligne 0)
+    var hdr = data[0];
+    var COL = { zone:-1, emplacement:-1, tache:-1, frequence:-1, responsable:-1,
+                date:-1, statut:-1, observation:-1, conforme:-1, note:-1 };
+    for (var c = 0; c < hdr.length; c++) {
+      var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
+      if (h.indexOf('zone') > -1 && COL.zone === -1)                            COL.zone = c;
+      else if ((h.indexOf('emplace') > -1 || h.indexOf('lieu') > -1 || h.indexOf('local') > -1) && COL.emplacement === -1) COL.emplacement = c;
+      else if ((h.indexOf('tache') > -1 || h.indexOf('tâche') > -1 || h.indexOf('operation') > -1 || h.indexOf('activit') > -1 || h.indexOf('description') > -1) && COL.tache === -1) COL.tache = c;
+      else if ((h.indexOf('frequence') > -1 || h.indexOf('fréquence') > -1 || h.indexOf('periodicite') > -1) && COL.frequence === -1) COL.frequence = c;
+      else if ((h.indexOf('responsable') > -1 || h.indexOf('resp') > -1 || h.indexOf('executant') > -1 || h.indexOf('exécutant') > -1) && COL.responsable === -1) COL.responsable = c;
+      else if ((h.indexOf('date') > -1 || h.indexOf('planif') > -1 || h.indexOf('derniere') > -1 || h.indexOf('dernière') > -1) && COL.date === -1) COL.date = c;
+      else if ((h.indexOf('statut') > -1 || h.indexOf('etat') > -1 || h.indexOf('état') > -1 || h.indexOf('status') > -1) && COL.statut === -1) COL.statut = c;
+      else if ((h.indexOf('observation') > -1 || h.indexOf('remarque') > -1 || h.indexOf('commentaire') > -1) && COL.observation === -1) COL.observation = c;
+      else if ((h.indexOf('conforme') > -1 || h.indexOf('conform') > -1 || h.indexOf('resultat') > -1 || h.indexOf('résultat') > -1) && COL.conforme === -1) COL.conforme = c;
+      else if ((h.indexOf('note') > -1 || h.indexOf('score') > -1 || h.indexOf('eval') > -1) && COL.note === -1) COL.note = c;
+    }
+    // Fallback : si aucune colonne trouvée, utiliser les indices séquentiels
+    var colIdx = 0;
+    if (COL.zone === -1)        COL.zone = colIdx++;        else colIdx = Math.max(colIdx, COL.zone + 1);
+    if (COL.emplacement === -1) COL.emplacement = colIdx++; else colIdx = Math.max(colIdx, COL.emplacement + 1);
+    if (COL.tache === -1)       COL.tache = colIdx++;       else colIdx = Math.max(colIdx, COL.tache + 1);
+    if (COL.frequence === -1)   COL.frequence = colIdx++;   else colIdx = Math.max(colIdx, COL.frequence + 1);
+    if (COL.responsable === -1) COL.responsable = colIdx++; else colIdx = Math.max(colIdx, COL.responsable + 1);
+    if (COL.date === -1)        COL.date = colIdx++;        else colIdx = Math.max(colIdx, COL.date + 1);
+    if (COL.statut === -1)      COL.statut = colIdx++;      else colIdx = Math.max(colIdx, COL.statut + 1);
+    if (COL.observation === -1) COL.observation = colIdx++;  else colIdx = Math.max(colIdx, COL.observation + 1);
+    if (COL.conforme === -1)    COL.conforme = colIdx++;     else colIdx = Math.max(colIdx, COL.conforme + 1);
+    if (COL.note === -1)        COL.note = colIdx++;
+
+    Logger.log('Nettoyage COL: ' + JSON.stringify(COL));
+
+    for (var i = 1; i < data.length; i++) {
+      var r = data[i];
+      // Ignorer les lignes vides (ni zone ni tâche)
+      var zoneVal = COL.zone < r.length ? r[COL.zone] : '';
+      var tacheVal = COL.tache < r.length ? r[COL.tache] : '';
+      if (isNull(zoneVal) && isNull(tacheVal)) continue;
+
+      var dateVal = COL.date < r.length ? r[COL.date] : '';
+      var pd = parseDate(dateVal);
+      var iso = (pd && !isNaN(pd.getTime())) ? pd.toISOString().split('T')[0] : '';
+
+      var statutVal = COL.statut < r.length ? String(r[COL.statut]||'').trim() : '';
+      var conformeVal = COL.conforme < r.length ? String(r[COL.conforme]||'').trim() : '';
+
+      nettoyage.push({
+        zone:        isNull(zoneVal) ? '' : String(zoneVal).trim(),
+        emplacement: COL.emplacement < r.length && !isNull(r[COL.emplacement]) ? String(r[COL.emplacement]).trim() : '',
+        tache:       isNull(tacheVal) ? '' : String(tacheVal).trim(),
+        frequence:   COL.frequence < r.length && !isNull(r[COL.frequence]) ? String(r[COL.frequence]).trim() : '',
+        responsable: COL.responsable < r.length && !isNull(r[COL.responsable]) ? String(r[COL.responsable]).trim() : '',
+        date:        fmtDate(dateVal),
+        isoDate:     iso,
+        statut:      statutVal,
+        observation: COL.observation < r.length && !isNull(r[COL.observation]) ? String(r[COL.observation]).trim() : '',
+        conforme:    conformeVal,
+        note:        COL.note < r.length && !isNull(r[COL.note]) ? String(r[COL.note]).trim() : ''
+      });
+    }
+    Logger.log('Nettoyage: ' + nettoyage.length + ' entrées');
+  } catch(e) { Logger.log('Nettoyage error: ' + e.message); }
+  return nettoyage;
+}
+
 // ── Planning ─────────────────────────────────────────────────
 function readPlanning(ss) {
   var planning = [];
@@ -229,12 +310,13 @@ function getData() {
 
   var out = {
     ts: new Date().toISOString(),
-    kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[],
+    kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[], nettoyage:[],
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
 
   out.planning = readPlanning(ss);
+  out.nettoyage = readNettoyage(ss);
 
   // ── Cache Drive Tags ─────────────────────────────────────
   var driveResult = buildDriveTagsCache();
