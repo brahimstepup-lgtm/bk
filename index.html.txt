@@ -456,6 +456,23 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
 #veilleTable td[rowspan]{vertical-align:middle;text-align:center;background:var(--bg3);border-right:1px solid var(--border)}
 #veilleTable tr:nth-child(even) td:not([rowspan]){background:rgba(9,99,126,.03)}
 
+/* ══ NETTOYAGE ══ */
+.nett-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:9px;
+  font-weight:700;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+.nett-fait{background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3)}
+.nett-encours{background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+.nett-nonfait{background:rgba(232,68,90,.15);color:var(--red);border:1px solid rgba(232,68,90,.3)}
+.nett-unknown{background:var(--bg4);color:var(--text3);border:1px solid var(--border)}
+.nett-freq{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;
+  background:rgba(9,99,126,.12);color:var(--p4);border:1px solid rgba(9,99,126,.25);
+  font-family:'JetBrains Mono',monospace}
+.nett-zone-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9px;
+  background:rgba(9,99,126,.15);color:var(--p4);border:1px solid rgba(9,99,126,.3);
+  font-weight:600;font-family:'JetBrains Mono',monospace}
+html.light .nett-badge{opacity:.9}
+html.light .nett-freq{background:rgba(9,99,126,.08)}
+html.light .nett-zone-badge{background:rgba(9,99,126,.08)}
+
 
 @media(max-width:768px){
   .row2,.row3{grid-template-columns:1fr}
@@ -581,6 +598,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('ai',this)">✨ IA Gemini</button>
+  <button class="tab"    onclick="goTab('nettoyage',this)">🧹 Nettoyage</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
 </div>
 
@@ -849,6 +867,61 @@ html.light .notif-full-filters .pf-sel{background:#fff}
         <button class="btn" style="text-align:left;padding:8px 10px;font-size:10px" onclick="askG('TVM 57% vs objectif 95% — plan suivi médical SOBCO 3')">🏥 Plan TVM</button>
         <button class="btn" style="text-align:left;padding:8px 10px;font-size:10px" onclick="askG('Optimisation énergie ratios ELT 245 kWh/UP SOBCO 3')">⚡ Énergie</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NETTOYAGE ═══ -->
+<div id="nettoyage" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Suivi du Nettoyage — SOBCO 3</div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Ce tableau regroupe l'ensemble des opérations de nettoyage planifiées par zone, avec leur fréquence, 
+      leur état d'avancement et les observations associées.
+    </p>
+  </div>
+
+  <!-- KPI Nettoyage -->
+  <div class="kpi-grid" id="nettKpiGrid" style="margin-bottom:14px"></div>
+
+  <!-- Filtres -->
+  <div class="pf-bar" id="nettFilterBar">
+    <span class="pf-lbl">Zone :</span>
+    <select class="pf-sel" id="nettFilterZone" onchange="applyNettF()"><option value="all">Toutes</option></select>
+    <span class="pf-lbl">Statut :</span>
+    <select class="pf-sel" id="nettFilterStatut" onchange="applyNettF()">
+      <option value="all">Tous</option>
+      <option value="fait">Fait / Conforme</option>
+      <option value="encours">En cours</option>
+      <option value="nonfait">Non fait / Non conforme</option>
+    </select>
+    <span class="pf-lbl">Fréquence :</span>
+    <select class="pf-sel" id="nettFilterFreq" onchange="applyNettF()"><option value="all">Toutes</option></select>
+    <input type="text" class="tag-search-input" id="nettSearch" placeholder="Rechercher…" oninput="applyNettF()" style="max-width:180px">
+    <span class="pf-stat" id="nettStat">— tâches</span>
+  </div>
+
+  <!-- Graphiques -->
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Conformité par zone</div><div class="cw" style="height:195px"><canvas id="nettZoneC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition des statuts</div><div class="cw" style="height:195px"><canvas id="nettStatutC"></canvas></div></div>
+  </div>
+
+  <!-- Tableau -->
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Liste des opérations de nettoyage
+      <span id="nettListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+    </div>
+    <div class="tblw" style="max-height:500px">
+      <table>
+        <thead>
+          <tr>
+            <th>Zone</th><th>Emplacement</th><th>Tâche</th><th>Fréquence</th>
+            <th>Responsable</th><th>Date</th><th>Statut</th><th>Observation</th>
+          </tr>
+        </thead>
+        <tbody id="nettBody"></tbody>
+      </table>
     </div>
   </div>
 </div>
@@ -1353,7 +1426,7 @@ function goAI(){
   document.getElementById('ai').classList.add('on');
 }
 function goVeille(){
-  document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',i===6);});
+  document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',i===7);});
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
   document.getElementById('veille').classList.add('on');
 }
@@ -2237,6 +2310,7 @@ function render(data){
     '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(m.taux_cloture)+'%</div><div class="tsl">Clôture</div></div>';
   populateTagDropdowns(); applyTagF();
   applyAccF();
+  populateNettDropdowns(); applyNettF();
 
   document.getElementById('egrids').innerHTML=
     '<div class="ecard"><div class="eval" style="color:var(--amber)">'+fmtNum(m.elt_ytd||0)+'</div><div class="elbl">kWh ELT YTD</div><div class="eratio">⚡ '+fmtNum(m.ratio_elt_ytd)+' kWh/UP</div></div>'+
@@ -2404,6 +2478,169 @@ function applyNotifFullFilter(){
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&document.getElementById('notifFullBg').classList.contains('open')) closeNotifFull();
 });
+
+// ══ NETTOYAGE ═════════════════════════════════════════════════
+function classifyNettStatut(statut, conforme) {
+  var s = (statut || '').toLowerCase();
+  var c = (conforme || '').toLowerCase();
+  // Fait / Conforme / OK / Oui / Terminé / Réalisé
+  if (s.indexOf('fait') > -1 || s.indexOf('ok') > -1 || s.indexOf('oui') > -1 ||
+      s.indexOf('termin') > -1 || s.indexOf('realis') > -1 || s.indexOf('réalis') > -1 ||
+      c.indexOf('conforme') > -1 || c.indexOf('oui') > -1 || c.indexOf('ok') > -1 ||
+      s.indexOf('conforme') > -1 || s === 'c' || s === '1' || c === '1') return 'fait';
+  // En cours / Partiel
+  if (s.indexOf('cours') > -1 || s.indexOf('partiel') > -1 || s.indexOf('progress') > -1) return 'encours';
+  // Non fait / Non conforme / Non / KO
+  if (s.indexOf('non') > -1 || s.indexOf('ko') > -1 || s.indexOf('absent') > -1 ||
+      c.indexOf('non') > -1 || c.indexOf('ko') > -1 || s === '0' || c === '0' ||
+      s.indexOf('manqu') > -1) return 'nonfait';
+  // Si statut ou conforme contient quelque chose
+  if (statut || conforme) return 'unknown';
+  return 'unknown';
+}
+function getNettBadgeHtml(cls) {
+  var map = {
+    fait:    '<span class="nett-badge nett-fait">✓ Fait</span>',
+    encours: '<span class="nett-badge nett-encours">⏳ En cours</span>',
+    nonfait: '<span class="nett-badge nett-nonfait">✗ Non fait</span>',
+    unknown: '<span class="nett-badge nett-unknown">— N/D</span>'
+  };
+  return map[cls] || map.unknown;
+}
+function populateNettDropdowns() {
+  if (!D || !D.nettoyage) return;
+  var zones = new Set(), freqs = new Set();
+  D.nettoyage.forEach(function(n) {
+    if (n.zone) zones.add(n.zone);
+    if (n.frequence) freqs.add(n.frequence);
+  });
+  var zSel = document.getElementById('nettFilterZone');
+  zSel.innerHTML = '<option value="all">Toutes (' + zones.size + ')</option>';
+  Array.from(zones).sort().forEach(function(z) { zSel.innerHTML += '<option value="' + esc(z) + '">' + esc(z) + '</option>'; });
+  var fSel = document.getElementById('nettFilterFreq');
+  fSel.innerHTML = '<option value="all">Toutes (' + freqs.size + ')</option>';
+  Array.from(freqs).sort().forEach(function(f) { fSel.innerHTML += '<option value="' + esc(f) + '">' + esc(f) + '</option>'; });
+}
+function applyNettF() {
+  if (!D || !D.nettoyage) return;
+  var filterZone = document.getElementById('nettFilterZone').value;
+  var filterStatut = document.getElementById('nettFilterStatut').value;
+  var filterFreq = document.getElementById('nettFilterFreq').value;
+  var searchVal = (document.getElementById('nettSearch').value || '').toLowerCase().trim();
+
+  var filtered = D.nettoyage.filter(function(n) {
+    if (filterZone !== 'all' && n.zone !== filterZone) return false;
+    if (filterFreq !== 'all' && n.frequence !== filterFreq) return false;
+    if (filterStatut !== 'all') {
+      var cls = classifyNettStatut(n.statut, n.conforme);
+      if (filterStatut === 'fait' && cls !== 'fait') return false;
+      if (filterStatut === 'encours' && cls !== 'encours') return false;
+      if (filterStatut === 'nonfait' && cls !== 'nonfait') return false;
+    }
+    if (searchVal) {
+      var hay = (n.zone + ' ' + n.emplacement + ' ' + n.tache + ' ' + n.responsable + ' ' + n.observation + ' ' + n.frequence).toLowerCase();
+      if (hay.indexOf(searchVal) === -1) return false;
+    }
+    return true;
+  });
+
+  renderNettoyage(filtered);
+}
+function renderNettoyage(items) {
+  var total = D.nettoyage.length;
+  var allFait = 0, allEncours = 0, allNonfait = 0;
+  D.nettoyage.forEach(function(n) {
+    var cls = classifyNettStatut(n.statut, n.conforme);
+    if (cls === 'fait') allFait++;
+    else if (cls === 'encours') allEncours++;
+    else if (cls === 'nonfait') allNonfait++;
+  });
+  var tauxConf = total > 0 ? Math.round(allFait / total * 100) : 0;
+
+  // KPI
+  document.getElementById('nettKpiGrid').innerHTML = [
+    kpiCard('Total tâches', total, 'b', 'opérations', 'k-b', null, null),
+    kpiCard('Fait / Conforme', allFait, 'g', '✓', 'k-g', tauxConf, C.green),
+    kpiCard('En cours', allEncours, 'a', '⏳', 'k-a', null, null),
+    kpiCard('Non fait', allNonfait, 'r', '✗', 'k-r', total > 0 ? Math.round(allNonfait / total * 100) : 0, C.red),
+    kpiCard('Taux conformité', fmtNum(tauxConf) + '%', tauxConf >= 80 ? 'g' : tauxConf >= 50 ? 'a' : 'r', 'obj.≥80%', tauxConf >= 80 ? 'k-g' : tauxConf >= 50 ? 'k-a' : 'k-r', tauxConf, tauxConf >= 80 ? C.green : tauxConf >= 50 ? C.amber : C.red)
+  ].join('');
+
+  // Stats filtrés
+  document.getElementById('nettStat').textContent = items.length + ' / ' + total + ' tâches';
+  document.getElementById('nettListCount').textContent = items.length + ' résultats';
+
+  // Graphique conformité par zone
+  var zoneStats = {};
+  D.nettoyage.forEach(function(n) {
+    var z = n.zone || 'Non défini';
+    if (!zoneStats[z]) zoneStats[z] = { total: 0, fait: 0 };
+    zoneStats[z].total++;
+    if (classifyNettStatut(n.statut, n.conforme) === 'fait') zoneStats[z].fait++;
+  });
+  var zKeys = Object.keys(zoneStats).sort(function(a, b) { return zoneStats[b].total - zoneStats[a].total; }).slice(0, 8);
+  var zLabels = zKeys.map(function(k) { return k.length > 18 ? k.substring(0, 18) + '…' : k; });
+  var zPcts = zKeys.map(function(k) { return zoneStats[k].total > 0 ? Math.round(zoneStats[k].fait / zoneStats[k].total * 100) : 0; });
+  var zColors = zPcts.map(function(p) { return p >= 80 ? C.green : p >= 50 ? C.amber : C.red; });
+  mkChart('nettZoneC', 'bar', zLabels, [{
+    label: 'Conformité %',
+    data: zPcts,
+    backgroundColor: zColors,
+    borderRadius: 4
+  }], Object.assign({}, BASE, {
+    indexAxis: 'y',
+    scales: { x: { grid: { color: C.grid }, ticks: { color: C.txt }, max: 100 }, y: { grid: { display: false }, ticks: { color: C.txt, font: { size: 9 } } } },
+    plugins: { legend: { display: false } }
+  }));
+
+  // Graphique répartition statuts (donut)
+  var filtFait = 0, filtEncours = 0, filtNonfait = 0, filtUnknown = 0;
+  items.forEach(function(n) {
+    var cls = classifyNettStatut(n.statut, n.conforme);
+    if (cls === 'fait') filtFait++;
+    else if (cls === 'encours') filtEncours++;
+    else if (cls === 'nonfait') filtNonfait++;
+    else filtUnknown++;
+  });
+  if (charts['nettStatutC']) charts['nettStatutC'].destroy();
+  var statutData = [filtFait, filtEncours, filtNonfait, filtUnknown];
+  var statutLabels = ['Fait', 'En cours', 'Non fait', 'N/D'];
+  var statutColors = [C.green, C.amber, C.red, C.txt];
+  // Filtrer les zéros
+  var sL = [], sD = [], sC = [];
+  for (var i = 0; i < statutData.length; i++) {
+    if (statutData[i] > 0) { sL.push(statutLabels[i]); sD.push(statutData[i]); sC.push(statutColors[i]); }
+  }
+  if (sD.length > 0) {
+    charts['nettStatutC'] = new Chart(document.getElementById('nettStatutC'), {
+      type: 'doughnut',
+      data: { labels: sL, datasets: [{ data: sD, backgroundColor: sC, borderWidth: 0, hoverOffset: 4 }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: 'right', labels: { color: C.txt, font: { size: 10 }, boxWidth: 10 } } }, cutout: '55%' }
+    });
+  }
+
+  // Tableau
+  var tb = document.getElementById('nettBody');
+  tb.innerHTML = '';
+  if (items.length === 0) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Aucune tâche de nettoyage pour ce filtre</td></tr>';
+    return;
+  }
+  items.forEach(function(n) {
+    var cls = classifyNettStatut(n.statut, n.conforme);
+    var tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><span class="nett-zone-badge">' + esc(n.zone || '—') + '</span></td>' +
+      '<td style="font-size:10px">' + esc(n.emplacement || '—') + '</td>' +
+      '<td style="font-size:10px;max-width:180px">' + esc(n.tache || '—') + '</td>' +
+      '<td><span class="nett-freq">' + esc(n.frequence || '—') + '</span></td>' +
+      '<td style="font-size:10px">' + esc(n.responsable || '—') + '</td>' +
+      '<td class="mono" style="font-size:9px;white-space:nowrap">' + (n.date || '—') + '</td>' +
+      '<td>' + getNettBadgeHtml(cls) + '</td>' +
+      '<td style="font-size:10px;max-width:140px;color:var(--text3)">' + esc(n.observation || '—') + '</td>';
+    tb.appendChild(tr);
+  });
+}
 
 window.onload=function(){
   google.script.run
