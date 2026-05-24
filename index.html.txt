@@ -2429,6 +2429,10 @@ function renderClnTable(items, searchVal){
     function thumbCell(label, has, fid, ref){
       var cellId = 'clnThumb_' + idx + '_' + label;
       if (!has || !fid) {
+        // Photo absente : cellule totalement vide (pas de placeholder, pas de message)
+        if (label === 'Après') {
+          return '<td class="cln-thumb-cell"></td>';
+        }
         return '<td class="cln-thumb-cell"><div class="cln-thumb-ph" title="Pas de photo '+label+'">📷</div></td>';
       }
       pendingThumbs.push({ fid: fid, cellId: cellId, label: label, ref: ref || '', cln: c });
@@ -2517,6 +2521,7 @@ function openCleanModal(c){
     infoItem ('Fréquence',   c.frequence),
     infoItemF('Responsable', c.responsable || '—'),
     infoItemF('Statut',      c.statut || '—'),
+    infoItem ('Propre ?',    c.propre),
     infoItem ('Réf. photo',  c.photoRefAvant || c.photoRefApres)
   ].join('');
 
@@ -2569,7 +2574,8 @@ function openCleanModal(c){
       html += '<span style="font-size:10px;color:var(--text3)">🧹 Nettoyage '+esc(c.id)+'</span>';
       if (hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(245,166,35,.12);color:var(--amber)">Avant ✓</span>';
       if (hasApres) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(16,201,133,.12);color:var(--green)">Après ✓</span>';
-      if (!hasApres && hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(232,68,90,.12);color:var(--red)">Après : non disponible</span>';
+      if (!hasApres && hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(245,166,35,.12);color:var(--amber)">🧹 Nettoyage en cours · Après non disponible</span>';
+      if (!hasApres && c.propre) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:var(--bg5);color:var(--text2);font-family:\'JetBrains Mono\',monospace">Propre ? <strong>'+esc(c.propre)+'</strong></span>';
       html += '</div>';
       photoArea.innerHTML = html;
     }
