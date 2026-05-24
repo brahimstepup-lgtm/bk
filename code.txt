@@ -379,17 +379,28 @@ function readCleaning(ss, photoCache) {
     if (COL.id < 0) COL.id = 0;
     Logger.log('Cleaning COL: ' + JSON.stringify(COL));
 
-    // 3. Helper : résoudre un fileId Drive depuis une référence photo
-    //    Règle stricte pour prefer='apres' : on ne retourne JAMAIS un fichier
-    //    qui n'est pas explicitement classé « après ». Si rien ne correspond,
-    //    on renvoie '' (champ laissé vide côté client).
+    // 3. Helper : résoudre un fileId Drive depuis une référence photo.
+    //
+    //    Règles de couplage Avant/Après par ligne du Sheet :
+    //    - Chaque ligne fournit un refAvant et un refApres ; on extrait leur
+    //      numéro et on interroge photoCache.cache[num] qui regroupe TOUS les
+    //      fichiers Drive partageant ce même numéro (avant + après).
+    //    - Quand les deux cellules d'une ligne portent le même numéro, on
+    //      garantit donc que les deux photos viennent du même groupe Drive
+    //      (= même incident, même ligne du Sheet).
+    //    - On supprime totalement la recherche tolérante par sous-chaîne :
+    //      elle pouvait remonter un fichier d'un AUTRE numéro (ex : la
+    //      référence "5" matchait "15.avant.jpg") et casser la cohérence
+    //      Avant/Après au sein d'une ligne.
+    //    - Pour prefer='apres', on n'accepte que les fichiers explicitement
+    //      classés « après » (mot-clé apres/après/after) ; sinon on renvoie ''
+    //      (champ laissé vide côté client, comme demandé).
     function resolveCleanPhoto(refRaw, prefer) {
       if (isNull(refRaw)) return '';
       var ref = String(refRaw).trim();
       if (!ref) return '';
-      var byNameKey = ref.toLowerCase();
 
-      // Helper : un fileId est-il classé « après » dans le cache ?
+      // Helpers : à quel groupe (avant/apres) appartient ce fileId dans le cache ?
       function isApresFile(fid) {
         var nums = Object.keys(photoCache.cache);
         for (var i = 0; i < nums.length; i++) {
@@ -397,36 +408,39 @@ function readCleaning(ss, photoCache) {
         }
         return false;
       }
+      function isAvantFile(fid) {
+        var nums = Object.keys(photoCache.cache);
+        for (var i = 0; i < nums.length; i++) {
+          if (photoCache.cache[nums[i]].avant === fid) return true;
+        }
+        return false;
+      }
 
-      // 1. Recherche directe par nom de fichier exact
+      // 1. Recherche directe par nom de fichier exact (lowercased).
+      //    L'utilisateur a saisi un nom de fichier complet : on l'accepte
+      //    seulement s'il correspond à la classification demandée.
+      var byNameKey = ref.toLowerCase();
       var directFid = photoCache.byName[byNameKey];
       if (directFid) {
         if (prefer === 'apres') {
-          // L'utilisateur a explicitement nommé un fichier dans la colonne
-          // « Photo Après » : on l'accepte uniquement si Drive l'a bien classé
-          // comme une photo après (mot-clé apres/après/after dans son nom).
           if (isApresFile(directFid)) return directFid;
+          // Sinon : nom valide mais classé « avant » → on tombe sur la lookup
+          // par numéro pour récupérer le bon fichier « après » du même groupe.
+        } else if (prefer === 'avant') {
+          if (isAvantFile(directFid)) return directFid;
         } else {
           return directFid;
         }
       }
 
-      // 2. Recherche tolérante par sous-chaîne — désactivée pour 'apres'
-      //    (risque de remonter un fichier « avant » par hasard).
-      if (prefer !== 'apres') {
-        var keys = Object.keys(photoCache.byName);
-        for (var k = 0; k < keys.length; k++) {
-          if (keys[k].indexOf(byNameKey) > -1 || byNameKey.indexOf(keys[k]) > -1) {
-            return photoCache.byName[keys[k]];
-          }
-        }
-      }
-
-      // 3. Recherche par numéro — préférence Avant/Après respectée strictement
+      // 2. Recherche par numéro — c'est ici que le couplage par ligne se joue :
+      //    refAvant et refApres d'une même ligne, s'ils portent le même
+      //    numéro, retombent sur le même cache[num] et donc le même couple
+      //    avant/après côté Drive.
       var m = ref.match(/(\d+)/);
       if (m && photoCache.cache[m[1]]) {
         var entry = photoCache.cache[m[1]];
-        if (prefer === 'apres') return entry.apres || '';   // pas de fallback
+        if (prefer === 'apres') return entry.apres || '';
         if (prefer === 'avant') return entry.avant || entry.any || '';
         return entry.any || entry.avant || entry.apres || '';
       }
