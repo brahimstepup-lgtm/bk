@@ -219,18 +219,31 @@ function readPlanning(ss) {
 
 // ════════════════════════════════════════════════════════════
 // ── CACHE PHOTOS NETTOYAGE ───────────────────────────────────
-// Construit un index { numéro → { any, avant, apres } } pour le
-// sous-dossier "Suivi de Nettoyage - Sobco 3_Images" du dossier
-// parent CLEAN_PARENT_FOLDER_ID.
-// Si le sous-dossier n'est pas trouvé, on scanne aussi le parent
-// directement (et ses sous-dossiers en récursif, profondeur 2).
-// La distinction AVANT / APRÈS suit la même règle que pour les
-// TAGs : mot-clé apres / après / after dans le nom de fichier.
+// Construit un index complet du sous-dossier
+// "Suivi de Nettoyage - Sobco 3_Images" (sous CLEAN_PARENT_FOLDER_ID).
+//
+// Important : on N'indexe PAS par "premier numéro trouvé" dans le
+// nom — c'était la cause de l'effet "même photo partout" quand
+// plusieurs fichiers partagent un préfixe commun (année, code de
+// site, etc.). À la place, on garde :
+//   - byName       : nom-de-fichier-en-minuscules → fileId (match exact)
+//   - allFiles     : liste complète [{ id, lcName }] pour le scoring
+//                    par token au moment de la résolution
+//   - apresIds     : { fileId → true } pour les fichiers classés "après"
+//                    (mot-clé apres / après / after dans le nom)
+//
+// Le couplage Avant/Après pour une ligne du Sheet se fait au moment
+// de la résolution : on cherche les fichiers dont le nom contient la
+// référence comme TOKEN (entouré de non-alphanumériques) puis on
+// filtre par classification demandée. Quand les deux cellules d'une
+// ligne portent la même référence, les deux photos viennent forcément
+// de la même famille de fichiers Drive.
 // ════════════════════════════════════════════════════════════
 function buildCleaningPhotosCache() {
-  var cache  = {};   // num → { any, avant, apres }
-  var byName = {};   // nom de fichier (lowercased) → fileId
-  var count  = 0;
+  var byName   = {};   // nom de fichier (lowercased) → fileId
+  var apresIds = {};   // fileId → true si classé "après"
+  var allFiles = [];   // [{ id, lcName }]
+  var count    = 0;
 
   function scanFolder(folder, depth) {
     if (!folder || depth < 0) return;
@@ -241,24 +254,15 @@ function buildCleaningPhotosCache() {
       var id   = file.getId();
       count++;
 
-      // Index par nom (utile si la feuille référence le nom complet)
-      byName[String(name).toLowerCase()] = id;
+      var lcName = String(name).toLowerCase();
+      byName[lcName] = id;
+      allFiles.push({ id: id, lcName: lcName });
 
-      // Extraire le premier numéro rencontré
-      var m = name.match(/(\d+)/);
-      if (m) {
-        var num = m[1];
-        if (!cache[num]) cache[num] = { any: '', avant: '', apres: '' };
-        if (!cache[num].any) cache[num].any = id;
-        var low = String(name).toLowerCase()
-          .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u');
-        var isApres = /(^|[^a-z])(apres|after|aft)([^a-z]|$)/.test(low);
-        if (isApres) {
-          if (!cache[num].apres) cache[num].apres = id;
-        } else {
-          if (!cache[num].avant) cache[num].avant = id;
-        }
-      }
+      // Classification AVANT / APRÈS — accents normalisés
+      var low = lcName
+        .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u');
+      var isApres = /(^|[^a-z])(apres|after|aft)([^a-z]|$)/.test(low);
+      if (isApres) apresIds[id] = true;
     }
     if (depth > 0) {
       var subs = folder.getFolders();
@@ -285,11 +289,17 @@ function buildCleaningPhotosCache() {
       Logger.log('Cleaning subfolder not found by name, scanning parent recursively');
       scanFolder(parent, 2);
     }
-    Logger.log('Cleaning cache: ' + count + ' fichiers, ' + Object.keys(cache).length + ' numéros');
+    Logger.log('Cleaning cache: ' + count + ' fichiers, ' +
+               Object.keys(apresIds).length + ' classés après');
   } catch(e) {
     Logger.log('buildCleaningPhotosCache error: ' + e.message);
   }
-  return { cache: cache, byName: byName, count: count };
+  return {
+    byName:   byName,
+    apresIds: apresIds,
+    allFiles: allFiles,
+    count:    count
+  };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -381,69 +391,58 @@ function readCleaning(ss, photoCache) {
 
     // 3. Helper : résoudre un fileId Drive depuis une référence photo.
     //
-    //    Règles de couplage Avant/Après par ligne du Sheet :
-    //    - Chaque ligne fournit un refAvant et un refApres ; on extrait leur
-    //      numéro et on interroge photoCache.cache[num] qui regroupe TOUS les
-    //      fichiers Drive partageant ce même numéro (avant + après).
-    //    - Quand les deux cellules d'une ligne portent le même numéro, on
-    //      garantit donc que les deux photos viennent du même groupe Drive
-    //      (= même incident, même ligne du Sheet).
-    //    - On supprime totalement la recherche tolérante par sous-chaîne :
-    //      elle pouvait remonter un fichier d'un AUTRE numéro (ex : la
-    //      référence "5" matchait "15.avant.jpg") et casser la cohérence
-    //      Avant/Après au sein d'une ligne.
-    //    - Pour prefer='apres', on n'accepte que les fichiers explicitement
-    //      classés « après » (mot-clé apres/après/after) ; sinon on renvoie ''
-    //      (champ laissé vide côté client, comme demandé).
+    //    Stratégie de couplage Avant/Après par ligne du Sheet :
+    //    - Chaque ligne fournit son refAvant et son refApres ; chaque
+    //      référence est résolue indépendamment contre l'index Drive.
+    //    - On ne fait PLUS de lookup par "premier numéro extrait" du
+    //      nom de fichier (qui causait des collisions avec un préfixe
+    //      d'année commun → même photo affichée pour toutes les lignes).
+    //    - À la place, on cherche les fichiers dont le nom contient la
+    //      référence comme TOKEN complet (entouré de séparateurs non-
+    //      alphanumériques ou de début/fin de nom). Ainsi "5" matche
+    //      "5-Avant.jpg" mais pas "15.jpg" ; "431" matche "2024-431-A.jpg"
+    //      mais pas "1431.jpg".
+    //    - Filtrage final par classification : prefer='apres' n'accepte
+    //      que les fichiers classés « après » (mot-clé apres/après/after
+    //      dans le nom). Sinon on renvoie '' et le client laisse vide.
+    function escapeRegex(s) {
+      return s.replace(/[.*+?^${}()|[\]\\\/]/g, '\\$&');
+    }
+    function matchesPrefer(fid, prefer) {
+      if (prefer === 'apres') return !!photoCache.apresIds[fid];
+      if (prefer === 'avant') return !photoCache.apresIds[fid];
+      return true;
+    }
     function resolveCleanPhoto(refRaw, prefer) {
       if (isNull(refRaw)) return '';
       var ref = String(refRaw).trim();
       if (!ref) return '';
 
-      // Helpers : à quel groupe (avant/apres) appartient ce fileId dans le cache ?
-      function isApresFile(fid) {
-        var nums = Object.keys(photoCache.cache);
-        for (var i = 0; i < nums.length; i++) {
-          if (photoCache.cache[nums[i]].apres === fid) return true;
-        }
-        return false;
-      }
-      function isAvantFile(fid) {
-        var nums = Object.keys(photoCache.cache);
-        for (var i = 0; i < nums.length; i++) {
-          if (photoCache.cache[nums[i]].avant === fid) return true;
-        }
-        return false;
-      }
+      // Nettoyer les préfixes courants (tags/, photo_, ref-, etc.)
+      var clean = ref.replace(/^(tags?|photo|ref(?:erence)?)[\/_\-:]+/i, '').trim();
+      if (!clean) return '';
+      var byNameKey = clean.toLowerCase();
 
-      // 1. Recherche directe par nom de fichier exact (lowercased).
-      //    L'utilisateur a saisi un nom de fichier complet : on l'accepte
-      //    seulement s'il correspond à la classification demandée.
-      var byNameKey = ref.toLowerCase();
-      var directFid = photoCache.byName[byNameKey];
-      if (directFid) {
-        if (prefer === 'apres') {
-          if (isApresFile(directFid)) return directFid;
-          // Sinon : nom valide mais classé « avant » → on tombe sur la lookup
-          // par numéro pour récupérer le bon fichier « après » du même groupe.
-        } else if (prefer === 'avant') {
-          if (isAvantFile(directFid)) return directFid;
-        } else {
-          return directFid;
+      // 1. Match exact par nom de fichier (l'utilisateur a saisi le nom complet)
+      var exact = photoCache.byName[byNameKey];
+      if (exact && matchesPrefer(exact, prefer)) return exact;
+
+      // 2. Match par token : la référence apparaît comme bloc complet
+      //    dans le nom de fichier. On scanne tous les fichiers et on
+      //    retient le premier qui matche ET qui satisfait la classification.
+      var pattern;
+      try {
+        pattern = new RegExp('(^|[^a-z0-9])' + escapeRegex(byNameKey) + '([^a-z0-9]|$)', 'i');
+      } catch(e) { pattern = null; }
+      if (pattern) {
+        for (var i = 0; i < photoCache.allFiles.length; i++) {
+          var f = photoCache.allFiles[i];
+          if (pattern.test(f.lcName) && matchesPrefer(f.id, prefer)) {
+            return f.id;
+          }
         }
       }
 
-      // 2. Recherche par numéro — c'est ici que le couplage par ligne se joue :
-      //    refAvant et refApres d'une même ligne, s'ils portent le même
-      //    numéro, retombent sur le même cache[num] et donc le même couple
-      //    avant/après côté Drive.
-      var m = ref.match(/(\d+)/);
-      if (m && photoCache.cache[m[1]]) {
-        var entry = photoCache.cache[m[1]];
-        if (prefer === 'apres') return entry.apres || '';
-        if (prefer === 'avant') return entry.avant || entry.any || '';
-        return entry.any || entry.avant || entry.apres || '';
-      }
       return '';
     }
 
