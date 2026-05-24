@@ -398,9 +398,11 @@ function readCleaning(ss, photoCache) {
       var m = ref.match(/(\d+)/);
       if (m && photoCache.cache[m[1]]) {
         var entry = photoCache.cache[m[1]];
-        if (prefer === 'apres' && entry.apres) return entry.apres;
-        if (prefer === 'avant' && entry.avant) return entry.avant;
-        return entry.any || entry.avant || entry.apres || '';
+        // Pour "après" : ne JAMAIS retomber sur un fichier avant/any.
+        // Seul un fichier explicitement tagué "apres/after" est accepté.
+        if (prefer === 'apres') return entry.apres || '';
+        if (prefer === 'avant') return entry.avant || entry.any || '';
+        return entry.any || entry.avant || '';
       }
       return '';
     }
@@ -439,18 +441,11 @@ function readCleaning(ss, photoCache) {
       var refAvant = val(COL.photoAvant) || val(COL.photoGen);
       var refApres = val(COL.photoApres);
 
-      // Si une seule colonne photo (générique), les fichiers à mot-clé "après"
-      // dans Drive serviront d'image après automatiquement
+      // RÈGLE STRICTE : on n'affiche une photo "après" que si la colonne
+      // « photo après » de la feuille est explicitement renseignée.
+      // Aucun fallback automatique sur le numéro de la photo "avant".
       var fileIdAvant = resolveCleanPhoto(refAvant, 'avant');
-      var fileIdApres = resolveCleanPhoto(refApres, 'apres');
-      if (!fileIdApres && refAvant) {
-        // fallback : si pas de réf après explicite, chercher une photo "après"
-        // qui partage le même numéro que la ref avant
-        var m2 = String(refAvant).match(/(\d+)/);
-        if (m2 && photoCache.cache[m2[1]] && photoCache.cache[m2[1]].apres) {
-          fileIdApres = photoCache.cache[m2[1]].apres;
-        }
-      }
+      var fileIdApres = refApres ? resolveCleanPhoto(refApres, 'apres') : '';
 
       // Sauter les lignes complètement vides (pas de zone, description, ni photo, ni statut)
       if (!zone && !emplacement && !description && !observation && !statut && !fileIdAvant && !fileIdApres && !val(COL.id)) continue;
