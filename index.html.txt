@@ -756,15 +756,15 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     <div class="ct"><span class="ct-dot"></span>Liste TAGs
       <span id="tagListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
       <span style="color:var(--text3);font-size:9px">
-        📸 = photo Drive (Avant/Après) · 📷 = pas de photo · Plus récents en haut
+        Vignettes Avant / Après chargées depuis Drive · Plus récents en haut
       </span>
     </div>
     <div class="tblw">
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>Date ↓</th><th>Type</th><th>Zone</th>
-            <th>Description</th><th>Responsable</th><th>Statut</th><th>📷</th>
+            <th>ID</th><th>Date ↓</th><th>Avant</th><th>Après</th>
+            <th>Description</th><th>Zone</th><th>Type</th><th>Responsable</th><th>Statut</th>
           </tr>
         </thead>
         <tbody id="tagBody"></tbody>
@@ -2159,14 +2159,14 @@ function applyTagF(){
   mkChart('tagZoneC','bar',tzk,[{data:tzk.map(function(k){return tzones[k];}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
 
-  // Table avec responsable + indicateur photo Drive
+  // Table avec vignettes Avant / Après inline (chargement asynchrone)
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
   if(filtered.length===0){
     var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
       :'Aucun TAG pour ce filtre';
-    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
+    tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
     return;
   }
   function hl(str){
@@ -2174,38 +2174,73 @@ function applyTagF(){
     var re=new RegExp('('+searchVal.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
     return esc(str).replace(re,'<mark style="background:rgba(245,166,35,.35);border-radius:2px;padding:0 1px">$1</mark>');
   }
-  filtered.forEach(function(t){
+  var pendingTagThumbs=[];
+  filtered.forEach(function(t,idx){
     var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
     var respHtml=t.responsable
       ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
       :'<span style="color:var(--text3);font-size:9px">—</span>';
-    // Bouton photo : 📸 si Drive résolu, 📷 sinon
-    // Le serveur renvoie t.hasPhotoAvant / t.hasPhotoApres + driveFileIdAvant / driveFileIdApres
-    var hasPhoto=!!(t.hasPhoto&&t.driveFileId);
-    var hasApresPhoto=!!(t.hasPhotoApres&&t.driveFileIdApres);
-    var photoCls=hasPhoto?'tag-btn has-photo':'tag-btn no-photo';
-    var photoIco=hasPhoto?(hasApresPhoto?'📸':'📸'):'📷';
-    var photoTitle=hasPhoto
-      ?'Photo Avant'+(hasApresPhoto?' + Après':'')+' : '+(t.photoClean||t.photoRef)
-      :(t.photoRef?'Pas de photo Drive : '+(t.photoClean||t.photoRef):'Pas de photo');
+
+    // ── Vignettes Avant / Après — chargement asynchrone via google.script.run
+    function tagThumbCell(label, has, fid, ref){
+      var cellId='tagThumb_'+idx+'_'+label;
+      if(!has||!fid){
+        return '<td class="cln-thumb-cell"><div class="cln-thumb-ph" title="Pas de photo '+label+'">📷</div></td>';
+      }
+      pendingTagThumbs.push({fid:fid,cellId:cellId,label:label,ref:ref||'',tag:t});
+      return '<td class="cln-thumb-cell"><div id="'+cellId+'" class="cln-thumb-load" title="Chargement photo '+label+' depuis Drive…"></div></td>';
+    }
+    // L'ordre des colonnes Avant puis Après est garanti côté HTML
+    var avantCellHtml=tagThumbCell('Avant', t.hasPhotoAvant, t.driveFileIdAvant, t.photoClean||t.photoRef);
+    var apresCellHtml=tagThumbCell('Après', t.hasPhotoApres, t.driveFileIdApres, t.photoCleanApres||t.photoRefApres||t.photoClean||t.photoRef);
+
     var tr=document.createElement('tr');
+    tr.style.cursor='pointer';
     tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
       +'<td style="white-space:nowrap;font-size:10px">'+t.date+'</td>'
-      +'<td style="font-size:10px">'+hl(t.type)+'</td>'
+      +avantCellHtml+apresCellHtml
+      +'<td style="font-size:10px;max-width:180px">'+hl(t.description.substring(0,80))+(t.description.length>80?'…':'')+'</td>'
       +'<td><span class="rbadge">'+hl((t.zone||t.emplacement)||'—')+'</span></td>'
-      +'<td style="font-size:10px;max-width:130px">'+hl(t.description.substring(0,55))+(t.description.length>55?'…':'')+'</td>'
+      +'<td style="font-size:10px">'+hl(t.type)+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
-      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
-      +'<td><button class="'+photoCls+'" title="'+esc(photoTitle)+'">'+photoIco+'</button></td>';
-    tr.querySelector('.tag-btn').addEventListener('click',function(e){
-      e.stopPropagation();
-      openTagModal(t);
-      // Basculer directement sur l'onglet Photo
-      var photoTab=document.querySelectorAll('#tagModal .modal-tab')[1];
-      if(photoTab) switchTab('mTag','photo',photoTab);
-    });
+      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>';
+    tr.addEventListener('click',function(){ openTagModal(t); });
     tb.appendChild(tr);
   });
+
+  // ── Chargement asynchrone des vignettes (avec cache partagé) ──
+  if(!window._tagPhotoCache) window._tagPhotoCache={};
+  pendingTagThumbs.forEach(function(p){
+    var slot=document.getElementById(p.cellId);
+    if(!slot) return;
+    var cached=window._tagPhotoCache[p.fid];
+    if(cached){ replaceTagThumb(slot,cached,p); return; }
+    google.script.run
+      .withSuccessHandler(function(d){
+        if(d){ window._tagPhotoCache[p.fid]=d; replaceTagThumb(slot,d,p); }
+        else if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
+      })
+      .withFailureHandler(function(){
+        if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
+      })
+      .getTagPhotoForClient(p.fid);
+  });
+}
+
+function replaceTagThumb(slot, dataUrl, p){
+  if(!slot||!slot.parentNode) return;
+  var img=document.createElement('img');
+  img.src=dataUrl;
+  img.className='cln-thumb';
+  img.alt=p.label;
+  img.title=p.label+(p.ref?' · '+p.ref:'')+' (cliquer pour agrandir)';
+  img.addEventListener('click',function(e){
+    e.stopPropagation();
+    openTagModal(p.tag);
+    var photoTab=document.querySelectorAll('#tagModal .modal-tab')[1];
+    if(photoTab) switchTab('mTag','photo',photoTab);
+  });
+  slot.parentNode.replaceChild(img,slot);
 }
 
 // ══ FILTRES ACCIDENTS ═════════════════════════════════════════
