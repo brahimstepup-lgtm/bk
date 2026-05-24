@@ -338,7 +338,8 @@ function readCleaning(ss, photoCache) {
     var COL = {
       id:-1, date:-1, dateCible:-1, zone:-1, emplacement:-1,
       description:-1, observation:-1, action:-1, responsable:-1,
-      statut:-1, photoAvant:-1, photoApres:-1, photoGen:-1, type:-1, frequence:-1
+      statut:-1, photoAvant:-1, photoApres:-1, photoGen:-1, type:-1, frequence:-1,
+      propre:-1
     };
     for (var c = 0; c < hdr.length; c++) {
       var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
@@ -371,6 +372,7 @@ function readCleaning(ss, photoCache) {
       else if (h.indexOf('observation') > -1 || h.indexOf('constat') > -1) { if (COL.observation < 0) COL.observation = c; }
       else if (h.indexOf('action') > -1 || h.indexOf('mesure') > -1 || h.indexOf('correctif') > -1) { if (COL.action < 0) COL.action = c; }
       else if (h.indexOf('respons') > -1 || h.indexOf('charg') > -1) { if (COL.responsable < 0) COL.responsable = c; }
+      else if (h.indexOf('propre') > -1)                            { if (COL.propre < 0) COL.propre = c; }
       else if (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)  { if (COL.statut < 0) COL.statut = c; }
       else if (h.indexOf('type') > -1 || h.indexOf('nature') > -1)  { if (COL.type < 0) COL.type = c; }
       else if (h.indexOf('frequen') > -1 || h.indexOf('periodicit') > -1) { if (COL.frequence < 0) COL.frequence = c; }
@@ -434,6 +436,7 @@ function readCleaning(ss, photoCache) {
       var statut      = val(COL.statut);
       var type        = val(COL.type);
       var frequence   = val(COL.frequence);
+      var propre      = val(COL.propre);
 
       // Photos : 3 colonnes possibles
       var refAvant = val(COL.photoAvant) || val(COL.photoGen);
@@ -470,6 +473,7 @@ function readCleaning(ss, photoCache) {
         action:      action,
         responsable: responsable,
         statut:      statut,
+        propre:      propre,
         photoRefAvant:    refAvant,
         photoRefApres:    refApres,
         driveFileIdAvant: fileIdAvant,
