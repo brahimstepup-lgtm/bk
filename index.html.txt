@@ -445,7 +445,12 @@ tr:hover td{background:var(--bg3);color:var(--text)}
   display:flex;align-items:center;justify-content:center;margin:0 auto;position:relative}
 .cln-thumb-load::after{content:'';width:14px;height:14px;border:2px solid var(--bg5);
   border-top-color:var(--p3);border-radius:50%;animation:spin .8s linear infinite}
+.cln-thumb-pending{width:74px;height:54px;border-radius:6px;border:1px dashed rgba(245,166,35,.5);
+  background:rgba(245,166,35,.08);display:flex;align-items:center;justify-content:center;
+  text-align:center;color:var(--amber);font-size:9px;font-weight:700;line-height:1.1;
+  padding:2px 4px;margin:0 auto;letter-spacing:.2px}
 html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
+html.light .cln-thumb-pending{background:rgba(245,166,35,.12)}
 /* Photo TAG */
 .photo-area{display:flex;flex-direction:column;align-items:center;gap:10px}
 .photo-img{max-width:100%;max-height:50vh;border-radius:8px;object-fit:contain;border:1px solid var(--border)}
@@ -2429,6 +2434,9 @@ function renderClnTable(items, searchVal){
     function thumbCell(label, has, fid, ref){
       var cellId = 'clnThumb_' + idx + '_' + label;
       if (!has || !fid) {
+        if (label === 'Après') {
+          return '<td class="cln-thumb-cell"><div class="cln-thumb-pending" title="Photo après non disponible — nettoyage en cours">Nettoyage<br>en cours</div></td>';
+        }
         return '<td class="cln-thumb-cell"><div class="cln-thumb-ph" title="Pas de photo '+label+'">📷</div></td>';
       }
       pendingThumbs.push({ fid: fid, cellId: cellId, label: label, ref: ref || '', cln: c });
@@ -2563,13 +2571,23 @@ function openCleanModal(c){
         if (results.apres) html += '<img src="'+results.apres+'" style="max-width:100%;max-height:44vh;border-radius:10px;object-fit:contain;border:1px solid var(--border)">';
         else html += '<div class="photo-noimg" style="padding:16px"><div style="font-size:28px;margin-bottom:6px">⚠️</div><p style="color:var(--amber);font-size:11px">Lecture impossible</p></div>';
         html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(c.photoRefApres||'après')+'</p></div>';
+      } else {
+        // Pas de photo après disponible : afficher un placeholder « Nettoyage en cours »
+        html += '<div style="flex:1;min-width:220px;max-width:48%;display:flex;flex-direction:column;align-items:center;gap:6px">';
+        html += '<div style="font-size:11px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;padding:3px 10px;background:rgba(245,166,35,.12);border:1px solid rgba(245,166,35,.3);border-radius:6px">⏳ Après</div>';
+        html += '<div style="width:100%;min-height:160px;border-radius:10px;border:1px dashed rgba(245,166,35,.5);background:rgba(245,166,35,.05);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px 16px">';
+        html += '<div style="font-size:34px">🧹</div>';
+        html += '<p style="color:var(--amber);font-size:13px;font-weight:700;letter-spacing:.4px;text-align:center">Nettoyage en cours</p>';
+        html += '<p style="color:var(--text3);font-size:10px;text-align:center;line-height:1.4">La photo « après » sera ajoutée<br>une fois le nettoyage terminé.</p>';
+        html += '</div>';
+        html += '<p style="font-size:9px;color:var(--text3)">📁 photo après non disponible</p></div>';
       }
       html += '</div>';
       html += '<div style="width:100%;background:var(--bg4);border-radius:8px;padding:8px 12px;margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
       html += '<span style="font-size:10px;color:var(--text3)">🧹 Nettoyage '+esc(c.id)+'</span>';
       if (hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(245,166,35,.12);color:var(--amber)">Avant ✓</span>';
       if (hasApres) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(16,201,133,.12);color:var(--green)">Après ✓</span>';
-      if (!hasApres && hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(232,68,90,.12);color:var(--red)">Après : non disponible</span>';
+      if (!hasApres && hasAvant) html += '<span style="font-size:9px;padding:2px 7px;border-radius:4px;background:rgba(245,166,35,.18);color:var(--amber);font-weight:700">⏳ Nettoyage en cours</span>';
       html += '</div>';
       photoArea.innerHTML = html;
     }
