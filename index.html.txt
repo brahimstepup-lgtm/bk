@@ -2429,35 +2429,9 @@ function renderClnTable(items, searchVal){
     function thumbCell(label, has, fid, ref){
       var cellId = 'clnThumb_' + idx + '_' + label;
       if (!has || !fid) {
+        // Photo absente : cellule totalement vide (pas de placeholder, pas de message)
         if (label === 'Après') {
-          // Image après non disponible → ne rien afficher (pas de placeholder)
-          // Mentionner que le nettoyage est en cours + statut "Propre ?" depuis la source
-          var propreVal = String((c.propre || '')).trim();
-          var propreLow = propreVal.toLowerCase();
-          var propreColor = 'var(--text2)';
-          var propreBg    = 'var(--bg4)';
-          if (propreVal) {
-            if (propreLow === 'oui' || propreLow === 'yes' || propreLow === 'ok' ||
-                propreLow === 'propre' || propreLow.indexOf('propre ✓') > -1) {
-              propreColor = 'var(--green)'; propreBg = 'rgba(16,201,133,.12)';
-            } else if (propreLow === 'non' || propreLow === 'no' ||
-                       propreLow.indexOf('sale') > -1 || propreLow.indexOf('non propre') > -1) {
-              propreColor = 'var(--red)';   propreBg = 'rgba(232,68,90,.12)';
-            } else if (propreLow.indexOf('cours') > -1 || propreLow.indexOf('partiel') > -1 ||
-                       propreLow.indexOf('progress') > -1) {
-              propreColor = 'var(--amber)'; propreBg = 'rgba(245,166,35,.12)';
-            }
-          }
-          var propreHtml = propreVal
-            ? '<div style="font-size:9px;font-weight:700;color:'+propreColor+';margin-top:4px;padding:1px 6px;background:'+propreBg+';border-radius:3px;display:inline-block;font-family:\'JetBrains Mono\',monospace" title="Propre ?">'+esc(propreVal)+'</div>'
-            : '';
-          return '<td class="cln-thumb-cell" style="vertical-align:middle">' +
-                 '<div title="Photo après non disponible — nettoyage en cours" style="display:flex;flex-direction:column;align-items:center;gap:0;line-height:1.2">' +
-                 '<span style="font-size:18px">🧹</span>' +
-                 '<span style="font-size:9px;font-weight:700;color:var(--amber);margin-top:2px">Nettoyage</span>' +
-                 '<span style="font-size:9px;color:var(--text3)">en cours</span>' +
-                 propreHtml +
-                 '</div></td>';
+          return '<td class="cln-thumb-cell"></td>';
         }
         return '<td class="cln-thumb-cell"><div class="cln-thumb-ph" title="Pas de photo '+label+'">📷</div></td>';
       }
