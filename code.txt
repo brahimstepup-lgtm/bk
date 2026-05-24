@@ -380,26 +380,54 @@ function readCleaning(ss, photoCache) {
     Logger.log('Cleaning COL: ' + JSON.stringify(COL));
 
     // 3. Helper : résoudre un fileId Drive depuis une référence photo
+    //    Règle stricte pour prefer='apres' : on ne retourne JAMAIS un fichier
+    //    qui n'est pas explicitement classé « après ». Si rien ne correspond,
+    //    on renvoie '' (champ laissé vide côté client).
     function resolveCleanPhoto(refRaw, prefer) {
       if (isNull(refRaw)) return '';
       var ref = String(refRaw).trim();
       if (!ref) return '';
-      // Recherche directe par nom de fichier
       var byNameKey = ref.toLowerCase();
-      if (photoCache.byName[byNameKey]) return photoCache.byName[byNameKey];
-      // Recherche tolérante (avec / sans extension)
-      var keys = Object.keys(photoCache.byName);
-      for (var k = 0; k < keys.length; k++) {
-        if (keys[k].indexOf(byNameKey) > -1 || byNameKey.indexOf(keys[k]) > -1) {
-          return photoCache.byName[keys[k]];
+
+      // Helper : un fileId est-il classé « après » dans le cache ?
+      function isApresFile(fid) {
+        var nums = Object.keys(photoCache.cache);
+        for (var i = 0; i < nums.length; i++) {
+          if (photoCache.cache[nums[i]].apres === fid) return true;
+        }
+        return false;
+      }
+
+      // 1. Recherche directe par nom de fichier exact
+      var directFid = photoCache.byName[byNameKey];
+      if (directFid) {
+        if (prefer === 'apres') {
+          // L'utilisateur a explicitement nommé un fichier dans la colonne
+          // « Photo Après » : on l'accepte uniquement si Drive l'a bien classé
+          // comme une photo après (mot-clé apres/après/after dans son nom).
+          if (isApresFile(directFid)) return directFid;
+        } else {
+          return directFid;
         }
       }
-      // Recherche par numéro
+
+      // 2. Recherche tolérante par sous-chaîne — désactivée pour 'apres'
+      //    (risque de remonter un fichier « avant » par hasard).
+      if (prefer !== 'apres') {
+        var keys = Object.keys(photoCache.byName);
+        for (var k = 0; k < keys.length; k++) {
+          if (keys[k].indexOf(byNameKey) > -1 || byNameKey.indexOf(keys[k]) > -1) {
+            return photoCache.byName[keys[k]];
+          }
+        }
+      }
+
+      // 3. Recherche par numéro — préférence Avant/Après respectée strictement
       var m = ref.match(/(\d+)/);
       if (m && photoCache.cache[m[1]]) {
         var entry = photoCache.cache[m[1]];
-        if (prefer === 'apres' && entry.apres) return entry.apres;
-        if (prefer === 'avant' && entry.avant) return entry.avant;
+        if (prefer === 'apres') return entry.apres || '';   // pas de fallback
+        if (prefer === 'avant') return entry.avant || entry.any || '';
         return entry.any || entry.avant || entry.apres || '';
       }
       return '';
@@ -439,18 +467,12 @@ function readCleaning(ss, photoCache) {
       var refAvant = val(COL.photoAvant) || val(COL.photoGen);
       var refApres = val(COL.photoApres);
 
-      // Si une seule colonne photo (générique), les fichiers à mot-clé "après"
-      // dans Drive serviront d'image après automatiquement
+      // Résolution stricte : la photo Après n'est renseignée que si la colonne
+      // « Photo Après » contient une référence qui correspond bien à un fichier
+      // Drive classé « après ». Pas de devinette à partir du numéro de la
+      // photo Avant : si le champ est vide ou non résolu, on laisse vide.
       var fileIdAvant = resolveCleanPhoto(refAvant, 'avant');
       var fileIdApres = resolveCleanPhoto(refApres, 'apres');
-      if (!fileIdApres && refAvant) {
-        // fallback : si pas de réf après explicite, chercher une photo "après"
-        // qui partage le même numéro que la ref avant
-        var m2 = String(refAvant).match(/(\d+)/);
-        if (m2 && photoCache.cache[m2[1]] && photoCache.cache[m2[1]].apres) {
-          fileIdApres = photoCache.cache[m2[1]].apres;
-        }
-      }
 
       // Sauter les lignes complètement vides (pas de zone, description, ni photo, ni statut)
       if (!zone && !emplacement && !description && !observation && !statut && !fileIdAvant && !fileIdApres && !val(COL.id)) continue;
