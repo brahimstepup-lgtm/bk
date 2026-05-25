@@ -2153,11 +2153,44 @@ function applyTagF(){
   var closedF=filtered.length-openF;
   var cloPct=filtered.length>0?Math.round(closedF/filtered.length*100):0;
 
-  document.getElementById('tagStatsRow').innerHTML=
-    '<span class="tag-stat-pill tsp-total">Total : '+total+'</span>'
-    +'<span class="tag-stat-pill tsp-open">Ouverts : '+openAll+'</span>'
-    +'<span class="tag-stat-pill tsp-closed">Fermés : '+closedAll+'</span>'
-    +(filtered.length!==total?'<span class="tag-stat-pill tsp-filtered">Filtrés : <strong>'+filtered.length+'</strong></span>':'');
+  // Y a-t-il un filtre actif (autre que "tout afficher") ?
+  var anyFilterActive = (
+    tagStatFilter !== 'all'   ||
+    filterResp    !== 'all'   ||
+    filterZone    !== 'all'   ||
+    p             !== 'all'   ||
+    !!searchVal
+  );
+
+  // ── Cartes de synthèse en haut : reflètent le filtre actif ──
+  // Quand un filtre est appliqué, les 4 grosses cartes affichent
+  // les compteurs de la sélection courante (et non plus les totaux YTD).
+  var sumTotal  = anyFilterActive ? filtered.length : total;
+  var sumClosed = anyFilterActive ? closedF         : closedAll;
+  var sumOpen   = anyFilterActive ? openF           : openAll;
+  var sumPct    = anyFilterActive ? cloPct          : (total>0?Math.round(closedAll/total*100):0);
+  var sumLabel  = anyFilterActive ? ' (filtré)'     : '';
+  document.getElementById('tagSum').innerHTML=
+    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(sumTotal)+'</div><div class="tsl">Total TAGs'+sumLabel+'</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(sumClosed)+'</div><div class="tsl">Fermés ✓'+sumLabel+'</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(sumOpen)+'</div><div class="tsl">Ouverts'+sumLabel+'</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(sumPct)+'%</div><div class="tsl">Clôture'+sumLabel+'</div></div>';
+
+  // ── Pastilles de stats : focus sur la sélection courante ──
+  // Si un filtre est actif on montre les compteurs filtrés en avant
+  // et on garde le total absolu en repère discret.
+  if (anyFilterActive) {
+    document.getElementById('tagStatsRow').innerHTML=
+      '<span class="tag-stat-pill tsp-filtered">Filtrés : <strong>'+filtered.length+'</strong></span>'
+      +'<span class="tag-stat-pill tsp-open">Ouverts : '+openF+'</span>'
+      +'<span class="tag-stat-pill tsp-closed">Fermés : '+closedF+'</span>'
+      +'<span class="tag-stat-pill tsp-total" style="opacity:.65">sur '+total+' au total</span>';
+  } else {
+    document.getElementById('tagStatsRow').innerHTML=
+      '<span class="tag-stat-pill tsp-total">Total : '+total+'</span>'
+      +'<span class="tag-stat-pill tsp-open">Ouverts : '+openAll+'</span>'
+      +'<span class="tag-stat-pill tsp-closed">Fermés : '+closedAll+'</span>';
+  }
   document.getElementById('tagListCount').textContent=filtered.length+' résultats';
 
   document.getElementById('tagKpi').innerHTML=[
