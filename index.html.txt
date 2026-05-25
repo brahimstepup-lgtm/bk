@@ -2111,30 +2111,55 @@ function applyTagF(){
   var filterResp=document.getElementById('tagFilterResp').value;
   var filterZone=document.getElementById('tagFilterZone').value;
 
+  // Helper defensif : retourne toujours une string en minuscules,
+  // meme si le champ est null / undefined / nombre.
+  function _lc(v){ return ((v==null)?'':String(v)).toLowerCase(); }
+
   var filtered=(D.tags||[]).filter(function(t){
-    if(!t.id||t._err) return false;
-    var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
-    if(tagStatFilter==='open'&&!isOpen) return false;
-    if(tagStatFilter==='closed'&&isOpen) return false;
-    if(filterResp!=='all'&&(t.responsable||'').trim()!==filterResp) return false;
-    if(filterZone!=='all'){var z=tagZone(t); if(normZone(z)!==filterZone) return false;}
-    if(p!=='all'){
-      if(!t.isoDate) return p==='ytd';
-      var pts=t.isoDate.split('-');
-      if(p==='ytd'&&parseInt(pts[0])!==2026) return false;
-      if(p==='month'&&(parseInt(pts[0])!==yr||parseInt(pts[1])!==mo)) return false;
-      if(p==='custom'){if(d1&&t.isoDate<d1)return false;if(d2&&t.isoDate>d2)return false;}
+    try {
+      if(!t || !t.id || t._err) return false;
+
+      // Statut (defensif : pas d'exception si statut manquant)
+      var statutLc = _lc(t.statut);
+      var isOpen   = statutLc.indexOf('ouvert')>-1 || statutLc.indexOf('open')>-1;
+      if(tagStatFilter==='open'   && !isOpen) return false;
+      if(tagStatFilter==='closed' &&  isOpen) return false;
+
+      // Responsable
+      if(filterResp!=='all' && (t.responsable||'').toString().trim()!==filterResp) return false;
+
+      // Zone : match large (la zone du tag CONTIENT la valeur selectionnee, normalisee)
+      // Permet a 'Etage 0' de matcher aussi 'Etage 0 - Atelier 1'.
+      if(filterZone!=='all'){
+        var zNorm = normZone(tagZone(t));
+        if(!zNorm || zNorm.indexOf(filterZone)===-1) return false;
+      }
+
+      // Periode
+      if(p!=='all'){
+        if(!t.isoDate) return p==='ytd';
+        var pts=t.isoDate.split('-');
+        if(p==='ytd'   && parseInt(pts[0])!==2026) return false;
+        if(p==='month' && (parseInt(pts[0])!==yr||parseInt(pts[1])!==mo)) return false;
+        if(p==='custom'){ if(d1&&t.isoDate<d1) return false; if(d2&&t.isoDate>d2) return false; }
+      }
+
+      // Recherche libre (defensive sur tous les champs)
+      if(searchVal){
+        var hay = _lc(t.description)+' '+_lc(t.zone||t.emplacement)+' '+_lc(t.type)+' '
+                 +_lc(t.responsable)+' '+_lc(t.id)+' '+_lc(t.risque)+' '
+                 +_lc(t.photoRef).replace(/\btags?\b/gi,'');
+        if(hay.indexOf(searchVal)===-1) return false;
+      }
+      return true;
+    } catch(err) {
+      // Un tag mal forme ne doit JAMAIS faire planter le filtre entier.
+      try { console.warn('[applyTagF] tag ignore (erreur)', t && t.id, err); } catch(_){}
+      return false;
     }
-    if(searchVal){
-      // Recherche dans tous les champs, SAUF "tag" et "tags" ignorés
-      var hay=(t.description+' '+(t.zone||t.emplacement||'')+' '+t.type+' '
-        +t.responsable+' '+t.id+' '+t.risque+' '
-        // photoRef sans "tag" ni "tags"
-        +(t.photoRef||'').replace(/\btags?\b/gi,'')).toLowerCase();
-      if(hay.indexOf(searchVal)===-1) return false;
-    }
-    return true;
   });
+  // Diagnostic console (DevTools) :
+  try { console.log('[applyTagF] zone='+filterZone+' resp='+filterResp+' stat='+tagStatFilter+' periode='+p+' search='+(searchVal||'-')+' -> '+filtered.length+'/'+(D.tags||[]).length+' tags'); } catch(_){}
 
   // Tri
   filtered.sort(function(a,b){
