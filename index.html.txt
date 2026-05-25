@@ -377,6 +377,12 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .btn-send{padding:7px 12px;background:linear-gradient(135deg,var(--p1),var(--p2));
   color:white;border:none;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer}
 .btn-send:disabled,.btn-ai:disabled{opacity:.45;cursor:not-allowed}
+.btn-apply-filter{padding:6px 14px;background:linear-gradient(135deg,var(--p1),var(--p2));
+  color:#fff;border:1px solid rgba(13,168,210,.55);border-radius:7px;font-size:11px;font-weight:700;
+  letter-spacing:.4px;cursor:pointer;flex-shrink:0;font-family:'JetBrains Mono',monospace;
+  box-shadow:0 2px 6px rgba(9,99,126,.25);transition:all .2s}
+.btn-apply-filter:hover{filter:brightness(1.12);box-shadow:0 3px 10px rgba(9,99,126,.4)}
+.btn-apply-filter:active{transform:translateY(1px)}
 .typing::after{content:'▋';animation:blink .7s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
@@ -693,8 +699,8 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
     <input type="text" class="tag-search-input" id="tagSearch"
            placeholder="Rechercher description, zone, type, responsable, ID…"
-           oninput="applyTagF()">
-    <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+           onkeydown="if(event.key==='Enter'){applyTagF();}">
+    <select class="tag-sort-sel" id="tagSort">
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
       <option value="id_asc">ID ↑</option>
@@ -702,6 +708,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
+    <button class="btn-apply-filter" onclick="applyTagF()">APPLIQUER LE FILTRE</button>
     <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearTagFilters()">↺ Reset</button>
   </div>
 
@@ -721,16 +728,16 @@ html.light .notif-full-filters .pf-sel{background:#fff}
         <option value="all">Tout</option><option value="ytd">YTD 2026</option>
         <option value="month">Mois</option><option value="custom">Personnalisé</option>
       </select>
-      <select class="pf-sel" id="tagYr" style="display:none" onchange="applyTagF()"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
-      <select class="pf-sel" id="tagMo" style="display:none" onchange="applyTagF()">
+      <select class="pf-sel" id="tagYr" style="display:none"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
+      <select class="pf-sel" id="tagMo" style="display:none">
         <option value="1">Jan</option><option value="2">Fév</option><option value="3">Mar</option>
         <option value="4">Avr</option><option value="5">Mai</option><option value="6">Jun</option>
         <option value="7">Jul</option><option value="8">Aoû</option><option value="9">Sep</option>
         <option value="10">Oct</option><option value="11">Nov</option><option value="12">Déc</option>
       </select>
-      <input type="date" class="pf-input" id="tagD1" style="display:none" onchange="applyTagF()">
+      <input type="date" class="pf-input" id="tagD1" style="display:none">
       <span id="tagSep" style="display:none;color:var(--text3);font-size:10px">→</span>
-      <input type="date" class="pf-input" id="tagD2" style="display:none" onchange="applyTagF()">
+      <input type="date" class="pf-input" id="tagD2" style="display:none">
     </div>
   </div>
 
@@ -738,11 +745,11 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <div class="tag-filter-row" style="margin-bottom:10px">
     <div class="tag-filter-group">
       <span class="tag-filter-lbl">👤 Responsable :</span>
-      <select class="tag-dropdown" id="tagFilterResp" onchange="applyTagF()"><option value="all">Tous</option></select>
+      <select class="tag-dropdown" id="tagFilterResp"><option value="all">Tous</option></select>
     </div>
     <div class="tag-filter-group">
       <span class="tag-filter-lbl">📍 Zone :</span>
-      <select class="tag-dropdown" id="tagFilterZone" onchange="applyTagF()"><option value="all">Toutes</option></select>
+      <select class="tag-dropdown" id="tagFilterZone"><option value="all">Toutes</option></select>
     </div>
     <div class="tag-stats-row" id="tagStatsRow" style="margin-bottom:0;margin-left:auto"></div>
   </div>
@@ -2047,7 +2054,7 @@ function setTagStat(val,el){
   tagStatFilter=val;
   document.querySelectorAll('#tagStatChips .tag-filter-chip').forEach(function(c){c.classList.remove('on');});
   el.classList.add('on');
-  applyTagF();
+  // Filtrage uniquement au clic du bouton « APPLIQUER LE FILTRE »
 }
 function onTagPer(){
   var p=document.getElementById('tagPer').value;
@@ -2056,7 +2063,7 @@ function onTagPer(){
   document.getElementById('tagD1').style.display=p==='custom'?'inline-block':'none';
   document.getElementById('tagSep').style.display=p==='custom'?'inline-block':'none';
   document.getElementById('tagD2').style.display=p==='custom'?'inline-block':'none';
-  applyTagF();
+  // Filtrage uniquement au clic du bouton « APPLIQUER LE FILTRE »
 }
 function clearTagFilters(){
   document.getElementById('tagSearch').value='';
