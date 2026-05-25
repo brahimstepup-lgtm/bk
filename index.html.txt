@@ -270,6 +270,16 @@ body{background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter'
 .tsp-open{background:rgba(232,68,90,.12);color:var(--red);border:1px solid rgba(232,68,90,.3)}
 .tsp-closed{background:rgba(16,201,133,.12);color:var(--green);border:1px solid rgba(16,201,133,.3)}
 .tsp-filtered{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+.btn-apply-tag{padding:5px 14px;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;
+  border:1px solid var(--p2);background:linear-gradient(135deg,var(--p1),var(--p3));color:#fff;
+  transition:all .2s;font-family:'JetBrains Mono',monospace;letter-spacing:.4px;flex-shrink:0;
+  box-shadow:0 2px 8px rgba(9,99,126,.35)}
+.btn-apply-tag:hover{filter:brightness(1.15);transform:translateY(-1px);box-shadow:0 4px 12px rgba(9,99,126,.5)}
+.btn-apply-tag:active{transform:translateY(0)}
+.btn-apply-tag.dirty{animation:applyPulse 1.4s ease-in-out infinite}
+@keyframes applyPulse{0%,100%{box-shadow:0 2px 8px rgba(9,99,126,.35)}50%{box-shadow:0 2px 16px rgba(13,168,210,.7)}}
+.tag-dirty-hint{display:none;font-size:10px;color:var(--amber);font-family:'JetBrains Mono',monospace;font-weight:600}
+.tag-dirty-hint.show{display:inline-block}
 
 /* ══ PYRAMIDE ══ */
 .pyr-outer{display:flex;flex-direction:column;align-items:center;padding:4px 0 8px}
@@ -693,8 +703,8 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
     <input type="text" class="tag-search-input" id="tagSearch"
            placeholder="Rechercher description, zone, type, responsable, ID…"
-           oninput="applyTagF()">
-    <select class="tag-sort-sel" id="tagSort" onchange="applyTagF()">
+           oninput="markTagDirty()" onkeydown="if(event.key==='Enter')applyTagF()">
+    <select class="tag-sort-sel" id="tagSort" onchange="markTagDirty()">
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
       <option value="id_asc">ID ↑</option>
@@ -702,6 +712,8 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <option value="zone_az">Zone A→Z</option>
       <option value="resp_az">Resp. A→Z</option>
     </select>
+    <span class="tag-dirty-hint" id="tagDirtyHint">● Modifications non appliquées</span>
+    <button class="btn-apply-tag" id="btnApplyTag" onclick="applyTagF()" title="Appliquer le filtre à la liste">▶ APPLIQUER LE FILTRE</button>
     <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearTagFilters()">↺ Reset</button>
   </div>
 
@@ -721,16 +733,16 @@ html.light .notif-full-filters .pf-sel{background:#fff}
         <option value="all">Tout</option><option value="ytd">YTD 2026</option>
         <option value="month">Mois</option><option value="custom">Personnalisé</option>
       </select>
-      <select class="pf-sel" id="tagYr" style="display:none" onchange="applyTagF()"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
-      <select class="pf-sel" id="tagMo" style="display:none" onchange="applyTagF()">
+      <select class="pf-sel" id="tagYr" style="display:none" onchange="markTagDirty()"><option value="2025">2025</option><option value="2026" selected>2026</option></select>
+      <select class="pf-sel" id="tagMo" style="display:none" onchange="markTagDirty()">
         <option value="1">Jan</option><option value="2">Fév</option><option value="3">Mar</option>
         <option value="4">Avr</option><option value="5">Mai</option><option value="6">Jun</option>
         <option value="7">Jul</option><option value="8">Aoû</option><option value="9">Sep</option>
         <option value="10">Oct</option><option value="11">Nov</option><option value="12">Déc</option>
       </select>
-      <input type="date" class="pf-input" id="tagD1" style="display:none" onchange="applyTagF()">
+      <input type="date" class="pf-input" id="tagD1" style="display:none" onchange="markTagDirty()">
       <span id="tagSep" style="display:none;color:var(--text3);font-size:10px">→</span>
-      <input type="date" class="pf-input" id="tagD2" style="display:none" onchange="applyTagF()">
+      <input type="date" class="pf-input" id="tagD2" style="display:none" onchange="markTagDirty()">
     </div>
   </div>
 
@@ -738,11 +750,11 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <div class="tag-filter-row" style="margin-bottom:10px">
     <div class="tag-filter-group">
       <span class="tag-filter-lbl">👤 Responsable :</span>
-      <select class="tag-dropdown" id="tagFilterResp" onchange="applyTagF()"><option value="all">Tous</option></select>
+      <select class="tag-dropdown" id="tagFilterResp" onchange="markTagDirty()"><option value="all">Tous</option></select>
     </div>
     <div class="tag-filter-group">
       <span class="tag-filter-lbl">📍 Zone :</span>
-      <select class="tag-dropdown" id="tagFilterZone" onchange="applyTagF()"><option value="all">Toutes</option></select>
+      <select class="tag-dropdown" id="tagFilterZone" onchange="markTagDirty()"><option value="all">Toutes</option></select>
     </div>
     <div class="tag-stats-row" id="tagStatsRow" style="margin-bottom:0;margin-left:auto"></div>
   </div>
@@ -2047,7 +2059,7 @@ function setTagStat(val,el){
   tagStatFilter=val;
   document.querySelectorAll('#tagStatChips .tag-filter-chip').forEach(function(c){c.classList.remove('on');});
   el.classList.add('on');
-  applyTagF();
+  markTagDirty();
 }
 function onTagPer(){
   var p=document.getElementById('tagPer').value;
@@ -2056,7 +2068,19 @@ function onTagPer(){
   document.getElementById('tagD1').style.display=p==='custom'?'inline-block':'none';
   document.getElementById('tagSep').style.display=p==='custom'?'inline-block':'none';
   document.getElementById('tagD2').style.display=p==='custom'?'inline-block':'none';
-  applyTagF();
+  markTagDirty();
+}
+function markTagDirty(){
+  var btn=document.getElementById('btnApplyTag');
+  var hint=document.getElementById('tagDirtyHint');
+  if(btn) btn.classList.add('dirty');
+  if(hint) hint.classList.add('show');
+}
+function clearTagDirty(){
+  var btn=document.getElementById('btnApplyTag');
+  var hint=document.getElementById('tagDirtyHint');
+  if(btn) btn.classList.remove('dirty');
+  if(hint) hint.classList.remove('show');
 }
 function clearTagFilters(){
   document.getElementById('tagSearch').value='';
@@ -2071,6 +2095,7 @@ function clearTagFilters(){
 }
 function applyTagF(){
   if(!D) return;
+  clearTagDirty();
   var p=document.getElementById('tagPer').value;
   var yr=parseInt(document.getElementById('tagYr').value)||2026;
   var mo=parseInt(document.getElementById('tagMo').value)||1;
