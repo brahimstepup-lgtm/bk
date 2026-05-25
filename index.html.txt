@@ -26,56 +26,56 @@
   --pyr-leg:#4d8a9a;
 }
 
-/* ══ THÈME CLAIR ══ */
+/* ══ THÈME CLAIR (adouci — moins agressif visuellement) ══ */
 html.light{
-  --bg:#f0f4f8;--bg2:#fff;--bg3:#f5f7fa;--bg4:#e8edf2;--bg5:#dde4ec;
-  --text:#1a2e3a;--text2:#2d5a72;--text3:#5a7a8a;
-  --border:#c8d8e4;--shadow:rgba(9,99,126,.1);
-  --card-bg:linear-gradient(135deg,#fff,#f5f7fa);
+  --bg:#dee5ec;--bg2:#edf2f7;--bg3:#e4ebf1;--bg4:#d4dde6;--bg5:#c2cdd9;
+  --text:#142532;--text2:#284e64;--text3:#557082;
+  --border:#b8c8d6;--shadow:rgba(9,99,126,.12);
+  --card-bg:linear-gradient(135deg,#edf2f7,#e4ebf1);
   --pyr1a:#ffd6db;--pyr1b:#ff8599;--pyr-txt1:#7a0015;
   --pyr2a:#ffe4cc;--pyr2b:#ffaa66;--pyr-txt2:#7a3000;
   --pyr3a:#fff5cc;--pyr3b:#ffd966;--pyr-txt3:#5a3a00;
   --pyr4a:#d6eef7;--pyr4b:#7abfdb;--pyr-txt4:#003a55;
   --pyr5a:#ccf0e0;--pyr5b:#66c99a;--pyr-txt5:#00432a;
   --pyr-conn1:#ff8599;--pyr-conn2:#ffaa66;--pyr-conn3:#ffd966;--pyr-conn4:#7abfdb;
-  --pyr-leg:#2d5a72;
+  --pyr-leg:#284e64;
 }
-html.light .hdr{background:linear-gradient(135deg,#fff,#f0f5f8)}
-html.light .kpi{background:linear-gradient(135deg,#fff,#f5f8fa)}
-html.light .card{background:linear-gradient(135deg,#fff,#f5f7fa)}
-html.light .iitem{background:#f5f7fa}
-html.light .iitem:hover{background:#e8edf2}
-html.light .tabs{background:#e8edf2}
-html.light .tab.on{background:linear-gradient(135deg,#fff,#f0f5f8)}
-html.light .pf-bar{background:#f5f7fa}
-html.light .tag-search-bar{background:#f5f7fa}
-html.light .modal-panel{background:#fff}
-html.light .modal-top{background:#f5f7fa}
-html.light .modal-tabs{background:#f0f4f8}
-html.light .modal-tab.on{background:#fff}
-html.light .info-item{background:#f0f4f8}
-html.light .desc-box{background:#f0f4f8}
-html.light .m5-card{background:#f0f4f8}
-html.light .act-item{background:#f0f4f8}
-html.light .tsc{background:linear-gradient(135deg,#f5f7fa,#edf1f5)}
-html.light th{background:#f0f4f8}
-html.light td{border-bottom-color:rgba(9,99,126,.1)}
-html.light tr:hover td{background:#e8f0f5}
-html.light .rbadge{background:#e0eaf2;color:var(--text2)}
-html.light .itag{background:#e0eaf2;color:var(--text2)}
-html.light .modal-bg{background:rgba(150,180,210,.75)}
-html.light .modal-close{background:#e8edf2}
-html.light .tag-btn{background:#e0eaf2}
-html.light .tag-filter-chip{background:#e0eaf2;color:var(--text2)}
+html.light .hdr{background:linear-gradient(135deg,#edf2f7,#e0e8ef)}
+html.light .kpi{background:linear-gradient(135deg,#edf2f7,#e4ebf1)}
+html.light .card{background:linear-gradient(135deg,#edf2f7,#e4ebf1)}
+html.light .iitem{background:#e4ebf1}
+html.light .iitem:hover{background:#d4dde6}
+html.light .tabs{background:#d4dde6}
+html.light .tab.on{background:linear-gradient(135deg,#edf2f7,#e0e8ef)}
+html.light .pf-bar{background:#e4ebf1}
+html.light .tag-search-bar{background:#e4ebf1}
+html.light .modal-panel{background:#edf2f7}
+html.light .modal-top{background:#e4ebf1}
+html.light .modal-tabs{background:#dee5ec}
+html.light .modal-tab.on{background:#edf2f7}
+html.light .info-item{background:#dee5ec}
+html.light .desc-box{background:#dee5ec}
+html.light .m5-card{background:#dee5ec}
+html.light .act-item{background:#dee5ec}
+html.light .tsc{background:linear-gradient(135deg,#e4ebf1,#d8e0e7)}
+html.light th{background:#dee5ec}
+html.light td{border-bottom-color:rgba(9,99,126,.12)}
+html.light tr:hover td{background:#d8e2ea}
+html.light .rbadge{background:#d2dce6;color:var(--text2)}
+html.light .itag{background:#d2dce6;color:var(--text2)}
+html.light .modal-bg{background:rgba(120,150,180,.65)}
+html.light .modal-close{background:#d4dde6}
+html.light .tag-btn{background:#d2dce6}
+html.light .tag-filter-chip{background:#d2dce6;color:var(--text2)}
 html.light .tag-filter-chip.on{color:#fff}
-html.light .photo-noimg{background:#f0f4f8}
-html.light .acc-row:hover td{background:rgba(9,99,126,.06)!important}
-html.light .notif-panel{background:#fff}
-html.light .notif-btn{background:#f5f7fa}
-html.light .acc-card{background:linear-gradient(135deg,#f5f7fa,#edf1f5)}
-html.light .ecard{background:linear-gradient(135deg,#f5f7fa,#edf1f5)}
-html.light .tag-search-input,.html.light .tag-dropdown,.html.light .tag-sort-sel{background:#fff}
-html.light .pf-sel,.html.light .kpi-sel{background:#fff}
+html.light .photo-noimg{background:#dee5ec}
+html.light .acc-row:hover td{background:rgba(9,99,126,.08)!important}
+html.light .notif-panel{background:#edf2f7}
+html.light .notif-btn{background:#e4ebf1}
+html.light .acc-card{background:linear-gradient(135deg,#e4ebf1,#d8e0e7)}
+html.light .ecard{background:linear-gradient(135deg,#e4ebf1,#d8e0e7)}
+html.light .tag-search-input,html.light .tag-dropdown,html.light .tag-sort-sel{background:#edf2f7}
+html.light .pf-sel,html.light .pf-input,html.light .kpi-sel,html.light .ai-input,html.light .ai-resp{background:#edf2f7}
 
 /* ══ BOUTON THÈME ══ */
 .theme-btn{width:32px;height:32px;border-radius:8px;background:var(--bg3);
@@ -113,6 +113,8 @@ body{background:var(--bg);color:var(--text);min-height:100vh;font-family:'Inter'
   border:1px solid var(--border);background:var(--bg3);color:var(--text2);
   transition:all .2s;font-family:'Inter',sans-serif}
 .btn:hover{background:var(--bg4);color:var(--text);border-color:var(--p2)}
+.btn:disabled{opacity:.55;cursor:wait}
+.btn.spinning{animation:spin .8s linear infinite}
 .btn-ai{background:linear-gradient(135deg,rgba(9,99,126,.3),rgba(13,168,210,.15));color:#7dd4e8;border-color:rgba(9,99,126,.5)}
 .modeBtn{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;
   border:1px solid var(--border);transition:all .2s;font-family:'JetBrains Mono',monospace}
@@ -576,7 +578,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     </div>
     <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Basculer thème">🌙</button>
     <button class="btn btn-ai" onclick="goAI()">✨ IA</button>
-    <button class="btn" onclick="location.reload()">↻</button>
+    <button class="btn" id="refreshBtn" onclick="refreshData()" title="Recharger les données">↻</button>
   </div>
 </div>
 
@@ -2846,6 +2848,44 @@ window.onload=function(){
     })
     .getDataForClient();
 };
+
+// ══ REFRESH ═══════════════════════════════════════════════════
+// Rechargement fiable des données dans un Web App Apps Script :
+// location.reload() est peu fiable dans l'iframe sandbox de
+// HtmlService — on re-appelle directement getDataForClient() et
+// on relance render() pour mettre à jour la vue en place.
+function refreshData(){
+  var btn=document.getElementById('refreshBtn');
+  if(btn&&btn.dataset.busy==='1') return;        // anti double-clic
+  if(btn){ btn.dataset.busy='1'; btn.disabled=true; btn.classList.add('spinning'); }
+
+  var main=document.getElementById('main');
+  var loader=document.getElementById('loader');
+  if(main) main.style.display='none';
+  if(loader){
+    loader.style.display='flex';
+    loader.innerHTML='<div class="spin"></div>'
+      +'<div style="color:var(--text3);font-size:12px">Actualisation des données…</div>';
+  }
+
+  google.script.run
+    .withSuccessHandler(function(data){
+      try{ render(data); }
+      finally{
+        if(btn){ btn.dataset.busy=''; btn.disabled=false; btn.classList.remove('spinning'); }
+      }
+    })
+    .withFailureHandler(function(err){
+      if(loader){
+        loader.innerHTML='<div style="color:var(--red);text-align:center;max-width:380px">'
+          +'<div style="font-size:36px;margin-bottom:10px">⚠️</div>'
+          +'<strong>Erreur d\'actualisation</strong><br><br>'+esc(err&&err.message?err.message:'Erreur inconnue')
+          +'<br><br><button class="btn" onclick="refreshData()">Réessayer</button></div>';
+      }
+      if(btn){ btn.dataset.busy=''; btn.disabled=false; btn.classList.remove('spinning'); }
+    })
+    .getDataForClient();
+}
 </script>
 </body>
 </html>
