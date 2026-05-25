@@ -343,6 +343,23 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .tag-btn.no-photo{opacity:.6}
 .tag-btn.no-photo:hover{background:var(--bg5);color:var(--text3)}
 
+/* ══ ÂGE TAGs OUVERTS (suivi des délais) ══ */
+.tag-age-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:11px}
+.tag-age-card{position:relative;background:linear-gradient(135deg,var(--bg3),var(--bg4));
+  border-radius:10px;padding:11px 10px 10px 14px;border:1px solid var(--border);overflow:hidden;
+  transition:transform .15s,border-color .15s}
+.tag-age-card:hover{transform:translateY(-1px);border-color:var(--p3)}
+.tag-age-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--ac,#f5a623)}
+.tag-age-top{display:flex;align-items:baseline;justify-content:space-between;gap:6px}
+.tag-age-val{font-size:22px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1;
+  color:var(--ac,#f5a623)}
+.tag-age-pct{font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;
+  color:var(--text3);background:var(--bg4);padding:2px 6px;border-radius:4px}
+.tag-age-lbl{font-size:10px;color:var(--text2);font-weight:600;margin-top:5px;
+  text-transform:uppercase;letter-spacing:.3px}
+.tag-age-sub{font-size:9px;color:var(--text3);margin-top:2px;font-family:'JetBrains Mono',monospace}
+html.light .tag-age-pct{background:#e0eaf2}
+
 /* ══ ACCIDENTS ══ */
 .acc-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px}
 .acc-card{background:linear-gradient(135deg,var(--bg3),var(--bg4));border-radius:10px;padding:12px;border:1px solid var(--border)}
@@ -748,6 +765,20 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 
   <div class="kpi-grid" id="tagKpi"></div>
+
+  <!-- ── Âge des TAGs ouverts (catégories de délai) ── -->
+  <div class="card" style="margin-bottom:11px">
+    <div class="ct">
+      <span class="ct-dot"></span>Âge des TAGs ouverts
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Suivi des délais — répartition des TAGs ouverts par ancienneté
+      </span>
+      <span id="tagAgeCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:auto">—</span>
+    </div>
+    <div class="tag-age-grid" id="tagAgeGrid"></div>
+    <div class="cw" style="height:170px"><canvas id="tagAgeC"></canvas></div>
+  </div>
+
   <div class="row2">
     <div class="card"><div class="ct"><span class="ct-dot"></span>Types de dangers</div><div class="cw" style="height:195px"><canvas id="dangerC"></canvas></div></div>
     <div class="card"><div class="ct"><span class="ct-dot"></span>TAGs par zone</div><div class="cw" style="height:195px"><canvas id="tagZoneC"></canvas></div></div>
@@ -2151,6 +2182,87 @@ function applyTagF(){
   var tzk=Object.keys(tzones).sort(function(a,b){return tzones[b]-tzones[a];}).slice(0,6);
   mkChart('tagZoneC','bar',tzk,[{data:tzk.map(function(k){return tzones[k];}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+
+  // ══ Âge des TAGs ouverts ══════════════════════════════════════
+  // Catégories cumulatives (chaque TAG est compté dans tous les seuils
+  // dont l'âge dépasse la limite — ex. un TAG de 45j compte dans >7j, >15j et >30j).
+  // Buckets exclusifs (couleurs) utilisés pour le graphique de distribution.
+  (function renderTagAge(){
+    var openFiltered=filtered.filter(function(t){
+      return (t.statut||'').toLowerCase().indexOf('ouvert')>-1
+          || (t.statut||'').toLowerCase().indexOf('open')>-1;
+    });
+    var nowMs=Date.now();
+    var ages=[]; // âge en jours pour chaque TAG ouvert daté
+    openFiltered.forEach(function(t){
+      if(!t.isoDate) return;
+      var ms=new Date(t.isoDate).getTime();
+      if(isNaN(ms)) return;
+      var d=Math.floor((nowMs-ms)/86400000);
+      if(d>=0) ages.push(d);
+    });
+
+    // Seuils cumulatifs (matchent la formulation « plus de … »)
+    var thresholds=[
+      {key:'gt7',  lbl:'> 7 jours',  sub:'plus de 7j',   min:7,  color:'#f5a623'}, // amber
+      {key:'gt15', lbl:'> 15 jours', sub:'plus de 15j',  min:15, color:'#f97316'}, // orange
+      {key:'gt30', lbl:'> 1 mois',   sub:'plus de 30j',  min:30, color:'#ef4444'}, // red
+      {key:'gt90', lbl:'> 3 mois',   sub:'plus de 90j',  min:90, color:'#991b1b'}  // dark red (critique)
+    ];
+    var totalOpen=openFiltered.length;
+    var counts=thresholds.map(function(th){
+      return ages.filter(function(d){return d>th.min;}).length;
+    });
+
+    // 4 cartes KPI cumulatives
+    var gridHtml=thresholds.map(function(th,i){
+      var n=counts[i];
+      var pct=totalOpen>0?Math.round(n/totalOpen*100):0;
+      return '<div class="tag-age-card" style="--ac:'+th.color+'">'
+        +'<div class="tag-age-top">'
+          +'<div class="tag-age-val">'+fmtNum(n)+'</div>'
+          +'<div class="tag-age-pct">'+pct+'%</div>'
+        +'</div>'
+        +'<div class="tag-age-lbl">'+th.lbl+'</div>'
+        +'<div class="tag-age-sub">'+th.sub+'</div>'
+      +'</div>';
+    }).join('');
+    document.getElementById('tagAgeGrid').innerHTML=gridHtml;
+    document.getElementById('tagAgeCount').textContent=
+      totalOpen+' TAG'+(totalOpen>1?'s':'')+' ouvert'+(totalOpen>1?'s':'')
+      +(ages.length<totalOpen?' · '+(totalOpen-ages.length)+' sans date':'');
+
+    // Bar chart : distribution exclusive par tranche (lecture rapide)
+    var exclusive=[
+      {lbl:'≤ 7 j',     min:0,  max:7,         color:'#10b981'},
+      {lbl:'8–15 j',    min:7,  max:15,        color:'#f5a623'},
+      {lbl:'16–30 j',   min:15, max:30,        color:'#f97316'},
+      {lbl:'31–90 j',   min:30, max:90,        color:'#ef4444'},
+      {lbl:'> 90 j',    min:90, max:Infinity,  color:'#991b1b'}
+    ];
+    var exData=exclusive.map(function(b){
+      return ages.filter(function(d){return d>b.min&&d<=b.max;}).length;
+    });
+    mkChart('tagAgeC','bar',
+      exclusive.map(function(b){return b.lbl;}),
+      [{
+        data:exData,
+        backgroundColor:exclusive.map(function(b){return b.color;}),
+        borderRadius:5,
+        borderSkipped:false
+      }],
+      Object.assign({},BASE,{
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){
+          var pct=totalOpen>0?Math.round(ctx.parsed.y/totalOpen*100):0;
+          return ctx.parsed.y+' TAG'+(ctx.parsed.y>1?'s':'')+' ('+pct+'% des ouverts)';
+        }}}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:C.txt,font:{size:10,weight:'600'}}},
+          y:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:9},precision:0}}
+        }
+      })
+    );
+  })();
 
   // Table avec vignettes Avant / Après inline (chargement asynchrone)
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
