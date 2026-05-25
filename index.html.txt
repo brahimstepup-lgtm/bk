@@ -1195,9 +1195,10 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <div class="card" style="margin-bottom:14px">
     <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Suivi de Nettoyage — SOBCO 3</div>
     <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
-      Suivi des opérations de nettoyage par zone : observations, actions, responsables, et photos
+      Suivi des opérations de nettoyage par emplacement — état déduit des photos
       <strong style="color:var(--green)">Avant</strong> / <strong style="color:var(--p4)">Après</strong> issues du dossier Drive
       <em style="color:var(--text3)">Suivi de Nettoyage - Sobco 3_Images</em>.
+      Photo « Avant » seule → <strong style="color:var(--red)">En cours</strong> · « Avant » + « Après » → <strong style="color:var(--green)">Terminé</strong>.
     </p>
   </div>
 
@@ -1207,13 +1208,12 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <div class="tag-search-bar">
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
     <input type="text" class="tag-search-input" id="clnSearch"
-           placeholder="Rechercher zone, description, responsable…"
+           placeholder="Rechercher emplacement…"
            oninput="applyClnF()">
     <select class="tag-sort-sel" id="clnSort" onchange="applyClnF()">
       <option value="date_desc">Date ↓ récent</option>
       <option value="date_asc">Date ↑ ancien</option>
-      <option value="zone_az">Zone A→Z</option>
-      <option value="resp_az">Resp. A→Z</option>
+      <option value="empl_az">Emplacement A→Z</option>
     </select>
     <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearClnFilters()">↺ Reset</button>
   </div>
@@ -1229,12 +1229,8 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       </div>
     </div>
     <div class="tag-filter-group">
-      <span class="tag-filter-lbl">📍 Zone :</span>
-      <select class="tag-dropdown" id="clnFilterZone" onchange="applyClnF()"><option value="all">Toutes</option></select>
-    </div>
-    <div class="tag-filter-group">
-      <span class="tag-filter-lbl">👤 Responsable :</span>
-      <select class="tag-dropdown" id="clnFilterResp" onchange="applyClnF()"><option value="all">Tous</option></select>
+      <span class="tag-filter-lbl">📍 Emplacement :</span>
+      <select class="tag-dropdown" id="clnFilterZone" onchange="applyClnF()"><option value="all">Tous</option></select>
     </div>
     <div class="tag-stats-row" id="clnStatsRow" style="margin-bottom:0;margin-left:auto"></div>
   </div>
@@ -1250,8 +1246,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <table>
         <thead>
           <tr>
-            <th>Zone</th><th>Date ↓</th>
-            <th>Description / Observation</th><th>Action</th><th>Responsable</th><th>Statut</th>
+            <th>Emplacement</th><th>Date ↓</th><th>Statut</th>
             <th style="text-align:center">Avant</th><th style="text-align:center">Après</th>
           </tr>
         </thead>
@@ -1371,8 +1366,6 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     <div class="modal-body">
       <div id="mCln-info">
         <div class="modal-section"><div class="modal-sec-title"><span>📌</span>Informations</div><div class="tag-detail-grid" id="mClnInfoGrid"></div></div>
-        <div class="modal-section" id="mClnObsSec"><div class="modal-sec-title"><span>👁️</span>Observation / Constat</div><div class="desc-box" id="mClnObs"></div></div>
-        <div class="modal-section" id="mClnActionSec"><div class="modal-sec-title"><span>🛠️</span>Action / Mesure corrective</div><div class="desc-box amber" id="mClnAction"></div></div>
       </div>
       <div id="mCln-photo" style="display:none">
         <div class="photo-area" id="mClnPhotoArea"></div>
@@ -2331,20 +2324,17 @@ function updateEnvCharts(){
 }
 
 // ══ NETTOYAGE ═════════════════════════════════════════════════
+// État dérivé des photos :
+//   - photo « Avant » seule           → en cours
+//   - photos « Avant » ET « Après »   → terminé
+//   - aucune photo                    → indéfini (ne compte pas)
+function clnHasAvant(c){ return !!(c && c.hasPhotoAvant && c.driveFileIdAvant); }
+function clnHasApres(c){ return !!(c && c.hasPhotoApres && c.driveFileIdApres); }
 function isClnOpen(c){
-  var s = String((c && c.statut) || '').toLowerCase();
-  if (!s) return false;
-  return s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 ||
-         s.indexOf('en cours') > -1 || s.indexOf('a faire') > -1 ||
-         s.indexOf('à faire') > -1 || s.indexOf('non') > -1 ||
-         s.indexOf('plani') > -1 || s.indexOf('attente') > -1;
+  return clnHasAvant(c) && !clnHasApres(c);
 }
 function isClnClosed(c){
-  var s = String((c && c.statut) || '').toLowerCase();
-  if (!s) return false;
-  return s.indexOf('ferme') > -1 || s.indexOf('fermé') > -1 || s.indexOf('clos') > -1 ||
-         s.indexOf('termin') > -1 || s.indexOf('done') > -1 || s.indexOf('fait') > -1 ||
-         s.indexOf('ok') > -1 || s.indexOf('résolu') > -1 || s.indexOf('resolu') > -1;
+  return clnHasAvant(c) && clnHasApres(c);
 }
 function setClnStat(s,el){
   clnStatFilter = s;
@@ -2356,32 +2346,23 @@ function clearClnFilters(){
   document.getElementById('clnSearch').value = '';
   document.getElementById('clnSort').value   = 'date_desc';
   document.getElementById('clnFilterZone').value = 'all';
-  document.getElementById('clnFilterResp').value = 'all';
   clnStatFilter = 'all';
   document.querySelectorAll('#clnStatChips .tag-filter-chip').forEach(function(c,i){c.classList.toggle('on',i===0);});
   applyClnF();
 }
 function populateClnDropdowns(){
   if (!D || !D.cleaning) return;
-  var zones = {}, resps = {};
+  var empls = {};
   D.cleaning.forEach(function(c){
-    var z = (c.zone || c.emplacement || '').trim();
-    if (z) zones[z] = (zones[z]||0) + 1;
-    if (c.responsable) resps[c.responsable] = (resps[c.responsable]||0) + 1;
+    var e = (c.emplacement || c.zone || '').trim();
+    if (e) empls[e] = (empls[e]||0) + 1;
   });
   var zSel = document.getElementById('clnFilterZone');
-  var rSel = document.getElementById('clnFilterResp');
   if (zSel) {
     var prev = zSel.value;
-    zSel.innerHTML = '<option value="all">Toutes</option>' +
-      Object.keys(zones).sort().map(function(z){return '<option value="'+esc(z)+'">'+esc(z)+' ('+zones[z]+')</option>';}).join('');
+    zSel.innerHTML = '<option value="all">Tous</option>' +
+      Object.keys(empls).sort().map(function(z){return '<option value="'+esc(z)+'">'+esc(z)+' ('+empls[z]+')</option>';}).join('');
     if (prev) zSel.value = prev;
-  }
-  if (rSel) {
-    var prev2 = rSel.value;
-    rSel.innerHTML = '<option value="all">Tous</option>' +
-      Object.keys(resps).sort().map(function(r){return '<option value="'+esc(r)+'">'+esc(r)+' ('+resps[r]+')</option>';}).join('');
-    if (prev2) rSel.value = prev2;
   }
 }
 function applyClnF(){
@@ -2389,16 +2370,14 @@ function applyClnF(){
   var search    = (document.getElementById('clnSearch').value || '').trim().toLowerCase();
   var sort      = document.getElementById('clnSort').value;
   var fZone     = document.getElementById('clnFilterZone').value;
-  var fResp     = document.getElementById('clnFilterResp').value;
 
   var filtered = D.cleaning.filter(function(c){
     if (clnStatFilter === 'open'   && !isClnOpen(c)) return false;
     if (clnStatFilter === 'closed' && !isClnClosed(c)) return false;
-    if (fZone !== 'all' && (c.zone||c.emplacement||'').trim() !== fZone) return false;
-    if (fResp !== 'all' && (c.responsable||'') !== fResp) return false;
+    var empl = (c.emplacement || c.zone || '').trim();
+    if (fZone !== 'all' && empl !== fZone) return false;
     if (search) {
-      var hay = [c.id, c.zone, c.emplacement, c.description, c.observation,
-                 c.action, c.responsable, c.statut, c.type].join(' ').toLowerCase();
+      var hay = [c.id, empl].join(' ').toLowerCase();
       if (hay.indexOf(search) < 0) return false;
     }
     return true;
@@ -2412,15 +2391,16 @@ function applyClnF(){
       var diff = (isNaN(na)||isNaN(nb)) ? String(a.id).localeCompare(String(b.id)) : (na - nb);
       return sort === 'id_asc' ? diff : -diff;
     }
-    if (sort === 'zone_az') return (a.zone||a.emplacement||'').localeCompare(b.zone||b.emplacement||'');
-    if (sort === 'resp_az') return (a.responsable||'').localeCompare(b.responsable||'');
+    if (sort === 'empl_az' || sort === 'zone_az') {
+      return (a.emplacement||a.zone||'').localeCompare(b.emplacement||b.zone||'');
+    }
     return 0;
   });
 
-  // Stats pills
-  var total = D.cleaning.length;
-  var open  = D.cleaning.filter(isClnOpen).length;
-  var closed= D.cleaning.filter(isClnClosed).length;
+  // Stats pills (état dérivé des photos)
+  var total  = D.cleaning.length;
+  var open   = D.cleaning.filter(isClnOpen).length;
+  var closed = D.cleaning.filter(isClnClosed).length;
   var statsRow = document.getElementById('clnStatsRow');
   if (statsRow) {
     statsRow.innerHTML =
@@ -2437,7 +2417,7 @@ function renderClnTable(items, searchVal){
   var tb = document.getElementById('clnBody');
   if (!tb) return;
   if (items.length === 0) {
-    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">Aucune entrée pour ce filtre</td></tr>';
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Aucune entrée pour ce filtre</td></tr>';
     return;
   }
   function hl(str){
@@ -2448,17 +2428,14 @@ function renderClnTable(items, searchVal){
   tb.innerHTML = '';
   var pendingThumbs = [];   // { fid, imgId } → chargement asynchrone groupé
   items.forEach(function(c, idx){
-    var open  = isClnOpen(c);
-    var closed= isClnClosed(c);
-    var statClass = closed ? 's-close' : (open ? 's-open' : 's-open');
-    var statTxt   = c.statut || (closed ? 'Terminé' : (open ? 'En cours' : '—'));
-    var respHtml  = c.responsable
-      ? '<span class="rbadge" style="color:var(--p4)">'+hl(c.responsable)+'</span>'
-      : '<span style="color:var(--text3);font-size:9px">—</span>';
+    var hasAvant = clnHasAvant(c);
+    var hasApres = clnHasApres(c);
+    var closed   = hasAvant && hasApres;
+    var open     = hasAvant && !hasApres;
+    var statClass = closed ? 's-close' : (open ? 's-open' : '');
+    var statTxt   = closed ? 'Terminé' : (open ? 'En cours' : '—');
 
-    var descTxt = c.description || c.observation || '';
-    var actTxt  = c.action || '';
-    var zoneTxt = c.zone || c.emplacement || '—';
+    var emplTxt = c.emplacement || c.zone || '—';
 
     // ── Cellules vignettes Avant / Après ──────────────────────
     function thumbCell(label, has, fid, ref){
@@ -2475,12 +2452,9 @@ function renderClnTable(items, searchVal){
     var tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
     tr.innerHTML =
-      '<td><span class="rbadge">'+hl(zoneTxt)+'</span></td>' +
+      '<td><span class="rbadge">'+hl(emplTxt)+'</span></td>' +
       '<td style="white-space:nowrap;font-size:10px">'+esc(c.date||'—')+'</td>' +
-      '<td style="font-size:10px;max-width:170px">'+hl(descTxt.substring(0,80))+(descTxt.length>80?'…':'')+'</td>' +
-      '<td style="font-size:10px;max-width:130px">'+hl(actTxt.substring(0,55))+(actTxt.length>55?'…':'')+'</td>' +
-      '<td style="font-size:10px">'+respHtml+'</td>' +
-      '<td><span class="'+statClass+'">'+esc(statTxt)+'</span></td>' +
+      '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>' +
       avantCellHtml + apresCellHtml;
 
     tr.addEventListener('click', function(){ openCleanModal(c); });
@@ -2529,46 +2503,31 @@ function replaceThumb(slot, dataUrl, p){
 }
 function openCleanModal(c){
   document.getElementById('mClnId').textContent   = 'NET ' + c.id + (c.date ? ' · ' + c.date : '');
-  document.getElementById('mClnDesc').textContent = c.description || c.observation || c.zone || c.emplacement || '—';
+  document.getElementById('mClnDesc').textContent = c.emplacement || c.zone || '—';
 
-  var open   = isClnOpen(c);
-  var closed = isClnClosed(c);
+  var hasAvant = clnHasAvant(c);
+  var hasApres = clnHasApres(c);
+  var closed   = hasAvant && hasApres;
+  var open     = hasAvant && !hasApres;
+  var statTxt  = closed ? 'Terminé' : (open ? 'En cours' : '—');
+  var statColor= closed ? 'var(--green)' : (open ? 'var(--red)' : 'var(--text2)');
+
   var chips  = '';
-  if (c.zone || c.emplacement) chips += '<span class="modal-chip">📍 '+esc(c.zone||c.emplacement)+'</span>';
-  if (c.type)        chips += '<span class="modal-chip">'+esc(c.type)+'</span>';
-  if (c.frequence)   chips += '<span class="modal-chip">⏱ '+esc(c.frequence)+'</span>';
-  if (c.statut)      chips += '<span class="modal-chip" style="color:'+(closed?'var(--green)':(open?'var(--red)':'var(--text2)'))+'">'+esc(c.statut)+'</span>';
-  if (c.responsable) chips += '<span class="modal-chip">👤 '+esc(c.responsable)+'</span>';
-  if (c.hasPhotoAvant || c.hasPhotoApres) chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
+  if (c.emplacement || c.zone) chips += '<span class="modal-chip">📍 '+esc(c.emplacement||c.zone)+'</span>';
+  chips += '<span class="modal-chip" style="color:'+statColor+'">'+esc(statTxt)+'</span>';
+  if (hasAvant || hasApres) chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
   document.getElementById('mClnChips').innerHTML = chips;
 
   document.getElementById('mClnInfoGrid').innerHTML = [
     infoItemF('ID',          c.id),
     infoItemF('Date',        c.date || '—'),
-    infoItem ('Date cible',  c.dateCible),
-    infoItemF('Zone',        c.zone || c.emplacement || '—'),
-    infoItem ('Emplacement', c.emplacement && c.emplacement !== c.zone ? c.emplacement : ''),
-    infoItem ('Type',        c.type),
-    infoItem ('Fréquence',   c.frequence),
-    infoItemF('Responsable', c.responsable || '—'),
-    infoItemF('Statut',      c.statut || '—'),
-    infoItem ('Réf. photo',  c.photoRefAvant || c.photoRefApres)
+    infoItemF('Emplacement', c.emplacement || c.zone || '—'),
+    infoItemF('Statut',      statTxt)
   ].join('');
-
-  var oSec = document.getElementById('mClnObsSec');
-  var obsText = c.observation || c.description || '';
-  if (obsText) { document.getElementById('mClnObs').textContent = obsText; oSec.style.display = 'block'; }
-  else oSec.style.display = 'none';
-
-  var aSec = document.getElementById('mClnActionSec');
-  if (c.action) { document.getElementById('mClnAction').textContent = c.action; aSec.style.display = 'block'; }
-  else aSec.style.display = 'none';
 
   // ── Photos (Avant + Après) via proxy base64 ─────────────
   var photoArea     = document.getElementById('mClnPhotoArea');
   var photoTabBtn   = document.getElementById('clnPhotoTabBtn');
-  var hasAvant = !!(c.hasPhotoAvant && c.driveFileIdAvant);
-  var hasApres = !!(c.hasPhotoApres && c.driveFileIdApres);
   var hasAny   = hasAvant || hasApres;
 
   if (hasAny) {
@@ -2694,11 +2653,16 @@ function render(data){
   applyAccF();
 
   // ── NETTOYAGE ───────────────────────────────────────────
+  // État dérivé des photos (cf. isClnOpen / isClnClosed)
+  var clnTotal  = (D.cleaning || []).length;
+  var clnClosed = (D.cleaning || []).filter(isClnClosed).length;
+  var clnOpen   = (D.cleaning || []).filter(isClnOpen).length;
+  var clnRate   = clnTotal ? Math.round(clnClosed / clnTotal * 100) : 0;
   document.getElementById('clnSum').innerHTML =
-    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(m.cleaning_total)+'</div><div class="tsl">Total Nettoyage</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(m.cleaning_closed)+'</div><div class="tsl">Terminés ✓</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(m.cleaning_open)+'</div><div class="tsl">En cours</div></div>'+
-    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(m.cleaning_rate)+'%</div><div class="tsl">Taux clôture</div></div>';
+    '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(clnTotal)+'</div><div class="tsl">Total Nettoyage</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(clnClosed)+'</div><div class="tsl">Terminés ✓</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(clnOpen)+'</div><div class="tsl">En cours</div></div>'+
+    '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(clnRate)+'%</div><div class="tsl">Taux clôture</div></div>';
   populateClnDropdowns();
   applyClnF();
 
