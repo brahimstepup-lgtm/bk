@@ -669,7 +669,7 @@ function getData() {
         id:          String(r[COL.id]).trim(),
         date:        fmtDate(r[COL.dateCreate]),
         isoDate:     getIso(r[COL.dateCreate]),
-        dateCible:   isNull(r[COL.dateCible])   ? '' : String(r[COL.dateCible]).trim(),
+        dateCible:   fmtDate(r[COL.dateCible]),
         type:        isNull(r[COL.type])         ? '' : String(r[COL.type]).trim(),
         gravite:     isNull(r[COL.gravite])      ? '' : String(r[COL.gravite]).trim(),
         emplacement: isNull(r[COL.emplacement])  ? '' : String(r[COL.emplacement]).trim(),
