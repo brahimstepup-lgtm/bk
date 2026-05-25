@@ -756,15 +756,15 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     <div class="ct"><span class="ct-dot"></span>Liste TAGs
       <span id="tagListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
       <span style="color:var(--text3);font-size:9px">
-        📸 = photo Drive (Avant/Après) · 📷 = pas de photo · Plus récents en haut
+        Vignettes Avant / Après chargées depuis Drive · Plus récents en haut
       </span>
     </div>
     <div class="tblw">
       <table>
         <thead>
           <tr>
-            <th>ID</th><th>Date ↓</th><th>Type</th><th>Zone</th>
-            <th>Description</th><th>Responsable</th><th>Statut</th><th>📷</th>
+            <th>ID</th><th>Date ↓</th><th>Avant</th><th>Après</th>
+            <th>Description</th><th>Zone</th><th>Type</th><th>Responsable</th><th>Statut</th>
           </tr>
         </thead>
         <tbody id="tagBody"></tbody>
@@ -2159,14 +2159,14 @@ function applyTagF(){
   mkChart('tagZoneC','bar',tzk,[{data:tzk.map(function(k){return tzones[k];}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
 
-  // Table avec responsable + indicateur photo Drive
+  // Table avec vignettes Avant / Après inline (chargement asynchrone)
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
   if(filtered.length===0){
     var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
       :'Aucun TAG pour ce filtre';
-    tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
+    tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
     return;
   }
   function hl(str){
@@ -2174,38 +2174,73 @@ function applyTagF(){
     var re=new RegExp('('+searchVal.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
     return esc(str).replace(re,'<mark style="background:rgba(245,166,35,.35);border-radius:2px;padding:0 1px">$1</mark>');
   }
-  filtered.forEach(function(t){
+  var pendingTagThumbs=[];
+  filtered.forEach(function(t,idx){
     var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
     var respHtml=t.responsable
       ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
       :'<span style="color:var(--text3);font-size:9px">—</span>';
-    // Bouton photo : 📸 si Drive résolu, 📷 sinon
-    // Le serveur renvoie t.hasPhotoAvant / t.hasPhotoApres + driveFileIdAvant / driveFileIdApres
-    var hasPhoto=!!(t.hasPhoto&&t.driveFileId);
-    var hasApresPhoto=!!(t.hasPhotoApres&&t.driveFileIdApres);
-    var photoCls=hasPhoto?'tag-btn has-photo':'tag-btn no-photo';
-    var photoIco=hasPhoto?(hasApresPhoto?'📸':'📸'):'📷';
-    var photoTitle=hasPhoto
-      ?'Photo Avant'+(hasApresPhoto?' + Après':'')+' : '+(t.photoClean||t.photoRef)
-      :(t.photoRef?'Pas de photo Drive : '+(t.photoClean||t.photoRef):'Pas de photo');
+
+    // ── Vignettes Avant / Après — chargement asynchrone via google.script.run
+    function tagThumbCell(label, has, fid, ref){
+      var cellId='tagThumb_'+idx+'_'+label;
+      if(!has||!fid){
+        return '<td class="cln-thumb-cell"><div class="cln-thumb-ph" title="Pas de photo '+label+'">📷</div></td>';
+      }
+      pendingTagThumbs.push({fid:fid,cellId:cellId,label:label,ref:ref||'',tag:t});
+      return '<td class="cln-thumb-cell"><div id="'+cellId+'" class="cln-thumb-load" title="Chargement photo '+label+' depuis Drive…"></div></td>';
+    }
+    // L'ordre des colonnes Avant puis Après est garanti côté HTML
+    var avantCellHtml=tagThumbCell('Avant', t.hasPhotoAvant, t.driveFileIdAvant, t.photoClean||t.photoRef);
+    var apresCellHtml=tagThumbCell('Après', t.hasPhotoApres, t.driveFileIdApres, t.photoCleanApres||t.photoRefApres||t.photoClean||t.photoRef);
+
     var tr=document.createElement('tr');
+    tr.style.cursor='pointer';
     tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
       +'<td style="white-space:nowrap;font-size:10px">'+t.date+'</td>'
-      +'<td style="font-size:10px">'+hl(t.type)+'</td>'
+      +avantCellHtml+apresCellHtml
+      +'<td style="font-size:10px;max-width:180px">'+hl(t.description.substring(0,80))+(t.description.length>80?'…':'')+'</td>'
       +'<td><span class="rbadge">'+hl((t.zone||t.emplacement)||'—')+'</span></td>'
-      +'<td style="font-size:10px;max-width:130px">'+hl(t.description.substring(0,55))+(t.description.length>55?'…':'')+'</td>'
+      +'<td style="font-size:10px">'+hl(t.type)+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
-      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
-      +'<td><button class="'+photoCls+'" title="'+esc(photoTitle)+'">'+photoIco+'</button></td>';
-    tr.querySelector('.tag-btn').addEventListener('click',function(e){
-      e.stopPropagation();
-      openTagModal(t);
-      // Basculer directement sur l'onglet Photo
-      var photoTab=document.querySelectorAll('#tagModal .modal-tab')[1];
-      if(photoTab) switchTab('mTag','photo',photoTab);
-    });
+      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>';
+    tr.addEventListener('click',function(){ openTagModal(t); });
     tb.appendChild(tr);
   });
+
+  // ── Chargement asynchrone des vignettes (avec cache partagé) ──
+  if(!window._tagPhotoCache) window._tagPhotoCache={};
+  pendingTagThumbs.forEach(function(p){
+    var slot=document.getElementById(p.cellId);
+    if(!slot) return;
+    var cached=window._tagPhotoCache[p.fid];
+    if(cached){ replaceTagThumb(slot,cached,p); return; }
+    google.script.run
+      .withSuccessHandler(function(d){
+        if(d){ window._tagPhotoCache[p.fid]=d; replaceTagThumb(slot,d,p); }
+        else if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
+      })
+      .withFailureHandler(function(){
+        if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
+      })
+      .getTagPhotoForClient(p.fid);
+  });
+}
+
+function replaceTagThumb(slot, dataUrl, p){
+  if(!slot||!slot.parentNode) return;
+  var img=document.createElement('img');
+  img.src=dataUrl;
+  img.className='cln-thumb';
+  img.alt=p.label;
+  img.title=p.label+(p.ref?' · '+p.ref:'')+' (cliquer pour agrandir)';
+  img.addEventListener('click',function(e){
+    e.stopPropagation();
+    openTagModal(p.tag);
+    var photoTab=document.querySelectorAll('#tagModal .modal-tab')[1];
+    if(photoTab) switchTab('mTag','photo',photoTab);
+  });
+  slot.parentNode.replaceChild(img,slot);
 }
 
 // ══ FILTRES ACCIDENTS ═════════════════════════════════════════
@@ -2296,18 +2331,8 @@ function updateEnvCharts(){
 }
 
 // ══ NETTOYAGE ═════════════════════════════════════════════════
-// Règle métier : l'état est dérivé des photos disponibles.
-//   • photo « avant » seule              → En cours
-//   • photos « avant » ET « après »      → Terminé
-//   • aucune des deux                    → fallback sur le texte du statut
 function isClnOpen(c){
-  if (!c) return false;
-  // Photo "avant" présente sans "après" → en cours
-  if (c.hasPhotoAvant && !c.hasPhotoApres) return true;
-  // Si "après" présent → ce n'est plus en cours (terminé)
-  if (c.hasPhotoApres) return false;
-  // Aucune photo "avant" : fallback sur le texte du statut de la feuille
-  var s = String(c.statut || '').toLowerCase();
+  var s = String((c && c.statut) || '').toLowerCase();
   if (!s) return false;
   return s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 ||
          s.indexOf('en cours') > -1 || s.indexOf('a faire') > -1 ||
@@ -2315,13 +2340,7 @@ function isClnOpen(c){
          s.indexOf('plani') > -1 || s.indexOf('attente') > -1;
 }
 function isClnClosed(c){
-  if (!c) return false;
-  // Les deux photos présentes → terminé
-  if (c.hasPhotoAvant && c.hasPhotoApres) return true;
-  // "avant" seule → en cours, donc pas terminé
-  if (c.hasPhotoAvant && !c.hasPhotoApres) return false;
-  // Aucune photo "avant" : fallback sur le texte du statut de la feuille
-  var s = String(c.statut || '').toLowerCase();
+  var s = String((c && c.statut) || '').toLowerCase();
   if (!s) return false;
   return s.indexOf('ferme') > -1 || s.indexOf('fermé') > -1 || s.indexOf('clos') > -1 ||
          s.indexOf('termin') > -1 || s.indexOf('done') > -1 || s.indexOf('fait') > -1 ||
@@ -2431,10 +2450,8 @@ function renderClnTable(items, searchVal){
   items.forEach(function(c, idx){
     var open  = isClnOpen(c);
     var closed= isClnClosed(c);
-    // Le libellé suit la règle photos : "Terminé" / "En cours" l'emportent sur
-    // le texte brut du statut de la feuille. Fallback sur c.statut sinon.
-    var statClass = closed ? 's-close' : (open ? 's-open' : '');
-    var statTxt   = closed ? 'Terminé' : (open ? 'En cours' : (c.statut || '—'));
+    var statClass = closed ? 's-close' : (open ? 's-open' : 's-open');
+    var statTxt   = c.statut || (closed ? 'Terminé' : (open ? 'En cours' : '—'));
     var respHtml  = c.responsable
       ? '<span class="rbadge" style="color:var(--p4)">'+hl(c.responsable)+'</span>'
       : '<span style="color:var(--text3);font-size:9px">—</span>';
@@ -2516,13 +2533,11 @@ function openCleanModal(c){
 
   var open   = isClnOpen(c);
   var closed = isClnClosed(c);
-  // Statut dérivé des photos (cohérent avec le tableau)
-  var statTxt = closed ? 'Terminé' : (open ? 'En cours' : (c.statut || ''));
   var chips  = '';
   if (c.zone || c.emplacement) chips += '<span class="modal-chip">📍 '+esc(c.zone||c.emplacement)+'</span>';
   if (c.type)        chips += '<span class="modal-chip">'+esc(c.type)+'</span>';
   if (c.frequence)   chips += '<span class="modal-chip">⏱ '+esc(c.frequence)+'</span>';
-  if (statTxt)       chips += '<span class="modal-chip" style="color:'+(closed?'var(--green)':(open?'var(--red)':'var(--text2)'))+'">'+esc(statTxt)+'</span>';
+  if (c.statut)      chips += '<span class="modal-chip" style="color:'+(closed?'var(--green)':(open?'var(--red)':'var(--text2)'))+'">'+esc(c.statut)+'</span>';
   if (c.responsable) chips += '<span class="modal-chip">👤 '+esc(c.responsable)+'</span>';
   if (c.hasPhotoAvant || c.hasPhotoApres) chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
   document.getElementById('mClnChips').innerHTML = chips;
@@ -2536,7 +2551,7 @@ function openCleanModal(c){
     infoItem ('Type',        c.type),
     infoItem ('Fréquence',   c.frequence),
     infoItemF('Responsable', c.responsable || '—'),
-    infoItemF('Statut',      statTxt || c.statut || '—'),
+    infoItemF('Statut',      c.statut || '—'),
     infoItem ('Réf. photo',  c.photoRefAvant || c.photoRefApres)
   ].join('');
 
