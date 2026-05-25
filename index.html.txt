@@ -764,7 +764,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
         <thead>
           <tr>
             <th>ID</th><th>Date ↓</th><th>Avant</th><th>Après</th>
-            <th>Description</th><th>Zone</th><th>Type</th><th>Responsable</th><th>Statut</th>
+            <th>Description</th><th>Zone</th><th>Type</th><th>Date cible</th><th>Responsable</th><th>Statut</th>
           </tr>
         </thead>
         <tbody id="tagBody"></tbody>
@@ -1246,7 +1246,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <table>
         <thead>
           <tr>
-            <th>Emplacement</th><th>Date ↓</th><th>Statut</th>
+            <th>Emplacement</th><th>Zone</th><th>Date ↓</th><th>Statut</th>
             <th style="text-align:center">Avant</th><th style="text-align:center">Après</th>
           </tr>
         </thead>
@@ -2159,7 +2159,7 @@ function applyTagF(){
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
       :'Aucun TAG pour ce filtre';
-    tb.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
+    tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
     return;
   }
   function hl(str){
@@ -2195,6 +2195,7 @@ function applyTagF(){
       +'<td style="font-size:10px;max-width:180px">'+hl(t.description.substring(0,80))+(t.description.length>80?'…':'')+'</td>'
       +'<td><span class="rbadge">'+hl((t.zone||t.emplacement)||'—')+'</span></td>'
       +'<td style="font-size:10px">'+hl(t.type)+'</td>'
+      +'<td style="white-space:nowrap;font-size:10px">'+esc(t.dateCible||'—')+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
       +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>';
     tr.addEventListener('click',function(){ openTagModal(t); });
@@ -2417,7 +2418,7 @@ function renderClnTable(items, searchVal){
   var tb = document.getElementById('clnBody');
   if (!tb) return;
   if (items.length === 0) {
-    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Aucune entrée pour ce filtre</td></tr>';
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Aucune entrée pour ce filtre</td></tr>';
     return;
   }
   function hl(str){
@@ -2453,6 +2454,7 @@ function renderClnTable(items, searchVal){
     tr.style.cursor = 'pointer';
     tr.innerHTML =
       '<td><span class="rbadge">'+hl(emplTxt)+'</span></td>' +
+      '<td>'+(c.zone ? '<span class="rbadge">'+hl(c.zone)+'</span>' : '<span style="color:var(--text3);font-size:9px">—</span>')+'</td>' +
       '<td style="white-space:nowrap;font-size:10px">'+esc(c.date||'—')+'</td>' +
       '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>' +
       avantCellHtml + apresCellHtml;
