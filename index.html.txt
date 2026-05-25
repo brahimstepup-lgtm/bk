@@ -2296,8 +2296,18 @@ function updateEnvCharts(){
 }
 
 // ══ NETTOYAGE ═════════════════════════════════════════════════
+// Règle métier : l'état est dérivé des photos disponibles.
+//   • photo « avant » seule              → En cours
+//   • photos « avant » ET « après »      → Terminé
+//   • aucune des deux                    → fallback sur le texte du statut
 function isClnOpen(c){
-  var s = String((c && c.statut) || '').toLowerCase();
+  if (!c) return false;
+  // Photo "avant" présente sans "après" → en cours
+  if (c.hasPhotoAvant && !c.hasPhotoApres) return true;
+  // Si "après" présent → ce n'est plus en cours (terminé)
+  if (c.hasPhotoApres) return false;
+  // Aucune photo "avant" : fallback sur le texte du statut de la feuille
+  var s = String(c.statut || '').toLowerCase();
   if (!s) return false;
   return s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 ||
          s.indexOf('en cours') > -1 || s.indexOf('a faire') > -1 ||
@@ -2305,7 +2315,13 @@ function isClnOpen(c){
          s.indexOf('plani') > -1 || s.indexOf('attente') > -1;
 }
 function isClnClosed(c){
-  var s = String((c && c.statut) || '').toLowerCase();
+  if (!c) return false;
+  // Les deux photos présentes → terminé
+  if (c.hasPhotoAvant && c.hasPhotoApres) return true;
+  // "avant" seule → en cours, donc pas terminé
+  if (c.hasPhotoAvant && !c.hasPhotoApres) return false;
+  // Aucune photo "avant" : fallback sur le texte du statut de la feuille
+  var s = String(c.statut || '').toLowerCase();
   if (!s) return false;
   return s.indexOf('ferme') > -1 || s.indexOf('fermé') > -1 || s.indexOf('clos') > -1 ||
          s.indexOf('termin') > -1 || s.indexOf('done') > -1 || s.indexOf('fait') > -1 ||
@@ -2415,8 +2431,10 @@ function renderClnTable(items, searchVal){
   items.forEach(function(c, idx){
     var open  = isClnOpen(c);
     var closed= isClnClosed(c);
-    var statClass = closed ? 's-close' : (open ? 's-open' : 's-open');
-    var statTxt   = c.statut || (closed ? 'Terminé' : (open ? 'En cours' : '—'));
+    // Le libellé suit la règle photos : "Terminé" / "En cours" l'emportent sur
+    // le texte brut du statut de la feuille. Fallback sur c.statut sinon.
+    var statClass = closed ? 's-close' : (open ? 's-open' : '');
+    var statTxt   = closed ? 'Terminé' : (open ? 'En cours' : (c.statut || '—'));
     var respHtml  = c.responsable
       ? '<span class="rbadge" style="color:var(--p4)">'+hl(c.responsable)+'</span>'
       : '<span style="color:var(--text3);font-size:9px">—</span>';
@@ -2498,11 +2516,13 @@ function openCleanModal(c){
 
   var open   = isClnOpen(c);
   var closed = isClnClosed(c);
+  // Statut dérivé des photos (cohérent avec le tableau)
+  var statTxt = closed ? 'Terminé' : (open ? 'En cours' : (c.statut || ''));
   var chips  = '';
   if (c.zone || c.emplacement) chips += '<span class="modal-chip">📍 '+esc(c.zone||c.emplacement)+'</span>';
   if (c.type)        chips += '<span class="modal-chip">'+esc(c.type)+'</span>';
   if (c.frequence)   chips += '<span class="modal-chip">⏱ '+esc(c.frequence)+'</span>';
-  if (c.statut)      chips += '<span class="modal-chip" style="color:'+(closed?'var(--green)':(open?'var(--red)':'var(--text2)'))+'">'+esc(c.statut)+'</span>';
+  if (statTxt)       chips += '<span class="modal-chip" style="color:'+(closed?'var(--green)':(open?'var(--red)':'var(--text2)'))+'">'+esc(statTxt)+'</span>';
   if (c.responsable) chips += '<span class="modal-chip">👤 '+esc(c.responsable)+'</span>';
   if (c.hasPhotoAvant || c.hasPhotoApres) chips += '<span class="modal-chip" style="color:var(--green)">📸 Drive</span>';
   document.getElementById('mClnChips').innerHTML = chips;
@@ -2516,7 +2536,7 @@ function openCleanModal(c){
     infoItem ('Type',        c.type),
     infoItem ('Fréquence',   c.frequence),
     infoItemF('Responsable', c.responsable || '—'),
-    infoItemF('Statut',      c.statut || '—'),
+    infoItemF('Statut',      statTxt || c.statut || '—'),
     infoItem ('Réf. photo',  c.photoRefAvant || c.photoRefApres)
   ].join('');
 
