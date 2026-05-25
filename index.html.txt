@@ -2029,19 +2029,50 @@ function renderIncidents(incs){
 }
 
 // ══ FILTRES TAGS ══════════════════════════════════════════════
+// Normalisation d'un libellé de zone : minuscule, sans accents,
+// sans ponctuation parasite, espaces compactés. Permet de matcher
+// "Étage 0", "etage 0", " ÉTAGE  0 " comme une seule et même zone.
+function normZone(s){
+  if(!s) return '';
+  return String(s).toLowerCase()
+    .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/[ç]/g,'c').replace(/[ñ]/g,'n')
+    .replace(/\s+/g,' ').trim();
+}
+// Renvoie la zone effective d'un tag : on privilégie le champ "zone"
+// (le plus général, ex. "Étage 0") puis on retombe sur l'emplacement.
+function tagZone(t){ return ((t&&(t.zone||t.emplacement))||'').trim(); }
+
 function populateTagDropdowns(){
   if(!D||!D.tags) return;
-  var resps=new Set(),zones=new Set();
+  var resps=new Set();
+  // Map normalisée → libellé d'affichage (la première variante rencontrée).
+  // On dédoublonne ainsi les zones qui diffèrent uniquement par la casse,
+  // les accents ou les espaces.
+  var zoneMap={};
   D.tags.forEach(function(t){
     if(t.responsable&&t.responsable.trim()) resps.add(t.responsable.trim());
-    var z=(t.zone||t.emplacement||'').trim(); if(z) zones.add(z);
+    var z=tagZone(t);
+    if(z){
+      var key=normZone(z);
+      if(key && !zoneMap[key]) zoneMap[key]=z;
+    }
   });
   var rSel=document.getElementById('tagFilterResp');
   rSel.innerHTML='<option value="all">Tous ('+resps.size+')</option>';
   Array.from(resps).sort().forEach(function(r){rSel.innerHTML+='<option value="'+esc(r)+'">'+esc(r)+'</option>';});
+
+  // La valeur d'option = clé normalisée (utilisée pour le filtre exact)
+  // Le libellé    = première variante d'origine (lisible par l'utilisateur)
   var zSel=document.getElementById('tagFilterZone');
-  zSel.innerHTML='<option value="all">Toutes ('+zones.size+')</option>';
-  Array.from(zones).sort().forEach(function(z){zSel.innerHTML+='<option value="'+esc(z)+'">'+esc(z)+'</option>';});
+  var zoneKeys=Object.keys(zoneMap).sort(function(a,b){
+    return zoneMap[a].localeCompare(zoneMap[b],'fr',{sensitivity:'base',numeric:true});
+  });
+  zSel.innerHTML='<option value="all">Toutes ('+zoneKeys.length+')</option>';
+  zoneKeys.forEach(function(k){
+    zSel.innerHTML+='<option value="'+esc(k)+'">'+esc(zoneMap[k])+'</option>';
+  });
 }
 function setTagStat(val,el){
   tagStatFilter=val;
@@ -2086,7 +2117,7 @@ function applyTagF(){
     if(tagStatFilter==='open'&&!isOpen) return false;
     if(tagStatFilter==='closed'&&isOpen) return false;
     if(filterResp!=='all'&&(t.responsable||'').trim()!==filterResp) return false;
-    if(filterZone!=='all'){var z=(t.zone||t.emplacement||'').trim();if(z!==filterZone)return false;}
+    if(filterZone!=='all'){var z=tagZone(t); if(normZone(z)!==filterZone) return false;}
     if(p!=='all'){
       if(!t.isoDate) return p==='ytd';
       var pts=t.isoDate.split('-');
@@ -2155,9 +2186,13 @@ function applyTagF(){
   // Table avec vignettes Avant / Après inline (chargement asynchrone)
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
   if(filtered.length===0){
+    // On récupère le libellé visible de la zone (et non la clé normalisée)
+    // pour un message d'erreur lisible par l'utilisateur.
+    var zoneSel=document.getElementById('tagFilterZone');
+    var zoneLabel=(zoneSel&&zoneSel.options[zoneSel.selectedIndex])?zoneSel.options[zoneSel.selectedIndex].text:filterZone;
     var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
-      :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
+      :filterZone!=='all'?'Aucun TAG zone "'+esc(zoneLabel)+'"'
       :'Aucun TAG pour ce filtre';
     tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
     return;
