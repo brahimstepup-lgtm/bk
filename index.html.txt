@@ -2602,6 +2602,25 @@ function openCleanModal(c){
 // ══ RENDU PRINCIPAL ═══════════════════════════════════════════
 function render(data){
   D=data; var m=data.metrics;
+
+  // ── Synchronisation « Résol. TAGs » (Vue Globale) avec
+  // « Clôture » (page TAGs, filtre YTD 2026) ──
+  // Même logique de filtre/calcul que applyTagF() pour p==='ytd' :
+  // on ne garde que les TAGs dont l'année isoDate vaut 2026, puis
+  // taux = fermés / total * 100.
+  (function syncResolTagsYTD2026(){
+    var tags=(D.tags||[]).filter(function(t){
+      if(!t.id||t._err||!t.isoDate) return false;
+      return parseInt(t.isoDate.split('-')[0])===2026;
+    });
+    var open=tags.filter(function(t){
+      var s=(t.statut||'').toLowerCase();
+      return s.indexOf('ouvert')>-1||s.indexOf('open')>-1;
+    }).length;
+    var closed=tags.length-open;
+    m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
+  })();
+
   if(data.logoUrl){var img=document.getElementById('logoImg');img.src=data.logoUrl;img.style.display='block';document.getElementById('logoFb').style.display='none';}
   document.getElementById('loader').style.display='none';
   document.getElementById('main').style.display='block';
