@@ -1248,8 +1248,9 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <table>
         <thead>
           <tr>
-            <th>Emplacement</th><th>Zone</th><th>Date ↓</th><th>Statut</th>
+            <th>Date ↓</th>
             <th style="text-align:center">Avant</th><th style="text-align:center">Après</th>
+            <th>Emplacement</th><th>Zone</th><th>Statut</th>
           </tr>
         </thead>
         <tbody id="clnBody"></tbody>
@@ -2455,11 +2456,11 @@ function renderClnTable(items, searchVal){
     var tr = document.createElement('tr');
     tr.style.cursor = 'pointer';
     tr.innerHTML =
+      '<td style="white-space:nowrap;font-size:10px">'+esc(c.date||'—')+'</td>' +
+      avantCellHtml + apresCellHtml +
       '<td><span class="rbadge">'+hl(emplTxt)+'</span></td>' +
       '<td>'+(c.zone ? '<span class="rbadge">'+hl(c.zone)+'</span>' : '<span style="color:var(--text3);font-size:9px">—</span>')+'</td>' +
-      '<td style="white-space:nowrap;font-size:10px">'+esc(c.date||'—')+'</td>' +
-      '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>' +
-      avantCellHtml + apresCellHtml;
+      '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>';
 
     tr.addEventListener('click', function(){ openCleanModal(c); });
     tb.appendChild(tr);
