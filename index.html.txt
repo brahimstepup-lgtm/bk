@@ -471,14 +471,203 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
 #veilleTable tr:nth-child(even) td:not([rowspan]){background:rgba(9,99,126,.03)}
 
 
+/* ══════════════════════════════════════════════════════════
+   ══ RESPONSIVE — Tablette / Mobile / Petit mobile          ══
+   ══════════════════════════════════════════════════════════ */
+
+/* ── TABLETTE ≤ 768px ─────────────────────────────────────── */
 @media(max-width:768px){
-  .row2,.row3{grid-template-columns:1fr}
-  .kpi-grid{grid-template-columns:repeat(2,1fr)}
-  .tsum{grid-template-columns:repeat(2,1fr)}
+  .app{padding:10px}
+  .row2,.row3{grid-template-columns:1fr;gap:10px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .tsum{grid-template-columns:repeat(2,1fr);gap:8px}
   .egrid{grid-template-columns:1fr}
+  .acc-summary{grid-template-columns:repeat(2,1fr)}
   .info-grid,.m5-grid,.tag-detail-grid{grid-template-columns:1fr}
+
+  /* Header */
+  .hdr{padding:9px 12px;gap:8px}
+  .hdr-title{font-size:14px}
+
+  /* Tabs scrollables horizontalement */
+  .tabs{padding:3px;gap:2px;-webkit-overflow-scrolling:touch}
+  .tab{padding:6px 11px;font-size:10px}
+
+  /* Filtres + cards */
+  .pf-bar,.tag-search-bar,.tag-filter-row{padding:6px 10px;gap:6px}
+  .card{padding:13px}
+
+  /* Modal */
+  .modal-panel{width:96%;max-height:92vh}
+  .modal-body{padding:13px 15px}
+  .modal-top{padding:13px 15px 10px}
+  .modal-tabs{padding:6px 14px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .modal-tab{flex-shrink:0}
+
+  /* Notifications */
   .notif-panel{width:290px;right:-60px}
   .notif-full-panel{width:95vw;max-width:95vw;max-height:85vh}
+}
+
+/* ── MOBILE ≤ 600px ────────────────────────────────────────── */
+@media(max-width:600px){
+  .app{padding:6px}
+
+  /* Header — wrap & compact */
+  .hdr{padding:8px 10px;gap:8px;margin-bottom:10px}
+  .hdr-left{gap:9px;flex:1 1 100%}
+  .hdr-right{gap:5px;flex:1 1 100%;justify-content:flex-start}
+  .hdr-sub{font-size:9px;letter-spacing:.4px}
+  .hdr-title{font-size:13px;line-height:1.2}
+  .hdr-meta{font-size:9px}
+  .logo-wrap{width:42px;height:42px}
+  .logo-img{height:42px}
+  .logo-fb{width:42px;height:42px;font-size:16px;border-radius:8px}
+  .badge{padding:3px 7px;font-size:9px}
+  .btn{padding:4px 9px;font-size:10px}
+  .modeBtn{padding:3px 7px;font-size:9px}
+  .theme-btn,.notif-btn{width:30px;height:30px;font-size:14px}
+
+  /* Tabs : scroll horizontal tactile */
+  .tabs{padding:3px;border-radius:8px;overflow-x:auto;flex-wrap:nowrap}
+  .tab{padding:7px 11px;font-size:10px;flex-shrink:0}
+
+  /* KPI compact 2 cols */
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:7px}
+  .kpi{padding:9px 10px}
+  .kpi-val{font-size:18px}
+  .kpi-lbl{font-size:8px;letter-spacing:.3px}
+  .kpi-sub{font-size:8px}
+
+  /* Pyramide compacte */
+  .pyr-block{padding:5px 8px;gap:4px;border-radius:5px}
+  .pn{font-size:8px;letter-spacing:.2px}
+  .pv{font-size:13px;min-width:20px}
+  .pi{font-size:11px}
+
+  /* Charts plus petits */
+  .cw{height:160px!important}
+  .cw canvas{max-height:160px!important}
+
+  /* Tables : scroll horizontal */
+  .tblw{overflow-x:auto;-webkit-overflow-scrolling:touch;max-height:60vh}
+  table{font-size:10px;min-width:560px}
+  th,td{padding:6px 7px}
+
+  /* Modal plein écran */
+  .modal-bg{padding:0}
+  .modal-panel{width:100%;height:100vh;max-height:100vh;border-radius:0}
+  .modal-top{padding:12px;gap:8px}
+  .modal-badge{width:36px;height:36px;font-size:16px}
+  .modal-hdr-name{font-size:13px}
+  .modal-tabs{padding:6px 10px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  .modal-tab{padding:5px 10px;font-size:10px;flex-shrink:0}
+  .modal-body{padding:12px}
+  .modal-close{top:10px;right:10px}
+
+  /* Filtres pleine largeur */
+  .pf-bar,.tag-search-bar{padding:6px 8px;gap:5px}
+  .tag-filter-row{gap:5px}
+  .tag-filter-group{flex-wrap:wrap}
+  .pf-sel,.pf-input,.tag-dropdown,.tag-sort-sel{font-size:10px;padding:3px 6px;max-width:none}
+  .tag-search-input{flex:1 1 100%;min-width:0;font-size:11px;padding:5px 9px}
+  .tag-stats-row{margin-left:0;width:100%;justify-content:flex-start;margin-top:4px}
+  .pf-stat{margin-left:0;margin-top:3px}
+
+  /* Chips statuts plus tactiles */
+  .tag-filter-chip{padding:5px 10px;font-size:10px}
+
+  /* Listes incidents */
+  .iitem{padding:9px 10px}
+  .ivic{font-size:11px}
+  .idesc{font-size:10px}
+  .ilist{max-height:55vh}
+
+  /* Cards */
+  .card{padding:11px}
+  .ct{font-size:9px;gap:5px}
+
+  /* Énergie */
+  .egrid{gap:8px}
+  .ecard{padding:11px}
+  .eval{font-size:14px}
+
+  /* Bilan AT summary */
+  .acc-summary{grid-template-columns:repeat(2,1fr);gap:8px}
+  .acc-card{padding:10px}
+  .acc-val{font-size:16px}
+
+  /* AI panel */
+  .ai-panel{padding:11px}
+  .ai-row{gap:5px}
+  .ai-input{font-size:11px;padding:6px 9px}
+  .ai-resp{font-size:11px;padding:9px;max-height:200px}
+  .btn-send{padding:6px 11px}
+
+  /* Notifications panel : presque pleine largeur, ancrée sous le bouton */
+  .notif-panel{position:fixed;top:62px;right:6px;left:6px;width:auto;max-width:none}
+  .notif-full-bg{padding:0}
+  .notif-full-panel{width:100%;height:100vh;max-height:100vh;border-radius:0}
+  .notif-full-top{padding:12px}
+  .notif-full-body{padding:10px 12px}
+  .notif-full-filters{padding:8px 12px}
+
+  /* Cleaning thumbnails — vignettes plus petites */
+  .cln-thumb,.cln-thumb-ph,.cln-thumb-load{width:54px;height:40px}
+  .cln-thumb-cell{width:64px}
+
+  /* TAG button — taille tactile minimale (44x44 recommandé Apple) */
+  .tag-btn{width:32px;height:32px;font-size:14px}
+
+  /* Photo modal */
+  .photo-img{max-height:60vh}
+  .photo-area{gap:8px}
+
+  /* Footer */
+  footer{font-size:9px;margin-top:14px;padding-top:10px}
+
+  /* Alertes plus compactes */
+  .alert,.fumig-alert{padding:9px 11px;gap:7px}
+  .alert-txt,.fumig-sub{font-size:10px;line-height:1.5}
+
+  /* Theme button caché si manque de place — gardé visible */
+  /* Stats TAGs résumé en haut */
+  .tsc{padding:10px}
+  .tsv{font-size:18px}
+}
+
+/* ── PETIT MOBILE ≤ 420px ──────────────────────────────────── */
+@media(max-width:420px){
+  .app{padding:4px}
+  .hdr{padding:7px 9px}
+  .hdr-title{font-size:12px}
+  .hdr-sub{font-size:8px}
+  .badge{font-size:8px;padding:2px 6px}
+  .btn{font-size:9px;padding:3px 7px}
+  .modeBtn{font-size:8px;padding:3px 6px}
+
+  /* KPI : 1 seule colonne pour ne pas tronquer */
+  .kpi-grid{grid-template-columns:1fr;gap:6px}
+  .tsum{grid-template-columns:1fr;gap:6px}
+  .acc-summary{grid-template-columns:1fr;gap:6px}
+
+  /* Tables encore plus compactes */
+  table{font-size:9px;min-width:460px}
+  th,td{padding:5px 6px}
+
+  /* Charts */
+  .cw{height:150px!important}
+  .cw canvas{max-height:150px!important}
+
+  /* Pyramide encore plus petite */
+  .pyr-block{padding:4px 6px}
+  .pn{font-size:7px}
+  .pv{font-size:11px;min-width:18px}
+  .pi{font-size:10px}
+
+  /* Cleaning thumbs minuscules */
+  .cln-thumb,.cln-thumb-ph,.cln-thumb-load{width:46px;height:34px}
+  .cln-thumb-cell{width:54px}
 }
 
 /* ══ MODAL NOTIFICATIONS COMPLÈTE ══ */
