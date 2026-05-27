@@ -839,3 +839,311 @@ function getTagPhotoForClient_(fileId) {
     return 'data:' + (blob.getContentType()||'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
   } catch(e) { Logger.log('photo error: '+e.message); return ''; }
 }
+
+
+// ════════════════════════════════════════════════════════════
+// ── NOTIFICATION EMAIL : nouveau TAG créé ────────────────────
+// Quand une ligne est ajoutée à la feuille TAGs, un email
+// automatique est envoyé au Responsable concerné.
+//
+// INSTALLATION (à faire UNE seule fois) :
+//   1. Ouvrir l'éditeur Apps Script du classeur
+//   2. Exécuter manuellement la fonction `installTagTrigger`
+//   3. Autoriser les scopes Gmail/Drive/Sheets à la 1re exécution
+//
+// TEST MANUEL :
+//   - Exécuter `testNotifyTag('123')` pour rejouer l'envoi
+//     du TAG n°123 (le ré-injecte dans la file).
+//
+// AJOUTER UN RESPONSABLE :
+//   - Compléter l'objet TAG_RESPONSABLES_EMAIL ci-dessous
+//     (la clé doit correspondre au nom écrit dans la feuille,
+//      la comparaison est insensible à la casse / aux accents).
+// ════════════════════════════════════════════════════════════
+
+// ── Annuaire Responsable → Email (à étendre) ─────────────────
+var TAG_RESPONSABLES_EMAIL = {
+  'KOUACHI BRAHIM': 'BrahimKOUACHI@palmaryfood.com'
+  // Exemples à ajouter :
+  // ,'NOM PRENOM'   : 'email@palmaryfood.com'
+  // ,'AUTRE NOM'    : 'autre@palmaryfood.com'
+};
+
+// CC systématique (laisser '' pour désactiver)
+var TAG_EMAIL_CC = '';
+
+// Clé Script Property pour mémoriser les TAGs déjà notifiés
+var TAG_NOTIFIED_KEY = 'TAG_NOTIFIED_IDS_V1';
+
+// ── Helpers ──────────────────────────────────────────────────
+function normalizeName_(s) {
+  return normalize(String(s || '')).replace(/\s+/g, ' ').trim();
+}
+
+function escHtml_(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Résout l'email à partir d'un nom de responsable.
+// Match strict puis tolérant (sous-chaîne) — retourne '' si rien trouvé.
+function resolveResponsableEmail_(name) {
+  if (!name) return '';
+  var key  = normalizeName_(name);
+  var keys = Object.keys(TAG_RESPONSABLES_EMAIL);
+
+  // 1. Match exact (insensible casse/accents/espaces)
+  for (var i = 0; i < keys.length; i++) {
+    if (normalizeName_(keys[i]) === key) return TAG_RESPONSABLES_EMAIL[keys[i]];
+  }
+  // 2. Match partiel : la clé est contenue dans le nom (ou inverse)
+  for (var i = 0; i < keys.length; i++) {
+    var nk = normalizeName_(keys[i]);
+    if (nk && (key.indexOf(nk) > -1 || nk.indexOf(key) > -1)) {
+      return TAG_RESPONSABLES_EMAIL[keys[i]];
+    }
+  }
+  return '';
+}
+
+// ── Persistance des IDs déjà notifiés ────────────────────────
+function loadNotifiedIds_() {
+  try {
+    var raw = PropertiesService.getScriptProperties().getProperty(TAG_NOTIFIED_KEY);
+    return raw ? (JSON.parse(raw) || {}) : {};
+  } catch (e) { return {}; }
+}
+function saveNotifiedIds_(obj) {
+  try {
+    PropertiesService.getScriptProperties()
+      .setProperty(TAG_NOTIFIED_KEY, JSON.stringify(obj));
+  } catch (e) { Logger.log('saveNotifiedIds error: ' + e.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── DÉTECTION + ENVOI ────────────────────────────────────────
+// Scanne la feuille TAGs et envoie un email pour chaque nouvel
+// enregistrement non encore notifié (dont le responsable et la
+// description sont renseignés).
+// ════════════════════════════════════════════════════════════
+function notifyNewTags() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+
+  try {
+    var ss     = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+
+    // Trouver la feuille TAGs (même heuristique que getData)
+    var tagSheet = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('tag') > -1 || n.indexOf('danger') > -1 || n.indexOf('situation') > -1) {
+        tagSheet = sheets[i]; break;
+      }
+    }
+    if (!tagSheet) { Logger.log('notifyNewTags: feuille TAGs introuvable'); return; }
+
+    var data = tagSheet.getDataRange().getValues();
+    if (!data || data.length < 2) return;
+
+    // Détection dynamique des colonnes (cohérent avec getData)
+    var hdr = data[0];
+    var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
+                emplacement:5, zone:6, description:7, risque:8,
+                action:9, propositions:10, photoRef:11, statut:12, responsable:13 };
+    for (var c = 0; c < hdr.length; c++) {
+      var h = normalize(String(hdr[c] || '').replace(/[\n\r#]/g, '').trim());
+      if      (h.match(/^n.?\s*(cas|tag|$)/))                           COL.id          = c;
+      else if (h.indexOf('date c') === 0 && h.indexOf('cible') < 0 && h.indexOf('cr') > -1) COL.dateCreate = c;
+      else if (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1)   COL.dateCible   = c;
+      else if (h.indexOf('type') > -1 && h.indexOf('danger') > -1)      COL.type        = c;
+      else if (h.indexOf('gravit') > -1)                                 COL.gravite     = c;
+      else if (h.indexOf('emplace') > -1)                                COL.emplacement = c;
+      else if (h === 'zone')                                             COL.zone        = c;
+      else if (h.indexOf('description') > -1)                            COL.description = c;
+      else if (h.indexOf('risque') > -1)                                 COL.risque      = c;
+      else if (h.indexOf('action') > -1 && h.indexOf('urgente') > -1)    COL.action      = c;
+      else if (h.indexOf('proposition') > -1)                            COL.propositions= c;
+      else if (h.indexOf('reference') > -1 && h.indexOf('photo') > -1)   COL.photoRef    = c;
+      else if (h.indexOf('statut') > -1)                                 COL.statut      = c;
+      else if (h.indexOf('respens') > -1 || h.indexOf('respons') > -1)   COL.responsable = c;
+    }
+
+    var notified = loadNotifiedIds_();
+    var changed  = false;
+    var sent     = 0;
+
+    for (var i = 1; i < data.length; i++) {
+      var r  = data[i];
+      var id = isNull(r[COL.id]) ? '' : String(r[COL.id]).trim();
+      if (!id) continue;
+
+      // Ligne incomplète : on attend que les champs essentiels soient saisis
+      var responsable = isNull(r[COL.responsable]) ? '' : String(r[COL.responsable]).trim();
+      var description = isNull(r[COL.description]) ? '' : String(r[COL.description]).trim();
+      if (!responsable || !description) continue;
+
+      // Déjà notifié → skip
+      if (notified[id]) continue;
+
+      var email = resolveResponsableEmail_(responsable);
+      if (!email) {
+        Logger.log('notifyNewTags: pas d\'email mappé pour "' + responsable + '" (TAG ' + id + ')');
+        notified[id] = { ts: new Date().toISOString(), skipped: 'no_email_for:' + responsable };
+        changed = true;
+        continue;
+      }
+
+      var tag = {
+        id:          id,
+        date:        fmtDate(r[COL.dateCreate]),
+        dateCible:   fmtDate(r[COL.dateCible]),
+        type:        isNull(r[COL.type])         ? '' : String(r[COL.type]).trim(),
+        gravite:     isNull(r[COL.gravite])      ? '' : String(r[COL.gravite]).trim(),
+        emplacement: isNull(r[COL.emplacement])  ? '' : String(r[COL.emplacement]).trim(),
+        zone:        isNull(r[COL.zone])         ? '' : String(r[COL.zone]).trim(),
+        description: description,
+        risque:      isNull(r[COL.risque])       ? '' : String(r[COL.risque]).trim(),
+        action:      isNull(r[COL.action])       ? '' : String(r[COL.action]).trim(),
+        propositions:isNull(r[COL.propositions]) ? '' : String(r[COL.propositions]).trim(),
+        statut:      isNull(r[COL.statut])       ? '' : String(r[COL.statut]).trim(),
+        responsable: responsable
+      };
+
+      try {
+        sendTagEmail_(email, tag);
+        notified[id] = { ts: new Date().toISOString(), email: email };
+        changed = true;
+        sent++;
+      } catch (e) {
+        Logger.log('notifyNewTags: envoi raté pour TAG ' + id + ' → ' + e.message);
+      }
+    }
+
+    if (changed) saveNotifiedIds_(notified);
+    Logger.log('notifyNewTags: ' + sent + ' email(s) envoyé(s)');
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// ── Construction et envoi de l'email HTML ────────────────────
+function sendTagEmail_(email, tag) {
+  var subject = 'Nouveau TAG ' + tag.id + ' — ' +
+                (tag.zone || tag.emplacement || 'Situation dangereuse');
+
+  // Couleur selon gravité (heuristique tolérante)
+  var g = String(tag.gravite || '').toLowerCase();
+  var sevColor = /3|haut|elev|crit/.test(g) ? '#e8445a'
+               : /2|moy/.test(g)            ? '#f5a623'
+               : '#0a7a9a';
+
+  var rows = [
+    ['N° TAG',           tag.id],
+    ['Date de création', tag.date],
+    ['Date cible',       tag.dateCible],
+    ['Type de danger',   tag.type],
+    ['Gravité',          tag.gravite],
+    ['Zone',             tag.zone],
+    ['Emplacement',      tag.emplacement],
+    ['Description',      tag.description],
+    ['Risque principal', tag.risque],
+    ['Action urgente',   tag.action],
+    ['Propositions',     tag.propositions],
+    ['Statut',           tag.statut],
+    ['Responsable',      tag.responsable]
+  ];
+
+  var rowsHtml = rows.filter(function (r) { return r[1]; }).map(function (r) {
+    return '<tr>' +
+      '<td style="padding:6px 10px;border-bottom:1px solid #e6eef2;color:#557082;font-size:12px;font-weight:600;width:160px;vertical-align:top">' + escHtml_(r[0]) + '</td>' +
+      '<td style="padding:6px 10px;border-bottom:1px solid #e6eef2;color:#142532;font-size:13px;line-height:1.5">' + escHtml_(r[1]) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  var html =
+    '<div style="font-family:Inter,Arial,sans-serif;max-width:640px;margin:0 auto;color:#142532">' +
+      '<div style="background:linear-gradient(135deg,#09637e,#0da8d2);padding:16px 20px;border-radius:10px 10px 0 0;color:#fff">' +
+        '<div style="font-size:11px;letter-spacing:.6px;opacity:.85">SOBCO 3 — HSE</div>' +
+        '<div style="font-size:18px;font-weight:700;margin-top:2px">Nouveau TAG ' + escHtml_(tag.id) + '</div>' +
+        '<div style="font-size:12px;opacity:.9;margin-top:2px">Une nouvelle situation dangereuse vous est attribuée.</div>' +
+      '</div>' +
+      '<div style="background:#fff;border:1px solid #e6eef2;border-top:none;padding:16px 20px;border-radius:0 0 10px 10px">' +
+        (tag.gravite ?
+          '<div style="display:inline-block;padding:4px 10px;border-radius:14px;background:' + sevColor + ';color:#fff;font-size:11px;font-weight:700;margin-bottom:12px">' +
+            'GRAVITÉ : ' + escHtml_(tag.gravite) +
+          '</div>' : '') +
+        '<table style="width:100%;border-collapse:collapse">' + rowsHtml + '</table>' +
+        '<div style="margin-top:14px;padding:10px 12px;background:#f0f6f9;border-left:3px solid #0a7a9a;color:#284e64;font-size:12px;line-height:1.6">' +
+          'Bonjour ' + escHtml_(tag.responsable) + ',<br>' +
+          'Un TAG vient d\'être créé et requiert votre intervention. ' +
+          'Merci de prendre en charge l\'action urgente avant la date cible indiquée.' +
+        '</div>' +
+        '<div style="margin-top:14px;font-size:10px;color:#8aa1b0">' +
+          'Email automatique — SOBCO 3 HSE Master Dashboard.' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+
+  var opts = { htmlBody: html, name: 'SOBCO 3 - HSE' };
+  if (TAG_EMAIL_CC) opts.cc = TAG_EMAIL_CC;
+
+  MailApp.sendEmail(email, subject, '', opts);
+}
+
+// ── Trigger onChange installable ─────────────────────────────
+// Se déclenche à chaque ajout/édition/insertion de ligne dans
+// le classeur. On ne filtre pas trop fin : notifyNewTags() est
+// idempotent (Script Properties + LockService).
+function onSheetChange(e) {
+  try {
+    notifyNewTags();
+  } catch (err) {
+    Logger.log('onSheetChange error: ' + err.message);
+  }
+}
+
+// ── Installation du trigger (à exécuter UNE seule fois) ──────
+function installTagTrigger() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  // Supprimer les anciens triggers onSheetChange pour éviter les doublons
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'onSheetChange') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+  ScriptApp.newTrigger('onSheetChange').forSpreadsheet(ss).onChange().create();
+  Logger.log('Trigger onSheetChange installé sur "' + ss.getName() + '"');
+}
+
+// ── Désinstallation (utilitaire) ─────────────────────────────
+function uninstallTagTrigger() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var n = 0;
+  for (var i = 0; i < triggers.length; i++) {
+    if (triggers[i].getHandlerFunction() === 'onSheetChange') {
+      ScriptApp.deleteTrigger(triggers[i]); n++;
+    }
+  }
+  Logger.log('Triggers supprimés : ' + n);
+}
+
+// ── Test manuel : rejouer l'envoi pour un TAG donné ──────────
+// Usage : testNotifyTag('123')
+function testNotifyTag(tagId) {
+  if (!tagId) { Logger.log('Usage : testNotifyTag("N° du TAG")'); return; }
+  var notified = loadNotifiedIds_();
+  delete notified[String(tagId).trim()];
+  saveNotifiedIds_(notified);
+  notifyNewTags();
+}
+
+// ── Réinitialisation complète de l'historique des envois ─────
+// (à utiliser avec précaution — re-notifie TOUS les TAGs)
+function resetTagNotificationHistory() {
+  PropertiesService.getScriptProperties().deleteProperty(TAG_NOTIFIED_KEY);
+  Logger.log('Historique des notifications TAG réinitialisé.');
+}
