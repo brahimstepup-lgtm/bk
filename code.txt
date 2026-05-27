@@ -500,25 +500,38 @@ function readCleaning(ss, photoCache) {
 
 // ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "nettoyage 1" — PLAN DE NETTOYAGE ────────
-// Pour chaque zone (Étage -1, Étage 0, Étage 1, Voie externe) on
-// extrait :
-//   - link         : lien du PLAN de nettoyage
-//   - productsLink : lien des PRODUITS utilisés
-//   - productsText : libellé / description des produits si la
-//                    cellule n'est pas un lien
-// La détection des colonnes est souple :
-//   ZONE          : entête contient "zone"
-//   LIEN PLAN     : "lien", "link", "url", "document", "fichier",
-//                   "plan"  (mais PAS "produit")
-//   PRODUITS      : "produit" / "product" / "consommable" /
-//                   "materiel" / "matériel"
-// Si l'entête n'est pas détectée on retombe sur :
-//   col A = zone, col B = lien plan, col C = produits.
-// Lecture par RichText en priorité afin de capturer les liens
-// hypertexte qui n'apparaissent pas en valeur brute.
+// Renvoie un objet { entries, products } :
+//
+// 1) entries  → un tableau de zones (Étage -1, 0, 1, Voie externe)
+//    Pour chaque zone on extrait :
+//      - link         : lien du PLAN de nettoyage
+//      - productsLink : lien des produits utilisés (si une colonne
+//                       Produits existe dans le tableau des zones)
+//      - productsText : libellé/description des produits
+//    Détection souple des colonnes du tableau ZONES :
+//      ZONE          : entête contient "zone"
+//      LIEN PLAN     : "lien" / "link" / "url" / "document" /
+//                      "fichier" / "plan"  (mais PAS "produit")
+//      PRODUITS      : "produit" / "product" / "consommable" /
+//                      "materiel" / "fds" / "fiche" / "detergent"
+//                      "désinfect" / "chimique" / "savon" / "outil"
+//                      "équipement"
+//    Si AUCUNE entête n'est détectée → A=zone, B=lien plan, C=produits.
+//
+// 2) products → un tableau global { name, link } extrait d'un
+//    sous-tableau « PRODUITS UTILISÉS » présent ailleurs sur la
+//    même feuille, avec colonnes typiquement « NOM DE PRODUIT »
+//    + « LIEN DE FICHE » (FDS).  Détection tolérante : on accepte
+//    toute paire (NOM/PRODUIT, LIEN/FICHE/FDS/DOCUMENT/URL).
+//    Lecture jusqu'à rencontrer 2 lignes consécutives totalement
+//    vides (= fin du sous-tableau).
+//
+// Lecture par formule (=HYPERLINK), RichText puis valeur brute
+// afin de capturer tous les types de liens hypertexte.
 // ════════════════════════════════════════════════════════════
 function readCleaningPlan(ss) {
-  var entries = [];
+  var entries  = [];
+  var products = [];
   try {
     var sheets = ss.getSheets();
     var sh = null;
@@ -541,18 +554,33 @@ function readCleaningPlan(ss) {
         if (n.indexOf('nettoyage') > -1 && n.indexOf('1') > -1 && n.indexOf('10') < 0) { sh = sheets[i]; break; }
       }
     }
-    if (!sh) { Logger.log('Cleaning PLAN sheet NOT found'); return entries; }
+    if (!sh) { Logger.log('Cleaning PLAN sheet NOT found'); return { entries: entries, products: products }; }
     Logger.log('Cleaning PLAN sheet found: ' + sh.getName());
 
     var range    = sh.getDataRange();
     var data     = range.getValues();
     var rich     = null;
-    try { rich = range.getRichTextValues(); } catch(e0) { rich = null; }
-    if (!data || data.length < 1) return entries;
+    var formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e0) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(eF) { formulas = null; }
+    if (!data || data.length < 1) return { entries: entries, products: products };
 
-    // ── Helper : extrait l'URL d'une cellule (RichText prioritaire) ──
+    // ── Helper : extrait l'URL d'une cellule ─────────────────
+    // Ordre : 1) formule =HYPERLINK("url",...)   2) RichText
+    //         3) objet Drive (getUrl)            4) URL en clair
     function cellUrl(rIdx, cIdx) {
-      // 1) Tenter via RichText (capture les hyperlinks « masqués » dans le texte)
+      // 1) Formule =HYPERLINK("url", "libellé")  — souvent invisible aux RichText
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          // URL nue dans une formule générique
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      // 2) RichText (capture les hyperlinks « masqués » dans le texte)
       if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
         var rt = rich[rIdx][cIdx];
         try {
@@ -568,23 +596,47 @@ function readCleaningPlan(ss) {
           }
         } catch(eR) {}
       }
-      // 2) Sinon valeur brute (URL en clair)
+      // 3) Objet Drive natif
       var v = data[rIdx][cIdx];
       if (isNull(v)) return '';
-      var s = String(v).trim();
       if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
         try { return String(v.getUrl() || '').trim(); } catch(eU) {}
       }
-      // Si la cellule contient une URL en texte brut → renvoyer
+      // 4) URL en clair dans la valeur brute
+      var s = String(v).trim();
       if (/^https?:\/\//i.test(s)) return s;
+      // Certaines cellules contiennent l'URL au milieu d'un texte
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
       return '';
     }
     function cellText(rIdx, cIdx) {
       var v = data[rIdx][cIdx];
       return isNull(v) ? '' : String(v).trim();
     }
+    // Vrai si la colonne c contient au moins une donnée sous la ligne hdr
+    function colHasData(c, fromRow) {
+      for (var r = fromRow; r < data.length; r++) {
+        if (c < (data[r] || []).length && !isNull(data[r][c])) return true;
+      }
+      return false;
+    }
 
     // ── Détecter la ligne d'entête + colonnes ──
+    // Mots-clés ÉLARGIS pour la colonne « Produits utilisés » :
+    //   produit / product / consommable / materiel / matériel
+    //   fds / fiche (de données) / detergent / désinfectant / désinfection
+    //   chimique / savon / outil / equipement / équipement
+    var PROD_KW = ['produit','product','consommable','materiel',
+                   'fds','fiche','detergent','desinfect','chimique',
+                   'savon','outil','equipement'];
+    function isProdHeader(h) {
+      for (var k = 0; k < PROD_KW.length; k++) {
+        if (h.indexOf(PROD_KW[k]) > -1) return true;
+      }
+      return false;
+    }
+
     var hdrRow = -1, zoneCol = -1, linkCol = -1, prodCol = -1;
     for (var i = 0; i < Math.min(data.length, 6); i++) {
       var row = data[i];
@@ -592,11 +644,8 @@ function readCleaningPlan(ss) {
       for (var c = 0; c < row.length; c++) {
         var h = normalize(String(row[c]||''));
         if (!h) continue;
-        // Produits — testé en premier pour éviter de matcher "lien produits" comme "lien"
-        if (pc < 0 && (h.indexOf('produit') > -1 || h.indexOf('product') > -1 ||
-                       h.indexOf('consommable') > -1 || h.indexOf('materiel') > -1)) {
-          pc = c; continue;
-        }
+        // Produits — testé en premier pour éviter de matcher « lien produits » comme « lien »
+        if (pc < 0 && isProdHeader(h)) { pc = c; continue; }
         if (zc < 0 && h.indexOf('zone') > -1) { zc = c; continue; }
         if (lc < 0 && (h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
                        h.indexOf('url') > -1  || h.indexOf('document') > -1 ||
@@ -608,12 +657,94 @@ function readCleaningPlan(ss) {
         hdrRow = i; zoneCol = zc; linkCol = lc; prodCol = pc; break;
       }
     }
-    // Fallback : pas d'entête détectée → A=zone, B=lien plan, C=produits
+    // Fallback total : pas d'entête détectée → A=zone, B=lien plan, C=produits
     if (hdrRow < 0) { hdrRow = -1; zoneCol = 0; linkCol = 1; prodCol = 2; }
+
+    // Fallback ciblé : entête trouvée MAIS colonne Produits manquante.
+    // On choisit la première colonne « libre » (≠ zoneCol, ≠ linkCol) qui
+    // contient des données sous la ligne d'entête. Cela couvre les cas où
+    // la colonne s'appelle « Détergents », « FDS », n'a pas d'entête, etc.
+    if (prodCol < 0) {
+      var startRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
+      var maxCol   = 0;
+      for (var rr = 0; rr < data.length; rr++) {
+        if ((data[rr] || []).length > maxCol) maxCol = data[rr].length;
+      }
+      // 1) Préférer une colonne avec un entête non vide
+      for (var c = 0; c < maxCol; c++) {
+        if (c === zoneCol || c === linkCol) continue;
+        var hdrTxt = (hdrRow >= 0 && data[hdrRow]) ? String(data[hdrRow][c] || '').trim() : '';
+        if (!hdrTxt) continue;
+        if (colHasData(c, startRow)) { prodCol = c; break; }
+      }
+      // 2) Sinon n'importe quelle colonne libre avec des données
+      if (prodCol < 0) {
+        for (var c = 0; c < maxCol; c++) {
+          if (c === zoneCol || c === linkCol) continue;
+          if (colHasData(c, startRow)) { prodCol = c; break; }
+        }
+      }
+      Logger.log('Cleaning PLAN: prodCol auto-fallback → ' + prodCol);
+    }
+
+    // Log diagnostic des entêtes détectées (utile en cas d'erreur "Aucune info produits")
+    if (hdrRow >= 0 && data[hdrRow]) {
+      Logger.log('Cleaning PLAN headers row[' + hdrRow + '] : ' +
+                 JSON.stringify(data[hdrRow].map(function(x){ return String(x||''); })));
+    }
     Logger.log('Cleaning PLAN cols : zone=' + zoneCol +
                ' link=' + linkCol + ' prod=' + prodCol + ' hdrRow=' + hdrRow);
 
+    // ── Détection du sous-tableau « PRODUITS UTILISÉS » ───────
+    // Cherche n'importe où sur la feuille (sauf la ligne d'entête
+    // des zones) une paire d'entêtes (Nom de produit / Lien de fiche).
+    // Renvoie { hdrRow, nameCol, linkCol } ou null.
+    function findProductsTable(skipRow) {
+      function classify(h) {
+        if (!h) return '';
+        if (h.indexOf('zone') > -1) return '';   // jamais le tableau des zones
+        var hasNom  = h.indexOf('nom') > -1;
+        var hasProd = h.indexOf('produit') > -1 || h.indexOf('product') > -1;
+        var hasLink = h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
+                      h.indexOf('url') > -1  || h.indexOf('fiche') > -1 ||
+                      h.indexOf('fds') > -1  ||
+                      h.indexOf('document') > -1 || h.indexOf('fichier') > -1;
+        if (hasLink) return 'link';
+        if ((hasNom && hasProd) || h === 'nom') return 'name';
+        if (hasProd) return 'name';   // "Produit", "Produits"
+        if (h.indexOf('designation') > -1 || h.indexOf('libelle') > -1 ||
+            h.indexOf('intitule')   > -1) return 'name';
+        return '';
+      }
+      for (var r = 0; r < data.length; r++) {
+        if (r === skipRow) continue;
+        var row = data[r] || [];
+        var nc = -1, lc = -1;
+        for (var c = 0; c < row.length; c++) {
+          var h = normalize(String(row[c]||''));
+          var t = classify(h);
+          if      (t === 'name' && nc < 0) nc = c;
+          else if (t === 'link' && lc < 0) lc = c;
+        }
+        if (nc >= 0 && lc >= 0 && nc !== lc) {
+          return { hdrRow: r, nameCol: nc, linkCol: lc };
+        }
+      }
+      return null;
+    }
+    var prodTbl = findProductsTable(hdrRow);
+    if (prodTbl) {
+      Logger.log('Cleaning PLAN sub-table « PRODUITS UTILISÉS » found at row ' +
+                 prodTbl.hdrRow + ' (name=' + prodTbl.nameCol + ' link=' + prodTbl.linkCol + ')');
+    } else {
+      Logger.log('Cleaning PLAN sub-table « PRODUITS UTILISÉS » : not found');
+    }
+
+    // ── Lecture des lignes ZONES ─────────────────────────────
+    // (on s'arrête au début du sous-tableau produits pour ne pas
+    //  consommer ses lignes comme si c'étaient des zones)
     for (var i = hdrRow + 1; i < data.length; i++) {
+      if (prodTbl && i >= prodTbl.hdrRow) break;
       var zone = cellText(i, zoneCol);
       if (!zone) continue;
 
@@ -632,10 +763,33 @@ function readCleaningPlan(ss) {
       });
     }
     Logger.log('Cleaning PLAN entries : ' + entries.length);
+
+    // ── Lecture du sous-tableau PRODUITS UTILISÉS ────────────
+    // Format attendu : NOM DE PRODUIT | LIEN DE FICHE (FDS).
+    // S'arrête après 2 lignes consécutives totalement vides.
+    if (prodTbl) {
+      var blanks = 0;
+      for (var i = prodTbl.hdrRow + 1; i < data.length; i++) {
+        var pName    = cellText(i, prodTbl.nameCol);
+        var pLink    = cellUrl(i, prodTbl.linkCol);
+        var pLinkRaw = cellText(i, prodTbl.linkCol);
+        if (!pName && !pLink && !pLinkRaw) {
+          blanks++;
+          if (blanks >= 2) break;
+          continue;
+        }
+        blanks = 0;
+        if (!pName) continue;            // ignore les lignes sans nom
+        // Si une URL est dans le texte brut, prends-la
+        if (!pLink && /^https?:\/\//i.test(pLinkRaw)) pLink = pLinkRaw;
+        products.push({ name: pName, link: pLink || '', text: pLink ? '' : pLinkRaw });
+      }
+      Logger.log('Cleaning PLAN products : ' + products.length);
+    }
   } catch(e) {
     Logger.log('readCleaningPlan error: ' + e.message);
   }
-  return entries;
+  return { entries: entries, products: products };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -661,6 +815,7 @@ function getData() {
     kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[],
     cleaning:[],
     cleaningPlan:[],
+    cleaningProducts:[],
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
@@ -678,7 +833,9 @@ function getData() {
   out.cleaningPhotosCount = cleanPhotos.count;
 
   // ── Plan de nettoyage (feuille "nettoyage 1") ────────────
-  out.cleaningPlan = readCleaningPlan(ss);
+  var cp = readCleaningPlan(ss);
+  out.cleaningPlan     = (cp && cp.entries)  ? cp.entries  : [];
+  out.cleaningProducts = (cp && cp.products) ? cp.products : [];
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
