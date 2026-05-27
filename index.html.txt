@@ -490,6 +490,31 @@ html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
 .cln-plan-sub{display:block;font-size:10px;color:var(--text3);font-weight:400;
   margin-top:2px;line-height:1.35;white-space:normal}
 
+/* ── Liste « produits utilisés » : un item par produit, groupé par zone ── */
+.cln-products-list{display:flex;flex-direction:column;gap:14px}
+.cln-products-group{display:flex;flex-direction:column;gap:8px}
+.cln-products-zone-hdr{display:flex;align-items:center;gap:8px;font-size:11px;
+  font-weight:700;color:var(--text);padding:6px 4px;border-bottom:1px solid var(--border);
+  text-transform:uppercase;letter-spacing:.5px}
+.cln-products-zone-icon{font-size:15px}
+.cln-products-zone-count{margin-left:auto;font-size:9px;color:var(--text3);font-weight:600;
+  background:var(--bg4);border:1px solid var(--border);padding:2px 7px;border-radius:10px;
+  letter-spacing:0;text-transform:none}
+.cln-products-items{display:flex;flex-direction:column;gap:6px}
+.cln-product-item{display:flex;align-items:center;gap:10px;width:100%;
+  padding:10px 12px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);cursor:pointer;font-size:12px;
+  font-weight:500;font-family:'Inter',sans-serif;transition:all .15s;text-align:left}
+.cln-product-item:hover:not(.disabled){border-color:var(--p3);background:var(--bg4);
+  transform:translateX(2px);box-shadow:0 2px 8px var(--shadow)}
+.cln-product-item.disabled{opacity:.55;cursor:not-allowed}
+.cln-product-icon{font-size:13px;flex-shrink:0;width:26px;height:26px;
+  display:flex;align-items:center;justify-content:center;border-radius:6px;
+  background:var(--bg4);border:1px solid var(--border)}
+.cln-product-name{flex:1;color:var(--text);line-height:1.35;word-break:break-word;
+  white-space:normal}
+.cln-product-arrow{color:var(--text3);font-size:13px;flex-shrink:0;font-weight:700}
+
 /* ── MODAL EMBED — affichage du lien dans le dashboard ── */
 .cln-embed-panel{width:min(1200px,98%);max-width:98vw;height:min(86vh,820px);
   display:flex;flex-direction:column;overflow:hidden}
@@ -2738,34 +2763,74 @@ function openCleaningPlanLink(encoded, encodedTitle){
 }
 
 // ── PRODUITS UTILISÉS ────────────────────────────────────────
-// Lit les mêmes entrées (D.cleaningPlan) mais utilise productsLink
-// (et productsText si pas de lien).
+// Affiche la liste de TOUS les produits (un item par produit),
+// groupés par zone. Chaque produit est lié à sa fiche technique
+// (productsLink / products[].link) — clic = embed dans le dashboard.
 function clnProductsResolve(zoneLabel){
   var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
-  if (!data.length) return { link:'', text:'' };
+  if (!data.length) return { link:'', text:'', products:[] };
   var key = clnPlanNorm(zoneLabel);
   for (var i = 0; i < data.length; i++) {
     if (clnPlanNorm(data[i].zone) === key) {
-      return { link: data[i].productsLink || '', text: data[i].productsText || '' };
+      return {
+        link:     data[i].productsLink || '',
+        text:     data[i].productsText || '',
+        products: data[i].products || []
+      };
     }
   }
   for (var i = 0; i < data.length; i++) {
     var z = clnPlanNorm(data[i].zone);
     if (z.indexOf(key) > -1 || key.indexOf(z) > -1) {
-      return { link: data[i].productsLink || '', text: data[i].productsText || '' };
+      return {
+        link:     data[i].productsLink || '',
+        text:     data[i].productsText || '',
+        products: data[i].products || []
+      };
     }
   }
-  return { link:'', text:'' };
+  return { link:'', text:'', products:[] };
+}
+// Construit la liste finale [{zone, name, link}] depuis D.cleaningPlan
+// avec rétro-compat si le backend ne renvoie pas encore products[].
+function clnProductsBuildRows(){
+  var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
+  var rows = [];
+  data.forEach(function(d){
+    if (!d || !d.zone) return;
+    var prods = (d.products && d.products.length) ? d.products : null;
+    if (!prods) {
+      // Rétro-compat : reconstitue à partir de productsLink / productsText
+      var hasL = !!d.productsLink, hasT = !!d.productsText;
+      if (!hasL && !hasT) return;
+      if (hasT) {
+        var lines = String(d.productsText).split(/\r?\n/)
+          .map(function(s){return s.trim();}).filter(Boolean);
+        prods = lines.map(function(l, idx){
+          return { name: l, link: (idx === 0 && hasL) ? d.productsLink : '' };
+        });
+      } else {
+        prods = [{ name: d.productsLink, link: d.productsLink }];
+      }
+    }
+    prods.forEach(function(p){
+      if (!p) return;
+      var nm = p.name || p.link || '';
+      var lk = p.link || '';
+      if (!nm && !lk) return;
+      rows.push({ zone: d.zone, name: nm, link: lk });
+    });
+  });
+  return rows;
 }
 function openCleaningProducts(){
   var list  = document.getElementById('clnProductsList');
   var empty = document.getElementById('clnProductsEmpty');
   if (!list || !empty) return;
 
-  var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
-  var anyProducts = data.some(function(d){ return d && (d.productsLink || d.productsText); });
+  var rows = clnProductsBuildRows();
 
-  if (!data.length || !anyProducts) {
+  if (!rows.length) {
     list.innerHTML = '';
     list.style.display = 'none';
     empty.style.display = 'block';
@@ -2773,46 +2838,66 @@ function openCleaningProducts(){
     return;
   }
 
-  var html = '';
-  CLN_PLAN_ZONES.forEach(function(z){
-    var p = clnProductsResolve(z.label);
+  // ── Liste à plat, INDÉPENDANTE des zones ─────────────────
+  // Les produits ne sont pas groupés par zone : on les rassemble
+  // tous dans une seule liste, dédupliquée par (nom + lien) en
+  // ignorant la casse et les espaces multiples.
+  var seen = {}, flat = [];
+  rows.forEach(function(r){
+    var nm = String(r.name || r.link || '').trim();
+    var lk = String(r.link || '').trim();
+    if (!nm && !lk) return;
+    var key = (nm + '|' + lk).toLowerCase().replace(/\s+/g,' ');
+    if (seen[key]) return;
+    seen[key] = true;
+    flat.push({ name: nm, link: lk });
+  });
+
+  // Tri alphabétique (insensible à la casse), produits avec lien d'abord
+  flat.sort(function(a,b){
+    if (!!a.link !== !!b.link) return a.link ? -1 : 1;
+    return a.name.localeCompare(b.name, 'fr', { sensitivity:'base' });
+  });
+
+  // Bascule la classe pour passer du grid 2 colonnes à la liste verticale
+  list.classList.remove('cln-plan-grid');
+  list.classList.add('cln-products-list');
+
+  var html = '<div class="cln-products-group">'
+           +   '<div class="cln-products-zone-hdr">'
+           +     '<span class="cln-products-zone-icon">🧴</span>'
+           +     '<span>Tous les produits</span>'
+           +     '<span class="cln-products-zone-count">'+flat.length+' produit'+(flat.length>1?'s':'')+'</span>'
+           +   '</div>'
+           +   '<div class="cln-products-items">';
+  flat.forEach(function(p){
     var hasLink = !!p.link;
-    var hasText = !!p.text;
-    var disabled = !hasLink && !hasText;
-
-    var arrow = disabled ? '⛔' : (hasLink ? '↗' : '📄');
-    var safeTitle = esc(z.label);
-    var subTxt = '';
-    if (hasText) {
-      var t = p.text;
-      if (t.length > 90) t = t.substring(0,90) + '…';
-      subTxt = '<span class="cln-plan-sub">'+esc(t)+'</span>';
-    } else if (hasLink) {
-      subTxt = '<span class="cln-plan-sub">Voir les produits utilisés</span>';
-    } else {
-      subTxt = '<span class="cln-plan-sub">Aucun produit renseigné</span>';
-    }
-
+    var arrow = hasLink ? '↗' : '⛔';
+    var ttl = hasLink ? 'Voir la fiche technique' : 'Aucune fiche technique liée';
+    var disp = p.name || p.link || 'Produit';
+    if (disp.length > 110) disp = disp.substring(0, 110) + '…';
     if (hasLink) {
-      html += '<button class="cln-plan-btn" '
-           +  'onclick="openCleaningProductsLink(\''+encodeURIComponent(p.link)+'\',\''+encodeURIComponent(z.label)+'\')">'
-           +    '<span class="cln-plan-icon">'+z.icon+'</span>'
-           +    '<span class="cln-plan-zone">'+safeTitle+subTxt+'</span>'
-           +    '<span class="cln-plan-arrow">'+arrow+'</span>'
+      html += '<button class="cln-product-item" '
+           +    'title="'+esc(ttl)+'" '
+           +    'onclick="openCleaningProductsLink(\''
+           +      encodeURIComponent(p.link)+'\',\''
+           +      encodeURIComponent(p.name || 'Produit')+'\')">'
+           +    '<span class="cln-product-icon">📄</span>'
+           +    '<span class="cln-product-name">'+esc(disp)+'</span>'
+           +    '<span class="cln-product-arrow">'+arrow+'</span>'
            +  '</button>';
     } else {
-      // Pas de lien → bouton informatif (texte seulement)
-      html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
-           +  (disabled ? 'disabled' : 'onclick="void 0"')
-           +  ' title="'+esc(p.text || 'Aucun produit renseigné')+'">'
-           +    '<span class="cln-plan-icon">'+z.icon+'</span>'
-           +    '<span class="cln-plan-zone">'+safeTitle+subTxt+'</span>'
-           +    '<span class="cln-plan-arrow">'+arrow+'</span>'
-           +  '</button>';
+      html += '<div class="cln-product-item disabled" title="'+esc(ttl)+'">'
+           +    '<span class="cln-product-icon">📄</span>'
+           +    '<span class="cln-product-name">'+esc(disp)+'</span>'
+           +    '<span class="cln-product-arrow">'+arrow+'</span>'
+           +  '</div>';
     }
   });
+  html += '</div></div>';
+
   list.innerHTML = html;
-  list.style.display  = 'grid';
+  list.style.display  = 'flex';
   empty.style.display = 'none';
   openModal('clnProductsModal');
 }

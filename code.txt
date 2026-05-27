@@ -503,19 +503,28 @@ function readCleaning(ss, photoCache) {
 // Pour chaque zone (Étage -1, Étage 0, Étage 1, Voie externe) on
 // extrait :
 //   - link         : lien du PLAN de nettoyage
-//   - productsLink : lien des PRODUITS utilisés
-//   - productsText : libellé / description des produits si la
-//                    cellule n'est pas un lien
-// La détection des colonnes est souple :
-//   ZONE          : entête contient "zone"
-//   LIEN PLAN     : "lien", "link", "url", "document", "fichier",
-//                   "plan"  (mais PAS "produit")
-//   PRODUITS      : "produit" / "product" / "consommable" /
-//                   "materiel" / "matériel"
+//   - products     : tableau [{name, link}, ...] avec UN produit
+//                    par entrée (chaque produit = sa fiche technique)
+//   - productsLink : lien du PREMIER produit (rétro-compat)
+//   - productsText : concaténation des noms (rétro-compat)
+// Détection des colonnes (souple) :
+//   ZONE       : entête contient "zone"
+//   LIEN PLAN  : "lien", "link", "url", "document", "fichier",
+//                "plan"  (mais PAS "produit")
+//   PRODUITS   : TOUTES les colonnes dont l'entête contient
+//                "produit" / "product" / "consommable" /
+//                "materiel" / "matériel" / "fiche technique" / "fds"
 // Si l'entête n'est pas détectée on retombe sur :
 //   col A = zone, col B = lien plan, col C = produits.
-// Lecture par RichText en priorité afin de capturer les liens
-// hypertexte qui n'apparaissent pas en valeur brute.
+//
+// EXTRACTION DES PRODUITS (par cellule) :
+//   - Le texte de la cellule est splitté par retour à la ligne →
+//     chaque ligne = un produit distinct.
+//   - Le lien hypertexte (fiche technique) est récupéré via
+//     RichText.getRuns() en cherchant le run qui chevauche la
+//     ligne courante et possède un getLinkUrl().
+//   - Si une ligne est elle-même une URL en clair → utilisée tel quel.
+//   - Permet plusieurs produits par cellule + hyperlien par produit.
 // ════════════════════════════════════════════════════════════
 function readCleaningPlan(ss) {
   var entries = [];
@@ -584,18 +593,105 @@ function readCleaningPlan(ss) {
       return isNull(v) ? '' : String(v).trim();
     }
 
+    // ── Helper : extrait UNE LISTE de produits depuis une cellule ──
+    // Splitte par retours à la ligne et retrouve le lien hypertexte
+    // (fiche technique) de CHAQUE produit via les RichText runs.
+    // Renvoie [{name, link}, ...]
+    function cellProducts(rIdx, cIdx) {
+      var out = [];
+      if (cIdx < 0) return out;
+      var v = data[rIdx][cIdx];
+      var rawText = isNull(v) ? '' : String(v);
+      var rt = (rich && rich[rIdx] && rich[rIdx][cIdx]) ? rich[rIdx][cIdx] : null;
+
+      // Texte complet (privilégie RichText pour préserver \n)
+      var fullText = '';
+      if (rt && rt.getText) {
+        try { fullText = rt.getText() || ''; } catch(eT) {}
+      }
+      if (!fullText) fullText = rawText;
+      if (!fullText || !String(fullText).trim()) return out;
+
+      // Construit la table des runs avec positions (start/end + lien)
+      var runPos = [];
+      if (rt && rt.getRuns) {
+        try {
+          var runs = rt.getRuns();
+          var pos = 0;
+          for (var k = 0; k < runs.length; k++) {
+            var run = runs[k];
+            var rtxt = '';
+            try { rtxt = run.getText() || ''; } catch(eRT0) {}
+            var rurl = '';
+            try { rurl = run.getLinkUrl() || ''; } catch(eRT1) {}
+            runPos.push({ start: pos, end: pos + rtxt.length, link: String(rurl||'') });
+            pos += rtxt.length;
+          }
+        } catch(eR2) {}
+      }
+
+      // Lien global éventuel sur toute la cellule
+      var cellLink = '';
+      if (rt && rt.getLinkUrl) {
+        try { cellLink = String(rt.getLinkUrl() || ''); } catch(eR3) {}
+      }
+      if (!cellLink) {
+        var s = String(rawText||'').trim();
+        if (/^https?:\/\//i.test(s)) cellLink = s;
+      }
+
+      // Splitte par lignes (chaque ligne = un produit)
+      var lines = String(fullText).split(/\r?\n/);
+      var cur = 0;
+      for (var li = 0; li < lines.length; li++) {
+        var line = lines[li];
+        var lineStart = cur;
+        var lineEnd   = cur + line.length;
+        cur = lineEnd + 1; // +1 pour le \n
+
+        var name = String(line || '').trim();
+        if (!name) continue;
+
+        var link = '';
+        // Si la ligne est elle-même une URL → utilise-la
+        if (/^https?:\/\//i.test(name)) {
+          link = name;
+        }
+        // Sinon : chercher un run qui chevauche cette ligne et qui a un lien
+        if (!link) {
+          for (var rp = 0; rp < runPos.length; rp++) {
+            var r = runPos[rp];
+            if (r.link && r.start < lineEnd && r.end > lineStart) {
+              link = r.link;
+              break;
+            }
+          }
+        }
+        // Fallback : si une seule ligne et un lien global sur la cellule
+        if (!link && lines.length === 1 && cellLink) {
+          link = cellLink;
+        }
+
+        out.push({ name: name, link: link });
+      }
+      return out;
+    }
+
     // ── Détecter la ligne d'entête + colonnes ──
-    var hdrRow = -1, zoneCol = -1, linkCol = -1, prodCol = -1;
+    // prodCols est un TABLEAU pour supporter plusieurs colonnes Produit
+    var hdrRow = -1, zoneCol = -1, linkCol = -1, prodCols = [];
     for (var i = 0; i < Math.min(data.length, 6); i++) {
       var row = data[i];
-      var zc = -1, lc = -1, pc = -1;
+      var zc = -1, lc = -1, pcs = [];
       for (var c = 0; c < row.length; c++) {
         var h = normalize(String(row[c]||''));
         if (!h) continue;
         // Produits — testé en premier pour éviter de matcher "lien produits" comme "lien"
-        if (pc < 0 && (h.indexOf('produit') > -1 || h.indexOf('product') > -1 ||
-                       h.indexOf('consommable') > -1 || h.indexOf('materiel') > -1)) {
-          pc = c; continue;
+        if (h.indexOf('produit') > -1 || h.indexOf('product') > -1 ||
+            h.indexOf('consommable') > -1 || h.indexOf('materiel') > -1 ||
+            h.indexOf('fiche technique') > -1 || h.indexOf('fds') > -1) {
+          if (pcs.indexOf(c) < 0) pcs.push(c);
+          continue;
         }
         if (zc < 0 && h.indexOf('zone') > -1) { zc = c; continue; }
         if (lc < 0 && (h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
@@ -604,28 +700,47 @@ function readCleaningPlan(ss) {
           lc = c; continue;
         }
       }
-      if (zc >= 0 && (lc >= 0 || pc >= 0)) {
-        hdrRow = i; zoneCol = zc; linkCol = lc; prodCol = pc; break;
+      if (zc >= 0 && (lc >= 0 || pcs.length > 0)) {
+        hdrRow = i; zoneCol = zc; linkCol = lc; prodCols = pcs; break;
       }
     }
     // Fallback : pas d'entête détectée → A=zone, B=lien plan, C=produits
-    if (hdrRow < 0) { hdrRow = -1; zoneCol = 0; linkCol = 1; prodCol = 2; }
+    if (hdrRow < 0) { hdrRow = -1; zoneCol = 0; linkCol = 1; prodCols = [2]; }
     Logger.log('Cleaning PLAN cols : zone=' + zoneCol +
-               ' link=' + linkCol + ' prod=' + prodCol + ' hdrRow=' + hdrRow);
+               ' link=' + linkCol + ' prodCols=[' + prodCols.join(',') +
+               '] hdrRow=' + hdrRow);
 
     for (var i = hdrRow + 1; i < data.length; i++) {
       var zone = cellText(i, zoneCol);
       if (!zone) continue;
 
-      var link         = (linkCol >= 0) ? cellUrl(i, linkCol)  : '';
-      var productsLink = (prodCol >= 0) ? cellUrl(i, prodCol)  : '';
-      var productsText = (prodCol >= 0) ? cellText(i, prodCol) : '';
-      // Si la cellule produits était une URL brute, productsText == productsLink → on vide le texte
-      if (productsLink && productsText === productsLink) productsText = '';
+      var link = (linkCol >= 0) ? cellUrl(i, linkCol) : '';
+
+      // Concatène les produits trouvés dans TOUTES les colonnes produits
+      var products = [];
+      for (var pi = 0; pi < prodCols.length; pi++) {
+        var prods = cellProducts(i, prodCols[pi]);
+        for (var pj = 0; pj < prods.length; pj++) products.push(prods[pj]);
+      }
+
+      // Rétro-compatibilité : productsLink = lien du 1er produit, productsText = noms concaténés
+      var productsLink = '';
+      var productsText = '';
+      if (products.length > 0) {
+        for (var pk = 0; pk < products.length; pk++) {
+          if (products[pk].link) { productsLink = products[pk].link; break; }
+        }
+        productsText = products.map(function(p){return p.name;}).filter(Boolean).join('\n');
+        // Si le seul "produit" est juste l'URL en clair → vide le texte
+        if (products.length === 1 && productsLink && productsText === productsLink) {
+          productsText = '';
+        }
+      }
 
       entries.push({
         zone:         zone,
         link:         link,
+        products:     products,
         productsLink: productsLink,
         productsText: productsText,
         key:          normalize(zone)
