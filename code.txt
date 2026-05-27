@@ -197,7 +197,9 @@ function getIso(v) {
   if (isNull(v)) return '';
   var d = (v instanceof Date) ? v : parseDate(v);
   if (!d || isNaN(d.getTime())) return '';
-  try { return d.toISOString().split('T')[0]; } catch(e) { return ''; }
+  // Format ISO en heure locale (GMT+1, Algérie) — évite le décalage
+  // d'un jour provoqué par toISOString() qui convertit en UTC.
+  try { return Utilities.formatDate(d, 'GMT+1', 'yyyy-MM-dd'); } catch(e) { return ''; }
 }
 function isFumigation(a) { return a && a.toLowerCase().indexOf('fumig') > -1; }
 function normalize(s) {
@@ -243,7 +245,10 @@ function readPlanning(ss) {
       if (!act) continue;
       planning.push({
         date: fmtDate(r[0]),
-        isoDate: pd.toISOString().split('T')[0],
+        // ISO en heure locale (GMT+1) pour éviter qu'un événement
+        // stocké à minuit local ne se retrouve daté de la veille
+        // après conversion UTC via toISOString().
+        isoDate: Utilities.formatDate(pd, 'GMT+1', 'yyyy-MM-dd'),
         activite: act,
         details: isNull(r[2]) ? '' : String(r[2]).trim(),
         fumigation: isFumigation(act)
@@ -1094,7 +1099,7 @@ function getData() {
       if (!id || (id.toLowerCase().indexOf('id')>-1 && id.length<6)) continue;
       if (isNull(r[0]) && isNull(r[7]) && isNull(r[6])) continue;
       var pd  = parseDate(r[1]);
-      var iso = (pd&&!isNaN(pd.getTime())) ? pd.toISOString().split('T')[0] : '';
+      var iso = (pd&&!isNaN(pd.getTime())) ? Utilities.formatDate(pd, 'GMT+1', 'yyyy-MM-dd') : '';
       out.incidents.push({
         id:id, date:fmtDate(r[1]), isoDate:iso,
         heure:safeText(r[2]),
@@ -1255,7 +1260,7 @@ function getData() {
       var nom = String(r[1]).trim(); if (nom.length < 3) continue;
       if (c0.indexOf('total')>-1||c0.indexOf('date')>-1||c0.indexOf('nom')>-1||c0.indexOf('fonction')>-1) continue;
       var pd2  = parseDate(r[0]);
-      var iso2 = (pd2&&!isNaN(pd2.getTime())) ? pd2.toISOString().split('T')[0] : '';
+      var iso2 = (pd2&&!isNaN(pd2.getTime())) ? Utilities.formatDate(pd2, 'GMT+1', 'yyyy-MM-dd') : '';
       out.accidents.push({
         mois:curMois, date:fmtDate(r[0]), isoDate:iso2,
         nom:nom,

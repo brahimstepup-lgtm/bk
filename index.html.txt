@@ -592,6 +592,28 @@ footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid v
 .nf-lbl-future{background:rgba(9,99,126,.15);color:var(--p4)}
 .nf-lbl-fumig{background:rgba(249,115,22,.2);color:#f97316}
 .notif-full-empty{padding:32px;text-align:center;color:var(--text3);font-size:12px}
+
+/* ── Séparateurs de section (Aujourd'hui / Demain / À venir / Passé) ── */
+.nf-section-sep{display:flex;align-items:center;gap:8px;
+  margin:14px 0 8px;padding:6px 10px;border-radius:6px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;
+  letter-spacing:.5px;text-transform:uppercase;
+  background:var(--bg3);border-left:3px solid var(--border)}
+.nf-section-sep:first-child{margin-top:0}
+.nf-section-sep .nf-sep-lbl{flex:1;color:var(--text)}
+.nf-section-sep .nf-sep-count{padding:1px 7px;border-radius:9px;
+  background:var(--bg4);color:var(--text2);font-size:9px}
+.nf-section-sep.nf-sep-today{border-left-color:var(--red);
+  background:linear-gradient(90deg,rgba(232,68,90,.18),rgba(232,68,90,.04))}
+.nf-section-sep.nf-sep-today .nf-sep-lbl{color:var(--red)}
+.nf-section-sep.nf-sep-tomorrow{border-left-color:var(--amber);
+  background:linear-gradient(90deg,rgba(245,166,35,.16),rgba(245,166,35,.03))}
+.nf-section-sep.nf-sep-tomorrow .nf-sep-lbl{color:var(--amber)}
+.nf-section-sep.nf-sep-future{border-left-color:var(--p3);
+  background:linear-gradient(90deg,rgba(11,145,181,.14),rgba(11,145,181,.03))}
+.nf-section-sep.nf-sep-future .nf-sep-lbl{color:var(--p4)}
+.nf-section-sep.nf-sep-past{border-left-color:var(--text3);opacity:.85}
+.nf-section-sep.nf-sep-past .nf-sep-lbl{color:var(--text3)}
 html.light .notif-full-panel{background:#fff}
 html.light .notif-full-top{background:#f5f7fa}
 html.light .notif-full-item{background:#f5f7fa}
@@ -1814,9 +1836,20 @@ var BASE={responsive:true,maintainAspectRatio:false,
 
 // Dates
 var TODAY_ISO='', TOMORROW_ISO='';
+// Renvoie la date au format ISO « yyyy-MM-dd » en HEURE LOCALE.
+// Indispensable : Date.toISOString() convertit en UTC, ce qui décale
+// d'un jour les dates stockées à minuit local en GMT+1 (Algérie).
+// Ex. : 28/05/2026 00:00 GMT+1 → '2026-05-27' via toISOString → BUG.
+function localIso(d){
+  if(!(d instanceof Date)||isNaN(d.getTime())) return '';
+  var y=d.getFullYear();
+  var m=String(d.getMonth()+1); if(m.length<2) m='0'+m;
+  var dd=String(d.getDate());   if(dd.length<2) dd='0'+dd;
+  return y+'-'+m+'-'+dd;
+}
 (function(){
-  var n=new Date(); TODAY_ISO=n.toISOString().split('T')[0];
-  var t=new Date(n); t.setDate(t.getDate()+1); TOMORROW_ISO=t.toISOString().split('T')[0];
+  var n=new Date(); TODAY_ISO=localIso(n);
+  var t=new Date(n); t.setDate(t.getDate()+1); TOMORROW_ISO=localIso(t);
 })();
 function diffDays(iso1,iso2){ return Math.round((new Date(iso1)-new Date(iso2))/(86400000)); }
 
@@ -3627,6 +3660,11 @@ function openNotifFull(){
   applyNotifFullFilter();
   document.getElementById('notifFullBg').classList.add('open');
   document.body.style.overflow='hidden';
+  // Garantir l'affichage prioritaire de la période actuelle :
+  // remettre le scroll en haut une fois le panneau visible (sinon
+  // setter scrollTop sur un élément non rendu peut être ignoré).
+  var b=document.getElementById('notifFullBody'); if(b) b.scrollTop=0;
+  setTimeout(function(){ var b2=document.getElementById('notifFullBody'); if(b2) b2.scrollTop=0; },0);
 }
 function closeNotifFull(){
   document.getElementById('notifFullBg').classList.remove('open');
@@ -3652,8 +3690,8 @@ function populateNotifWeeks(){
   var selectedWeek='';
   while(d.getFullYear()<=yr&&wn<=53){
     var end=new Date(d); end.setDate(end.getDate()+6);
-    var startStr=d.toISOString().split('T')[0];
-    var endStr=end.toISOString().split('T')[0];
+    var startStr=localIso(d);
+    var endStr=localIso(end);
     var label='S'+wn+' ('+fmtDateShort(d)+' → '+fmtDateShort(end)+')';
     opts+='<option value="'+startStr+'|'+endStr+'">'+label+'</option>';
     // Sélectionner la semaine courante
@@ -3694,14 +3732,29 @@ function applyNotifFullFilter(){
     return true;
   });
 
-  // Tri par date
-  filtered.sort(function(a,b){return a.isoDate.localeCompare(b.isoDate);});
+  // ── TRI : période actuelle EN PRIORITÉ ─────────────────────
+  // 1) Aujourd'hui
+  // 2) Demain
+  // 3) Événements futurs (chronologique : du plus proche au plus lointain)
+  // 4) Événements passés (anti-chronologique : du plus récent au plus ancien)
+  // → l'utilisateur voit immédiatement ce qui est pertinent ;
+  //   le passé reste accessible via le scroll ou le filtre.
+  var todayItems=[], tomorrowItems=[], futureItems=[], pastItems=[];
+  filtered.forEach(function(p){
+    if(p.isoDate===TODAY_ISO)        todayItems.push(p);
+    else if(p.isoDate===TOMORROW_ISO) tomorrowItems.push(p);
+    else if(p.isoDate>TODAY_ISO)      futureItems.push(p);
+    else                              pastItems.push(p);
+  });
+  futureItems.sort(function(a,b){return a.isoDate.localeCompare(b.isoDate);});
+  pastItems.sort(function(a,b){return b.isoDate.localeCompare(a.isoDate);});
 
-  document.getElementById('notifFullCount').textContent=filtered.length+' événement'+(filtered.length>1?'s':'');
-  document.getElementById('notifFullStat').textContent=filtered.length+' événement'+(filtered.length>1?'s':'');
+  var totalCount=filtered.length;
+  document.getElementById('notifFullCount').textContent=totalCount+' événement'+(totalCount>1?'s':'');
+  document.getElementById('notifFullStat').textContent=totalCount+' événement'+(totalCount>1?'s':'');
 
   var body=document.getElementById('notifFullBody');
-  if(filtered.length===0){
+  if(totalCount===0){
     body.innerHTML='<div class="notif-full-empty">📭 Aucune notification pour cette période</div>';
     return;
   }
@@ -3709,22 +3762,20 @@ function applyNotifFullFilter(){
   var DOWS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
   var MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 
-  var html='';
-  filtered.forEach(function(p){
+  function renderItem(p){
     var d=new Date(p.isoDate+'T00:00:00');
     var day=d.getDate();
     var monthName=MONTHS[d.getMonth()];
     var dow=DOWS[d.getDay()];
     var isFumig=p.fumigation||p.activite.toLowerCase().indexOf('fumig')>-1;
 
-    // Déterminer le statut
     var cls='nf-future', lblCls='nf-lbl-future', lblTxt='À venir';
     if(p.isoDate===TODAY_ISO){ cls='nf-today'; lblCls='nf-lbl-today'; lblTxt="Aujourd'hui"; }
     else if(p.isoDate===TOMORROW_ISO){ cls='nf-tomorrow'; lblCls='nf-lbl-tomorrow'; lblTxt='Demain'; }
     else if(p.isoDate<TODAY_ISO){ cls='nf-past'; lblCls='nf-lbl-past'; lblTxt='Passé'; }
     if(isFumig){ cls+=' nf-fumig'; lblCls='nf-lbl-fumig'; lblTxt=(p.isoDate===TODAY_ISO?"Fumigation aujourd'hui":p.isoDate===TOMORROW_ISO?'Fumigation demain':'Fumigation'); }
 
-    html+='<div class="notif-full-item '+cls+'">'
+    return '<div class="notif-full-item '+cls+'">'
       +'<div class="nf-date-col">'
       +'<div class="nf-date-day">'+day+'</div>'
       +'<div class="nf-date-month">'+monthName+'</div>'
@@ -3736,8 +3787,35 @@ function applyNotifFullFilter(){
       +(p.details?'<div class="nf-act-details">'+esc(p.details)+'</div>':'')
       +'<div style="font-size:9px;color:var(--text3);margin-top:3px;font-family:\'JetBrains Mono\',monospace">📅 '+p.date+'</div>'
       +'</div></div>';
-  });
+  }
+  function sectionSep(label, count, kind){
+    return '<div class="nf-section-sep nf-sep-'+kind+'">'
+      +'<span class="nf-sep-lbl">'+label+'</span>'
+      +'<span class="nf-sep-count">'+count+'</span>'
+      +'</div>';
+  }
+
+  var html='';
+  // ── Période actuelle (en haut, sans séparateur — c'est l'évidence) ──
+  if(todayItems.length){
+    html+=sectionSep("📍 Aujourd'hui", todayItems.length, 'today');
+    todayItems.forEach(function(p){ html+=renderItem(p); });
+  }
+  if(tomorrowItems.length){
+    html+=sectionSep('🔜 Demain', tomorrowItems.length, 'tomorrow');
+    tomorrowItems.forEach(function(p){ html+=renderItem(p); });
+  }
+  if(futureItems.length){
+    html+=sectionSep('📅 À venir', futureItems.length, 'future');
+    futureItems.forEach(function(p){ html+=renderItem(p); });
+  }
+  if(pastItems.length){
+    html+=sectionSep('🕑 Événements passés', pastItems.length, 'past');
+    pastItems.forEach(function(p){ html+=renderItem(p); });
+  }
   body.innerHTML=html;
+  // Toujours repartir du haut pour montrer la période actuelle
+  body.scrollTop=0;
 }
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&document.getElementById('notifFullBg').classList.contains('open')) closeNotifFull();
