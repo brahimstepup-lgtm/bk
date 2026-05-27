@@ -1415,7 +1415,8 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       Liste des procédures HSE en vigueur, extraite de la feuille
       <em style="color:var(--text3)">« procédures »</em> du classeur source.
       Cliquez sur un titre <strong style="color:var(--p4)">souligné</strong>
-      ou sur l'icône <strong>📄</strong> pour ouvrir le document associé dans un nouvel onglet.
+      ou sur l'icône <strong>📄</strong> pour afficher le document directement
+      dans le dashboard (sans ouvrir Google Drive dans un nouvel onglet).
     </p>
   </div>
 
@@ -3017,6 +3018,14 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
   };
 })();
 
+// ── EMBED PROCÉDURES — réutilise le modal iframe générique ──
+// Ouvre une procédure HSE (Drive / Docs / Sheets) DANS le dashboard,
+// au lieu de basculer sur un nouvel onglet Google Drive.
+function openProcedureEmbed(url, title){
+  if (!url) return;
+  openCleaningEmbed(url, title || 'Procédure HSE', 'PROCÉDURE HSE', '📄');
+}
+
 function clearClnFilters(){
   document.getElementById('clnSearch').value = '';
   document.getElementById('clnSort').value   = 'date_desc';
@@ -3431,9 +3440,13 @@ function renderProcedures(){
         return null; // signal : afficher avec rendu standard
       }
       body.innerHTML = filtered.map(function(p, i){
+        var safeUrl   = escAttr(p.url || '');
+        var safeTitle = escAttr(p.titre || 'Procédure HSE');
         var titleHtml = p.url
-          ? '<a href="'+escAttr(p.url)+'" target="_blank" rel="noopener" '
-            + 'style="color:var(--p4);text-decoration:underline;font-weight:600">'
+          ? '<a href="'+safeUrl+'" rel="noopener" '
+            + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeTitle+'" '
+            + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+            + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer">'
             + esc(p.titre || '—') + '</a>'
           : '<strong style="color:var(--text)">' + esc(p.titre || '—') + '</strong>';
 
@@ -3446,8 +3459,10 @@ function renderProcedures(){
           : '<span class="mono" style="font-size:11px">'+esc(p.dateVersion)+'</span>';
 
         var docHtml = p.url
-          ? '<a href="'+escAttr(p.url)+'" target="_blank" rel="noopener" '
-            + 'class="tag-btn has-photo" title="Ouvrir la procédure" '
+          ? '<a href="'+safeUrl+'" rel="noopener" '
+            + 'class="tag-btn has-photo" title="Ouvrir la procédure dans le dashboard" '
+            + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeTitle+'" '
+            + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
             + 'style="text-decoration:none">📄</a>'
           : '<span class="tag-btn no-photo" title="Document non disponible" '
             + 'style="cursor:default">—</span>';
@@ -3471,8 +3486,12 @@ function renderProcedures(){
       extraCard.style.display = '';
       extraBox.innerHTML = extras.map(function(e){
         if(e.url){
-          return '<a class="btn btn-ai" href="'+escAttr(e.url)+'" target="_blank" rel="noopener" '
-               + 'style="text-decoration:none;font-size:11px;padding:8px 14px">'
+          var safeUrl = escAttr(e.url);
+          var safeLbl = escAttr(e.label || 'Document');
+          return '<a class="btn btn-ai" href="'+safeUrl+'" rel="noopener" '
+               + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeLbl+'" '
+               + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+               + 'style="text-decoration:none;font-size:11px;padding:8px 14px;cursor:pointer">'
                + '📑 ' + esc(e.label) + ' <span style="opacity:.7">↗</span></a>';
         }
         return '<span class="btn" style="cursor:default;font-size:11px;padding:8px 14px">📑 '
