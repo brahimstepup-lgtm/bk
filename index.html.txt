@@ -1896,19 +1896,19 @@ function buildNotifications(){
       html+='<div class="notif-item fumig-warn"><span class="notif-lbl lbl-fumig">🦟 FUMIGATION J-'+fw.jours+'</span>'
         +'<div class="notif-act">'+esc(fw.p.activite)+'</div>'
         +'<div class="notif-det">'+esc(fw.p.details)+'</div>'
-        +'<div class="notif-date">📅 '+fw.p.date+'</div></div>';
+        +'<div class="notif-date">📅 '+esc(safeDate(fw.p.date))+'</div></div>';
     });
     todayItems.forEach(function(p){
       html+='<div class="notif-item today"><span class="notif-lbl lbl-today">📅 Aujourd\'hui</span>'
         +'<div class="notif-act">'+esc(p.activite)+(p.fumigation?' 🦟':'')+'</div>'
         +'<div class="notif-det">'+esc(p.details)+'</div>'
-        +'<div class="notif-date">'+p.date+'</div></div>';
+        +'<div class="notif-date">'+esc(safeDate(p.date))+'</div></div>';
     });
     tomorrowItems.forEach(function(p){
       html+='<div class="notif-item tomorrow"><span class="notif-lbl lbl-tomorrow">📅 Demain</span>'
         +'<div class="notif-act">'+esc(p.activite)+(p.fumigation?' 🦟':'')+'</div>'
         +'<div class="notif-det">'+esc(p.details)+'</div>'
-        +'<div class="notif-date">'+p.date+'</div></div>';
+        +'<div class="notif-date">'+esc(safeDate(p.date))+'</div></div>';
     });
     list.innerHTML=html;
   }
@@ -1924,7 +1924,7 @@ function buildNotifications(){
     var fw=fumigWarn[0];
     alert.classList.add('show');
     document.getElementById('fumigTitle').textContent='🦟 Fumigation dans '+fw.jours+' jour'+(fw.jours>1?'s':'');
-    document.getElementById('fumigSub').innerHTML='<strong>'+esc(fw.p.activite)+'</strong> prévue le <strong>'+fw.p.date+'</strong>.'
+    document.getElementById('fumigSub').innerHTML='<strong>'+esc(fw.p.activite)+'</strong> prévue le <strong>'+esc(safeDate(fw.p.date))+'</strong>.'
       +(fw.jours<=2?' <span style="color:var(--red);font-weight:700">— PRÉPARATION URGENTE</span>':'');
   } else alert.classList.remove('show');
 }
@@ -1968,6 +1968,46 @@ function infoItem(lbl,val){ return val&&String(val).trim()&&val!=='—'?'<div cl
 function infoItemF(lbl,val){ return'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+(val?esc(String(val)):'—')+'</div></div>'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function escAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// ── Garde-fou affichage des DATES ─────────────────────────────
+// Évite l'apparition du format JS natif « Sun Dec 31 1899 02:24:21 GMT+0009 ... »
+// (= cellule Sheets formatée TIME-only ou Date.toString() qui aurait remonté).
+// Renvoie toujours dd/MM/yyyy ou '' (jamais le format brut).
+function safeDate(v){
+  if(v===null||v===undefined) return '';
+  var s=String(v).trim();
+  if(!s) return '';
+  // Cas Date.toString() natif (ex: "Sun Dec 31 1899 02:24:21 GMT+0009 (Africa/Algiers Mean Time)")
+  if(/^[A-Z][a-z]{2}\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}/.test(s)){
+    var d=new Date(s);
+    if(isNaN(d.getTime())||d.getFullYear()<1950) return '';
+    var dd=('0'+d.getDate()).slice(-2);
+    var mm=('0'+(d.getMonth()+1)).slice(-2);
+    return dd+'/'+mm+'/'+d.getFullYear();
+  }
+  // ISO yyyy-mm-dd → dd/mm/yyyy
+  var mIso=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(mIso){
+    if(parseInt(mIso[1],10)<1950) return '';
+    return mIso[3]+'/'+mIso[2]+'/'+mIso[1];
+  }
+  // Déjà dd/mm/yyyy → on garde
+  if(/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(s)) return s;
+  // Texte libre raisonnable (ex: « V2 », « non spécifiée ») : on laisse
+  return s;
+}
+// Idem pour les heures : renvoie HH:mm ou ''
+function safeTime(v){
+  if(v===null||v===undefined) return '';
+  var s=String(v).trim();
+  if(!s) return '';
+  if(/^[A-Z][a-z]{2}\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}/.test(s)){
+    var m=s.match(/\b(\d{1,2}):(\d{2})/);
+    return m ? ('0'+m[1]).slice(-2)+':'+m[2] : '';
+  }
+  var m2=s.match(/^(\d{1,2}):(\d{2})/);
+  if(m2) return ('0'+m2[1]).slice(-2)+':'+m2[2];
+  return s;
+}
 function fmtNum(v){
   if(v===null||v===undefined||v==='') return v;
   var n=parseFloat(v); if(isNaN(n)) return v;
@@ -2130,7 +2170,7 @@ function openIncModal(inc){
   var badge=document.getElementById('mIncBadge');
   badge.textContent=sevIco[sev]||'⚠️';badge.style.background=sevBg[sev]||sevBg[1];
   badge.style.borderColor=sev==='3'?'var(--red)':sev==='2'?'var(--amber)':'var(--p3)';
-  document.getElementById('mIncId').textContent='INC-'+inc.id+(inc.date?' · '+inc.date:'')+(inc.heure?' · '+inc.heure:'');
+  document.getElementById('mIncId').textContent='INC-'+inc.id+(safeDate(inc.date)?' · '+safeDate(inc.date):'')+(safeTime(inc.heure)?' · '+safeTime(inc.heure):'');
   document.getElementById('mIncVic').textContent=inc.victime||'Victime non renseignée';
   var chips='<span class="modal-chip">Gravité '+sev+'</span>';
   if(inc.type) chips+='<span class="modal-chip">'+esc(inc.type)+'</span>';
@@ -2138,7 +2178,7 @@ function openIncModal(inc){
   if(inc.statut) chips+='<span class="modal-chip" style="color:'+(inc.statut.toLowerCase().indexOf('clôt')>-1?'var(--green)':'var(--amber)')+'">'+esc(inc.statut)+'</span>';
   document.getElementById('mIncChips').innerHTML=chips;
   document.getElementById('mIncInfoGrid').innerHTML=[
-    infoItemF('Date & Heure',(inc.date||'')+(inc.heure?' à '+inc.heure:'')),
+    infoItemF('Date & Heure',(safeDate(inc.date)||'')+(safeTime(inc.heure)?' à '+safeTime(inc.heure):'')),
     infoItemF('Lieu / Zone',inc.lieu||'—'),infoItemF('Type',inc.type||'—'),
     infoItemF('Gravité','Niveau '+sev),infoItem('Responsable',inc.responsable),
     infoItem('Délai',inc.delai),infoItemF('Statut',inc.statut||'—')
@@ -2164,21 +2204,21 @@ function openIncModal(inc){
   document.getElementById('mIncResp').textContent=inc.responsable||'—';
   document.getElementById('mIncDelai').textContent=inc.delai||'—';
   document.getElementById('mIncStatut').textContent=inc.statut||'—';
-  document.getElementById('mIncDate2').textContent=inc.date||'—';
+  document.getElementById('mIncDate2').textContent=safeDate(inc.date)||'—';
   switchTab('mInc','info',document.querySelector('#incModal .modal-tab'));
   openModal('incModal');
 }
 
 // ══ MODAL ACCIDENT ════════════════════════════════════════════
 function openAccModal(acc){
-  document.getElementById('mAccId').textContent=(acc.mois?acc.mois+' · ':'')+acc.date;
+  document.getElementById('mAccId').textContent=(acc.mois?acc.mois+' · ':'')+safeDate(acc.date);
   document.getElementById('mAccNom').textContent=acc.nom||'—';
   var chips='<span class="modal-chip">'+esc(acc.mois)+'</span>';
   if(acc.njp>0) chips+='<span class="modal-chip" style="color:var(--red)">NJP : '+acc.njp+' jours</span>';
   if(acc.structure) chips+='<span class="modal-chip">'+esc(acc.structure)+'</span>';
   document.getElementById('mAccChips').innerHTML=chips;
   document.getElementById('mAccInfoGrid').innerHTML=[
-    infoItemF('Date',acc.date),infoItemF('Nom',acc.nom),
+    infoItemF('Date',safeDate(acc.date)),infoItemF('Nom',acc.nom),
     infoItemF('Fonction',acc.fonction||'—'),infoItem('Structure',acc.structure),
     infoItemF('Lieu',acc.lieu||'—'),infoItemF('Siège de lésion',acc.siege||'—'),
     infoItemF('Nature de lésion',acc.nature||'—'),infoItemF('Jours Perdus',acc.njp+' jours')
@@ -2194,7 +2234,7 @@ function openAccModal(acc){
 // photoRef = nom propre du fichier (sans "tags/")
 // photoUrl = URL Drive résolue par le serveur
 function openTagModal(tag) {
-  document.getElementById('mTagId').textContent  = 'TAG ' + tag.id + (tag.date ? ' · ' + tag.date : '');
+  document.getElementById('mTagId').textContent  = 'TAG ' + tag.id + (safeDate(tag.date) ? ' · ' + safeDate(tag.date) : '');
   document.getElementById('mTagDesc').textContent = tag.description || '—';
   var isOpen = tag.statut.toLowerCase().indexOf('ouvert') > -1 || tag.statut.toLowerCase().indexOf('open') > -1;
 
@@ -2207,8 +2247,8 @@ function openTagModal(tag) {
   document.getElementById('mTagChips').innerHTML = chips;
 
   document.getElementById('mTagInfoGrid').innerHTML = [
-    infoItemF('Date création', tag.date),
-    infoItem('Date cible', tag.dateCible),
+    infoItemF('Date création', safeDate(tag.date)),
+    infoItem('Date cible', safeDate(tag.dateCible)),
     infoItemF('Type', tag.type||'—'),
     infoItem('Gravité', tag.gravite),
     infoItemF('Zone', (tag.zone||tag.emplacement)||'—'),
@@ -2404,7 +2444,7 @@ function renderIncidents(incs){
     var stat=(inc.statut||'').toLowerCase().indexOf('clôt')>-1?'Clôturé':'En cours';
     var el=document.createElement('div');
     el.className='iitem is'+sev; el.tabIndex=0;
-    el.innerHTML='<div class="ihdr"><span class="iid">INC-'+esc(inc.id)+(inc.date?' · '+inc.date:'')+'</span><span class="isev sv'+sev+'">G'+sev+'</span></div>'
+    el.innerHTML='<div class="ihdr"><span class="iid">INC-'+esc(inc.id)+(safeDate(inc.date)?' · '+esc(safeDate(inc.date)):'')+'</span><span class="isev sv'+sev+'">G'+sev+'</span></div>'
       +'<div class="ivic">'+(inc.victime||'—')+'</div>'
       +(inc.description?'<div class="idesc">'+esc(inc.description.substring(0,90))+(inc.description.length>90?'…':'')+'</div>':'')
       +'<div class="itags">'+(inc.lieu?'<span class="itag">📍 '+esc(inc.lieu)+'</span>':'')+(inc.type?'<span class="itag">'+esc(inc.type)+'</span>':'')
@@ -2578,12 +2618,12 @@ function applyTagF(){
     var tr=document.createElement('tr');
     tr.style.cursor='pointer';
     tr.innerHTML='<td class="mono" style="color:var(--p4)">'+esc(t.id)+'</td>'
-      +'<td style="white-space:nowrap;font-size:10px">'+t.date+'</td>'
+      +'<td style="white-space:nowrap;font-size:10px">'+esc(safeDate(t.date))+'</td>'
       +avantCellHtml+apresCellHtml
       +'<td style="font-size:10px;max-width:180px">'+hl(t.description.substring(0,80))+(t.description.length>80?'…':'')+'</td>'
       +'<td><span class="rbadge">'+hl((t.zone||t.emplacement)||'—')+'</span></td>'
       +'<td style="font-size:10px">'+hl(t.type)+'</td>'
-      +'<td style="white-space:nowrap;font-size:10px">'+esc(t.dateCible||'—')+'</td>'
+      +'<td style="white-space:nowrap;font-size:10px">'+esc(safeDate(t.dateCible)||'—')+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
       +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>';
     tr.addEventListener('click',function(){ openTagModal(t); });
@@ -2680,7 +2720,7 @@ function renderAccidents(accs){
   accs.forEach(function(a){
     var tr=document.createElement('tr'); tr.className='acc-row'; tr.title='Cliquer pour détails';
     tr.innerHTML='<td><span class="rbadge">'+esc(a.mois)+'</span></td>'
-      +'<td class="mono" style="font-size:9px;white-space:nowrap">'+a.date+'</td>'
+      +'<td class="mono" style="font-size:9px;white-space:nowrap">'+esc(safeDate(a.date))+'</td>'
       +'<td style="font-weight:600;color:var(--text)">'+esc(a.nom)+'</td>'
       +'<td style="font-size:10px">'+esc(a.fonction)+'</td>'
       +'<td style="font-size:10px">'+esc(a.lieu)+'</td>'
@@ -3541,7 +3581,7 @@ function renderProcedures(){
 
         var dateUnspec = unspecOrText(p.dateVersion);
         var dateHtml   = (dateUnspec !== null) ? dateUnspec
-          : '<span class="mono" style="font-size:11px">'+esc(p.dateVersion)+'</span>';
+          : '<span class="mono" style="font-size:11px">'+esc(safeDate(p.dateVersion))+'</span>';
 
         var docHtml = p.url
           ? '<a href="'+safeUrl+'" rel="noopener" '
@@ -3734,7 +3774,7 @@ function applyNotifFullFilter(){
       +'<span class="nf-act-label '+lblCls+'">'+lblTxt+'</span>'
       +'<div class="nf-act-title">'+(isFumig?'🦟 ':'')+esc(p.activite)+'</div>'
       +(p.details?'<div class="nf-act-details">'+esc(p.details)+'</div>':'')
-      +'<div style="font-size:9px;color:var(--text3);margin-top:3px;font-family:\'JetBrains Mono\',monospace">📅 '+p.date+'</div>'
+      +'<div style="font-size:9px;color:var(--text3);margin-top:3px;font-family:\'JetBrains Mono\',monospace">📅 '+esc(safeDate(p.date))+'</div>'
       +'</div></div>';
   });
   body.innerHTML=html;

@@ -165,14 +165,68 @@ function parseDate(v) {
 }
 function fmtDate(v) {
   if (isNull(v)) return '';
-  var d = (v instanceof Date) ? v : parseDate(v);
-  if (!d || isNaN(d.getTime())) return String(v).trim();
-  try { return Utilities.formatDate(d, 'GMT+1', 'dd/MM/yyyy'); } catch(e) { return String(v).trim(); }
+  // ── Cas Date natif ───────────────────────────────────────
+  // Google Sheets renvoie un objet Date pour toute cellule
+  // formatée Date / Heure / Date+Heure. Pour une cellule TIME-only,
+  // l'année est 1899 (epoch Sheets) → on considère qu'il n'y a pas
+  // de date réelle et on renvoie '' (évite l'affichage parasite
+  // « Sun Dec 31 1899 02:24:21 GMT+0009 … »).
+  if (v instanceof Date) {
+    if (isNaN(v.getTime())) return '';
+    if (v.getFullYear() < 1950) return '';
+    try { return Utilities.formatDate(v, 'GMT+1', 'dd/MM/yyyy'); }
+    catch(e) { return ''; }
+  }
+  // ── Cas chaîne ───────────────────────────────────────────
+  var s = String(v).trim();
+  // Filet de sécurité : si une chaîne « Date.toString() » natif
+  // remonte (ex. "Sun Dec 31 1899 02:24:21 GMT+0009 ..."), on la
+  // retraite proprement au lieu de l'afficher telle quelle.
+  if (/^[A-Z][a-z]{2}\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}/.test(s)) {
+    var dd = new Date(s);
+    if (!isNaN(dd.getTime())) {
+      if (dd.getFullYear() < 1950) return '';
+      try { return Utilities.formatDate(dd, 'GMT+1', 'dd/MM/yyyy'); } catch(e2) { return ''; }
+    }
+    return '';
+  }
+  var d = parseDate(s);
+  if (!d || isNaN(d.getTime())) return s;
+  if (d.getFullYear() < 1950) return '';
+  try { return Utilities.formatDate(d, 'GMT+1', 'dd/MM/yyyy'); } catch(e) { return s; }
+}
+// Format intelligent pour les colonnes « Date de Version » / libres :
+// renvoie dd/MM/yyyy si c'est une date, sinon le texte trimmé,
+// JAMAIS la représentation Date.toString() native.
+function fmtDateOrText(v) {
+  if (isNull(v)) return '';
+  if (v instanceof Date) return fmtDate(v); // gère 1899 → ''
+  var s = String(v).trim();
+  if (/^[A-Z][a-z]{2}\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}/.test(s)) return fmtDate(s);
+  return s;
+}
+// Format heure HH:mm pour une cellule. Si la cellule est un objet
+// Date (ce qui est le cas pour une colonne « Heure » dans Sheets),
+// on extrait juste l'heure. Sinon on renvoie la chaîne telle quelle.
+function fmtTime(v) {
+  if (isNull(v)) return '';
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    try { return Utilities.formatDate(v, 'GMT+1', 'HH:mm'); } catch(e) { return ''; }
+  }
+  var s = String(v).trim();
+  // Filet : « Sun Dec 31 1899 02:24:21 GMT+0009 ... » → "02:24"
+  var m = s.match(/\b(\d{1,2}):(\d{2})(?::\d{2})?\b/);
+  if (m && /^[A-Z][a-z]{2}\s+[A-Z][a-z]{2}\s+\d{1,2}\s+\d{4}/.test(s)) {
+    var hh = ('0' + m[1]).slice(-2);
+    return hh + ':' + m[2];
+  }
+  return s;
 }
 function getIso(v) {
   if (isNull(v)) return '';
   var d = (v instanceof Date) ? v : parseDate(v);
   if (!d || isNaN(d.getTime())) return '';
+  if (d.getFullYear() < 1950) return '';
   try { return d.toISOString().split('T')[0]; } catch(e) { return ''; }
 }
 function isFumigation(a) { return a && a.toLowerCase().indexOf('fumig') > -1; }
@@ -930,7 +984,11 @@ function readProcedures(ss) {
     for (var i = firstDataRow; i < data.length; i++) {
       var titre = cellText(i, titleCol);
       var ref   = cellText(i, refCol);
-      var dv    = cellText(i, dateCol);
+      // Date de Version : si c'est une vraie Date (Google Sheets renvoie
+      // un objet Date), on formate en dd/MM/yyyy. Si c'est du texte libre
+      // (ex. « non spécifiée », « V2 »), on le garde tel quel. Si la
+      // cellule est formatée TIME-only (1899), on n'affiche rien.
+      var dv    = (dateCol >= 0) ? fmtDateOrText(data[i][dateCol]) : '';
 
       // ── Détection d'un lien spécial sur la ligne (fiche d'identité processus HSE) ──
       var lineText = '';
@@ -1073,7 +1131,7 @@ function getData() {
       var iso = (pd&&!isNaN(pd.getTime())) ? pd.toISOString().split('T')[0] : '';
       out.incidents.push({
         id:id, date:fmtDate(r[1]), isoDate:iso,
-        heure:isNull(r[2])?'':String(r[2]).trim(),
+        heure:fmtTime(r[2]),
         lieu:isNull(r[3])?'':String(r[3]).trim(),
         type:isNull(r[4])?'':String(r[4]).trim(),
         gravite:toNumZ(r[5])||1,
@@ -1233,7 +1291,7 @@ function getData() {
       var pd2  = parseDate(r[0]);
       var iso2 = (pd2&&!isNaN(pd2.getTime())) ? pd2.toISOString().split('T')[0] : '';
       out.accidents.push({
-        mois:curMois, date:String(r[0]).trim(), isoDate:iso2,
+        mois:curMois, date:fmtDate(r[0]), isoDate:iso2,
         nom:nom,
         fonction:isNull(r[2])?'':String(r[2]).trim(),
         structure:isNull(r[3])?'':String(r[3]).trim(),
