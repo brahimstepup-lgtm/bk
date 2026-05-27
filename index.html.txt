@@ -866,6 +866,23 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <div id="pyrBox"></div>
     </div>
   </div>
+
+  <!-- ═══ RECORD SÉCURITÉ : jours sans accident de travail (avec arrêt) ═══ -->
+  <div class="card" id="recordCard" style="margin-top:12px;background:linear-gradient(135deg,rgba(16,201,133,.10),rgba(13,168,210,.08));border-color:rgba(16,201,133,.45)">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>🏆 Record sécurité — jours consécutifs sans accident de travail (avec arrêt)</div>
+    <div id="recordBody" style="display:flex;align-items:center;justify-content:space-around;gap:18px;flex-wrap:wrap;padding:8px 6px 4px">
+      <div style="text-align:center">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:600">Streak actuel</div>
+        <div id="recCurrent" style="font-size:34px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--green);line-height:1">—</div>
+        <div id="recCurrentSub" style="font-size:10px;color:var(--text3);margin-top:5px">jours depuis le dernier AT</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;font-weight:600">🏆 Record atteint</div>
+        <div id="recBest" style="font-size:34px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--p4);line-height:1">—</div>
+        <div id="recBestSub" style="font-size:10px;color:var(--text3);margin-top:5px">jours consécutifs sans AT</div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ INCIDENTS ═══ -->
@@ -3318,10 +3335,56 @@ function render(data){
 
   function p(v,obj,lower){if(!obj)return null;return Math.min(Math.round(Math.abs(v)/Math.abs(obj)*100),100);}
   function bc(v,obj,lower){var ok=lower?v<=obj:v>=obj;return ok?C.green:(p(v,obj,lower)>60?C.amber:C.red);}
+
+  // ── Jours sans accident de travail (avec arrêt) ─────────────
+  // Filtre : accident dont njp > 0 (jours d'arrêt > 0), ou dont la
+  // « nature » indique explicitement un arrêt (Mineur / Majeur / Fatal
+  // / "avec arrêt"). Exclut les incidents (sans AT).
+  var noAtStats=(function(){
+    var DAY=86400000;
+    var list=(D.accidents||[]).filter(function(a){
+      if(!a||!a.isoDate) return false;
+      if((a.njp||0)>0) return true;
+      var n=String(a.nature||'').toLowerCase()
+        .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a');
+      if(n.indexOf('avec arret')>-1) return true;
+      if(n.indexOf('majeur')>-1||n.indexOf('mineur')>-1||n.indexOf('fatal')>-1) return true;
+      return false;
+    });
+    list.sort(function(a,b){return a.isoDate.localeCompare(b.isoDate);});
+    var today=new Date(); today.setHours(0,0,0,0);
+    if(list.length===0){
+      return {days:null,record:null,lastDateFmt:'',hasData:false};
+    }
+    var last=list[list.length-1];
+    var lastD=new Date(last.isoDate+'T00:00:00');
+    var current=Math.max(0,Math.floor((today.getTime()-lastD.getTime())/DAY));
+    // Plus grand écart historique entre 2 AT consécutifs
+    var bestPast=0;
+    for(var i=1;i<list.length;i++){
+      var d1=new Date(list[i-1].isoDate+'T00:00:00');
+      var d2=new Date(list[i].isoDate+'T00:00:00');
+      var gap=Math.floor((d2.getTime()-d1.getTime())/DAY);
+      if(gap>bestPast) bestPast=gap;
+    }
+    var record=Math.max(current,bestPast);
+    return {
+      days:current,
+      record:record,
+      bestPast:bestPast,
+      isCurrentRecord:current>=bestPast,
+      lastDateFmt:last.date||last.isoDate,
+      hasData:true
+    };
+  })();
+
   document.getElementById('kpiGrid').innerHTML=[
     kpiCard('AT Total',    m.at_total,       'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
     kpiCard('TF1',         m.tf1_ytd,        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
     kpiCard('TG',          m.tg_ytd,         'a','YTD·Obj.≤0.8', 'k-a',p(m.tg_ytd,0.8,true),  bc(m.tg_ytd,0.8,true)),
+    kpiCard('Jours sans AT', noAtStats.hasData?noAtStats.days:'—', 'g',
+            noAtStats.hasData?('Dernier AT : '+noAtStats.lastDateFmt):'aucun AT enregistré',
+            'k-g',null,null),
     kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
     kpiCard('Incidents',   m.inc_ytd,        'b','Sans AT·YTD',  'k-b',null,null),
     kpiCard('TAGs',        m.tags_ytd,       'g','YTD cumulé',   'k-g',null,null),
@@ -3329,6 +3392,28 @@ function render(data){
     kpiCard('TVM',         fmtNum(m.tvm)+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
     kpiCard('Résol.TAGs',  fmtNum(m.taux_res_tags)+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
   ].join('');
+
+  // ── Bandeau Record sécurité (bas Vue Globale) ───────────────
+  (function renderSafetyRecord(){
+    var rc=document.getElementById('recCurrent');
+    var rcs=document.getElementById('recCurrentSub');
+    var rb=document.getElementById('recBest');
+    var rbs=document.getElementById('recBestSub');
+    if(!rc||!rb) return;
+    if(!noAtStats.hasData){
+      rc.textContent='—';
+      rcs.textContent='aucun AT enregistré';
+      rb.textContent='—';
+      rbs.textContent='aucune donnée disponible';
+      return;
+    }
+    rc.textContent=noAtStats.days;
+    rcs.textContent='depuis le '+noAtStats.lastDateFmt;
+    rb.textContent=noAtStats.record;
+    rbs.textContent=noAtStats.isCurrentRecord
+      ? '🔥 record en cours — bravo !'
+      : 'jours consécutifs sans AT';
+  })();
 
   buildNotifications();
   updateC1(); updateC2();
