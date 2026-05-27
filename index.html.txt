@@ -1688,7 +1688,10 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <div id="clnProductsList" class="cln-plan-grid"></div>
       <div id="clnProductsEmpty" class="cln-plan-empty" style="display:none">
         Aucune information « produits utilisés » trouvée dans la feuille <strong>« nettoyage 1 »</strong>.<br>
-        Vérifiez qu'une colonne <em>Produits</em> (lien ou texte) est renseignée pour chaque zone.
+        Vérifiez l'un des deux formats :<br>
+        • une colonne <em>Produits</em> (lien ou texte) sur la ligne de chaque zone,<br>
+        • <strong>OU</strong> un sous-tableau <em>« PRODUITS UTILISÉS »</em> avec les colonnes
+        <em>Nom de produit</em> + <em>Lien de fiche</em> ailleurs sur la feuille.
       </div>
     </div>
   </div>
@@ -2738,8 +2741,16 @@ function openCleaningPlanLink(encoded, encodedTitle){
 }
 
 // ── PRODUITS UTILISÉS ────────────────────────────────────────
-// Lit les mêmes entrées (D.cleaningPlan) mais utilise productsLink
-// (et productsText si pas de lien).
+// Deux formats supportés :
+//
+// (1) Catalogue GLOBAL (D.cleaningProducts) — sous-tableau
+//     « PRODUITS UTILISÉS » avec colonnes Nom de produit | Lien
+//     de fiche (FDS). Chaque ligne = un produit. Affiché en
+//     priorité s'il existe.
+//
+// (2) Format PAR ZONE (D.cleaningPlan[i].productsLink/Text) —
+//     ancien modèle où chaque zone a son propre lien produits.
+//     Utilisé en fallback si le catalogue global est vide.
 function clnProductsResolve(zoneLabel){
   var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
   if (!data.length) return { link:'', text:'' };
@@ -2762,6 +2773,56 @@ function openCleaningProducts(){
   var empty = document.getElementById('clnProductsEmpty');
   if (!list || !empty) return;
 
+  // Sous-titre dynamique du modal
+  function setSubtitle(text){
+    var el = document.querySelector('#clnProductsModal .modal-hdr-name');
+    if (el) el.textContent = text;
+  }
+
+  // ── Cas 1 : catalogue GLOBAL « PRODUITS UTILISÉS » ────────
+  // (sous-tableau Nom de produit | Lien de fiche dans la feuille)
+  var products = (D && D.cleaningProducts) ? D.cleaningProducts : [];
+  if (products && products.length) {
+    var html = '';
+    products.forEach(function(p){
+      var name = String((p && p.name) || '').trim();
+      var link = String((p && p.link) || '').trim();
+      var text = String((p && p.text) || '').trim();
+      if (!name) return;
+      var hasLink = !!link && /^https?:\/\//i.test(link);
+      var arrow   = hasLink ? '↗' : '📄';
+      var icon    = '🧴';
+      var subTxt;
+      if (hasLink)      subTxt = 'Voir la fiche (FDS)';
+      else if (text)    subTxt = (text.length > 90 ? text.substring(0,90)+'…' : text);
+      else              subTxt = 'Aucune fiche renseignée';
+      var subSpan = '<span class="cln-plan-sub">'+esc(subTxt)+'</span>';
+
+      if (hasLink) {
+        html += '<button class="cln-plan-btn" '
+             +  'onclick="openCleaningProductsLink(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent(name)+'\')">'
+             +    '<span class="cln-plan-icon">'+icon+'</span>'
+             +    '<span class="cln-plan-zone">'+esc(name)+subSpan+'</span>'
+             +    '<span class="cln-plan-arrow">'+arrow+'</span>'
+             +  '</button>';
+      } else {
+        html += '<button class="cln-plan-btn disabled" disabled '
+             +  'title="'+esc(text || 'Aucune fiche renseignée')+'">'
+             +    '<span class="cln-plan-icon">'+icon+'</span>'
+             +    '<span class="cln-plan-zone">'+esc(name)+subSpan+'</span>'
+             +    '<span class="cln-plan-arrow">'+arrow+'</span>'
+             +  '</button>';
+      }
+    });
+    list.innerHTML = html;
+    list.style.display  = 'grid';
+    empty.style.display = 'none';
+    setSubtitle(products.length + ' produit' + (products.length>1?'s':'') + ' référencé' + (products.length>1?'s':''));
+    openModal('clnProductsModal');
+    return;
+  }
+
+  // ── Cas 2 : ancien modèle PAR ZONE (rétro-compatibilité) ──
   var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
   var anyProducts = data.some(function(d){ return d && (d.productsLink || d.productsText); });
 
@@ -2769,10 +2830,12 @@ function openCleaningProducts(){
     list.innerHTML = '';
     list.style.display = 'none';
     empty.style.display = 'block';
+    setSubtitle('Aucun produit trouvé');
     openModal('clnProductsModal');
     return;
   }
 
+  setSubtitle('Sélectionnez une zone');
   var html = '';
   CLN_PLAN_ZONES.forEach(function(z){
     var p = clnProductsResolve(z.label);
