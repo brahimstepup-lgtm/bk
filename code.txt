@@ -169,6 +169,30 @@ function fmtDate(v) {
   if (!d || isNaN(d.getTime())) return String(v).trim();
   try { return Utilities.formatDate(d, 'GMT+1', 'dd/MM/yyyy'); } catch(e) { return String(v).trim(); }
 }
+
+// ────────────────────────────────────────────────────────────
+// Conversion sûre d'une valeur de cellule en chaîne d'affichage.
+// Empêche le format laid « Sun Dec 31 1899 02:24:21 GMT+0009 »
+// que produit String(date) sur les Date objects renvoyés par
+// SpreadsheetApp.getValues().
+//   - Cellule TIME (origine 30/12/1899 → année < 1901)
+//       → « HH:mm » (ou « HH:mm:ss » si secondes non nulles)
+//   - Date réelle  → « dd/MM/yyyy »
+//   - Autre        → String(v).trim()
+// ────────────────────────────────────────────────────────────
+function safeText(v) {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    if (v.getFullYear() < 1901) {
+      try {
+        var s = Utilities.formatDate(v, 'GMT+1', 'HH:mm:ss');
+        return s.replace(/:00$/, '');
+      } catch(e) { return ''; }
+    }
+    try { return Utilities.formatDate(v, 'GMT+1', 'dd/MM/yyyy'); } catch(e2) { return ''; }
+  }
+  return String(v).trim();
+}
 function getIso(v) {
   if (isNull(v)) return '';
   var d = (v instanceof Date) ? v : parseDate(v);
@@ -435,7 +459,7 @@ function readCleaning(ss, photoCache) {
       if (lc.indexOf('total') === 0 || lc.indexOf('sous-total') > -1) continue;
 
       // Récupérer toutes les valeurs avec fallbacks
-      function val(c) { return (c >= 0 && !isNull(r[c])) ? String(r[c]).trim() : ''; }
+      function val(c) { return (c >= 0 && !isNull(r[c])) ? safeText(r[c]) : ''; }
 
       var id          = val(COL.id) || ('NET-' + (i+1));
       var dateRaw     = (COL.date >= 0) ? r[COL.date] : '';
@@ -620,7 +644,7 @@ function readCleaningPlan(ss) {
     }
     function cellText(rIdx, cIdx) {
       var v = data[rIdx][cIdx];
-      return isNull(v) ? '' : String(v).trim();
+      return isNull(v) ? '' : safeText(v);
     }
     // Vrai si la colonne c contient au moins une donnée sous la ligne hdr
     function colHasData(c, fromRow) {
@@ -900,7 +924,7 @@ function readProcedures(ss) {
     function cellText(rIdx, cIdx) {
       if (cIdx < 0) return '';
       var v = data[rIdx][cIdx];
-      return isNull(v) ? '' : String(v).trim();
+      return isNull(v) ? '' : safeText(v);
     }
 
     // ── Détecter la ligne d'entête + colonnes ──
@@ -1073,7 +1097,7 @@ function getData() {
       var iso = (pd&&!isNaN(pd.getTime())) ? pd.toISOString().split('T')[0] : '';
       out.incidents.push({
         id:id, date:fmtDate(r[1]), isoDate:iso,
-        heure:isNull(r[2])?'':String(r[2]).trim(),
+        heure:safeText(r[2]),
         lieu:isNull(r[3])?'':String(r[3]).trim(),
         type:isNull(r[4])?'':String(r[4]).trim(),
         gravite:toNumZ(r[5])||1,
@@ -1081,7 +1105,7 @@ function getData() {
         victime:isNull(r[7])?'':String(r[7]).trim(),
         causes:isNull(r[8])?'':String(r[8]).trim(),
         responsable:isNull(r[9])?'':String(r[9]).trim(),
-        delai:isNull(r[10])?'':String(r[10]).trim(),
+        delai:safeText(r[10]),
         statut:isNull(r[11])?'':String(r[11]).trim(),
         analyse5m:isNull(r[13])?'':String(r[13]).trim(),
         actions:isNull(r[14])?'':String(r[14]).trim()
@@ -1233,7 +1257,7 @@ function getData() {
       var pd2  = parseDate(r[0]);
       var iso2 = (pd2&&!isNaN(pd2.getTime())) ? pd2.toISOString().split('T')[0] : '';
       out.accidents.push({
-        mois:curMois, date:String(r[0]).trim(), isoDate:iso2,
+        mois:curMois, date:fmtDate(r[0]), isoDate:iso2,
         nom:nom,
         fonction:isNull(r[2])?'':String(r[2]).trim(),
         structure:isNull(r[3])?'':String(r[3]).trim(),
