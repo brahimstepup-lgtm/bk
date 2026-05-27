@@ -500,9 +500,22 @@ function readCleaning(ss, photoCache) {
 
 // ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "nettoyage 1" — PLAN DE NETTOYAGE ────────
-// Récupère un mapping { zone, link } pour les 4 zones cibles :
-//   Étage -1, Étage 0, Étage 1, Voie externe.
-// Détection souple des colonnes (zone / lien) et des en-têtes.
+// Pour chaque zone (Étage -1, Étage 0, Étage 1, Voie externe) on
+// extrait :
+//   - link         : lien du PLAN de nettoyage
+//   - productsLink : lien des PRODUITS utilisés
+//   - productsText : libellé / description des produits si la
+//                    cellule n'est pas un lien
+// La détection des colonnes est souple :
+//   ZONE          : entête contient "zone"
+//   LIEN PLAN     : "lien", "link", "url", "document", "fichier",
+//                   "plan"  (mais PAS "produit")
+//   PRODUITS      : "produit" / "product" / "consommable" /
+//                   "materiel" / "matériel"
+// Si l'entête n'est pas détectée on retombe sur :
+//   col A = zone, col B = lien plan, col C = produits.
+// Lecture par RichText en priorité afin de capturer les liens
+// hypertexte qui n'apparaissent pas en valeur brute.
 // ════════════════════════════════════════════════════════════
 function readCleaningPlan(ss) {
   var entries = [];
@@ -531,37 +544,92 @@ function readCleaningPlan(ss) {
     if (!sh) { Logger.log('Cleaning PLAN sheet NOT found'); return entries; }
     Logger.log('Cleaning PLAN sheet found: ' + sh.getName());
 
-    var data = sh.getDataRange().getValues();
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null;
+    try { rich = range.getRichTextValues(); } catch(e0) { rich = null; }
     if (!data || data.length < 1) return entries;
 
-    // Détecter la ligne d'entête (zone / lien)
-    var hdrRow = -1, zoneCol = -1, linkCol = -1;
+    // ── Helper : extrait l'URL d'une cellule (RichText prioritaire) ──
+    function cellUrl(rIdx, cIdx) {
+      // 1) Tenter via RichText (capture les hyperlinks « masqués » dans le texte)
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          // Parcourir les "runs" pour trouver un lien
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      // 2) Sinon valeur brute (URL en clair)
+      var v = data[rIdx][cIdx];
+      if (isNull(v)) return '';
+      var s = String(v).trim();
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(eU) {}
+      }
+      // Si la cellule contient une URL en texte brut → renvoyer
+      if (/^https?:\/\//i.test(s)) return s;
+      return '';
+    }
+    function cellText(rIdx, cIdx) {
+      var v = data[rIdx][cIdx];
+      return isNull(v) ? '' : String(v).trim();
+    }
+
+    // ── Détecter la ligne d'entête + colonnes ──
+    var hdrRow = -1, zoneCol = -1, linkCol = -1, prodCol = -1;
     for (var i = 0; i < Math.min(data.length, 6); i++) {
       var row = data[i];
-      var zc = -1, lc = -1;
+      var zc = -1, lc = -1, pc = -1;
       for (var c = 0; c < row.length; c++) {
         var h = normalize(String(row[c]||''));
-        if (zc < 0 && h.indexOf('zone') > -1) zc = c;
+        if (!h) continue;
+        // Produits — testé en premier pour éviter de matcher "lien produits" comme "lien"
+        if (pc < 0 && (h.indexOf('produit') > -1 || h.indexOf('product') > -1 ||
+                       h.indexOf('consommable') > -1 || h.indexOf('materiel') > -1)) {
+          pc = c; continue;
+        }
+        if (zc < 0 && h.indexOf('zone') > -1) { zc = c; continue; }
         if (lc < 0 && (h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
                        h.indexOf('url') > -1  || h.indexOf('document') > -1 ||
-                       h.indexOf('fichier') > -1)) lc = c;
+                       h.indexOf('fichier') > -1 || h.indexOf('plan') > -1)) {
+          lc = c; continue;
+        }
       }
-      if (zc >= 0 && lc >= 0) { hdrRow = i; zoneCol = zc; linkCol = lc; break; }
+      if (zc >= 0 && (lc >= 0 || pc >= 0)) {
+        hdrRow = i; zoneCol = zc; linkCol = lc; prodCol = pc; break;
+      }
     }
-    // Fallback : pas d'entête détectée → assume A=zone, B=lien
-    if (hdrRow < 0) { hdrRow = -1; zoneCol = 0; linkCol = 1; }
-    Logger.log('Cleaning PLAN cols : zone=' + zoneCol + ' link=' + linkCol + ' hdrRow=' + hdrRow);
+    // Fallback : pas d'entête détectée → A=zone, B=lien plan, C=produits
+    if (hdrRow < 0) { hdrRow = -1; zoneCol = 0; linkCol = 1; prodCol = 2; }
+    Logger.log('Cleaning PLAN cols : zone=' + zoneCol +
+               ' link=' + linkCol + ' prod=' + prodCol + ' hdrRow=' + hdrRow);
 
     for (var i = hdrRow + 1; i < data.length; i++) {
-      var r = data[i];
-      var zone = isNull(r[zoneCol]) ? '' : String(r[zoneCol]).trim();
-      var link = isNull(r[linkCol]) ? '' : String(r[linkCol]).trim();
+      var zone = cellText(i, zoneCol);
       if (!zone) continue;
-      // Une cellule peut contenir un objet RichText → conversion forcée
-      if (typeof link === 'object' && link && typeof link.getUrl === 'function') {
-        link = link.getUrl() || '';
-      }
-      entries.push({ zone: zone, link: link, key: normalize(zone) });
+
+      var link         = (linkCol >= 0) ? cellUrl(i, linkCol)  : '';
+      var productsLink = (prodCol >= 0) ? cellUrl(i, prodCol)  : '';
+      var productsText = (prodCol >= 0) ? cellText(i, prodCol) : '';
+      // Si la cellule produits était une URL brute, productsText == productsLink → on vide le texte
+      if (productsLink && productsText === productsLink) productsText = '';
+
+      entries.push({
+        zone:         zone,
+        link:         link,
+        productsLink: productsLink,
+        productsText: productsText,
+        key:          normalize(zone)
+      });
     }
     Logger.log('Cleaning PLAN entries : ' + entries.length);
   } catch(e) {
