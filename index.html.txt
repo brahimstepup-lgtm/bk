@@ -448,6 +448,43 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .cln-thumb-load::after{content:'';width:14px;height:14px;border:2px solid var(--bg5);
   border-top-color:var(--p3);border-radius:50%;animation:spin .8s linear infinite}
 html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
+
+/* ══ NETTOYAGE — boutons actions + plan modal ══ */
+.cln-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.cln-action-btn{display:flex;align-items:center;gap:14px;padding:16px 18px;
+  background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+  color:var(--text);cursor:pointer;text-align:left;transition:all .2s;
+  font-family:'Inter',sans-serif;box-shadow:0 2px 8px var(--shadow)}
+.cln-action-btn:hover{border-color:var(--p3);transform:translateY(-2px);
+  box-shadow:0 6px 20px var(--shadow)}
+.cln-action-btn.primary{border-left:3px solid var(--green)}
+.cln-action-btn.secondary{border-left:3px solid var(--p3)}
+.cln-action-btn:disabled,.cln-action-btn.disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+.cln-action-icon{font-size:30px;flex-shrink:0;line-height:1;width:48px;height:48px;
+  display:flex;align-items:center;justify-content:center;border-radius:10px;
+  background:var(--bg3);border:1px solid var(--border)}
+.cln-action-txt{flex:1;min-width:0}
+.cln-action-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;line-height:1.2}
+.cln-action-sub{font-size:10px;color:var(--text3);line-height:1.4}
+.cln-action-arrow{font-size:18px;color:var(--text3);flex-shrink:0}
+@media(max-width:600px){.cln-actions{grid-template-columns:1fr}}
+
+/* Modal Plan de nettoyage */
+.cln-plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cln-plan-btn{display:flex;align-items:center;gap:12px;padding:18px 16px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  color:var(--text);cursor:pointer;font-size:13px;font-weight:600;
+  transition:all .2s;font-family:'Inter',sans-serif;text-align:left}
+.cln-plan-btn:hover:not(.disabled){border-color:var(--green);background:var(--bg4);
+  transform:translateY(-2px);box-shadow:0 4px 14px var(--shadow)}
+.cln-plan-btn.disabled{opacity:.5;cursor:not-allowed}
+.cln-plan-icon{font-size:22px;flex-shrink:0;width:38px;height:38px;
+  display:flex;align-items:center;justify-content:center;border-radius:8px;
+  background:var(--bg4);border:1px solid var(--border)}
+.cln-plan-zone{flex:1;color:var(--text)}
+.cln-plan-arrow{color:var(--text3);font-size:14px}
+.cln-plan-empty{text-align:center;padding:28px 12px;color:var(--text3);font-size:12px;line-height:1.6}
+@media(max-width:600px){.cln-plan-grid{grid-template-columns:1fr}}
 /* Photo TAG */
 .photo-area{display:flex;flex-direction:column;align-items:center;gap:10px}
 .photo-img{max-width:100%;max-height:50vh;border-radius:8px;object-fit:contain;border:1px solid var(--border)}
@@ -1358,6 +1395,26 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     </p>
   </div>
 
+  <!-- ═══ Boutons principaux Nettoyage ═══ -->
+  <div class="cln-actions">
+    <button class="cln-action-btn primary" onclick="openCleaningPlan()">
+      <div class="cln-action-icon">📋</div>
+      <div class="cln-action-txt">
+        <div class="cln-action-title">Plan de nettoyage</div>
+        <div class="cln-action-sub">Plans par étage / zone (depuis « nettoyage 1 »)</div>
+      </div>
+      <div class="cln-action-arrow">→</div>
+    </button>
+    <button class="cln-action-btn secondary" onclick="alert('Bouton à configurer — préciser le contenu attendu.')">
+      <div class="cln-action-icon">🧰</div>
+      <div class="cln-action-txt">
+        <div class="cln-action-title">Bouton 2 — à définir</div>
+        <div class="cln-action-sub">Préciser le libellé et l'action attendue</div>
+      </div>
+      <div class="cln-action-arrow">→</div>
+    </button>
+  </div>
+
   <div class="tsum" id="clnSum"></div>
 
   <!-- Barre recherche + tri -->
@@ -1566,6 +1623,30 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 </div>
 
+<!-- ═══ MODAL PLAN DE NETTOYAGE ═══ -->
+<div class="modal-bg" id="clnPlanModal" style="display:none" onclick="if(event.target===this)closeModal('clnPlanModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()" style="width:min(560px,100%)">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(16,201,133,.2);border-color:var(--green)">📋</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id">PLAN DE NETTOYAGE</div>
+        <div class="modal-hdr-name">Sélectionnez une zone</div>
+        <div class="modal-chips">
+          <span class="modal-chip">Source : feuille « nettoyage 1 »</span>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('clnPlanModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="clnPlanList" class="cln-plan-grid"></div>
+      <div id="clnPlanEmpty" class="cln-plan-empty" style="display:none">
+        Aucune donnée trouvée dans la feuille <strong>« nettoyage 1 »</strong>.<br>
+        Vérifiez que la feuille existe et contient les colonnes <em>Zone</em> et <em>Lien</em>.
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════════════════════
 var D=null, viewMode='ytd', pyrMode='ytd', envMode='conso';
@@ -1626,7 +1707,7 @@ function goVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -2500,6 +2581,83 @@ function setClnStat(s,el){
   el.classList.add('on');
   applyClnF();
 }
+
+// ── PLAN DE NETTOYAGE ─────────────────────────────────────────
+// Lecture dynamique de D.cleaningPlan (issu de la feuille « nettoyage 1 »)
+// Affiche 4 zones cibles → ouvre le lien associé dans un nouvel onglet.
+var CLN_PLAN_ZONES = [
+  { label:'Étage -1',     icon:'🅑' },
+  { label:'Étage 0',      icon:'0️⃣' },
+  { label:'Étage 1',      icon:'1️⃣' },
+  { label:'Voie externe', icon:'🛣️' }
+];
+function clnPlanNorm(s){
+  return String(s||'').toLowerCase()
+    .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a').replace(/[ùûü]/g,'u')
+    .replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ç]/g,'c')
+    .replace(/\s+/g,' ').trim();
+}
+function clnPlanResolveLink(zoneLabel){
+  var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
+  if (!data.length) return '';
+  var key = clnPlanNorm(zoneLabel);
+  // 1) match exact normalisé
+  for (var i = 0; i < data.length; i++) {
+    if (clnPlanNorm(data[i].zone) === key) return data[i].link || '';
+  }
+  // 2) match « contains » (tolère « Étage -1 » vs « etage -1 - sous-sol », etc.)
+  for (var i = 0; i < data.length; i++) {
+    var z = clnPlanNorm(data[i].zone);
+    if (z.indexOf(key) > -1 || key.indexOf(z) > -1) return data[i].link || '';
+  }
+  return '';
+}
+function openCleaningPlan(){
+  var list  = document.getElementById('clnPlanList');
+  var empty = document.getElementById('clnPlanEmpty');
+  if (!list || !empty) return;
+
+  var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
+  if (!data.length) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    openModal('clnPlanModal');
+    return;
+  }
+
+  var html = '';
+  CLN_PLAN_ZONES.forEach(function(z){
+    var link = clnPlanResolveLink(z.label);
+    var disabled = !link;
+    html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
+         +  (disabled
+              ? 'disabled title="Lien non d\u00e9fini dans la feuille nettoyage 1"'
+              : 'onclick="openCleaningPlanLink(\''+encodeURIComponent(link)+'\')"'
+            )
+         +  '>'
+         +    '<span class="cln-plan-icon">'+z.icon+'</span>'
+         +    '<span class="cln-plan-zone">'+esc(z.label)+'</span>'
+         +    '<span class="cln-plan-arrow">'+(disabled?'⛔':'↗')+'</span>'
+         +  '</button>';
+  });
+  list.innerHTML = html;
+  list.style.display  = 'grid';
+  empty.style.display = 'none';
+  openModal('clnPlanModal');
+}
+function openCleaningPlanLink(encoded){
+  var url = '';
+  try { url = decodeURIComponent(encoded || ''); } catch(e) { url = encoded || ''; }
+  if (!url) return;
+  // Sécurise le scheme (autorise uniquement http/https)
+  if (!/^https?:\/\//i.test(url)) {
+    alert('Lien invalide pour cette zone : ' + url);
+    return;
+  }
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
 function clearClnFilters(){
   document.getElementById('clnSearch').value = '';
   document.getElementById('clnSort').value   = 'date_desc';

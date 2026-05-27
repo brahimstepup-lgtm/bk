@@ -20,6 +20,11 @@ var CLEAN_SHEET_GID         = 1543533109;
 var CLEAN_PARENT_FOLDER_ID  = '1IOv87AtD21q7l7yVIK6bJubkfaJf7AWw';
 var CLEAN_IMAGES_FOLDER_NAME= 'Suivi de Nettoyage - Sobco 3_Images';
 
+// ── PLAN DE NETTOYAGE (feuille "nettoyage 1", gid=489206852) ─
+// Colonnes attendues : Zone | Lien
+var CLEAN_PLAN_SHEET_GID = 489206852;
+var CLEAN_PLAN_SHEET_NAME= 'nettoyage 1';
+
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
@@ -494,6 +499,78 @@ function readCleaning(ss, photoCache) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLE "nettoyage 1" — PLAN DE NETTOYAGE ────────
+// Récupère un mapping { zone, link } pour les 4 zones cibles :
+//   Étage -1, Étage 0, Étage 1, Voie externe.
+// Détection souple des colonnes (zone / lien) et des en-têtes.
+// ════════════════════════════════════════════════════════════
+function readCleaningPlan(ss) {
+  var entries = [];
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+
+    // 1. Cherche par GID
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === CLEAN_PLAN_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon par nom exact "nettoyage 1"
+    if (!sh) {
+      var target = normalize(CLEAN_PLAN_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "nettoyage" + "1"
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('nettoyage') > -1 && n.indexOf('1') > -1 && n.indexOf('10') < 0) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) { Logger.log('Cleaning PLAN sheet NOT found'); return entries; }
+    Logger.log('Cleaning PLAN sheet found: ' + sh.getName());
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 1) return entries;
+
+    // Détecter la ligne d'entête (zone / lien)
+    var hdrRow = -1, zoneCol = -1, linkCol = -1;
+    for (var i = 0; i < Math.min(data.length, 6); i++) {
+      var row = data[i];
+      var zc = -1, lc = -1;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||''));
+        if (zc < 0 && h.indexOf('zone') > -1) zc = c;
+        if (lc < 0 && (h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
+                       h.indexOf('url') > -1  || h.indexOf('document') > -1 ||
+                       h.indexOf('fichier') > -1)) lc = c;
+      }
+      if (zc >= 0 && lc >= 0) { hdrRow = i; zoneCol = zc; linkCol = lc; break; }
+    }
+    // Fallback : pas d'entête détectée → assume A=zone, B=lien
+    if (hdrRow < 0) { hdrRow = -1; zoneCol = 0; linkCol = 1; }
+    Logger.log('Cleaning PLAN cols : zone=' + zoneCol + ' link=' + linkCol + ' hdrRow=' + hdrRow);
+
+    for (var i = hdrRow + 1; i < data.length; i++) {
+      var r = data[i];
+      var zone = isNull(r[zoneCol]) ? '' : String(r[zoneCol]).trim();
+      var link = isNull(r[linkCol]) ? '' : String(r[linkCol]).trim();
+      if (!zone) continue;
+      // Une cellule peut contenir un objet RichText → conversion forcée
+      if (typeof link === 'object' && link && typeof link.getUrl === 'function') {
+        link = link.getUrl() || '';
+      }
+      entries.push({ zone: zone, link: link, key: normalize(zone) });
+    }
+    Logger.log('Cleaning PLAN entries : ' + entries.length);
+  } catch(e) {
+    Logger.log('readCleaningPlan error: ' + e.message);
+  }
+  return entries;
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 function getData() {
@@ -515,6 +592,7 @@ function getData() {
     ts: new Date().toISOString(),
     kpis:{}, incidents:[], tags:[], tagsOpen:[], accidents:[], planning:[],
     cleaning:[],
+    cleaningPlan:[],
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
@@ -530,6 +608,9 @@ function getData() {
   var cleanPhotos = buildCleaningPhotosCache();
   out.cleaning = readCleaning(ss, cleanPhotos);
   out.cleaningPhotosCount = cleanPhotos.count;
+
+  // ── Plan de nettoyage (feuille "nettoyage 1") ────────────
+  out.cleaningPlan = readCleaningPlan(ss);
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
