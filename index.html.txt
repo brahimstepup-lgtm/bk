@@ -485,6 +485,29 @@ html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
 .cln-plan-arrow{color:var(--text3);font-size:14px}
 .cln-plan-empty{text-align:center;padding:28px 12px;color:var(--text3);font-size:12px;line-height:1.6}
 @media(max-width:600px){.cln-plan-grid{grid-template-columns:1fr}}
+
+/* ── Sous-texte « produits » dans le bouton zone ── */
+.cln-plan-sub{display:block;font-size:10px;color:var(--text3);font-weight:400;
+  margin-top:2px;line-height:1.35;white-space:normal}
+
+/* ── MODAL EMBED — affichage du lien dans le dashboard ── */
+.cln-embed-panel{width:min(1200px,98%);max-width:98vw;height:min(86vh,820px);
+  display:flex;flex-direction:column;overflow:hidden}
+.cln-embed-body{flex:1;padding:0;background:var(--bg);position:relative;overflow:hidden}
+.cln-embed-iframe{width:100%;height:100%;border:none;background:#fff;display:block}
+.cln-embed-loading{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;background:var(--bg2);
+  color:var(--text2);font-size:12px;z-index:1;transition:opacity .25s}
+.cln-embed-loading.hide{opacity:0;pointer-events:none}
+.cln-embed-loading .spin{width:30px;height:30px;border:3px solid var(--bg4);
+  border-top-color:var(--p3);border-radius:50%;animation:spin .8s linear infinite}
+.cln-embed-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.cln-embed-newtab{padding:5px 11px;border-radius:6px;font-size:10px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text2);
+  transition:all .2s;font-family:'Inter',sans-serif;text-decoration:none;
+  display:inline-flex;align-items:center;gap:4px}
+.cln-embed-newtab:hover{background:var(--bg4);color:var(--text);border-color:var(--p2)}
+@media(max-width:600px){.cln-embed-panel{height:92vh}}
 /* Photo TAG */
 .photo-area{display:flex;flex-direction:column;align-items:center;gap:10px}
 .photo-img{max-width:100%;max-height:50vh;border-radius:8px;object-fit:contain;border:1px solid var(--border)}
@@ -1405,11 +1428,11 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       </div>
       <div class="cln-action-arrow">→</div>
     </button>
-    <button class="cln-action-btn secondary" onclick="alert('Bouton à configurer — préciser le contenu attendu.')">
-      <div class="cln-action-icon">🧰</div>
+    <button class="cln-action-btn secondary" onclick="openCleaningProducts()">
+      <div class="cln-action-icon">🧴</div>
       <div class="cln-action-txt">
-        <div class="cln-action-title">Bouton 2 — à définir</div>
-        <div class="cln-action-sub">Préciser le libellé et l'action attendue</div>
+        <div class="cln-action-title">Produits utilisés</div>
+        <div class="cln-action-sub">Liste des produits par étage / zone (depuis « nettoyage 1 »)</div>
       </div>
       <div class="cln-action-arrow">→</div>
     </button>
@@ -1647,6 +1670,58 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 </div>
 
+<!-- ═══ MODAL PRODUITS UTILISÉS ═══ -->
+<div class="modal-bg" id="clnProductsModal" style="display:none" onclick="if(event.target===this)closeModal('clnProductsModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()" style="width:min(560px,100%)">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(13,168,210,.2);border-color:var(--p3)">🧴</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id">PRODUITS UTILISÉS</div>
+        <div class="modal-hdr-name">Sélectionnez une zone</div>
+        <div class="modal-chips">
+          <span class="modal-chip">Source : feuille « nettoyage 1 »</span>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('clnProductsModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="clnProductsList" class="cln-plan-grid"></div>
+      <div id="clnProductsEmpty" class="cln-plan-empty" style="display:none">
+        Aucune information « produits utilisés » trouvée dans la feuille <strong>« nettoyage 1 »</strong>.<br>
+        Vérifiez qu'une colonne <em>Produits</em> (lien ou texte) est renseignée pour chaque zone.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL EMBED — affichage du lien dans le dashboard ═══ -->
+<div class="modal-bg" id="clnEmbedModal" style="display:none" onclick="if(event.target===this)closeModal('clnEmbedModal')">
+  <div class="modal-panel cln-embed-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="clnEmbedBadge" style="background:rgba(16,201,133,.2);border-color:var(--green)">📄</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="clnEmbedKind">DOCUMENT</div>
+        <div class="modal-hdr-name" id="clnEmbedTitle">—</div>
+        <div class="cln-embed-actions">
+          <a id="clnEmbedNewTab" class="cln-embed-newtab" href="#" target="_blank" rel="noopener noreferrer">↗ Ouvrir dans un onglet</a>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('clnEmbedModal')">✕</button>
+    </div>
+    <div class="modal-body cln-embed-body">
+      <div id="clnEmbedLoading" class="cln-embed-loading">
+        <div class="spin"></div>
+        <div>Chargement du document…</div>
+      </div>
+      <iframe id="clnEmbedFrame" class="cln-embed-iframe"
+              referrerpolicy="no-referrer"
+              allow="autoplay; fullscreen"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+              src="about:blank"></iframe>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════════════════════
 var D=null, viewMode='ytd', pyrMode='ytd', envMode='conso';
@@ -1707,7 +1782,7 @@ function goVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -2618,7 +2693,9 @@ function openCleaningPlan(){
   if (!list || !empty) return;
 
   var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
-  if (!data.length) {
+  // On considère qu'il y a des données « plan » si au moins une zone a un lien plan
+  var hasAnyPlan = data.some(function(d){ return d && d.link; });
+  if (!data.length || !hasAnyPlan) {
     list.innerHTML = '';
     list.style.display = 'none';
     empty.style.display = 'block';
@@ -2630,14 +2707,15 @@ function openCleaningPlan(){
   CLN_PLAN_ZONES.forEach(function(z){
     var link = clnPlanResolveLink(z.label);
     var disabled = !link;
+    var safeTitle = esc(z.label);
     html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
          +  (disabled
-              ? 'disabled title="Lien non d\u00e9fini dans la feuille nettoyage 1"'
-              : 'onclick="openCleaningPlanLink(\''+encodeURIComponent(link)+'\')"'
+              ? 'disabled title="Lien plan non défini dans la feuille nettoyage 1"'
+              : 'onclick="openCleaningPlanLink(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent(z.label)+'\')"'
             )
          +  '>'
          +    '<span class="cln-plan-icon">'+z.icon+'</span>'
-         +    '<span class="cln-plan-zone">'+esc(z.label)+'</span>'
+         +    '<span class="cln-plan-zone">'+safeTitle+'</span>'
          +    '<span class="cln-plan-arrow">'+(disabled?'⛔':'↗')+'</span>'
          +  '</button>';
   });
@@ -2646,17 +2724,181 @@ function openCleaningPlan(){
   empty.style.display = 'none';
   openModal('clnPlanModal');
 }
-function openCleaningPlanLink(encoded){
+function openCleaningPlanLink(encoded, encodedTitle){
   var url = '';
   try { url = decodeURIComponent(encoded || ''); } catch(e) { url = encoded || ''; }
+  var title = '';
+  try { title = decodeURIComponent(encodedTitle || ''); } catch(e2) { title = encodedTitle || ''; }
   if (!url) return;
-  // Sécurise le scheme (autorise uniquement http/https)
   if (!/^https?:\/\//i.test(url)) {
     alert('Lien invalide pour cette zone : ' + url);
     return;
   }
-  window.open(url, '_blank', 'noopener,noreferrer');
+  openCleaningEmbed(url, title || 'Plan de nettoyage', 'PLAN DE NETTOYAGE', '📋');
 }
+
+// ── PRODUITS UTILISÉS ────────────────────────────────────────
+// Lit les mêmes entrées (D.cleaningPlan) mais utilise productsLink
+// (et productsText si pas de lien).
+function clnProductsResolve(zoneLabel){
+  var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
+  if (!data.length) return { link:'', text:'' };
+  var key = clnPlanNorm(zoneLabel);
+  for (var i = 0; i < data.length; i++) {
+    if (clnPlanNorm(data[i].zone) === key) {
+      return { link: data[i].productsLink || '', text: data[i].productsText || '' };
+    }
+  }
+  for (var i = 0; i < data.length; i++) {
+    var z = clnPlanNorm(data[i].zone);
+    if (z.indexOf(key) > -1 || key.indexOf(z) > -1) {
+      return { link: data[i].productsLink || '', text: data[i].productsText || '' };
+    }
+  }
+  return { link:'', text:'' };
+}
+function openCleaningProducts(){
+  var list  = document.getElementById('clnProductsList');
+  var empty = document.getElementById('clnProductsEmpty');
+  if (!list || !empty) return;
+
+  var data = (D && D.cleaningPlan) ? D.cleaningPlan : [];
+  var anyProducts = data.some(function(d){ return d && (d.productsLink || d.productsText); });
+
+  if (!data.length || !anyProducts) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    openModal('clnProductsModal');
+    return;
+  }
+
+  var html = '';
+  CLN_PLAN_ZONES.forEach(function(z){
+    var p = clnProductsResolve(z.label);
+    var hasLink = !!p.link;
+    var hasText = !!p.text;
+    var disabled = !hasLink && !hasText;
+
+    var arrow = disabled ? '⛔' : (hasLink ? '↗' : '📄');
+    var safeTitle = esc(z.label);
+    var subTxt = '';
+    if (hasText) {
+      var t = p.text;
+      if (t.length > 90) t = t.substring(0,90) + '…';
+      subTxt = '<span class="cln-plan-sub">'+esc(t)+'</span>';
+    } else if (hasLink) {
+      subTxt = '<span class="cln-plan-sub">Voir les produits utilisés</span>';
+    } else {
+      subTxt = '<span class="cln-plan-sub">Aucun produit renseigné</span>';
+    }
+
+    if (hasLink) {
+      html += '<button class="cln-plan-btn" '
+           +  'onclick="openCleaningProductsLink(\''+encodeURIComponent(p.link)+'\',\''+encodeURIComponent(z.label)+'\')">'
+           +    '<span class="cln-plan-icon">'+z.icon+'</span>'
+           +    '<span class="cln-plan-zone">'+safeTitle+subTxt+'</span>'
+           +    '<span class="cln-plan-arrow">'+arrow+'</span>'
+           +  '</button>';
+    } else {
+      // Pas de lien → bouton informatif (texte seulement)
+      html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
+           +  (disabled ? 'disabled' : 'onclick="void 0"')
+           +  ' title="'+esc(p.text || 'Aucun produit renseigné')+'">'
+           +    '<span class="cln-plan-icon">'+z.icon+'</span>'
+           +    '<span class="cln-plan-zone">'+safeTitle+subTxt+'</span>'
+           +    '<span class="cln-plan-arrow">'+arrow+'</span>'
+           +  '</button>';
+    }
+  });
+  list.innerHTML = html;
+  list.style.display  = 'grid';
+  empty.style.display = 'none';
+  openModal('clnProductsModal');
+}
+function openCleaningProductsLink(encoded, encodedTitle){
+  var url = '';
+  try { url = decodeURIComponent(encoded || ''); } catch(e) { url = encoded || ''; }
+  var title = '';
+  try { title = decodeURIComponent(encodedTitle || ''); } catch(e2) { title = encodedTitle || ''; }
+  if (!url) return;
+  if (!/^https?:\/\//i.test(url)) {
+    alert('Lien invalide pour cette zone : ' + url);
+    return;
+  }
+  openCleaningEmbed(url, title || 'Produits utilisés', 'PRODUITS UTILISÉS', '🧴');
+}
+
+// ── EMBED — convertit une URL Google en URL embeddable + ouvre l'iframe modal ──
+// Permet d'afficher le contenu DANS le dashboard (pas de redirection externe).
+function clnToEmbedUrl(url){
+  if (!url) return '';
+  try {
+    // Google Sheets : /edit?gid=... → /preview?gid=...  (ou /htmlview en fallback)
+    var mSheet = url.match(/^(https:\/\/docs\.google\.com\/spreadsheets\/d\/[a-zA-Z0-9_-]+)\/(edit|view|htmlview|preview)?(\?[^#]*)?(#.*)?$/i);
+    if (mSheet) {
+      var base  = mSheet[1];
+      var query = mSheet[3] || '';
+      var hash  = mSheet[4] || '';
+      // Conserve le gid si présent
+      var gidMatch = (query + hash).match(/gid=(\d+)/);
+      var gidQ = gidMatch ? ('?gid=' + gidMatch[1]) : '';
+      return base + '/preview' + gidQ;
+    }
+    // Google Docs / Slides : /edit → /preview
+    var mDocs = url.match(/^(https:\/\/docs\.google\.com\/(document|presentation|forms)\/d\/[a-zA-Z0-9_-]+)\/(edit|view|preview)?.*$/i);
+    if (mDocs) return mDocs[1] + '/preview';
+    // Google Drive fichier : /view → /preview
+    var mDrive = url.match(/^(https:\/\/drive\.google\.com\/file\/d\/[a-zA-Z0-9_-]+)\/(view|preview|edit)?.*$/i);
+    if (mDrive) return mDrive[1] + '/preview';
+    // Google Drive open?id=... → preview via /file/d/.../preview
+    var mOpen = url.match(/^https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/i);
+    if (mOpen) return 'https://drive.google.com/file/d/' + mOpen[1] + '/preview';
+    // Google Drive folder : /folders/ID → /embeddedfolderview?id=ID
+    var mFolder = url.match(/^https:\/\/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([a-zA-Z0-9_-]+)/i);
+    if (mFolder) return 'https://drive.google.com/embeddedfolderview?id=' + mFolder[1] + '#list';
+  } catch(e) { /* fallback */ }
+  // Pas reconnu → renvoyer tel quel (le navigateur peut bloquer si X-Frame-Options)
+  return url;
+}
+function openCleaningEmbed(rawUrl, title, kind, icon){
+  var modal   = document.getElementById('clnEmbedModal');
+  var iframe  = document.getElementById('clnEmbedFrame');
+  var loader  = document.getElementById('clnEmbedLoading');
+  var newTab  = document.getElementById('clnEmbedNewTab');
+  var titleEl = document.getElementById('clnEmbedTitle');
+  var kindEl  = document.getElementById('clnEmbedKind');
+  var badgeEl = document.getElementById('clnEmbedBadge');
+  if (!modal || !iframe) return;
+
+  var embedUrl = clnToEmbedUrl(rawUrl);
+  titleEl.textContent = title || '—';
+  kindEl.textContent  = kind  || 'DOCUMENT';
+  if (badgeEl && icon) badgeEl.textContent = icon;
+  newTab.href = rawUrl;
+
+  // Loader visible pendant le chargement
+  loader.classList.remove('hide');
+
+  // Charger l'iframe
+  iframe.onload = function(){ loader.classList.add('hide'); };
+  iframe.src = embedUrl;
+
+  openModal('clnEmbedModal');
+}
+// Quand on ferme le modal embed, on vide l'iframe pour stopper la lecture
+(function(){
+  var prevClose = window.closeModal;
+  window.closeModal = function(id){
+    if (id === 'clnEmbedModal') {
+      var f = document.getElementById('clnEmbedFrame');
+      var l = document.getElementById('clnEmbedLoading');
+      if (f) f.src = 'about:blank';
+      if (l) l.classList.remove('hide');
+    }
+    return prevClose ? prevClose(id) : null;
+  };
+})();
 
 function clearClnFilters(){
   document.getElementById('clnSearch').value = '';
