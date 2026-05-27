@@ -810,6 +810,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('ai',this)">✨ IA Gemini</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
+  <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
 </div>
 
@@ -1406,6 +1407,58 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 </div>
 
+<!-- ═══ PROCÉDURES HSE ═══ -->
+<div id="proc" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>Procédures HSE — SOBCO 3</div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Liste des procédures HSE en vigueur, extraite de la feuille
+      <em style="color:var(--text3)">« procédures »</em> du classeur source.
+      Cliquez sur un titre <strong style="color:var(--p4)">souligné</strong>
+      ou sur l'icône <strong>📄</strong> pour ouvrir le document associé dans un nouvel onglet.
+    </p>
+  </div>
+
+  <!-- Bandeau « Fiche d'identité processus HSE » et autres liens spéciaux -->
+  <div class="card" id="procExtraCard" style="margin-bottom:14px;display:none">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Document de référence du processus</div>
+    <div id="procExtraBox" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+  </div>
+
+  <!-- Synthèse -->
+  <div class="tsum" id="procSum"></div>
+
+  <!-- Barre de recherche -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="procSearch"
+           placeholder="Rechercher une procédure, une référence (ex: PRO-HSE-13)…"
+           oninput="renderProcedures()">
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+            onclick="document.getElementById('procSearch').value='';renderProcedures()">↺ Reset</button>
+  </div>
+
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>Liste des procédures
+      <span id="procListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px">#</th>
+            <th>Titre de la Procédure</th>
+            <th style="width:130px">Référence</th>
+            <th style="width:120px">Date de Version</th>
+            <th style="width:80px;text-align:center">Document</th>
+          </tr>
+        </thead>
+        <tbody id="procBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ NETTOYAGE ═══ -->
 <div id="cln" class="page">
   <div class="card" style="margin-bottom:14px">
@@ -1896,6 +1949,7 @@ function cleanMonths(arr,hdrs){
 function infoItem(lbl,val){ return val&&String(val).trim()&&val!=='—'?'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+esc(String(val))+'</div></div>':''; }
 function infoItemF(lbl,val){ return'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+(val?esc(String(val)):'—')+'</div></div>'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtNum(v){
   if(v===null||v===undefined||v==='') return v;
   var n=parseFloat(v); if(isNaN(n)) return v;
@@ -3317,6 +3371,117 @@ function render(data){
     prog('EAU Jan',m.reau_jan,5,true,false),prog('EAU Fév',m.reau_fev,5,true,false),prog('EAU Mar',m.reau_mar,5,true,false)
   ].filter(Boolean).join('');
   updateEnvCharts();
+
+  // ── PROCÉDURES HSE ──────────────────────────────────────
+  renderProcedures();
+}
+
+// ══ PROCÉDURES HSE ════════════════════════════════════════════
+// Rendu dynamique de la feuille « procédures » : liste filtrable
+// + bandeau « Document de référence du processus » (extras).
+function renderProcedures(){
+  if(!D) return;
+  var list   = (D.procedures || []);
+  var extras = (D.proceduresExtras || []);
+
+  // Filtre recherche
+  var qEl = document.getElementById('procSearch');
+  var q   = qEl ? qEl.value.trim().toLowerCase() : '';
+  var filtered = list.filter(function(p){
+    if(!q) return true;
+    var hay = (p.titre + ' ' + p.reference + ' ' + p.dateVersion).toLowerCase();
+    return hay.indexOf(q) > -1;
+  });
+
+  // Synthèse
+  var total      = list.length;
+  var withDoc    = list.filter(function(p){ return !!p.url; }).length;
+  var withRef    = list.filter(function(p){
+    var r = String(p.reference || '').toLowerCase();
+    return r && r.indexOf('non spec') < 0 && r.indexOf('non spéc') < 0;
+  }).length;
+  var withDate   = list.filter(function(p){
+    var d = String(p.dateVersion || '').toLowerCase();
+    return d && d.indexOf('non spec') < 0 && d.indexOf('non spéc') < 0;
+  }).length;
+  var sumEl = document.getElementById('procSum');
+  if(sumEl){
+    sumEl.innerHTML =
+      '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(total)+'</div><div class="tsl">Total Procédures</div></div>'+
+      '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(withDoc)+'</div><div class="tsl">Avec document 📄</div></div>'+
+      '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(withRef)+'</div><div class="tsl">Avec référence</div></div>'+
+      '<div class="tsc"><div class="tsv" style="color:var(--p3)">'+fmtNum(withDate)+'</div><div class="tsl">Avec date de version</div></div>';
+  }
+
+  // Compteur
+  var cntEl = document.getElementById('procListCount');
+  if(cntEl) cntEl.textContent = filtered.length + (q ? ' / ' + total : '') + ' affichée'+(filtered.length>1?'s':'');
+
+  // Tableau
+  var body = document.getElementById('procBody');
+  if(body){
+    if(!filtered.length){
+      body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text3);font-size:11px">Aucune procédure trouvée</td></tr>';
+    } else {
+      function unspecOrText(v){
+        if(!v) return '<span style="color:var(--text3);font-size:10px;font-style:italic">Non spécifiée</span>';
+        var lc = String(v).toLowerCase();
+        if(lc.indexOf('non spec')>-1 || lc.indexOf('non spéc')>-1)
+          return '<span style="color:var(--text3);font-size:10px;font-style:italic">'+esc(v)+'</span>';
+        return null; // signal : afficher avec rendu standard
+      }
+      body.innerHTML = filtered.map(function(p, i){
+        var titleHtml = p.url
+          ? '<a href="'+escAttr(p.url)+'" target="_blank" rel="noopener" '
+            + 'style="color:var(--p4);text-decoration:underline;font-weight:600">'
+            + esc(p.titre || '—') + '</a>'
+          : '<strong style="color:var(--text)">' + esc(p.titre || '—') + '</strong>';
+
+        var refUnspec = unspecOrText(p.reference);
+        var refHtml   = (refUnspec !== null) ? refUnspec
+          : '<span class="rbadge mono">'+esc(p.reference)+'</span>';
+
+        var dateUnspec = unspecOrText(p.dateVersion);
+        var dateHtml   = (dateUnspec !== null) ? dateUnspec
+          : '<span class="mono" style="font-size:11px">'+esc(p.dateVersion)+'</span>';
+
+        var docHtml = p.url
+          ? '<a href="'+escAttr(p.url)+'" target="_blank" rel="noopener" '
+            + 'class="tag-btn has-photo" title="Ouvrir la procédure" '
+            + 'style="text-decoration:none">📄</a>'
+          : '<span class="tag-btn no-photo" title="Document non disponible" '
+            + 'style="cursor:default">—</span>';
+
+        return '<tr>'
+          + '<td class="mono" style="font-size:10px;color:var(--text3)">'+(i+1)+'</td>'
+          + '<td>'+titleHtml+'</td>'
+          + '<td>'+refHtml+'</td>'
+          + '<td>'+dateHtml+'</td>'
+          + '<td style="text-align:center">'+docHtml+'</td>'
+          + '</tr>';
+      }).join('');
+    }
+  }
+
+  // Extras (fiche d'identité processus, etc.)
+  var extraCard = document.getElementById('procExtraCard');
+  var extraBox  = document.getElementById('procExtraBox');
+  if(extraCard && extraBox){
+    if(extras.length){
+      extraCard.style.display = '';
+      extraBox.innerHTML = extras.map(function(e){
+        if(e.url){
+          return '<a class="btn btn-ai" href="'+escAttr(e.url)+'" target="_blank" rel="noopener" '
+               + 'style="text-decoration:none;font-size:11px;padding:8px 14px">'
+               + '📑 ' + esc(e.label) + ' <span style="opacity:.7">↗</span></a>';
+        }
+        return '<span class="btn" style="cursor:default;font-size:11px;padding:8px 14px">📑 '
+             + esc(e.label) + '</span>';
+      }).join('');
+    } else {
+      extraCard.style.display = 'none';
+    }
+  }
 }
 
 // ══ IA ════════════════════════════════════════════════════════
