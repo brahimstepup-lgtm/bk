@@ -25,6 +25,14 @@ var CLEAN_IMAGES_FOLDER_NAME= 'Suivi de Nettoyage - Sobco 3_Images';
 var CLEAN_PLAN_SHEET_GID = 489206852;
 var CLEAN_PLAN_SHEET_NAME= 'nettoyage 1';
 
+// ── PROCÉDURES HSE (feuille "procédures", gid=1171171688) ────
+// Colonnes attendues : Titre de la Procédure | Référence | Date de Version
+// Certains titres contiennent un HYPERLINK vers le document associé.
+// Une ligne spéciale « fiche d'identité processus HSE » peut figurer
+// plus bas dans la feuille et est exposée comme « extras ».
+var PROCEDURES_SHEET_GID  = 1171171688;
+var PROCEDURES_SHEET_NAME = 'procédures';
+
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
@@ -793,6 +801,191 @@ function readCleaningPlan(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLE "procédures" ─────────────────────────────
+// Renvoie un objet { entries, extras } :
+//
+//   entries → liste des procédures HSE :
+//     [{ titre, reference, dateVersion, url }]
+//   extras  → liens spéciaux trouvés dans la feuille (typiquement
+//     « fiche d'identité processus HSE ») :
+//     [{ label, url }]
+//
+// Détection souple des colonnes du tableau :
+//   TITRE       : entête contient « titre » / « procédure » / « nom »
+//   RÉFÉRENCE   : « réf » / « code »
+//   DATE VERSION: « date » / « version »
+// Si aucune entête détectée → A=titre, B=référence, C=date.
+//
+// Les hyperliens sont extraits dans cet ordre :
+//   1) =HYPERLINK("url",…)
+//   2) RichTextValues.getLinkUrl()
+//   3) URL en clair dans la valeur brute
+// ════════════════════════════════════════════════════════════
+function readProcedures(ss) {
+  var entries = [];
+  var extras  = [];
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+
+    // 1. Cherche par GID
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === PROCEDURES_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon par nom exact "procédures"
+    if (!sh) {
+      var target = normalize(PROCEDURES_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "procedure"
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('procedure') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) { Logger.log('Procédures sheet NOT found'); return { entries: entries, extras: extras }; }
+    Logger.log('Procédures sheet found: ' + sh.getName());
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null;
+    var formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e0) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(eF) { formulas = null; }
+    if (!data || data.length < 1) return { entries: entries, extras: extras };
+
+    // ── Helper : extrait l'URL d'une cellule ─────────────────
+    function cellUrl(rIdx, cIdx) {
+      // 1) Formule =HYPERLINK("url", "libellé")
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      // 2) RichText
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      // 3) Objet Drive natif
+      var v = data[rIdx][cIdx];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(eU) {}
+      }
+      // 4) URL en clair dans la valeur brute
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
+    function cellText(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      var v = data[rIdx][cIdx];
+      return isNull(v) ? '' : String(v).trim();
+    }
+
+    // ── Détecter la ligne d'entête + colonnes ──
+    var hdrRow = -1, titleCol = -1, refCol = -1, dateCol = -1;
+    for (var i = 0; i < Math.min(data.length, 6); i++) {
+      var row = data[i];
+      var tc = -1, rc = -1, dc = -1;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||''));
+        if (!h) continue;
+        if (tc < 0 && (h.indexOf('titre') > -1 || h.indexOf('procedure') > -1 ||
+                       h.indexOf('intitul') > -1 || h.indexOf('nom') > -1)) { tc = c; continue; }
+        if (rc < 0 && (h.indexOf('reference') > -1 || h.indexOf('ref') === 0 ||
+                       h.indexOf('code') > -1)) { rc = c; continue; }
+        if (dc < 0 && (h.indexOf('date') > -1 || h.indexOf('version') > -1)) { dc = c; continue; }
+      }
+      if (tc >= 0 && (rc >= 0 || dc >= 0)) {
+        hdrRow = i; titleCol = tc; refCol = rc; dateCol = dc; break;
+      }
+    }
+    // Fallback : pas d'entête détectée → A=titre, B=référence, C=date
+    if (hdrRow < 0) { hdrRow = -1; titleCol = 0; refCol = 1; dateCol = 2; }
+    Logger.log('Procédures cols: titre=' + titleCol + ' ref=' + refCol + ' date=' + dateCol);
+
+    // ── Parcourir les lignes de données ──
+    var firstDataRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
+    for (var i = firstDataRow; i < data.length; i++) {
+      var titre = cellText(i, titleCol);
+      var ref   = cellText(i, refCol);
+      var dv    = cellText(i, dateCol);
+
+      // ── Détection d'un lien spécial sur la ligne (fiche d'identité processus HSE) ──
+      var lineText = '';
+      var rowLen   = (data[i] || []).length;
+      for (var c = 0; c < rowLen; c++) {
+        var v = data[i][c]; if (!isNull(v)) lineText += ' ' + String(v);
+      }
+      var lt = normalize(lineText);
+      var isFiche = (lt.indexOf('fiche') > -1) &&
+                    (lt.indexOf('processus') > -1 || lt.indexOf('identite') > -1);
+      if (isFiche) {
+        var fLabel = '', fUrl = '';
+        for (var c = 0; c < rowLen; c++) {
+          var t = cellText(i, c);
+          var u = cellUrl(i, c);
+          if (!fLabel && t) fLabel = t;
+          if (!fUrl   && u) fUrl   = u;
+          if (fLabel && fUrl) break;
+        }
+        extras.push({
+          label: fLabel || "Fiche d'identité processus HSE",
+          url:   fUrl   || ''
+        });
+        continue;
+      }
+
+      // Sauter les lignes vides
+      if (!titre && !ref && !dv) continue;
+
+      // Sauter une éventuelle ré-impression de l'entête
+      var lcTitre = normalize(titre);
+      if (lcTitre.indexOf('titre de la procedure') > -1 ||
+          lcTitre === 'procedure' || lcTitre === 'titre') continue;
+
+      // URL associée — on cherche d'abord sur la cellule du titre,
+      // puis sur la cellule de la référence (souvent porteuse aussi)
+      var url = cellUrl(i, titleCol);
+      if (!url && refCol >= 0) url = cellUrl(i, refCol);
+
+      entries.push({
+        titre:       titre,
+        reference:   ref,
+        dateVersion: dv,
+        url:         url
+      });
+    }
+
+    Logger.log('Procédures: ' + entries.length + ' entrées, ' + extras.length + ' extras');
+  } catch(e) {
+    Logger.log('readProcedures error: ' + e.message);
+  }
+  return { entries: entries, extras: extras };
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 function getData() {
@@ -816,6 +1009,8 @@ function getData() {
     cleaning:[],
     cleaningPlan:[],
     cleaningProducts:[],
+    procedures:[],
+    proceduresExtras:[],
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
@@ -836,6 +1031,11 @@ function getData() {
   var cp = readCleaningPlan(ss);
   out.cleaningPlan     = (cp && cp.entries)  ? cp.entries  : [];
   out.cleaningProducts = (cp && cp.products) ? cp.products : [];
+
+  // ── Procédures HSE (feuille "procédures") ────────────────
+  var pr = readProcedures(ss);
+  out.procedures        = (pr && pr.entries) ? pr.entries : [];
+  out.proceduresExtras  = (pr && pr.extras)  ? pr.extras  : [];
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
