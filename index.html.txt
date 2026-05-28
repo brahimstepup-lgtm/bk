@@ -1716,6 +1716,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <button class="modal-tab on" onclick="switchTab('mInc','info',this)">📋 Infos</button>
       <button class="modal-tab"    onclick="switchTab('mInc','m5',this)">🔍 Analyse 5M</button>
       <button class="modal-tab"    onclick="switchTab('mInc','actions',this)">✅ Actions</button>
+      <button class="modal-tab"    onclick="switchTab('mInc','enquete',this)">📑 Rapport d'enquête</button>
     </div>
     <div class="modal-body">
       <div id="mInc-info">
@@ -1734,7 +1735,9 @@ html.light .notif-full-filters .pf-sel{background:#fff}
           <div class="info-item"><div class="info-lbl">Statut</div><div class="info-val" id="mIncStatut">—</div></div>
           <div class="info-item"><div class="info-lbl">Date</div><div class="info-val" id="mIncDate2">—</div></div>
         </div>
-        <div class="modal-section" id="mIncEnqueteSec" style="display:none">
+      </div>
+      <div id="mInc-enquete" style="display:none">
+        <div class="modal-section" id="mIncEnqueteSec">
           <div class="modal-sec-title"><span>📑</span>Rapport d'enquête</div>
           <div class="inc-enq-wrap" id="mIncEnqueteWrap">
             <div class="inc-enq-toolbar">
