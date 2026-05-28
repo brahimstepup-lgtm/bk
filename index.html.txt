@@ -1600,20 +1600,6 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     </p>
   </div>
 
-  <!-- Bandeau accès à la feuille source (embed) -->
-  <div class="card" style="margin-bottom:14px">
-    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>Feuille source</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <button class="btn btn-ai" id="contractsOpenSource"
-              style="font-size:11px;padding:8px 14px"
-              onclick="openContractsSource()">
-        📊 Ouvrir « Suivi des Contrats et Liens Drive » dans le dashboard
-        <span style="opacity:.7">↗</span>
-      </button>
-      <span id="contractsSourceMeta" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
-    </div>
-  </div>
-
   <!-- Synthèse -->
   <div class="tsum" id="contractsSum"></div>
 
