@@ -1425,6 +1425,51 @@ function getData() {
   var incSheet = findSheet(['incident']) || (sheets.length>1?sheets[1]:null);
   if (incSheet) {
     var incData = incSheet.getDataRange().getValues();
+
+    // Détection de la colonne « lien vers fichier d'enquête » via l'entête.
+    // On reste tolérant : tout entête qui contient « enquet » est candidat,
+    // de préférence combiné à « lien », « fichier », « rapport », « url »,
+    // « drive » ou « doc ».
+    var incHdr  = incData[0] || [];
+    var COL_ENQ = -1;
+    for (var ch = 0; ch < incHdr.length; ch++) {
+      var hh = normalize(String(incHdr[ch]||'').replace(/[\n\r#]/g,'').trim());
+      if (!hh) continue;
+      if (hh.indexOf('enquet') > -1 &&
+          (hh.indexOf('lien') > -1    || hh.indexOf('fichier') > -1 ||
+           hh.indexOf('rapport') > -1 || hh.indexOf('url') > -1 ||
+           hh.indexOf('drive') > -1   || hh.indexOf('doc') > -1)) {
+        COL_ENQ = ch; break;
+      }
+    }
+    if (COL_ENQ < 0) {
+      for (var ch2 = 0; ch2 < incHdr.length; ch2++) {
+        var hh2 = normalize(String(incHdr[ch2]||'').replace(/[\n\r#]/g,'').trim());
+        if (hh2.indexOf('enquet') > -1) { COL_ENQ = ch2; break; }
+      }
+    }
+
+    // Helper : récupère une URL http(s) depuis une cellule, qu'elle
+    // contienne du texte brut, un lien Drive collé, ou une formule
+    // =HYPERLINK("url","libellé").
+    function extractIncUrl_(cellVal, rowIdx, colIdx) {
+      if (!isNull(cellVal)) {
+        var s = String(cellVal).trim();
+        var m = s.match(/https?:\/\/[^\s"'<>)]+/i);
+        if (m) return m[0];
+      }
+      try {
+        if (colIdx >= 0) {
+          var f = incSheet.getRange(rowIdx + 1, colIdx + 1).getFormula();
+          if (f) {
+            var mf = f.match(/https?:\/\/[^\s"'<>)]+/i);
+            if (mf) return mf[0];
+          }
+        }
+      } catch(e) { /* ignore */ }
+      return '';
+    }
+
     for (var i = 1; i < incData.length; i++) {
       var r  = incData[i];
       var id = String(r[0]||'').trim();
@@ -1432,6 +1477,7 @@ function getData() {
       if (isNull(r[0]) && isNull(r[7]) && isNull(r[6])) continue;
       var pd  = parseDate(r[1]);
       var iso = (pd&&!isNaN(pd.getTime())) ? Utilities.formatDate(pd, 'GMT+1', 'yyyy-MM-dd') : '';
+      var enqueteUrl = (COL_ENQ >= 0) ? extractIncUrl_(r[COL_ENQ], i, COL_ENQ) : '';
       out.incidents.push({
         id:id, date:fmtDate(r[1]), isoDate:iso,
         heure:safeText(r[2]),
@@ -1445,7 +1491,8 @@ function getData() {
         delai:safeText(r[10]),
         statut:isNull(r[11])?'':String(r[11]).trim(),
         analyse5m:isNull(r[13])?'':String(r[13]).trim(),
-        actions:isNull(r[14])?'':String(r[14]).trim()
+        actions:isNull(r[14])?'':String(r[14]).trim(),
+        enqueteUrl:enqueteUrl
       });
     }
     out.incidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
