@@ -42,6 +42,23 @@ var PROCEDURES_SHEET_NAME = 'procédures';
 var CONTRACTS_SHEET_GID  = 2050763956;
 var CONTRACTS_SHEET_NAME = 'Suivi des Contrats et Liens Drive';
 
+// ── EPI (feuille "Gestion du Stock des EPI...", gid=1205310896) ──
+// Lecture intégrale (entêtes + lignes brutes) pour exposer toutes les
+// colonnes de la feuille au client, avec détection souple des champs
+// les plus courants pour les KPI et les filtres :
+//   N° / Désignation (type d'EPI) / Catégorie / Taille / Unité
+//   Stock actuel / Stock minimum / Date de réception / Date d'expiration
+//   Statut / Responsable / Référence photo / Lien fiche / Commentaire
+var EPI_SHEET_GID  = 1205310896;
+var EPI_SHEET_NAME = 'Gestion du Stock des EPI (Équipements de Protection Individuelle) V2';
+
+// ── Présentation EPI (Google Slides) — slide id.p4 ───────────
+// Affichée DIRECTEMENT en iframe embed dans la section EPI du
+// dashboard (pas d'ouverture externe). L'URL « /embed?slide=… »
+// est la forme officielle acceptée dans une iframe.
+var EPI_SLIDES_ID    = '1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk';
+var EPI_SLIDES_SLIDE = 'id.p4';
+
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
@@ -1055,6 +1072,343 @@ function readProcedures(ss) {
 // Si aucune colonne « lien » dédiée n'est trouvée, on scanne TOUTES
 // les cellules de la ligne et on retient la première URL rencontrée.
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLE EPI ──────────────────────────────────────
+// Renvoie un objet :
+//   { entries:[{...}], headers:[...], sheetName:'...' }
+//
+// Chaque entry contient :
+//   - id, designation, categorie, taille, unite, qty, qtyMin,
+//     dateRecep, dateExp, statut, responsable, photoRef, url,
+//     commentaire, raw:[…toutes les colonnes…], stockState:'ok|low|out|expired|na'
+// Les hyperliens sont extraits dans cet ordre :
+//   1) =HYPERLINK("url",…)  2) RichText  3) Drive natif  4) URL en clair
+// ════════════════════════════════════════════════════════════
+function readEPI(ss) {
+  var entries = [];
+  var rawHeaders = [];
+  var sheetName  = '';
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+
+    // 1. Cherche par GID
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === EPI_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon par nom exact
+    if (!sh) {
+      var target = normalize(EPI_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "epi"
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('epi') > -1 ||
+            n.indexOf('protection individuelle') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) { Logger.log('EPI sheet NOT found'); return { entries: entries, headers: rawHeaders, sheetName: '' }; }
+    sheetName = sh.getName();
+    Logger.log('EPI sheet found: ' + sheetName);
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null;
+    var formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e0) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(eF) { formulas = null; }
+    if (!data || data.length < 1) return { entries: entries, headers: rawHeaders, sheetName: sheetName };
+
+    // ── Helpers — extraction URL / texte d'une cellule ──
+    function cellUrl(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      var v = data[rIdx][cIdx];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(eU) {}
+      }
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
+    function cellText(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      var v = data[rIdx][cIdx];
+      return isNull(v) ? '' : safeText(v);
+    }
+    function anyUrlOnRow(rIdx) {
+      var rowLen = (data[rIdx] || []).length;
+      for (var c = 0; c < rowLen; c++) {
+        var u = cellUrl(rIdx, c); if (u) return u;
+      }
+      return '';
+    }
+
+    // ── Détection ligne d'entête + colonnes ──
+    var COL = { id:-1, designation:-1, categorie:-1, taille:-1, unite:-1,
+                qty:-1, qtyMin:-1, dateRecep:-1, dateExp:-1,
+                statut:-1, responsable:-1, photoRef:-1, lien:-1,
+                commentaire:-1 };
+    var hdrRow = -1;
+    for (var i = 0; i < Math.min(data.length, 8); i++) {
+      var row = data[i];
+      var cur = { id:-1, designation:-1, categorie:-1, taille:-1, unite:-1,
+                  qty:-1, qtyMin:-1, dateRecep:-1, dateExp:-1,
+                  statut:-1, responsable:-1, photoRef:-1, lien:-1,
+                  commentaire:-1 };
+      var hits = 0;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||'').replace(/[\n\r#]/g,'').trim());
+        if (!h) continue;
+
+        // Lien (testé tôt pour ne pas être volé par d'autres mots-clés)
+        if (cur.lien < 0 &&
+            (h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
+             h.indexOf('url') > -1  || h.indexOf('drive') > -1 ||
+             h.indexOf('document') > -1 || h.indexOf('fichier') > -1 ||
+             h.indexOf('fiche') > -1)) {
+          cur.lien = c; hits++; continue;
+        }
+        // Photo / référence photo
+        if (cur.photoRef < 0 &&
+            ((h.indexOf('photo') > -1) ||
+             (h.indexOf('reference') > -1 && h.indexOf('photo') > -1) ||
+             h.indexOf('image') > -1)) {
+          cur.photoRef = c; hits++; continue;
+        }
+        // Stock minimum / seuil d'alerte
+        if (cur.qtyMin < 0 &&
+            ((h.indexOf('stock') > -1 && (h.indexOf('min') > -1 || h.indexOf('seuil') > -1 || h.indexOf('alert') > -1)) ||
+             h.indexOf('seuil') > -1 || h.indexOf('alerte') > -1 ||
+             h.indexOf('minimum') > -1)) {
+          cur.qtyMin = c; hits++; continue;
+        }
+        // Stock / quantité actuelle
+        if (cur.qty < 0 &&
+            (h.indexOf('stock') > -1 || h.indexOf('quantite') > -1 ||
+             h.indexOf('qte') > -1 || h === 'qty' || h.indexOf('disponible') > -1)) {
+          cur.qty = c; hits++; continue;
+        }
+        // Date de réception
+        if (cur.dateRecep < 0 &&
+            (h.indexOf('date') > -1 && (h.indexOf('recep') > -1 ||
+                                         h.indexOf('entree') > -1 ||
+                                         h.indexOf('achat') > -1 ||
+                                         h.indexOf('livraison') > -1))) {
+          cur.dateRecep = c; hits++; continue;
+        }
+        // Date d'expiration / péremption
+        if (cur.dateExp < 0 &&
+            ((h.indexOf('date') > -1 && (h.indexOf('expir') > -1 || h.indexOf('peremp') > -1 ||
+                                          h.indexOf('validite') > -1 || h.indexOf('fin') > -1)) ||
+             h.indexOf('expiration') > -1 || h.indexOf('peremption') > -1)) {
+          cur.dateExp = c; hits++; continue;
+        }
+        // Statut / état
+        if (cur.statut < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)) {
+          cur.statut = c; hits++; continue;
+        }
+        // Responsable / affecté à
+        if (cur.responsable < 0 &&
+            (h.indexOf('respons') > -1 || h.indexOf('charg') > -1 ||
+             h.indexOf('affect') > -1 || h.indexOf('attribut') > -1 ||
+             h.indexOf('beneficiaire') > -1 || h.indexOf('porteur') > -1 ||
+             h.indexOf('utilisateur') > -1)) {
+          cur.responsable = c; hits++; continue;
+        }
+        // Catégorie / type / famille
+        if (cur.categorie < 0 &&
+            (h.indexOf('categorie') > -1 || h.indexOf('famille') > -1 ||
+             h.indexOf('type') > -1 || h.indexOf('classe') > -1 ||
+             h.indexOf('groupe') > -1)) {
+          cur.categorie = c; hits++; continue;
+        }
+        // Taille / pointure
+        if (cur.taille < 0 &&
+            (h.indexOf('taille') > -1 || h.indexOf('size') > -1 ||
+             h.indexOf('pointure') > -1 || h.indexOf('dimension') > -1)) {
+          cur.taille = c; hits++; continue;
+        }
+        // Unité
+        if (cur.unite < 0 &&
+            (h === 'unite' || h.indexOf('u.m') > -1 ||
+             h.indexOf('mesure') > -1)) {
+          cur.unite = c; hits++; continue;
+        }
+        // ID / N°
+        if (cur.id < 0 && (h.match(/^n.?\s*$/) || h === 'no' || h === 'num' ||
+            h.indexOf('numero') > -1 || h === 'id' ||
+            (h.indexOf('ref') > -1 && h.indexOf('reference') < 0 && h.length < 10))) {
+          cur.id = c; hits++; continue;
+        }
+        // Désignation / intitulé / nom de l'EPI
+        if (cur.designation < 0 &&
+            (h.indexOf('designation') > -1 ||
+             h.indexOf('libelle') > -1 ||
+             h.indexOf('intitule') > -1 ||
+             h.indexOf('nom') > -1 || h.indexOf('article') > -1 ||
+             h.indexOf('produit') > -1 || h.indexOf('epi') > -1 ||
+             h.indexOf('equipement') > -1)) {
+          cur.designation = c; hits++; continue;
+        }
+        // Commentaire / observation / remarque
+        if (cur.commentaire < 0 &&
+            (h.indexOf('commentaire') > -1 || h.indexOf('remarque') > -1 ||
+             h.indexOf('observation') > -1 || h.indexOf('note') > -1)) {
+          cur.commentaire = c; hits++; continue;
+        }
+      }
+      if (hits >= 2) { hdrRow = i; COL = cur; break; }
+    }
+
+    // Fallback total : pas d'entête détectée → mapping positionnel
+    if (hdrRow < 0) {
+      hdrRow = 0;
+      COL.id          = 0;
+      COL.designation = 1;
+      COL.categorie   = 2;
+      COL.taille      = 3;
+      COL.qty         = 4;
+      COL.qtyMin      = 5;
+      COL.dateRecep   = 6;
+      COL.dateExp     = 7;
+      COL.statut      = 8;
+      COL.responsable = 9;
+    }
+    Logger.log('EPI COL: ' + JSON.stringify(COL) + ' hdrRow=' + hdrRow);
+
+    // Capturer les entêtes brutes pour l'affichage générique côté client
+    if (hdrRow >= 0 && data[hdrRow]) {
+      for (var c = 0; c < data[hdrRow].length; c++) {
+        rawHeaders.push(String(data[hdrRow][c] || '').trim());
+      }
+      Logger.log('EPI headers: ' + JSON.stringify(rawHeaders));
+    }
+
+    // ── Parcourir les lignes de données ──
+    var firstDataRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
+    for (var i = firstDataRow; i < data.length; i++) {
+      var row    = data[i] || [];
+      var rowLen = row.length;
+
+      // Skip lignes vides
+      var anyVal = false;
+      for (var c = 0; c < rowLen; c++) {
+        if (!isNull(row[c])) { anyVal = true; break; }
+      }
+      if (!anyVal) continue;
+
+      var idVal       = cellText(i, COL.id);
+      var desigVal    = cellText(i, COL.designation);
+      var catVal      = cellText(i, COL.categorie);
+      var tailleVal   = cellText(i, COL.taille);
+      var uniteVal    = cellText(i, COL.unite);
+      var statutVal   = cellText(i, COL.statut);
+      var respVal     = cellText(i, COL.responsable);
+      var photoRef    = cellText(i, COL.photoRef);
+      var commentVal  = cellText(i, COL.commentaire);
+      var qtyNum      = (COL.qty    >= 0) ? toNum(row[COL.qty])    : null;
+      var qtyMinNum   = (COL.qtyMin >= 0) ? toNum(row[COL.qtyMin]) : null;
+      var dateRecepR  = (COL.dateRecep >= 0) ? row[COL.dateRecep] : '';
+      var dateExpR    = (COL.dateExp   >= 0) ? row[COL.dateExp]   : '';
+
+      // URL : colonne dédiée d'abord, puis désignation, puis n'importe où
+      var url = cellUrl(i, COL.lien);
+      if (!url) url = cellUrl(i, COL.designation);
+      if (!url) url = anyUrlOnRow(i);
+
+      // Sauter ré-impression de l'entête
+      var firstTxt = '';
+      for (var c = 0; c < rowLen; c++) {
+        if (!isNull(row[c])) { firstTxt = String(row[c]).trim(); break; }
+      }
+      var lcFirst = normalize(firstTxt);
+      if (lcFirst === 'n' || lcFirst === 'no' || lcFirst === 'num' ||
+          lcFirst === 'id' || lcFirst.indexOf('total') === 0 ||
+          lcFirst.indexOf('designation') === 0) continue;
+
+      // ── État du stock : ok / low / out / expired ──
+      var stockState = 'na';
+      if (qtyNum !== null) {
+        if (qtyNum <= 0) stockState = 'out';
+        else if (qtyMinNum !== null && qtyNum <= qtyMinNum) stockState = 'low';
+        else stockState = 'ok';
+      }
+      // Override par statut explicite
+      var lcStat = String(statutVal || '').toLowerCase();
+      if (lcStat.indexOf('rupture') > -1 || lcStat.indexOf('epuis') > -1) stockState = 'out';
+      else if (lcStat.indexOf('faible') > -1 || lcStat.indexOf('alerte') > -1 || lcStat.indexOf('critique') > -1) stockState = 'low';
+      // Date d'expiration dépassée → expired
+      var expIso = getIso(dateExpR);
+      if (expIso) {
+        var todayStr = Utilities.formatDate(new Date(), 'GMT+1', 'yyyy-MM-dd');
+        if (expIso < todayStr) stockState = 'expired';
+      }
+
+      // Capturer la ligne brute pour affichage générique côté client
+      var rawCells = [];
+      for (var c = 0; c < rowLen; c++) {
+        rawCells.push(safeText(row[c]));
+      }
+
+      entries.push({
+        id:           idVal,
+        designation:  desigVal,
+        categorie:    catVal,
+        taille:       tailleVal,
+        unite:        uniteVal,
+        qty:          qtyNum,
+        qtyMin:       qtyMinNum,
+        dateRecep:    fmtDate(dateRecepR),
+        isoDateRecep: getIso(dateRecepR),
+        dateExp:      fmtDate(dateExpR),
+        isoDateExp:   expIso,
+        statut:       statutVal,
+        responsable:  respVal,
+        photoRef:     photoRef,
+        commentaire:  commentVal,
+        url:          url,
+        stockState:   stockState,
+        raw:          rawCells
+      });
+    }
+
+    Logger.log('EPI: ' + entries.length + ' entrees');
+  } catch(e) {
+    Logger.log('readEPI error: ' + e.message);
+  }
+  return { entries: entries, headers: rawHeaders, sheetName: sheetName };
+}
+
 function readContracts(ss) {
   var entries = [];
   try {
@@ -1397,6 +1751,20 @@ function getData() {
   out.contracts          = (co && co.entries)    ? co.entries    : [];
   out.contractsHeaders   = (co && co.headers)    ? co.headers    : [];
   out.contractsSheetName = (co && co.sheetName)  ? co.sheetName  : CONTRACTS_SHEET_NAME;
+
+  // -- EPI (feuille "Gestion du Stock des EPI...") ----------
+  var epi = readEPI(ss);
+  out.epi          = (epi && epi.entries)   ? epi.entries   : [];
+  out.epiHeaders   = (epi && epi.headers)   ? epi.headers   : [];
+  out.epiSheetName = (epi && epi.sheetName) ? epi.sheetName : EPI_SHEET_NAME;
+  out.epiSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                     '/edit?gid=' + EPI_SHEET_GID + '#gid=' + EPI_SHEET_GID;
+  out.epiSlideUrl  = 'https://docs.google.com/presentation/d/' + EPI_SLIDES_ID +
+                     '/edit?slide=' + EPI_SLIDES_SLIDE + '#slide=' + EPI_SLIDES_SLIDE;
+  out.epiSlideEmbedUrl = 'https://docs.google.com/presentation/d/' + EPI_SLIDES_ID +
+                         '/embed?slide=' + EPI_SLIDES_SLIDE +
+                         '&start=false&loop=false&delayms=60000';
+
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];

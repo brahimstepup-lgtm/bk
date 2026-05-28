@@ -798,6 +798,49 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   .badge{font-size:8px;padding:2px 6px}
   table{min-width:480px}
 }
+
+/* ══ EPI ══ */
+.epi-slide-wrap{
+  position:relative;
+  width:100%;
+  /* ratio 16:9, plafonné à 70vh pour rester lisible sur grand écran */
+  aspect-ratio:16/9;
+  max-height:70vh;
+  border-radius:var(--radius);
+  overflow:hidden;
+  background:var(--bg);
+  border:1px solid var(--border);
+  box-shadow:0 4px 18px var(--shadow);
+}
+.epi-slide-iframe{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  border:0;
+  background:#000;
+}
+#epiTable{font-size:11px}
+#epiTable thead th{font-size:10px;color:var(--text3);font-weight:600;
+  letter-spacing:.3px;text-transform:uppercase;white-space:nowrap}
+#epiTable td{vertical-align:middle}
+.epi-state{display:inline-block;padding:2px 8px;border-radius:5px;
+  font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;
+  letter-spacing:.3px;white-space:nowrap}
+.epi-state-ok     {background:rgba(16,201,133,.14);color:var(--green)}
+.epi-state-low    {background:rgba(245,166,35,.18);color:var(--amber)}
+.epi-state-out    {background:rgba(232,68,90,.18); color:var(--red)}
+.epi-state-expired{background:rgba(232,68,90,.30); color:#fff}
+.epi-state-na     {background:var(--bg4);color:var(--text3)}
+.epi-qty{font-family:'JetBrains Mono',monospace;font-weight:700}
+.epi-qty-out    {color:var(--red)}
+.epi-qty-low    {color:var(--amber)}
+.epi-qty-ok     {color:var(--green)}
+.epi-qty-na     {color:var(--text3)}
+.epi-qtymin{font-family:'JetBrains Mono',monospace;color:var(--text3);font-size:10px}
+@media (max-width:768px){
+  .epi-slide-wrap{aspect-ratio:4/3;max-height:60vh}
+  #epiTable{font-size:10px}
+}
+
 </style>
 </head>
 <body>
@@ -860,6 +903,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
   <button class="tab"    onclick="goTab('contracts',this)">📑 Contrats</button>
+  <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -1693,6 +1737,94 @@ html.light .notif-full-filters .pf-sel{background:#fff}
           </tr>
         </thead>
         <tbody id="contractsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ EPI ═══ -->
+<div id="epi" class="page">
+  <!-- Présentation EPI affichée DIRECTEMENT dans le dashboard (iframe interne) -->
+  <div class="card" id="epiSlideCard" style="margin-bottom:14px">
+    <div class="ct">
+      <span class="ct-dot" style="background:#f5a623"></span>
+      Présentation EPI — slide id.p4
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Source : Google Slides · affichage embed (interne) · pas de redirection externe
+      </span>
+    </div>
+    <div class="epi-slide-wrap">
+      <iframe id="epiSlideFrame"
+              class="epi-slide-iframe"
+              referrerpolicy="no-referrer"
+              allow="autoplay; fullscreen"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              src="about:blank"
+              title="Présentation EPI — slide id.p4"></iframe>
+    </div>
+  </div>
+
+  <!-- Synthèse -->
+  <div class="tsum" id="epiSum"></div>
+
+  <!-- Barre recherche + tri -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="epiSearch"
+           placeholder="Rechercher désignation, catégorie, taille, responsable, ID…"
+           oninput="renderEPI()">
+    <select class="tag-sort-sel" id="epiSort" onchange="renderEPI()">
+      <option value="state">État ↑ (rupture / faible en haut)</option>
+      <option value="exp_asc">Date expiration ↑ proche</option>
+      <option value="exp_desc">Date expiration ↓ lointaine</option>
+      <option value="qty_asc">Stock ↑ croissant</option>
+      <option value="qty_desc">Stock ↓ décroissant</option>
+      <option value="desig_az">Désignation A→Z</option>
+      <option value="cat_az">Catégorie A→Z</option>
+    </select>
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearEpiFilters()">↺ Reset</button>
+  </div>
+
+  <!-- Chips état stock -->
+  <div class="tag-filter-row">
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">État stock :</span>
+      <div class="tag-chips" id="epiStatChips">
+        <button class="tag-filter-chip chip-all on"   onclick="setEpiStat('all',this)">Tous</button>
+        <button class="tag-filter-chip chip-open"     onclick="setEpiStat('out',this)">⛔ Rupture</button>
+        <button class="tag-filter-chip chip-open"     onclick="setEpiStat('low',this)">⚠ Faible</button>
+        <button class="tag-filter-chip chip-closed"   onclick="setEpiStat('ok',this)">✓ OK</button>
+        <button class="tag-filter-chip chip-open"     onclick="setEpiStat('expired',this)">📛 Expiré</button>
+      </div>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">📂 Catégorie :</span>
+      <select class="tag-dropdown" id="epiFilterCat" onchange="renderEPI()">
+        <option value="all">Toutes</option>
+      </select>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">📏 Taille :</span>
+      <select class="tag-dropdown" id="epiFilterSize" onchange="renderEPI()">
+        <option value="all">Toutes</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:#f5a623"></span>Liste des EPI
+      <span id="epiListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Stock comparé au seuil minimum · Liens fiche ouverts en embed interne
+      </span>
+    </div>
+    <div class="tblw">
+      <table id="epiTable">
+        <thead id="epiThead">
+          <!-- entêtes générées dynamiquement à partir de D.epiHeaders -->
+        </thead>
+        <tbody id="epiBody"></tbody>
       </table>
     </div>
   </div>
@@ -3703,7 +3835,11 @@ function render(data){
 
   // ── CONTRATS ────────────────────────────────────────────
   renderContracts();
+
+  // -- EPI -------------------------------------------------
+  renderEPI();
 }
+
 
 // ══ PROCÉDURES HSE ════════════════════════════════════════════
 // Rendu dynamique de la feuille « procédures » : liste filtrable
@@ -4109,6 +4245,322 @@ function openContractsSource(){
 }
 
 // ══ IA ════════════════════════════════════════════════════════
+// ══ EPI ══════════════════════════════════════════════════════
+// Filtres + rendu de la feuille « Gestion du Stock des EPI V2 ».
+// La présentation Google Slides (slide id.p4) est aussi affichée
+// directement en iframe embed dans la page — pas de redirection.
+// Tous les liens (fiche EPI, feuille source, slide) ouvrent l'embed
+// modal interne via openCleaningEmbed() — strictement aucun lien
+// n'ouvre Google dans un nouvel onglet par défaut.
+var epiStatFilter = 'all';
+
+function setEpiStat(stat, el){
+  epiStatFilter = stat;
+  document.querySelectorAll('#epiStatChips .tag-filter-chip')
+    .forEach(function(c){c.classList.remove('on');});
+  if (el) el.classList.add('on');
+  renderEPI();
+}
+function clearEpiFilters(){
+  var s  = document.getElementById('epiSearch');     if (s)  s.value  = '';
+  var so = document.getElementById('epiSort');       if (so) so.value = 'state';
+  var fc = document.getElementById('epiFilterCat');  if (fc) fc.value = 'all';
+  var ft = document.getElementById('epiFilterSize'); if (ft) ft.value = 'all';
+  epiStatFilter = 'all';
+  document.querySelectorAll('#epiStatChips .tag-filter-chip')
+    .forEach(function(c,i){c.classList.toggle('on', i===0);});
+  renderEPI();
+}
+
+// Ouvre la feuille source EPI en embed interne (modal iframe).
+function openEpiSheet(){
+  var url = (D && D.epiSourceUrl) ? D.epiSourceUrl : '';
+  if (!url) {
+    url = 'https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo'
+        + '/edit?gid=1205310896#gid=1205310896';
+  }
+  var name = (D && D.epiSheetName) ? D.epiSheetName
+           : 'Gestion du Stock des EPI (Équipements de Protection Individuelle) V2';
+  openCleaningEmbed(url, name, 'FEUILLE EPI', '🦺');
+}
+// Ouvre la présentation EPI en embed interne (slide id.p4).
+function openEpiSlide(){
+  var url = (D && D.epiSlideUrl) ? D.epiSlideUrl : '';
+  if (!url) {
+    url = 'https://docs.google.com/presentation/d/1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk'
+        + '/edit?slide=id.p4#slide=id.p4';
+  }
+  openCleaningEmbed(url, 'Présentation EPI — slide id.p4', 'PRÉSENTATION EPI', '🦺');
+}
+// Ouvre une fiche EPI (lien Drive / Docs) en embed interne.
+function openEpiDoc(url, title){
+  if (!url) return;
+  openCleaningEmbed(url, title || 'Fiche EPI', 'FICHE EPI', '🦺');
+}
+
+// Badge état stock
+function epiStateBadge(state){
+  var lbl = { ok:'✓ OK', low:'⚠ Faible', out:'⛔ Rupture',
+              expired:'📛 Expiré', na:'—' }[state] || '—';
+  return '<span class="epi-state epi-state-'+state+'">'+lbl+'</span>';
+}
+
+// Badge stock chiffré (couleur en fonction de l'état)
+function epiQtyBadge(c){
+  if (c.qty === null || c.qty === undefined) {
+    return '<span class="epi-qty epi-qty-na">—</span>';
+  }
+  var cls = 'epi-qty-na';
+  if (c.stockState === 'out' || c.stockState === 'expired') cls = 'epi-qty-out';
+  else if (c.stockState === 'low') cls = 'epi-qty-low';
+  else if (c.stockState === 'ok')  cls = 'epi-qty-ok';
+  var unit = c.unite ? ' '+esc(c.unite) : '';
+  var min  = (c.qtyMin !== null && c.qtyMin !== undefined && c.qtyMin !== '')
+           ? '<span class="epi-qtymin"> / min '+fmtNum(c.qtyMin)+'</span>' : '';
+  return '<span class="epi-qty '+cls+'">'+fmtNum(c.qty)+unit+'</span>'+min;
+}
+
+// Date d'expiration colorée + alerte J-
+function epiDateExpHtml(c){
+  var txt = c.dateExp || '';
+  if (!txt) return '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+  if (!c.isoDateExp) return '<span class="mono" style="font-size:10px">'+esc(txt)+'</span>';
+  var today = new Date();
+  var fin   = new Date(c.isoDateExp + 'T00:00:00');
+  var diff  = Math.round((fin - today) / 86400000);
+  var color = 'var(--text2)';
+  var hint  = '';
+  if (diff < 0) {
+    color = 'var(--red)';
+    hint  = ' <span style="font-size:9px;color:var(--red)">expiré</span>';
+  } else if (diff <= 60) {
+    color = 'var(--amber)';
+    hint  = ' <span style="font-size:9px;color:var(--amber)">J-' + diff + '</span>';
+  }
+  return '<span class="mono" style="font-size:10px;color:' + color + '">'
+       + esc(txt) + '</span>' + hint;
+}
+
+function populateEpiDropdowns(list){
+  var cats = {}, sizes = {};
+  list.forEach(function(c){
+    var ca = (c.categorie || '').trim(); if (ca) cats[ca]  = (cats[ca]||0)  + 1;
+    var sz = (c.taille    || '').trim(); if (sz) sizes[sz] = (sizes[sz]||0) + 1;
+  });
+  function fill(selId, dict){
+    var sel = document.getElementById(selId); if (!sel) return;
+    var prev = sel.value;
+    var keys = Object.keys(dict).sort(function(a,b){return a.localeCompare(b);});
+    sel.innerHTML = '<option value="all">Tous</option>' +
+      keys.map(function(k){
+        return '<option value="'+escAttr(k)+'">'+esc(k)+' ('+dict[k]+')</option>';
+      }).join('');
+    if (prev) sel.value = prev;
+  }
+  fill('epiFilterCat',  cats);
+  fill('epiFilterSize', sizes);
+}
+
+// Initialise l'iframe de la slide une seule fois (au premier render).
+// Ensuite la slide reste affichée sans rechargement.
+function ensureEpiSlideLoaded(){
+  var f = document.getElementById('epiSlideFrame');
+  if (!f || !D) return;
+  var url = D.epiSlideEmbedUrl
+          || ('https://docs.google.com/presentation/d/1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk'
+             +'/embed?slide=id.p4&start=false&loop=false&delayms=60000');
+  // Évite de relancer la lecture à chaque renderEPI()
+  if (f.getAttribute('data-loaded') === '1') return;
+  f.src = url;
+  f.setAttribute('data-loaded', '1');
+}
+
+function renderEPI(){
+  if (!D) return;
+  var list    = (D.epi || []);
+  var headers = (D.epiHeaders || []);
+
+  ensureEpiSlideLoaded();
+
+  // Méta (nom de la feuille)
+  var metaEl = document.getElementById('epiSheetMeta');
+  if (metaEl && D.epiSheetName) metaEl.textContent = D.epiSheetName;
+
+  // Population des dropdowns
+  populateEpiDropdowns(list);
+
+  // Filtres
+  var qEl    = document.getElementById('epiSearch');
+  var sortEl = document.getElementById('epiSort');
+  var fcEl   = document.getElementById('epiFilterCat');
+  var fsEl   = document.getElementById('epiFilterSize');
+  var q      = qEl    ? qEl.value.trim().toLowerCase() : '';
+  var sort   = sortEl ? sortEl.value : 'state';
+  var fCat   = fcEl   ? fcEl.value   : 'all';
+  var fSize  = fsEl   ? fsEl.value   : 'all';
+
+  var filtered = list.filter(function(c){
+    if (epiStatFilter !== 'all' && c.stockState !== epiStatFilter) return false;
+    if (fCat  !== 'all' && (c.categorie || '') !== fCat)  return false;
+    if (fSize !== 'all' && (c.taille    || '') !== fSize) return false;
+    if (q) {
+      var hay = [c.id, c.designation, c.categorie, c.taille, c.unite,
+                 c.statut, c.responsable, c.commentaire,
+                 (c.raw||[]).join(' ')].join(' ').toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Ordre de priorité des états pour le tri 'state'
+  var stateRank = { out:0, expired:1, low:2, ok:3, na:4 };
+  filtered.sort(function(a,b){
+    if (sort === 'state') {
+      var ra = stateRank[a.stockState||'na']; var rb = stateRank[b.stockState||'na'];
+      if (ra !== rb) return ra - rb;
+      // À état égal : expiration la plus proche d'abord
+      return (a.isoDateExp || '9999-99-99').localeCompare(b.isoDateExp || '9999-99-99');
+    }
+    if (sort === 'exp_asc') {
+      return (a.isoDateExp || '9999-99-99').localeCompare(b.isoDateExp || '9999-99-99');
+    }
+    if (sort === 'exp_desc') {
+      return (b.isoDateExp || '').localeCompare(a.isoDateExp || '');
+    }
+    if (sort === 'qty_asc') {
+      var qa = (a.qty===null||a.qty===undefined) ? Infinity : a.qty;
+      var qb = (b.qty===null||b.qty===undefined) ? Infinity : b.qty;
+      return qa - qb;
+    }
+    if (sort === 'qty_desc') {
+      var qa2 = (a.qty===null||a.qty===undefined) ? -Infinity : a.qty;
+      var qb2 = (b.qty===null||b.qty===undefined) ? -Infinity : b.qty;
+      return qb2 - qa2;
+    }
+    if (sort === 'desig_az') return String(a.designation||'').localeCompare(String(b.designation||''));
+    if (sort === 'cat_az')   return String(a.categorie  ||'').localeCompare(String(b.categorie  ||''));
+    return 0;
+  });
+
+  // Synthèse
+  var total   = list.length;
+  var nbOut   = list.filter(function(c){return c.stockState==='out';}).length;
+  var nbLow   = list.filter(function(c){return c.stockState==='low';}).length;
+  var nbExp   = list.filter(function(c){return c.stockState==='expired';}).length;
+  var nbExpSoon = list.filter(function(c){
+    if (!c.isoDateExp) return false;
+    var today = new Date();
+    var fin   = new Date(c.isoDateExp + 'T00:00:00');
+    var diff  = Math.round((fin - today) / 86400000);
+    return diff >= 0 && diff <= 60;
+  }).length;
+  var sumEl = document.getElementById('epiSum');
+  if (sumEl) {
+    sumEl.innerHTML =
+      '<div class="tsc"><div class="tsv" style="color:#f5a623">'+fmtNum(total)+'</div><div class="tsl">Total EPI</div></div>' +
+      '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(nbOut)+'</div><div class="tsl">⛔ Rupture</div></div>' +
+      '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(nbLow)+'</div><div class="tsl">⚠ Stock faible</div></div>' +
+      '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(nbExp)+'</div><div class="tsl">📛 Expirés</div></div>' +
+      '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(nbExpSoon)+'</div><div class="tsl">Expire ≤ 60 j</div></div>';
+  }
+
+  // Compteur
+  var cntEl = document.getElementById('epiListCount');
+  if (cntEl) {
+    cntEl.textContent = filtered.length + (q ? ' / ' + total : '')
+                      + ' affiché' + (filtered.length>1?'s':'');
+  }
+
+  // Tableau — rendu hybride :
+  //   • Si on a détecté des champs sémantiques (designation/qty/...) on
+  //     affiche un tableau structuré et lisible.
+  //   • Sinon (feuille au format imprévu) on retombe sur les entêtes
+  //     et lignes brutes (epiHeaders + raw[]).
+  var thead = document.getElementById('epiThead');
+  var body  = document.getElementById('epiBody');
+  var hasSemantic = list.some(function(c){
+    return c.designation || c.qty !== null || c.dateExp || c.categorie;
+  });
+
+  if (thead) {
+    if (hasSemantic) {
+      thead.innerHTML =
+        '<tr>' +
+        '<th style="width:36px">#</th>' +
+        '<th>Désignation</th>' +
+        '<th>Catégorie</th>' +
+        '<th>Taille</th>' +
+        '<th>Stock</th>' +
+        '<th>État</th>' +
+        '<th>Réception</th>' +
+        '<th>Expiration</th>' +
+        '<th>Responsable</th>' +
+        '<th style="width:60px;text-align:center">Fiche</th>' +
+        '</tr>';
+    } else {
+      // Mode brut : utilise les entêtes de la feuille
+      var hdrs = headers.length ? headers : ['Colonne 1','Colonne 2','Colonne 3','Colonne 4'];
+      thead.innerHTML = '<tr>' + hdrs.map(function(h){
+        return '<th>'+esc(h||'')+'</th>';
+      }).join('') + '<th style="width:60px;text-align:center">Fiche</th></tr>';
+    }
+  }
+
+  if (body) {
+    if (!filtered.length) {
+      var colspan = hasSemantic ? 10 : ((headers.length||4) + 1);
+      body.innerHTML = '<tr><td colspan="'+colspan+'" style="text-align:center;'
+        + 'padding:18px;color:var(--text3);font-size:11px">'
+        + (list.length ? 'Aucun EPI ne correspond aux filtres.'
+                       : 'Aucun EPI trouvé dans la feuille source.')
+        + '</td></tr>';
+    } else {
+      body.innerHTML = filtered.map(function(c, i){
+        var safeUrl   = escAttr(c.url || '');
+        var safeTitle = escAttr(c.designation || ('EPI #'+(c.id||(i+1))));
+        var docHtml = c.url
+          ? '<a href="'+safeUrl+'" rel="noopener" '
+            + 'class="tag-btn has-photo" title="Ouvrir la fiche EPI dans le dashboard" '
+            + 'data-epi-url="'+safeUrl+'" data-epi-title="'+safeTitle+'" '
+            + 'onclick="openEpiDoc(this.getAttribute(\'data-epi-url\'),this.getAttribute(\'data-epi-title\'));return false;" '
+            + 'style="text-decoration:none">📄</a>'
+          : '<span class="tag-btn no-photo" title="Aucune fiche disponible" '
+            + 'style="cursor:default">—</span>';
+
+        if (hasSemantic) {
+          var desigHtml = c.url
+            ? '<a href="'+safeUrl+'" rel="noopener" '
+              + 'data-epi-url="'+safeUrl+'" data-epi-title="'+safeTitle+'" '
+              + 'onclick="openEpiDoc(this.getAttribute(\'data-epi-url\'),this.getAttribute(\'data-epi-title\'));return false;" '
+              + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer">'
+              + esc(c.designation || ('EPI #'+(c.id||(i+1)))) + '</a>'
+            : '<strong style="color:var(--text)">'
+              + esc(c.designation || ('EPI #'+(c.id||(i+1)))) + '</strong>';
+          var commentTitle = c.commentaire ? ' title="'+escAttr(c.commentaire)+'"' : '';
+          return '<tr'+commentTitle+'>'
+            + '<td class="mono" style="font-size:10px;color:var(--text3)">'+(c.id||(i+1))+'</td>'
+            + '<td>'+desigHtml+'</td>'
+            + '<td>'+(c.categorie ? '<span class="itag">'+esc(c.categorie)+'</span>' : '<span style="color:var(--text3)">—</span>')+'</td>'
+            + '<td class="mono" style="font-size:10px">'+esc(c.taille||'—')+'</td>'
+            + '<td>'+epiQtyBadge(c)+'</td>'
+            + '<td>'+epiStateBadge(c.stockState||'na')+'</td>'
+            + '<td>'+(c.dateRecep ? '<span class="mono" style="font-size:10px">'+esc(c.dateRecep)+'</span>' : '<span style="color:var(--text3)">—</span>')+'</td>'
+            + '<td>'+epiDateExpHtml(c)+'</td>'
+            + '<td style="font-size:10px">'+(c.responsable ? esc(c.responsable) : '<span style="color:var(--text3)">—</span>')+'</td>'
+            + '<td style="text-align:center">'+docHtml+'</td>'
+            + '</tr>';
+        } else {
+          // Mode brut
+          var cells = (c.raw || []).map(function(v){
+            return '<td>'+(v ? esc(v) : '<span style="color:var(--text3)">—</span>')+'</td>';
+          }).join('');
+          return '<tr>'+cells+'<td style="text-align:center">'+docHtml+'</td></tr>';
+        }
+      }).join('');
+    }
+  }
+}
+
 var aiH=[];
 function buildCtx(){
   if(!D)return''; var m=D.metrics;
