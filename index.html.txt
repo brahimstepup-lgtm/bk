@@ -1745,21 +1745,6 @@ html.light .notif-full-filters .pf-sel{background:#fff}
 
 <!-- ═══ EPI ═══ -->
 <div id="epi" class="page">
-  <div class="card" style="margin-bottom:14px">
-    <div class="ct"><span class="ct-dot" style="background:#f5a623"></span>EPI — Équipements de Protection Individuelle — SOBCO 3</div>
-    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
-      Gestion du stock des EPI extraite de la feuille
-      <em style="color:var(--text3)">« <span id="epiSheetMeta">Gestion du Stock des EPI (Équipements de Protection Individuelle) V2</span> »</em>
-      du classeur source. Tous les contenus (fiche EPI, présentation, feuille source)
-      s'affichent <strong style="color:var(--p4)">directement dans le dashboard</strong>
-      via une iframe interne — <strong>aucune redirection externe</strong>.
-    </p>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-      <button class="btn btn-ai" onclick="openEpiSheet()" style="font-size:10px;padding:5px 11px">📊 Voir la feuille source en embed</button>
-      <button class="btn btn-ai" onclick="openEpiSlide()" style="font-size:10px;padding:5px 11px;background:rgba(245,166,35,.15);border-color:#f5a623;color:#f5a623">🦺 Voir la présentation EPI (slide id.p4)</button>
-    </div>
-  </div>
-
   <!-- Présentation EPI affichée DIRECTEMENT dans le dashboard (iframe interne) -->
   <div class="card" id="epiSlideCard" style="margin-bottom:14px">
     <div class="ct">
