@@ -508,6 +508,31 @@ html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
   display:inline-flex;align-items:center;gap:4px}
 .cln-embed-newtab:hover{background:var(--bg4);color:var(--text);border-color:var(--p2)}
 @media(max-width:600px){.cln-embed-panel{height:92vh}}
+
+/* ── INCIDENT — Rapport d'enquête inline (iframe dans le modal) ── */
+.inc-enq-wrap{position:relative;border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;background:var(--bg);height:520px;display:flex;flex-direction:column}
+.inc-enq-iframe{flex:1;width:100%;border:none;background:#fff;display:block}
+.inc-enq-loading{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;background:var(--bg2);
+  color:var(--text2);font-size:12px;z-index:1;transition:opacity .25s}
+.inc-enq-loading.hide{opacity:0;pointer-events:none}
+.inc-enq-loading .spin{width:30px;height:30px;border:3px solid var(--bg4);
+  border-top-color:var(--p3);border-radius:50%;animation:spin .8s linear infinite}
+.inc-enq-toolbar{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);
+  font-size:11px;color:var(--text2);flex-wrap:wrap}
+.inc-enq-toolbar .inc-enq-name{font-weight:600;color:var(--text);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.inc-enq-toolbar .inc-enq-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.inc-enq-btn{padding:5px 11px;border-radius:6px;font-size:10px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text2);
+  transition:all .2s;font-family:'Inter',sans-serif;text-decoration:none;
+  display:inline-flex;align-items:center;gap:4px}
+.inc-enq-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--p2)}
+.inc-enq-empty{padding:24px 18px;text-align:center;color:var(--text3);font-size:12px;
+  background:var(--bg);border:1px dashed var(--border);border-radius:10px;font-style:italic}
+@media(max-width:600px){.inc-enq-wrap{height:60vh}}
 /* Photo TAG */
 .photo-area{display:flex;flex-direction:column;align-items:center;gap:10px}
 .photo-img{max-width:100%;max-height:50vh;border-radius:8px;object-fit:contain;border:1px solid var(--border)}
@@ -1691,6 +1716,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <button class="modal-tab on" onclick="switchTab('mInc','info',this)">📋 Infos</button>
       <button class="modal-tab"    onclick="switchTab('mInc','m5',this)">🔍 Analyse 5M</button>
       <button class="modal-tab"    onclick="switchTab('mInc','actions',this)">✅ Actions</button>
+      <button class="modal-tab"    onclick="switchTab('mInc','enquete',this)">📑 Rapport d'enquête</button>
     </div>
     <div class="modal-body">
       <div id="mInc-info">
@@ -1708,6 +1734,32 @@ html.light .notif-full-filters .pf-sel{background:#fff}
           <div class="info-item"><div class="info-lbl">Délai</div><div class="info-val" id="mIncDelai">—</div></div>
           <div class="info-item"><div class="info-lbl">Statut</div><div class="info-val" id="mIncStatut">—</div></div>
           <div class="info-item"><div class="info-lbl">Date</div><div class="info-val" id="mIncDate2">—</div></div>
+        </div>
+      </div>
+      <div id="mInc-enquete" style="display:none">
+        <div class="modal-section" id="mIncEnqueteSec">
+          <div class="modal-sec-title"><span>📑</span>Rapport d'enquête</div>
+          <div class="inc-enq-wrap" id="mIncEnqueteWrap">
+            <div class="inc-enq-toolbar">
+              <div class="inc-enq-name" id="mIncEnqueteName">Document Drive</div>
+              <div class="inc-enq-actions">
+                <button type="button" class="inc-enq-btn" id="mIncEnqueteExpand" onclick="openIncEnqueteLarge()">↗ Vue élargie</button>
+                <a class="inc-enq-btn" id="mIncEnqueteNewTab" href="#" target="_blank" rel="noopener noreferrer">↗ Nouvel onglet</a>
+              </div>
+            </div>
+            <div class="inc-enq-loading" id="mIncEnqueteLoading">
+              <div class="spin"></div>
+              <div>Chargement du rapport…</div>
+            </div>
+            <iframe id="mIncEnqueteFrame" class="inc-enq-iframe"
+                    referrerpolicy="no-referrer"
+                    allow="autoplay; fullscreen"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+                    src="about:blank"></iframe>
+          </div>
+          <div class="inc-enq-empty" id="mIncEnqueteEmpty" style="display:none">
+            Aucun rapport d'enquête n'est renseigné pour cet incident.
+          </div>
         </div>
       </div>
     </div>
@@ -2285,8 +2337,57 @@ function openIncModal(inc){
   document.getElementById('mIncDelai').textContent=inc.delai||'—';
   document.getElementById('mIncStatut').textContent=inc.statut||'—';
   document.getElementById('mIncDate2').textContent=inc.date||'—';
+  // — Rapport d'enquête (iframe inline, sans quitter le dashboard) —
+  (function(){
+    var sec   = document.getElementById('mIncEnqueteSec');
+    var wrap  = document.getElementById('mIncEnqueteWrap');
+    var empty = document.getElementById('mIncEnqueteEmpty');
+    var frame = document.getElementById('mIncEnqueteFrame');
+    var load  = document.getElementById('mIncEnqueteLoading');
+    var link  = document.getElementById('mIncEnqueteNewTab');
+    var name  = document.getElementById('mIncEnqueteName');
+    var btn   = document.getElementById('mIncEnqueteExpand');
+    var raw   = (inc && inc.enqueteUrl) ? String(inc.enqueteUrl).trim() : '';
+    if (!sec) return;
+    // Réinitialisation
+    if (frame) frame.src = 'about:blank';
+    if (load)  load.classList.remove('hide');
+    if (!raw || !/^https?:\/\//i.test(raw)) {
+      sec.style.display = 'block';
+      if (wrap)  wrap.style.display  = 'none';
+      if (empty) empty.style.display = 'block';
+      if (btn)   btn.style.display   = 'none';
+      if (link)  { link.removeAttribute('href'); link.style.display = 'none'; }
+      window._mIncEnqueteUrl = '';
+      return;
+    }
+    sec.style.display = 'block';
+    if (wrap)  wrap.style.display  = 'flex';
+    if (empty) empty.style.display = 'none';
+    if (btn)   btn.style.display   = 'inline-flex';
+    if (link)  { link.style.display = 'inline-flex'; link.href = raw; }
+    if (name)  { name.textContent = 'Rapport d\'enquête · INC-' + inc.id; }
+    // Mémorisé pour le bouton « Vue élargie »
+    window._mIncEnqueteUrl   = raw;
+    window._mIncEnqueteTitle = 'Rapport d\'enquête · INC-' + inc.id;
+    // Réutilise le convertisseur Google Drive/Docs/Sheets vers /preview
+    var embedUrl = (typeof clnToEmbedUrl === 'function') ? clnToEmbedUrl(raw) : raw;
+    if (frame) {
+      frame.onload = function(){ if (load) load.classList.add('hide'); };
+      frame.src = embedUrl;
+    }
+  })();
   switchTab('mInc','info',document.querySelector('#incModal .modal-tab'));
   openModal('incModal');
+}
+// Bouton « Vue élargie » : ouvre le rapport dans le modal embed plein écran
+function openIncEnqueteLarge(){
+  var url   = window._mIncEnqueteUrl   || '';
+  var title = window._mIncEnqueteTitle || "Rapport d'enquête";
+  if (!url) return;
+  if (typeof openCleaningEmbed === 'function') {
+    openCleaningEmbed(url, title, "RAPPORT D'ENQUÊTE", '📑');
+  }
 }
 
 // ══ MODAL ACCIDENT ════════════════════════════════════════════
@@ -3141,7 +3242,7 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
 
   openModal('clnEmbedModal');
 }
-// Quand on ferme le modal embed, on vide l'iframe pour stopper la lecture
+// Quand on ferme un modal contenant une iframe, on vide l'iframe pour stopper la lecture
 (function(){
   var prevClose = window.closeModal;
   window.closeModal = function(id){
@@ -3150,6 +3251,12 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
       var l = document.getElementById('clnEmbedLoading');
       if (f) f.src = 'about:blank';
       if (l) l.classList.remove('hide');
+    }
+    if (id === 'incModal') {
+      var ef = document.getElementById('mIncEnqueteFrame');
+      var el = document.getElementById('mIncEnqueteLoading');
+      if (ef) ef.src = 'about:blank';
+      if (el) el.classList.remove('hide');
     }
     return prevClose ? prevClose(id) : null;
   };
