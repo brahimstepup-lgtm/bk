@@ -33,6 +33,15 @@ var CLEAN_PLAN_SHEET_NAME= 'nettoyage 1';
 var PROCEDURES_SHEET_GID  = 1171171688;
 var PROCEDURES_SHEET_NAME = 'procédures';
 
+// ── CONTRATS (feuille "Suivi des Contrats et Liens Drive", gid=2050763956) ─
+// Détection souple des colonnes — typiquement :
+//   N° / Type / Intitulé (ou Objet) / Tiers (Fournisseur/Client/Partenaire)
+//   Date début / Date fin / Statut / Lien Drive / Commentaire
+// Les hyperliens (=HYPERLINK ou RichText) sont extraits sur toute la ligne
+// pour exposer un seul champ « url » utilisé côté client (ouverture embed).
+var CONTRACTS_SHEET_GID  = 2050763956;
+var CONTRACTS_SHEET_NAME = 'Suivi des Contrats et Liens Drive';
+
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
@@ -1015,6 +1024,319 @@ function readProcedures(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLE "Suivi des Contrats et Liens Drive" ──────
+// Renvoie un tableau de contrats :
+//   [{ id, type, intitule, tiers, dateDebut, dateFin, statut,
+//      url, commentaire, raw[] }]
+//
+// Détection tolérante des colonnes via mots-clés :
+//   ID / N°       : « n° » / « numero » / « id » / « ref »
+//   TYPE          : « type » / « categorie » / « nature » / « objet »
+//                   (« objet » sert de fallback intitulé si rien d'autre)
+//   INTITULÉ      : « intitule » / « libelle » / « designation » /
+//                   « titre » / « contrat » / « description »
+//   TIERS         : « tiers » / « fournisseur » / « client » /
+//                   « partenaire » / « societe » / « entreprise » /
+//                   « prestataire » / « organisme »
+//   DATE DÉBUT    : « debut » / « signature » / « effet » / « date d »
+//   DATE FIN      : « fin » / « echeance » / « expiration » /
+//                   « validite » / « renouvellement »
+//   STATUT        : « statut » / « etat »
+//   LIEN          : « lien » / « link » / « url » / « document » /
+//                   « fichier » / « drive » / « pdf »
+//   COMMENTAIRE   : « commentaire » / « remarque » / « note » /
+//                   « observation »
+//
+// Les hyperliens sont extraits dans cet ordre :
+//   1) =HYPERLINK("url",…)
+//   2) RichTextValues.getLinkUrl()
+//   3) Objet Drive natif (getUrl)
+//   4) URL en clair dans la valeur brute
+// Si aucune colonne « lien » dédiée n'est trouvée, on scanne TOUTES
+// les cellules de la ligne et on retient la première URL rencontrée.
+// ════════════════════════════════════════════════════════════
+function readContracts(ss) {
+  var entries = [];
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+
+    // 1. Cherche par GID
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === CONTRACTS_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon par nom exact
+    if (!sh) {
+      var target = normalize(CONTRACTS_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "contrat"
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('contrat') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) { Logger.log('Contrats sheet NOT found'); return entries; }
+    Logger.log('Contrats sheet found: ' + sh.getName());
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null;
+    var formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e0) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(eF) { formulas = null; }
+    if (!data || data.length < 1) return entries;
+
+    // ── Helper : extrait l'URL d'une cellule ─────────────────
+    function cellUrl(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      // 1) Formule =HYPERLINK("url", "libellé")
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      // 2) RichText
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      // 3) Objet Drive natif
+      var v = data[rIdx][cIdx];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(eU) {}
+      }
+      // 4) URL en clair dans la valeur brute
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
+    function cellText(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      var v = data[rIdx][cIdx];
+      return isNull(v) ? '' : safeText(v);
+    }
+    // Cherche une URL n'importe où sur la ligne (toutes colonnes)
+    function anyUrlOnRow(rIdx, exceptCol) {
+      var rowLen = (data[rIdx] || []).length;
+      for (var c = 0; c < rowLen; c++) {
+        if (c === exceptCol) continue;
+        var u = cellUrl(rIdx, c);
+        if (u) return u;
+      }
+      return '';
+    }
+
+    // ── Détecter la ligne d'entête + colonnes ──
+    var COL = { id:-1, type:-1, intitule:-1, tiers:-1, dateDebut:-1,
+                dateFin:-1, statut:-1, lien:-1, commentaire:-1 };
+    var hdrRow = -1;
+    for (var i = 0; i < Math.min(data.length, 8); i++) {
+      var row = data[i];
+      var cur = { id:-1, type:-1, intitule:-1, tiers:-1, dateDebut:-1,
+                  dateFin:-1, statut:-1, lien:-1, commentaire:-1 };
+      var hits = 0;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||'').replace(/[\n\r#]/g,'').trim());
+        if (!h) continue;
+
+        // Lien (testé tôt pour ne pas être volé par "objet" / autres)
+        if (cur.lien < 0 &&
+            (h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
+             h.indexOf('url') > -1  || h.indexOf('drive') > -1 ||
+             h.indexOf('document') > -1 || h.indexOf('fichier') > -1 ||
+             h.indexOf('pdf') > -1 || h.indexOf('contrat scan') > -1)) {
+          cur.lien = c; hits++; continue;
+        }
+        // Commentaire / observation
+        if (cur.commentaire < 0 &&
+            (h.indexOf('commentaire') > -1 || h.indexOf('remarque') > -1 ||
+             h.indexOf('observation') > -1 || h.indexOf('note') > -1)) {
+          cur.commentaire = c; hits++; continue;
+        }
+        // Dates : début vs fin (échéance / validité / expiration / fin)
+        if (cur.dateFin < 0 &&
+            (h.indexOf('fin')        > -1 || h.indexOf('echeance')      > -1 ||
+             h.indexOf('expiration') > -1 || h.indexOf('validite')      > -1 ||
+             h.indexOf('renouvellement') > -1)) {
+          cur.dateFin = c; hits++; continue;
+        }
+        if (cur.dateDebut < 0 &&
+            (h.indexOf('debut')     > -1 || h.indexOf('signature') > -1 ||
+             h.indexOf('effet')     > -1 || h === 'date' ||
+             h.indexOf('date de')   > -1 || h.indexOf('date du')   > -1)) {
+          cur.dateDebut = c; hits++; continue;
+        }
+        // Statut
+        if (cur.statut < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)) {
+          cur.statut = c; hits++; continue;
+        }
+        // ID / N°
+        if (cur.id < 0 && (h.match(/^n.?\s*$/) || h === 'no' || h === 'num' ||
+            h.indexOf('numero') > -1 || h === 'id' ||
+            (h.indexOf('ref') > -1 && h.indexOf('reference') < 0 && h.length < 10))) {
+          cur.id = c; hits++; continue;
+        }
+        // Tiers / partenaire / fournisseur / etc.
+        if (cur.tiers < 0 &&
+            (h.indexOf('tiers') > -1 || h.indexOf('fournisseur') > -1 ||
+             h.indexOf('client') > -1 || h.indexOf('partenaire') > -1 ||
+             h.indexOf('societe') > -1 || h.indexOf('entreprise') > -1 ||
+             h.indexOf('prestataire') > -1 || h.indexOf('organisme') > -1 ||
+             h.indexOf('contractant') > -1)) {
+          cur.tiers = c; hits++; continue;
+        }
+        // Type / catégorie / nature
+        if (cur.type < 0 &&
+            (h.indexOf('type') > -1 || h.indexOf('categorie') > -1 ||
+             h.indexOf('nature') > -1)) {
+          cur.type = c; hits++; continue;
+        }
+        // Intitulé / objet / désignation / titre / description
+        if (cur.intitule < 0 &&
+            (h.indexOf('intitule') > -1 || h.indexOf('libelle') > -1 ||
+             h.indexOf('designation') > -1 || h.indexOf('titre') > -1 ||
+             h.indexOf('objet') > -1 || h.indexOf('description') > -1 ||
+             h.indexOf('contrat') > -1)) {
+          cur.intitule = c; hits++; continue;
+        }
+      }
+      // Heuristique : on accepte cette ligne comme entête si on a au moins
+      // 2 colonnes reconnues (typiquement : intitulé + lien, ou tiers + date)
+      if (hits >= 2) { hdrRow = i; COL = cur; break; }
+    }
+
+    // Fallback total : pas d'entête détectée → mapping positionnel raisonnable
+    //   A=ID  B=intitulé  C=tiers  D=dateDébut  E=dateFin  F=statut  G=lien
+    if (hdrRow < 0) {
+      hdrRow = -1;
+      COL.id        = 0;
+      COL.intitule  = 1;
+      COL.tiers     = 2;
+      COL.dateDebut = 3;
+      COL.dateFin   = 4;
+      COL.statut    = 5;
+      COL.lien      = 6;
+    }
+    Logger.log('Contrats COL: ' + JSON.stringify(COL) + ' hdrRow=' + hdrRow);
+    if (hdrRow >= 0 && data[hdrRow]) {
+      Logger.log('Contrats headers: ' +
+        JSON.stringify(data[hdrRow].map(function(x){ return String(x||''); })));
+    }
+
+    // ── Parcourir les lignes de données ──
+    var firstDataRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
+    for (var i = firstDataRow; i < data.length; i++) {
+      var row    = data[i] || [];
+      var rowLen = row.length;
+
+      // Skip lignes totalement vides
+      var anyVal = false;
+      for (var c = 0; c < rowLen; c++) {
+        if (!isNull(row[c])) { anyVal = true; break; }
+      }
+      if (!anyVal) continue;
+
+      var idVal       = cellText(i, COL.id);
+      var typeVal     = cellText(i, COL.type);
+      var intituleVal = cellText(i, COL.intitule);
+      var tiersVal    = cellText(i, COL.tiers);
+      var dateDebutR  = (COL.dateDebut >= 0) ? row[COL.dateDebut] : '';
+      var dateFinR    = (COL.dateFin   >= 0) ? row[COL.dateFin]   : '';
+      var statutVal   = cellText(i, COL.statut);
+      var commentVal  = cellText(i, COL.commentaire);
+
+      // URL : colonne dédiée d'abord, puis intitulé, puis n'importe où sur la ligne
+      var url = cellUrl(i, COL.lien);
+      if (!url) url = cellUrl(i, COL.intitule);
+      if (!url) url = anyUrlOnRow(i, -1);
+
+      // Sauter la ré-impression de l'entête (« contrat », « lien », etc.)
+      var firstTxt = '';
+      for (var c = 0; c < rowLen; c++) {
+        if (!isNull(row[c])) { firstTxt = String(row[c]).trim(); break; }
+      }
+      var lcFirst = normalize(firstTxt);
+      if (lcFirst === 'n' || lcFirst === 'no' || lcFirst === 'num' ||
+          lcFirst === 'id' || lcFirst.indexOf('total') === 0 ||
+          (lcFirst.indexOf('contrat') > -1 && !intituleVal && !tiersVal && !url)) {
+        continue;
+      }
+
+      // Sauter lignes informatives sans contenu utile
+      if (!idVal && !intituleVal && !tiersVal && !url && !typeVal &&
+          !statutVal && !commentVal && isNull(dateDebutR) && isNull(dateFinR)) {
+        continue;
+      }
+
+      // Sécurité : si on n'a vraiment AUCUN texte signifiant ET aucune URL,
+      // on saute (évite les lignes décoratives / fusionnées).
+      var hasSomething = idVal || intituleVal || tiersVal || url ||
+                         typeVal || statutVal || commentVal ||
+                         !isNull(dateDebutR) || !isNull(dateFinR);
+      if (!hasSomething) continue;
+
+      // Capturer aussi la ligne brute pour affichage générique côté client
+      // (utile si la feuille a des colonnes qu'on n'a pas mappées).
+      var rawCells = [];
+      for (var c = 0; c < rowLen; c++) {
+        rawCells.push(safeText(row[c]));
+      }
+
+      entries.push({
+        id:          idVal,
+        type:        typeVal,
+        intitule:    intituleVal,
+        tiers:       tiersVal,
+        dateDebut:   fmtDate(dateDebutR),
+        isoDateDebut:getIso(dateDebutR),
+        dateFin:     fmtDate(dateFinR),
+        isoDateFin:  getIso(dateFinR),
+        statut:      statutVal,
+        commentaire: commentVal,
+        url:         url,
+        raw:         rawCells
+      });
+    }
+
+    // Capturer aussi les entêtes brutes pour un affichage générique
+    // côté client si l'utilisateur veut voir les colonnes non mappées.
+    var rawHeaders = [];
+    if (hdrRow >= 0 && data[hdrRow]) {
+      for (var c = 0; c < data[hdrRow].length; c++) {
+        rawHeaders.push(String(data[hdrRow][c] || '').trim());
+      }
+    }
+
+    Logger.log('Contrats: ' + entries.length + ' entrées');
+    return { entries: entries, headers: rawHeaders, sheetName: sh.getName() };
+  } catch(e) {
+    Logger.log('readContracts error: ' + e.message);
+    return { entries: entries, headers: [], sheetName: '' };
+  }
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 function getData() {
@@ -1040,6 +1362,10 @@ function getData() {
     cleaningProducts:[],
     procedures:[],
     proceduresExtras:[],
+    contracts:[],
+    contractsHeaders:[],
+    contractsSheetName:'',
+    contractsSourceUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + CONTRACTS_SHEET_GID + '#gid=' + CONTRACTS_SHEET_GID,
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
@@ -1065,6 +1391,12 @@ function getData() {
   var pr = readProcedures(ss);
   out.procedures        = (pr && pr.entries) ? pr.entries : [];
   out.proceduresExtras  = (pr && pr.extras)  ? pr.extras  : [];
+
+  // ── Contrats (feuille "Suivi des Contrats et Liens Drive") ─
+  var co = readContracts(ss);
+  out.contracts          = (co && co.entries)    ? co.entries    : [];
+  out.contractsHeaders   = (co && co.headers)    ? co.headers    : [];
+  out.contractsSheetName = (co && co.sheetName)  ? co.sheetName  : CONTRACTS_SHEET_NAME;
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];

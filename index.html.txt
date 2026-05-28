@@ -834,6 +834,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
+  <button class="tab"    onclick="goTab('contracts',this)">📑 Contrats</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -1581,6 +1582,106 @@ html.light .notif-full-filters .pf-sel{background:#fff}
           </tr>
         </thead>
         <tbody id="clnBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONTRATS ═══ -->
+<div id="contracts" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Suivi des Contrats et Liens Drive — SOBCO 3</div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Liste des contrats extraite de la feuille
+      <em style="color:var(--text3)">« Suivi des Contrats et Liens Drive »</em>
+      du classeur source. Cliquez sur un intitulé <strong style="color:var(--p4)">souligné</strong>
+      ou sur l'icône <strong>📑</strong> pour afficher le document
+      <strong>directement à l'intérieur du dashboard</strong> — sans redirection externe.
+    </p>
+  </div>
+
+  <!-- Bandeau accès à la feuille source (embed) -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>Feuille source</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-ai" id="contractsOpenSource"
+              style="font-size:11px;padding:8px 14px"
+              onclick="openContractsSource()">
+        📊 Ouvrir « Suivi des Contrats et Liens Drive » dans le dashboard
+        <span style="opacity:.7">↗</span>
+      </button>
+      <span id="contractsSourceMeta" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
+    </div>
+  </div>
+
+  <!-- Synthèse -->
+  <div class="tsum" id="contractsSum"></div>
+
+  <!-- Barre recherche + filtres -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="contractsSearch"
+           placeholder="Rechercher intitulé, tiers, type, statut, ID…"
+           oninput="renderContracts()">
+    <select class="tag-sort-sel" id="contractsSort" onchange="renderContracts()">
+      <option value="date_desc">Date fin ↓ proche</option>
+      <option value="date_asc">Date fin ↑ ancienne</option>
+      <option value="start_desc">Date début ↓ récent</option>
+      <option value="start_asc">Date début ↑ ancien</option>
+      <option value="intitule_az">Intitulé A→Z</option>
+      <option value="tiers_az">Tiers A→Z</option>
+    </select>
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+            onclick="clearContractsFilters()">↺ Reset</button>
+  </div>
+
+  <!-- Chips statut -->
+  <div class="tag-filter-row">
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">Statut :</span>
+      <div class="tag-chips" id="contractsStatChips">
+        <button class="tag-filter-chip chip-all on"   onclick="setContractsStat('all',this)">Tous</button>
+        <button class="tag-filter-chip chip-open"     onclick="setContractsStat('active',this)">⚠ Actifs / En cours</button>
+        <button class="tag-filter-chip chip-closed"   onclick="setContractsStat('expired',this)">✓ Expirés / Clôturés</button>
+      </div>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">📂 Type :</span>
+      <select class="tag-dropdown" id="contractsFilterType" onchange="renderContracts()">
+        <option value="all">Tous</option>
+      </select>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">🏢 Tiers :</span>
+      <select class="tag-dropdown" id="contractsFilterTiers" onchange="renderContracts()">
+        <option value="all">Tous</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Liste des contrats
+      <span id="contractsListCount"
+            style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Plus proches d'expiration en haut · Liens ouverts en embed
+      </span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px">#</th>
+            <th>Intitulé / Objet</th>
+            <th>Tiers</th>
+            <th>Type</th>
+            <th>Date début</th>
+            <th>Date fin</th>
+            <th>Statut</th>
+            <th style="width:80px;text-align:center">Document</th>
+          </tr>
+        </thead>
+        <tbody id="contractsBody"></tbody>
       </table>
     </div>
   </div>
@@ -3501,6 +3602,9 @@ function render(data){
 
   // ── PROCÉDURES HSE ──────────────────────────────────────
   renderProcedures();
+
+  // ── CONTRATS ────────────────────────────────────────────
+  renderContracts();
 }
 
 // ══ PROCÉDURES HSE ════════════════════════════════════════════
@@ -3619,6 +3723,291 @@ function renderProcedures(){
       extraCard.style.display = 'none';
     }
   }
+}
+
+// ══ CONTRATS ══════════════════════════════════════════════════
+// Filtres + rendu de la feuille « Suivi des Contrats et Liens Drive ».
+// Tous les liens (intitulé, icône 📑, feuille source) ouvrent l'embed
+// modal interne — aucune redirection externe.
+var contractsStatFilter = 'all';
+
+function setContractsStat(stat, el){
+  contractsStatFilter = stat;
+  document.querySelectorAll('#contractsStatChips .tag-filter-chip')
+    .forEach(function(c){c.classList.remove('on');});
+  if (el) el.classList.add('on');
+  renderContracts();
+}
+function clearContractsFilters(){
+  var s = document.getElementById('contractsSearch'); if (s) s.value = '';
+  var so = document.getElementById('contractsSort'); if (so) so.value = 'date_desc';
+  var ft = document.getElementById('contractsFilterType');  if (ft) ft.value = 'all';
+  var fr = document.getElementById('contractsFilterTiers'); if (fr) fr.value = 'all';
+  contractsStatFilter = 'all';
+  document.querySelectorAll('#contractsStatChips .tag-filter-chip')
+    .forEach(function(c,i){c.classList.toggle('on', i===0);});
+  renderContracts();
+}
+
+// Statut « actif / en cours » vs « expiré / clôturé ».
+// On combine la valeur du champ "statut" (mots-clés) ET la date de fin :
+//   - statut explicite « expir / clos / termin / inactif » → expiré
+//   - statut explicite « actif / en cours / valide / signé » → actif
+//   - sinon : si dateFin < aujourd'hui → expiré, sinon → actif
+function isContractActive(c){
+  var s = String(c.statut || '').toLowerCase();
+  if (s.indexOf('expir')   > -1 || s.indexOf('clos')   > -1 ||
+      s.indexOf('termin')  > -1 || s.indexOf('inactif')> -1 ||
+      s.indexOf('caduc')   > -1 || s.indexOf('résili') > -1 ||
+      s.indexOf('resili')  > -1) return false;
+  if (s.indexOf('actif')   > -1 || s.indexOf('en cours') > -1 ||
+      s.indexOf('valide')  > -1 || s.indexOf('sign')     > -1 ||
+      s.indexOf('renouvel')> -1) return true;
+  if (c.isoDateFin) {
+    var today = new Date();
+    var iso = today.getFullYear() + '-' +
+              String(today.getMonth()+1).padStart(2,'0') + '-' +
+              String(today.getDate()).padStart(2,'0');
+    return c.isoDateFin >= iso;
+  }
+  return true; // par défaut : considéré actif
+}
+
+// Couleur du statut pour le badge
+function contractStatutBadge(c){
+  var s = String(c.statut || '').trim();
+  if (!s) {
+    var active = isContractActive(c);
+    return '<span class="' + (active ? 's-open' : 's-close') + '" '
+         + 'style="background:' + (active ? 'rgba(16,201,133,.12)' : 'rgba(120,140,160,.18)')
+         + ';color:' + (active ? 'var(--green)' : 'var(--text3)') + '">'
+         + (active ? '⏵ Actif' : '⏹ Expiré') + '</span>';
+  }
+  var lc = s.toLowerCase();
+  var color = 'var(--text2)', bg = 'var(--bg4)';
+  if (lc.indexOf('expir') > -1 || lc.indexOf('clos') > -1 ||
+      lc.indexOf('termin') > -1 || lc.indexOf('caduc') > -1 ||
+      lc.indexOf('résili') > -1 || lc.indexOf('resili') > -1) {
+    color = 'var(--text3)'; bg = 'rgba(120,140,160,.18)';
+  } else if (lc.indexOf('actif') > -1 || lc.indexOf('en cours') > -1 ||
+             lc.indexOf('valide') > -1 || lc.indexOf('sign') > -1) {
+    color = 'var(--green)'; bg = 'rgba(16,201,133,.12)';
+  } else if (lc.indexOf('renouvel') > -1 || lc.indexOf('attente') > -1 ||
+             lc.indexOf('cours de') > -1) {
+    color = 'var(--amber)'; bg = 'rgba(245,166,35,.12)';
+  }
+  return '<span style="font-size:9px;font-weight:700;padding:2px 7px;'
+       + 'border-radius:4px;background:' + bg + ';color:' + color
+       + ';font-family:\'JetBrains Mono\',monospace">' + esc(s) + '</span>';
+}
+
+// Mise en valeur si le contrat expire bientôt (≤ 60 jours)
+function dateFinHtml(c){
+  var txt = c.dateFin || '';
+  if (!txt) return '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+  if (!c.isoDateFin) return '<span class="mono" style="font-size:11px">' + esc(txt) + '</span>';
+  var today = new Date();
+  var fin   = new Date(c.isoDateFin + 'T00:00:00');
+  var diff  = Math.round((fin - today) / 86400000);
+  var color = 'var(--text2)';
+  var hint  = '';
+  if (diff < 0) {
+    color = 'var(--red)';
+    hint  = ' <span style="font-size:9px;color:var(--red)">expiré</span>';
+  } else if (diff <= 60) {
+    color = 'var(--amber)';
+    hint  = ' <span style="font-size:9px;color:var(--amber)">J-' + diff + '</span>';
+  }
+  return '<span class="mono" style="font-size:11px;color:' + color + '">'
+       + esc(txt) + '</span>' + hint;
+}
+
+function populateContractsDropdowns(list){
+  var types = {}, tiers = {};
+  list.forEach(function(c){
+    var t = (c.type  || '').trim();
+    var p = (c.tiers || '').trim();
+    if (t) types[t] = (types[t] || 0) + 1;
+    if (p) tiers[p] = (tiers[p] || 0) + 1;
+  });
+  function fill(selId, dict){
+    var sel = document.getElementById(selId); if (!sel) return;
+    var prev = sel.value;
+    var keys = Object.keys(dict).sort(function(a,b){return a.localeCompare(b);});
+    sel.innerHTML = '<option value="all">Tous</option>' +
+      keys.map(function(k){
+        return '<option value="'+escAttr(k)+'">'+esc(k)+' ('+dict[k]+')</option>';
+      }).join('');
+    if (prev) sel.value = prev;
+  }
+  fill('contractsFilterType',  types);
+  fill('contractsFilterTiers', tiers);
+}
+
+function renderContracts(){
+  if (!D) return;
+  var list = (D.contracts || []);
+
+  // Méta de la feuille source
+  var metaEl = document.getElementById('contractsSourceMeta');
+  if (metaEl) {
+    metaEl.textContent = (D.contractsSheetName || 'Suivi des Contrats et Liens Drive')
+                       + ' · ' + list.length + ' contrat' + (list.length>1?'s':'');
+  }
+
+  // Population des dropdowns
+  populateContractsDropdowns(list);
+
+  // Filtres
+  var qEl    = document.getElementById('contractsSearch');
+  var sortEl = document.getElementById('contractsSort');
+  var ftEl   = document.getElementById('contractsFilterType');
+  var frEl   = document.getElementById('contractsFilterTiers');
+  var q      = qEl    ? qEl.value.trim().toLowerCase() : '';
+  var sort   = sortEl ? sortEl.value : 'date_desc';
+  var fType  = ftEl   ? ftEl.value   : 'all';
+  var fTiers = frEl   ? frEl.value   : 'all';
+
+  var filtered = list.filter(function(c){
+    if (contractsStatFilter === 'active'  && !isContractActive(c)) return false;
+    if (contractsStatFilter === 'expired' &&  isContractActive(c)) return false;
+    if (fType  !== 'all' && (c.type  || '') !== fType)  return false;
+    if (fTiers !== 'all' && (c.tiers || '') !== fTiers) return false;
+    if (q) {
+      var hay = [c.id, c.intitule, c.tiers, c.type, c.statut,
+                 c.dateDebut, c.dateFin, c.commentaire,
+                 (c.raw||[]).join(' ')].join(' ').toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Tri
+  filtered.sort(function(a,b){
+    if (sort === 'date_desc') {
+      var av = a.isoDateFin || '9999-99-99';
+      var bv = b.isoDateFin || '9999-99-99';
+      return av.localeCompare(bv); // proche en haut
+    }
+    if (sort === 'date_asc') {
+      return (b.isoDateFin || '').localeCompare(a.isoDateFin || '');
+    }
+    if (sort === 'start_desc') {
+      return (b.isoDateDebut || '').localeCompare(a.isoDateDebut || '');
+    }
+    if (sort === 'start_asc') {
+      return (a.isoDateDebut || '').localeCompare(b.isoDateDebut || '');
+    }
+    if (sort === 'intitule_az') {
+      return String(a.intitule||'').localeCompare(String(b.intitule||''));
+    }
+    if (sort === 'tiers_az') {
+      return String(a.tiers||'').localeCompare(String(b.tiers||''));
+    }
+    return 0;
+  });
+
+  // Synthèse
+  var total      = list.length;
+  var withDoc    = list.filter(function(c){return !!c.url;}).length;
+  var active     = list.filter(isContractActive).length;
+  var expSoon    = list.filter(function(c){
+    if (!c.isoDateFin) return false;
+    var today = new Date();
+    var fin   = new Date(c.isoDateFin + 'T00:00:00');
+    var diff  = Math.round((fin - today) / 86400000);
+    return diff >= 0 && diff <= 60;
+  }).length;
+  var sumEl = document.getElementById('contractsSum');
+  if (sumEl) {
+    sumEl.innerHTML =
+      '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(total)+'</div><div class="tsl">Total contrats</div></div>' +
+      '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(active)+'</div><div class="tsl">Actifs / En cours</div></div>' +
+      '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(expSoon)+'</div><div class="tsl">Expirent ≤ 60 j</div></div>' +
+      '<div class="tsc"><div class="tsv" style="color:var(--p3)">'+fmtNum(withDoc)+'</div><div class="tsl">Avec lien Drive 📑</div></div>';
+  }
+
+  // Compteur
+  var cntEl = document.getElementById('contractsListCount');
+  if (cntEl) {
+    cntEl.textContent = filtered.length + (q ? ' / ' + total : '')
+                      + ' affiché' + (filtered.length>1?'s':'');
+  }
+
+  // Tableau
+  var body = document.getElementById('contractsBody');
+  if (body) {
+    if (!filtered.length) {
+      body.innerHTML = '<tr><td colspan="8" style="text-align:center;'
+        + 'padding:18px;color:var(--text3);font-size:11px">'
+        + (list.length ? 'Aucun contrat ne correspond aux filtres.'
+                       : 'Aucun contrat trouvé dans la feuille source.')
+        + '</td></tr>';
+    } else {
+      body.innerHTML = filtered.map(function(c, i){
+        var safeUrl   = escAttr(c.url || '');
+        var safeTitle = escAttr(c.intitule || c.tiers || c.id || 'Contrat');
+        var titleHtml = c.url
+          ? '<a href="' + safeUrl + '" rel="noopener" '
+            + 'data-c-url="' + safeUrl + '" data-c-title="' + safeTitle + '" '
+            + 'onclick="openContractEmbed(this.getAttribute(\'data-c-url\'),this.getAttribute(\'data-c-title\'));return false;" '
+            + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer">'
+            + esc(c.intitule || c.id || '—') + '</a>'
+          : '<strong style="color:var(--text)">' + esc(c.intitule || c.id || '—') + '</strong>';
+
+        var idTxt    = c.id ? '<span class="rbadge mono">'+esc(c.id)+'</span>' : '<span style="color:var(--text3)">'+(i+1)+'</span>';
+        var tiersTxt = c.tiers ? esc(c.tiers) : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+        var typeTxt  = c.type  ? '<span class="itag">'+esc(c.type)+'</span>'
+                               : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+        var debutTxt = c.dateDebut
+                       ? '<span class="mono" style="font-size:11px">'+esc(c.dateDebut)+'</span>'
+                       : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+        var finTxt   = dateFinHtml(c);
+        var statTxt  = contractStatutBadge(c);
+
+        var docHtml = c.url
+          ? '<a href="' + safeUrl + '" rel="noopener" '
+            + 'class="tag-btn has-photo" '
+            + 'title="Ouvrir le document dans le dashboard" '
+            + 'data-c-url="' + safeUrl + '" data-c-title="' + safeTitle + '" '
+            + 'onclick="openContractEmbed(this.getAttribute(\'data-c-url\'),this.getAttribute(\'data-c-title\'));return false;" '
+            + 'style="text-decoration:none">📑</a>'
+          : '<span class="tag-btn no-photo" title="Lien non disponible" style="cursor:default">—</span>';
+
+        return '<tr>'
+          + '<td>' + idTxt + '</td>'
+          + '<td>' + titleHtml
+          + (c.commentaire
+              ? '<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(c.commentaire)+'</div>'
+              : '')
+          + '</td>'
+          + '<td style="font-size:11px">' + tiersTxt + '</td>'
+          + '<td>' + typeTxt + '</td>'
+          + '<td>' + debutTxt + '</td>'
+          + '<td>' + finTxt + '</td>'
+          + '<td>' + statTxt + '</td>'
+          + '<td style="text-align:center">' + docHtml + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+  }
+}
+
+// ── EMBED CONTRAT — réutilise le modal iframe générique ──────
+// Ouvre un lien Drive / Docs / Sheets DANS le dashboard.
+function openContractEmbed(url, title){
+  if (!url) return;
+  openCleaningEmbed(url, title || 'Contrat', 'CONTRAT', '📑');
+}
+
+// Ouvre la feuille source « Suivi des Contrats et Liens Drive » en embed.
+function openContractsSource(){
+  var url = (D && D.contractsSourceUrl) ? D.contractsSourceUrl : '';
+  if (!url) {
+    url = 'https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=2050763956#gid=2050763956';
+  }
+  openCleaningEmbed(url, 'Suivi des Contrats et Liens Drive',
+                    'FEUILLE SOURCE', '📊');
 }
 
 // ══ IA ════════════════════════════════════════════════════════
