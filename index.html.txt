@@ -1872,6 +1872,11 @@ html.light .notif-full-filters .pf-sel{background:#fff}
         <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
       </select>
       <select class="pf-sel" id="notifFullWeek" style="display:none" onchange="applyNotifFullFilter()"></select>
+      <span class="pf-lbl" style="margin-left:4px">Événement :</span>
+      <select class="pf-sel" id="notifFullEvent" onchange="applyNotifFullFilter()" title="Filtrer par événement">
+        <option value="__all">Tous</option>
+        <option value="__fumig">🦟 Fumigation</option>
+      </select>
       <span class="notif-full-stat" id="notifFullStat">— événements</span>
     </div>
     <div class="notif-full-body" id="notifFullBody"></div>
@@ -4138,6 +4143,8 @@ function openNotifFull(){
   document.getElementById('notifPanel').classList.remove('open');
   // Populer le sélecteur de semaines
   populateNotifWeeks();
+  // Populer le sélecteur d'événements (liste dynamique depuis D.planning)
+  populateNotifEvents();
   // Appliquer le filtre et afficher
   applyNotifFullFilter();
   document.getElementById('notifFullBg').classList.add('open');
@@ -4189,31 +4196,71 @@ function fmtDateShort(d){
   var mm=String(d.getMonth()+1).padStart(2,'0');
   return dd+'/'+mm;
 }
+function populateNotifEvents(){
+  // Construit la liste déroulante "Événement" à partir des activités
+  // distinctes trouvées dans D.planning (insensible à la casse).
+  // Conserve les deux options spéciales : "Tous" et "Fumigation".
+  var sel=document.getElementById('notifFullEvent');
+  if(!sel||!D||!D.planning) return;
+  var current=sel.value||'__all';
+  var seen={}, list=[];
+  D.planning.forEach(function(p){
+    var name=String(p.activite||'').trim();
+    if(!name) return;
+    var key=name.toLowerCase();
+    if(seen[key]) return;
+    seen[key]=true;
+    list.push(name);
+  });
+  list.sort(function(a,b){ return a.localeCompare(b,'fr',{sensitivity:'base'}); });
+  var opts='<option value="__all">Tous</option>'
+          +'<option value="__fumig">🦟 Fumigation</option>';
+  list.forEach(function(name){
+    opts+='<option value="'+escAttr(name)+'">'+esc(name)+'</option>';
+  });
+  sel.innerHTML=opts;
+  // Restaurer la sélection si elle est toujours valide
+  var validKeys={'__all':1,'__fumig':1};
+  list.forEach(function(n){ validKeys[n.toLowerCase()]=1; });
+  sel.value = validKeys[current.toLowerCase()] ? current : '__all';
+}
 function applyNotifFullFilter(){
   if(!D||!D.planning) return;
   var period=document.getElementById('notifFullPeriod').value;
   var yr=parseInt(document.getElementById('notifFullYear').value)||2026;
   var mo=parseInt(document.getElementById('notifFullMonth').value)||1;
   var weekVal=document.getElementById('notifFullWeek').value;
+  var evSel=document.getElementById('notifFullEvent');
+  var eventVal=evSel?evSel.value:'__all';
+  var eventKey=eventVal?eventVal.toLowerCase():'__all';
 
   var filtered=D.planning.filter(function(p){
     if(!p.isoDate) return false;
     var pts=p.isoDate.split('-');
     var pYr=parseInt(pts[0]),pMo=parseInt(pts[1]);
 
+    // ── Filtre période ──
     if(period==='all'){
-      return pYr===yr;
-    }
-    if(period==='month'){
-      return pYr===yr&&pMo===mo;
-    }
-    if(period==='week'&&weekVal){
+      if(pYr!==yr) return false;
+    } else if(period==='month'){
+      if(pYr!==yr||pMo!==mo) return false;
+    } else if(period==='week'&&weekVal){
       var parts=weekVal.split('|');
-      return p.isoDate>=parts[0]&&p.isoDate<=parts[1];
+      if(p.isoDate<parts[0]||p.isoDate>parts[1]) return false;
     }
+
+    // ── Filtre événement ──
+    if(eventVal==='__fumig'){
+      var act=String(p.activite||'').toLowerCase();
+      var isF=p.fumigation||act.indexOf('fumig')>-1;
+      if(!isF) return false;
+    } else if(eventVal&&eventVal!=='__all'){
+      var pAct=String(p.activite||'').trim().toLowerCase();
+      if(pAct!==eventKey) return false;
+    }
+
     return true;
   });
-
   // ── TRI : période actuelle EN PRIORITÉ ─────────────────────
   // 1) Aujourd'hui
   // 2) Demain
