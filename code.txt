@@ -2027,7 +2027,9 @@ function getData() {
   out.metrics = calcMetrics(out);
 
   // ── NUISIBLES (4 feuilles : FK / pièges méca / colles / raticide) ──
-  out.nuisibles = readNuisibles(ss);
+  var nuis = readNuisibles(ss);
+  out.nuisibles           = (nuis && nuis.entries) ? nuis.entries : [];
+  out.nuisiblesSourceUrls = (nuis && nuis.sources) ? nuis.sources : {};
 
   return out;
 }
@@ -2117,6 +2119,7 @@ function calcMetrics(d) {
 // ════════════════════════════════════════════════════════════
 function readNuisibles(ss) {
   var entries = [];
+  var sources = {};   // key → { url, sheetName, count, totalQty }
   var sheets  = ss.getSheets();
 
   // Définition des 4 feuilles cibles + mots-clés de détection
@@ -2154,6 +2157,17 @@ function readNuisibles(ss) {
     var sh = findSheetByKw(tg.keywords);
     if (!sh) { Logger.log('Nuisibles ['+tg.key+'] sheet NOT found'); return; }
     Logger.log('Nuisibles ['+tg.key+'] sheet: ' + sh.getName());
+
+    // URL directe vers la feuille (avec son GID)
+    var gid = sh.getSheetId();
+    sources[tg.key] = {
+      url      : 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + gid + '#gid=' + gid,
+      sheetName: sh.getName(),
+      label    : tg.label,
+      gid      : gid,
+      count    : 0,
+      totalQty : 0
+    };
 
     var data = sh.getDataRange().getValues();
     if (!data || data.length < 1) return;
@@ -2281,6 +2295,9 @@ function readNuisibles(ss) {
         statut       : COL.statut >= 0 ? safeText(row[COL.statut]) : '',
         responsable  : COL.resp   >= 0 ? safeText(row[COL.resp])   : ''
       });
+      // Compteurs par source pour synthèse
+      sources[tg.key].count    += 1;
+      sources[tg.key].totalQty += (qty || 0);
     }
   });
 
@@ -2292,7 +2309,7 @@ function readNuisibles(ss) {
   });
 
   Logger.log('Nuisibles : ' + entries.length + ' lignes lues');
-  return entries;
+  return { entries: entries, sources: sources };
 }
 
 function callGemini(prompt) {

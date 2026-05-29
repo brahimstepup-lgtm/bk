@@ -1844,6 +1844,17 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       Analyses croisées par <strong>type de nuisible</strong>, <strong>zone / emplacement</strong>,
       <strong>période</strong> et <strong>évolution mensuelle</strong>.
     </p>
+    <!-- Actions : ouverture des 4 feuilles sources + export + IA -->
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;align-items:center">
+      <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-right:2px">FEUILLES :</span>
+      <button class="btn" onclick="openPestSheet('fk')"        title="Ouvrir la feuille FK">📊 FK</button>
+      <button class="btn" onclick="openPestSheet('mecanique')" title="Ouvrir la feuille « Pièges mécanique »">📊 Pièges méca.</button>
+      <button class="btn" onclick="openPestSheet('colle')"     title="Ouvrir la feuille « Boîtes à colle »">📊 Boîtes à colle</button>
+      <button class="btn" onclick="openPestSheet('raticide')"  title="Ouvrir la feuille « Boîtes à raticide »">📊 Boîtes à raticide</button>
+      <span style="flex:1"></span>
+      <button class="btn" onclick="exportPestCSV()" title="Exporter les données filtrées en CSV (compatible Excel)">📥 Export CSV</button>
+      <button class="btn btn-ai" onclick="askPestAI()" title="Analyse IA Gemini des nuisibles (sur les filtres actifs)">✨ Analyse IA</button>
+    </div>
   </div>
 
   <!-- Barre filtres -->
@@ -1906,6 +1917,10 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <span style="color:var(--text3);font-size:9px;margin-left:6px">
         Captures cumulées par mois sur la période filtrée
       </span>
+      <span style="margin-left:auto;display:flex;gap:6px;align-items:center">
+        <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">COMPARER :</span>
+        <button class="modeBtn" id="pestYoYBtn" onclick="togglePestYoY(this)" title="Superposer l'année précédente en pointillés">N-1</button>
+      </span>
     </div>
     <div class="cw" style="height:230px"><canvas id="pestEvoC"></canvas></div>
   </div>
@@ -1932,6 +1947,20 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <div class="ct"><span class="ct-dot"></span>Insectes / Rongeurs / Autres</div>
       <div class="cw" style="height:210px"><canvas id="pestCatC"></canvas></div>
     </div>
+  </div>
+
+  <!-- Panneau réponse IA (visible uniquement après clic sur "✨ Analyse IA") -->
+  <div class="ai-panel" id="pestAiPanel" style="display:none;margin-bottom:12px">
+    <div class="ai-hdr">
+      <div class="ai-ico">✨</div>
+      <div>
+        <div class="ai-title">Analyse Gemini — Nuisibles</div>
+        <div style="font-size:9px;color:var(--text3);margin-top:1px">Basée sur les filtres actifs · Gemini 2.0 Flash</div>
+      </div>
+      <div class="ai-status" id="pestAiSt" style="margin-left:auto">Prêt</div>
+      <button class="btn" onclick="document.getElementById('pestAiPanel').style.display='none'" style="margin-left:6px;font-size:10px;padding:3px 8px">✕</button>
+    </div>
+    <div class="ai-resp" id="pestAiResp"><span style="color:var(--text3)">Cliquez <strong style="color:var(--p4)">"Analyse IA"</strong> ci-dessus pour une synthèse Gemini.</span></div>
   </div>
 
   <!-- Liste détaillée -->
@@ -5001,6 +5030,7 @@ function refreshData(){
 // ════════════════════════════════════════════════════════════
 
 // ── Couleurs cohérentes par catégorie / dispositif ──
+var pestYoYOn = false;
 var PEST_CAT_COLORS = {
   insecte:'#f5a623',  // ambre — insectes
   rongeur:'#e8445a',  // rouge — rongeurs
@@ -5168,7 +5198,7 @@ function drawPestEvolution(rows){
   var titleSuffix = '';
   if(per==='ytd' || per==='month') titleSuffix = ' — '+year;
 
-  mkChart('pestEvoC','line', ML, [
+  var datasets = [
     { label:'Insectes'+titleSuffix, data:ins, borderColor:PEST_CAT_COLORS.insecte,
       backgroundColor:'rgba(245,166,35,.15)', borderWidth:2, tension:.3, fill:true,
       pointRadius:3, pointBackgroundColor:PEST_CAT_COLORS.insecte },
@@ -5179,7 +5209,38 @@ function drawPestEvolution(rows){
       backgroundColor:'rgba(139,92,246,.12)', borderWidth:2, tension:.3, fill:false,
       pointRadius:2, pointBackgroundColor:PEST_CAT_COLORS.autre,
       hidden: aut.reduce(function(a,b){return a+b;},0)===0 }
-  ], {
+  ];
+
+  // Surcouche année N-1 si toggle actif et qu'une année est sélectionnée
+  if(pestYoYOn && (per==='ytd' || per==='month') && D && D.nuisibles){
+    var prevYear = year - 1;
+    var src      = document.getElementById('pestSrc').value;
+    var cat      = document.getElementById('pestCat').value;
+    var zone     = document.getElementById('pestZone').value;
+    var insN1 = [0,0,0,0,0,0,0,0,0,0,0,0];
+    var ronN1 = [0,0,0,0,0,0,0,0,0,0,0,0];
+    D.nuisibles.forEach(function(p){
+      if(p.annee !== prevYear || !p.mois) return;
+      if(src  !== 'all' && p.source     !== src)  return;
+      if(cat  !== 'all' && p.categorie  !== cat)  return;
+      if(zone !== 'all' && p.zone       !== zone) return;
+      var i = p.mois - 1;
+      if(p.categorie==='insecte')      insN1[i] += (p.quantite||0);
+      else if(p.categorie==='rongeur') ronN1[i] += (p.quantite||0);
+    });
+    datasets.push({
+      label:'Insectes — '+prevYear, data:insN1, borderColor:PEST_CAT_COLORS.insecte,
+      borderDash:[5,4], borderWidth:1.5, fill:false, tension:.3, pointRadius:2,
+      backgroundColor:'transparent', pointBackgroundColor:PEST_CAT_COLORS.insecte
+    });
+    datasets.push({
+      label:'Rongeurs — '+prevYear, data:ronN1, borderColor:PEST_CAT_COLORS.rongeur,
+      borderDash:[5,4], borderWidth:1.5, fill:false, tension:.3, pointRadius:2,
+      backgroundColor:'transparent', pointBackgroundColor:PEST_CAT_COLORS.rongeur
+    });
+  }
+
+  mkChart('pestEvoC','line', ML, datasets, {
     responsive:true, maintainAspectRatio:false,
     plugins:{ legend:{ display:true, position:'bottom',
       labels:{ color:C.txt, font:{size:10}, boxWidth:10, padding:8 } } },
@@ -5351,6 +5412,176 @@ function renderPestTable(rows){
          + '… '+(rows.length-MAX)+' lignes supplémentaires masquées (filtrer pour affiner)</td></tr>';
   }
   body.innerHTML = html;
+}
+
+// ── Toggle Année N-1 sur le graphique d'évolution ──────────
+function togglePestYoY(btn){
+  pestYoYOn = !pestYoYOn;
+  if(btn) btn.classList.toggle('on', pestYoYOn);
+  if(D && D.nuisibles) drawPestEvolution(getPestFiltered());
+}
+
+// ── Ouvrir une feuille source en embed interne ─────────────
+// keys : 'fk' | 'mecanique' | 'colle' | 'raticide'
+function openPestSheet(key){
+  var src   = (D && D.nuisiblesSourceUrls && D.nuisiblesSourceUrls[key]) || null;
+  var url   = src && src.url   ? src.url   : '';
+  var title = src && src.label ? src.label : 'Feuille nuisibles';
+  if(src && src.sheetName) title += ' — '+src.sheetName;
+  if(!url){
+    // Fallback : feuille principale (le user pourra naviguer aux onglets)
+    url = 'https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit';
+    title = 'Classeur HSE (onglets nuisibles)';
+  }
+  if(typeof openCleaningEmbed === 'function'){
+    openCleaningEmbed(url, title, 'FEUILLE SOURCE', '🐜');
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+}
+
+// ── Export CSV des données filtrées ─────────────────────────
+// Encode UTF-8 BOM pour qu'Excel ouvre correctement les accents.
+function exportPestCSV(){
+  if(!D || !D.nuisibles){ alert('Aucune donnée à exporter.'); return; }
+  var rows = getPestFiltered();
+  if(rows.length === 0){ alert('Aucune ligne à exporter pour les filtres actifs.'); return; }
+
+  var headers = ['Date','Année','Mois','Dispositif','Catégorie','Type',
+                 'Zone / Emplacement','Quantité','Observation','Action',
+                 'Statut','Responsable'];
+  // CSV séparateur ; (Excel FR friendly), guillemets pour échappement
+  function esc(s){
+    if(s===null || s===undefined) return '';
+    var v = String(s);
+    if(v.indexOf('"')>-1) v = v.replace(/"/g,'""');
+    if(/[";\n\r]/.test(v)) v = '"'+v+'"';
+    return v;
+  }
+  var lines = [headers.join(';')];
+  rows.forEach(function(p){
+    lines.push([
+      p.date||'', p.annee||'', p.mois||'',
+      p.sourceLabel||p.source||'',
+      p.categorie||'',
+      p.type||'',
+      p.zone||'',
+      (p.quantite!=null?p.quantite:''),
+      p.observation||'',
+      p.action||'',
+      p.statut||'',
+      p.responsable||''
+    ].map(esc).join(';'));
+  });
+  var csv = '\uFEFF' + lines.join('\r\n');   // BOM UTF-8 pour Excel
+
+  // Nom de fichier explicite avec les filtres
+  var per   = document.getElementById('pestPer').value;
+  var year  = document.getElementById('pestYr').value;
+  var month = document.getElementById('pestMo').value;
+  var src   = document.getElementById('pestSrc').value;
+  var parts = ['nuisibles'];
+  if(per==='ytd')        parts.push('YTD-'+year);
+  else if(per==='month') parts.push(year+'-'+(String(month).length<2?'0'+month:month));
+  else if(per==='custom')parts.push('custom');
+  else parts.push('all');
+  if(src!=='all') parts.push(src);
+  var fname = parts.join('_') + '.csv';
+
+  try{
+    var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); a.remove(); }, 200);
+  } catch(e){
+    // Fallback : data URI
+    var a2 = document.createElement('a');
+    a2.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+    a2.download = fname;
+    document.body.appendChild(a2); a2.click(); a2.remove();
+  }
+}
+
+// ── Analyse IA Gemini sur les données filtrées ─────────────
+function askPestAI(){
+  if(!D || !D.nuisibles){ alert('Données nuisibles non disponibles.'); return; }
+  var rows = getPestFiltered();
+
+  // Construction d'un contexte synthétique
+  var totalQ = sumPestQty(rows);
+  var insQ   = sumPestQty(rows.filter(function(p){ return p.categorie==='insecte'; }));
+  var ronQ   = sumPestQty(rows.filter(function(p){ return p.categorie==='rongeur'; }));
+  var autQ   = sumPestQty(rows.filter(function(p){ return p.categorie==='autre';   }));
+
+  // Top 5 zones
+  var zoneAgg = {};
+  rows.forEach(function(p){ if(p.zone){ zoneAgg[p.zone]=(zoneAgg[p.zone]||0)+(p.quantite||0); } });
+  var topZones = Object.keys(zoneAgg).sort(function(a,b){return zoneAgg[b]-zoneAgg[a];}).slice(0,5);
+
+  // Top 5 types
+  var typeAgg = {};
+  rows.forEach(function(p){ if(p.type){ typeAgg[p.type]=(typeAgg[p.type]||0)+(p.quantite||0); } });
+  var topTypes = Object.keys(typeAgg).sort(function(a,b){return typeAgg[b]-typeAgg[a];}).slice(0,5);
+
+  // Mensuel
+  var monthly = {ins:[0,0,0,0,0,0,0,0,0,0,0,0], ron:[0,0,0,0,0,0,0,0,0,0,0,0]};
+  rows.forEach(function(p){
+    if(!p.mois) return;
+    var i=p.mois-1;
+    if(p.categorie==='insecte') monthly.ins[i]+=(p.quantite||0);
+    else if(p.categorie==='rongeur') monthly.ron[i]+=(p.quantite||0);
+  });
+
+  // Filtres
+  var per=document.getElementById('pestPer').value;
+  var year=document.getElementById('pestYr').value;
+  var month=document.getElementById('pestMo').value;
+  var src=document.getElementById('pestSrc').value;
+  var cat=document.getElementById('pestCat').value;
+  var zone=document.getElementById('pestZone').value;
+
+  var ctx = 'Expert HSE SOBCO 3 - usine. Réponds en français, format concis.\n'
+    + 'SUIVI NUISIBLES (insectes / rongeurs) — filtres : période='+per
+    + (per==='ytd'?(' '+year):(per==='month'?(' '+month+'/'+year):''))
+    + ', dispositif='+src+', catégorie='+cat+', zone='+zone+'\n'
+    + 'TOTAUX : '+rows.length+' obs · '+totalQ+' captures (insectes='+insQ+', rongeurs='+ronQ+', autres='+autQ+')\n'
+    + 'MENSUEL Insectes : ['+monthly.ins.join(',')+']\n'
+    + 'MENSUEL Rongeurs : ['+monthly.ron.join(',')+']\n'
+    + 'TOP TYPES : '+topTypes.map(function(t){return t+' ('+typeAgg[t]+')';}).join(', ')+'\n'
+    + 'TOP ZONES : '+topZones.map(function(z){return z+' ('+zoneAgg[z]+')';}).join(', ')+'\n\n'
+    + 'Analyse en 5 points :\n'
+    + '1) Synthèse de la situation (pression nuisibles globale)\n'
+    + '2) Tendance mensuelle (pic, creux, anomalies)\n'
+    + '3) Zones les plus à risque + causes probables\n'
+    + '4) Top 3 actions correctives prioritaires (préventif + curatif)\n'
+    + '5) Recommandation de fréquence de contrôle / fumigation\n';
+
+  // Affichage du panneau
+  var panel = document.getElementById('pestAiPanel');
+  var resp  = document.getElementById('pestAiResp');
+  var st    = document.getElementById('pestAiSt');
+  if(panel) panel.style.display = 'block';
+  if(resp)  resp.innerHTML = '<span class="typing" style="color:var(--text3)">Analyse en cours…</span>';
+  if(st)    st.textContent = '⌛';
+  if(panel) panel.scrollIntoView({behavior:'smooth', block:'center'});
+
+  if(typeof google === 'undefined' || !google.script || !google.script.run){
+    if(resp) resp.textContent = '❌ google.script.run non disponible (mode local).';
+    if(st)   st.textContent = '❌';
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(t){
+      if(resp) resp.innerHTML = esc(cleanMd(t||''));
+      if(st)   st.textContent = '✓';
+    })
+    .withFailureHandler(function(err){
+      if(resp) resp.textContent = '❌ '+(err && err.message ? err.message : 'Erreur API');
+      if(st)   st.textContent   = '❌';
+    })
+    .askGeminiForClient(ctx);
 }
 </script>
 </body>
