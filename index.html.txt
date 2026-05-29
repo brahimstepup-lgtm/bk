@@ -548,6 +548,118 @@ html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
 .drive-ok{background:rgba(16,201,133,.12);color:var(--green);border:1px solid rgba(16,201,133,.3)}
 .drive-no{background:rgba(245,166,35,.12);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
 
+/* ═══════════════════════════════════════════════════════════
+   ══ NUISIBLES — Executive Summary, Heatmap, Hotspots      ══
+   ═══════════════════════════════════════════════════════════ */
+.pest-sources{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+  gap:8px;margin-bottom:11px}
+.pest-src-card{background:var(--card-bg);border:1px solid var(--border);
+  border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:3px;
+  cursor:pointer;transition:all .18s;border-left:3px solid var(--p3)}
+.pest-src-card:hover{transform:translateY(-2px);border-color:var(--p2);box-shadow:0 6px 20px var(--shadow)}
+.pest-src-card.s-FK{border-left-color:#10c985}
+.pest-src-card.s-PIEGES{border-left-color:#f5a623}
+.pest-src-card.s-COLLES{border-left-color:#0da8d2}
+.pest-src-card.s-RATICIDE{border-left-color:#e8445a}
+.pest-src-card.disabled{opacity:.55;cursor:not-allowed}
+.pest-src-title{font-size:11px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px}
+.pest-src-meta{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.pest-src-cap{font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--p4);margin-top:2px}
+.pest-src-hint{font-size:9px;color:var(--p4);margin-top:1px}
+
+/* Heatmap */
+.pest-heatmap-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.pest-heatmap-wrap::-webkit-scrollbar{height:6px}
+.pest-heatmap-wrap::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+.pest-heatmap{display:grid;gap:3px;font-size:10px;min-width:540px}
+.pest-hm-row{display:grid;gap:3px;align-items:stretch}
+.pest-hm-zone{font-size:10px;font-weight:600;color:var(--text2);padding:6px 9px;
+  background:var(--bg3);border-radius:6px;display:flex;align-items:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pest-hm-cell{padding:6px 7px;border-radius:6px;font-size:10px;font-weight:700;
+  text-align:center;cursor:pointer;transition:transform .12s,filter .12s;
+  font-family:'JetBrains Mono',monospace;display:flex;align-items:center;
+  justify-content:center;min-height:32px;line-height:1.1;color:#fff;
+  position:relative;overflow:hidden}
+.pest-hm-cell:hover{transform:scale(1.05);filter:brightness(1.12);z-index:2}
+.pest-hm-cell.lvl-0{background:#1a4055;color:var(--text3)}
+.pest-hm-cell.lvl-1{background:linear-gradient(135deg,#10b981,#0d9d6f)}
+.pest-hm-cell.lvl-2{background:linear-gradient(135deg,#f5a623,#d18a16)}
+.pest-hm-cell.lvl-3{background:linear-gradient(135deg,#fb7c2e,#d35a14)}
+.pest-hm-cell.lvl-4{background:linear-gradient(135deg,#e8445a,#b32a3f)}
+.pest-hm-cell.lvl-5{background:linear-gradient(135deg,#7a0020,#3d000c);
+  border:1px solid #e8445a;animation:pestPulse 2.4s ease-in-out infinite}
+.pest-hm-cell .hm-multi{position:absolute;top:2px;right:3px;font-size:8px;
+  background:rgba(0,0,0,.35);padding:0 4px;border-radius:6px;line-height:1.4}
+.pest-hm-cell.lvl-0 .hm-multi{background:rgba(255,255,255,.08);color:var(--text3)}
+@keyframes pestPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,68,90,.6)}
+  50%{box-shadow:0 0 0 5px rgba(232,68,90,0)}}
+
+.pest-hm-header{display:grid;gap:3px;margin-bottom:4px}
+.pest-hm-h-cell{font-size:9px;font-weight:600;color:var(--text3);text-align:center;
+  padding:4px 4px;background:var(--bg2);border-radius:5px;
+  text-transform:uppercase;letter-spacing:.4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pest-hm-h-cell.h-zone{background:transparent;text-align:left;padding-left:9px}
+
+/* Légende */
+.pest-legend{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  margin-top:10px;font-size:10px;color:var(--text2)}
+.pest-legend-item{display:flex;align-items:center;gap:5px}
+.pest-legend-sw{width:18px;height:14px;border-radius:3px;flex-shrink:0;border:1px solid rgba(255,255,255,.05)}
+.pest-legend-sw.lg-0{background:#1a4055}
+.pest-legend-sw.lg-1{background:linear-gradient(135deg,#10b981,#0d9d6f)}
+.pest-legend-sw.lg-2{background:linear-gradient(135deg,#f5a623,#d18a16)}
+.pest-legend-sw.lg-3{background:linear-gradient(135deg,#fb7c2e,#d35a14)}
+.pest-legend-sw.lg-4{background:linear-gradient(135deg,#e8445a,#b32a3f)}
+.pest-legend-sw.lg-5{background:linear-gradient(135deg,#7a0020,#3d000c);border-color:#e8445a}
+
+html.light .pest-hm-cell.lvl-0{background:#dbe4ec;color:var(--text3)}
+html.light .pest-legend-sw.lg-0{background:#dbe4ec}
+html.light .pest-hm-zone{background:#e4ebf1}
+html.light .pest-hm-h-cell{background:#dee5ec}
+
+/* Pression globale par zone */
+.pest-pressure-list{display:flex;flex-direction:column;gap:6px}
+.pest-pressure-row{display:grid;grid-template-columns:1fr auto 60px;gap:8px;
+  align-items:center;background:var(--bg3);border-radius:7px;padding:7px 11px;
+  border-left:3px solid var(--bg5);font-size:11px}
+.pest-pressure-row.lvl-1{border-left-color:#10b981}
+.pest-pressure-row.lvl-2{border-left-color:#f5a623}
+.pest-pressure-row.lvl-3{border-left-color:#fb7c2e}
+.pest-pressure-row.lvl-4{border-left-color:#e8445a}
+.pest-pressure-row.lvl-5{border-left-color:#7a0020;background:linear-gradient(90deg,rgba(122,0,32,.12),var(--bg3))}
+.pest-pressure-zone{font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pest-pressure-meta{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;text-align:right}
+.pest-pressure-score{font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;text-align:right}
+.pest-pressure-score.lvl-0{color:var(--text3)}
+.pest-pressure-score.lvl-1{color:#10b981}
+.pest-pressure-score.lvl-2{color:#f5a623}
+.pest-pressure-score.lvl-3{color:#fb7c2e}
+.pest-pressure-score.lvl-4{color:#e8445a}
+.pest-pressure-score.lvl-5{color:#7a0020}
+html.light .pest-pressure-score.lvl-5{color:#b32a3f}
+
+/* Modal embed nuisibles (réutilise le style cln-embed-* mais id distinct) */
+.pest-embed-panel{width:min(1200px,98%);max-width:98vw;height:min(86vh,820px);
+  display:flex;flex-direction:column;overflow:hidden}
+.pest-embed-body{flex:1;padding:0;background:var(--bg);position:relative;overflow:hidden}
+.pest-embed-iframe{width:100%;height:100%;border:none;background:#fff;display:block}
+.pest-embed-loading{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;background:var(--bg2);
+  color:var(--text2);font-size:12px;z-index:1;transition:opacity .25s}
+.pest-embed-loading.hide{opacity:0;pointer-events:none}
+.pest-embed-loading .spin{width:30px;height:30px;border:3px solid var(--bg4);
+  border-top-color:var(--p3);border-radius:50%;animation:spin .8s linear infinite}
+
+@media (max-width:820px){
+  .pest-pressure-row{grid-template-columns:1fr 60px;gap:6px}
+  .pest-pressure-meta{display:none}
+  .pest-heatmap{font-size:9px;min-width:460px}
+  .pest-hm-cell{min-height:28px;padding:4px 5px}
+  .pest-embed-panel{height:92vh;width:100%;max-width:100%}
+}
+
 footer{text-align:center;margin-top:18px;padding-top:13px;border-top:1px solid var(--border);
   font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
 
@@ -904,6 +1016,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
   <button class="tab"    onclick="goTab('contracts',this)">📑 Contrats</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
+  <button class="tab"    onclick="goTab('pest',this)">🐀 Nuisibles</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -1830,6 +1943,129 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 </div>
 
+<!-- ═══ NUISIBLES — Executive Summary ═══ -->
+<div id="pest" class="page">
+
+  <!-- Sources : 4 dispositifs (FK / Pièges / Colles / Raticide).
+       Chaque carte ouvre la feuille dans un modal embed (in-dashboard). -->
+  <div class="pest-sources" id="pestSources"></div>
+
+  <!-- Filtres -->
+  <div class="pf-bar">
+    <span class="pf-lbl">Période :</span>
+    <select class="pf-sel" id="pestPer" onchange="onPestPer()">
+      <option value="all">Tout</option>
+      <option value="ytd" selected>YTD 2026</option>
+      <option value="month">Mois</option>
+      <option value="custom">Personnalisé</option>
+    </select>
+    <select class="pf-sel" id="pestYr" style="display:none" onchange="applyPestF()">
+      <option value="2025">2025</option><option value="2026" selected>2026</option>
+    </select>
+    <select class="pf-sel" id="pestMo" style="display:none" onchange="applyPestF()">
+      <option value="1">Jan</option><option value="2">Fév</option><option value="3">Mar</option>
+      <option value="4">Avr</option><option value="5">Mai</option><option value="6">Jun</option>
+      <option value="7">Jul</option><option value="8">Aoû</option><option value="9">Sep</option>
+      <option value="10">Oct</option><option value="11">Nov</option><option value="12">Déc</option>
+    </select>
+    <input type="date" class="pf-input" id="pestD1" style="display:none" onchange="applyPestF()">
+    <span id="pestSep" style="display:none;color:var(--text3);font-size:10px">→</span>
+    <input type="date" class="pf-input" id="pestD2" style="display:none" onchange="applyPestF()">
+
+    <span class="pf-lbl" style="margin-left:8px">Dispositif :</span>
+    <select class="pf-sel" id="pestDisp" onchange="applyPestF()">
+      <option value="all">Tous</option>
+      <option value="FK">FK</option>
+      <option value="PIEGES">Pièges mécaniques</option>
+      <option value="COLLES">Boîtes à colles</option>
+      <option value="RATICIDE">Boîtes à raticide</option>
+    </select>
+
+    <span class="pf-lbl" style="margin-left:8px">Zone :</span>
+    <select class="pf-sel" id="pestZone" onchange="applyPestF()"><option value="all">Toutes</option></select>
+
+    <span class="pf-stat" id="pestStat">— captures</span>
+  </div>
+
+  <!-- KPI Executive Summary -->
+  <div class="kpi-grid" id="pestKpi"></div>
+
+  <!-- Heatmap zone × emplacement -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="ct">
+      <span class="ct-dot" style="background:var(--red)"></span>
+      Heatmap — Pression nuisible par zone × emplacement
+      <span style="color:var(--p4);font-size:9px;margin-left:4px">↗ Cliquer une cellule pour les détails</span>
+    </div>
+    <div class="pest-heatmap-wrap">
+      <div id="pestHeatmap"></div>
+    </div>
+    <div class="pest-legend">
+      <span style="color:var(--text3);font-size:10px;font-weight:600">Échelle :</span>
+      <span class="pest-legend-item"><span class="pest-legend-sw lg-0"></span>Aucune capture</span>
+      <span class="pest-legend-item"><span class="pest-legend-sw lg-1"></span>Faible (1–2)</span>
+      <span class="pest-legend-item"><span class="pest-legend-sw lg-2"></span>Modérée (3–5)</span>
+      <span class="pest-legend-item"><span class="pest-legend-sw lg-3"></span>Soutenue (6–9)</span>
+      <span class="pest-legend-item"><span class="pest-legend-sw lg-4"></span>Forte (10+)</span>
+      <span class="pest-legend-item"><span class="pest-legend-sw lg-5"></span>Critique récurrente (multi-dispositifs)</span>
+    </div>
+  </div>
+
+  <!-- Index global de pression nuisible par zone -->
+  <div class="row2">
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>
+        Top zones les plus touchées (indice de pression)
+        <span style="color:var(--text3);font-size:9px;margin-left:4px">corrélation Pièges × Colles × Raticide</span>
+      </div>
+      <div class="pest-pressure-list" id="pestPressureList"></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Comparaison FK / Colles / Pièges / Raticides</div>
+      <div class="cw" style="height:215px"><canvas id="pestDispC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Évolution mensuelle + Répartition par type -->
+  <div class="row2">
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Évolution mensuelle des captures (par dispositif)</div>
+      <div class="cw" style="height:215px"><canvas id="pestMonthC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Répartition par type de nuisible</div>
+      <div class="cw" style="height:215px"><canvas id="pestTypeC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Tendance hebdomadaire + Histogramme par emplacement -->
+  <div class="row2">
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Tendance hebdomadaire (8 dernières semaines)</div>
+      <div class="cw" style="height:215px"><canvas id="pestWeekC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Histogramme par emplacement (top 12)</div>
+      <div class="cw" style="height:215px"><canvas id="pestEmpC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Registre détaillé -->
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Registre des relevés (récents en haut)</div>
+    <div class="tblw" style="max-height:380px">
+      <table id="pestTable">
+        <thead><tr>
+          <th>Date</th><th>Dispositif</th><th>Zone</th><th>Emplacement</th>
+          <th>Type nuisible</th><th>Captures</th><th>Statut</th><th>Remarque</th>
+        </tr></thead>
+        <tbody id="pestTbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /pest -->
+
 </div><!-- /main -->
 
 <!-- ═══ MODAL INCIDENT ═══ -->
@@ -2094,6 +2330,34 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   </div>
 </div>
 
+<!-- ═══ MODAL EMBED NUISIBLES — feuille source dans le dashboard ═══ -->
+<div class="modal-bg" id="pestEmbedModal" style="display:none" onclick="if(event.target===this)closeModal('pestEmbedModal')">
+  <div class="modal-panel pest-embed-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="pestEmbedBadge" style="background:rgba(232,68,90,.18);border-color:var(--red)">🐀</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="pestEmbedKind">FEUILLE</div>
+        <div class="modal-hdr-name" id="pestEmbedTitle">—</div>
+        <div class="cln-embed-actions">
+          <a id="pestEmbedNewTab" class="cln-embed-newtab" href="#" target="_blank" rel="noopener noreferrer">↗ Ouvrir dans un onglet</a>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('pestEmbedModal')">✕</button>
+    </div>
+    <div class="modal-body pest-embed-body">
+      <div id="pestEmbedLoading" class="pest-embed-loading">
+        <div class="spin"></div>
+        <div>Chargement du document…</div>
+      </div>
+      <iframe id="pestEmbedFrame" class="pest-embed-iframe"
+              referrerpolicy="no-referrer"
+              allow="autoplay; fullscreen"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"
+              src="about:blank"></iframe>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════════════════════
 var D=null, viewMode='ytd', pyrMode='ytd', envMode='conso';
@@ -2165,7 +2429,7 @@ function goVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','pestEmbedModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -3838,6 +4102,9 @@ function render(data){
 
   // -- EPI -------------------------------------------------
   renderEPI();
+
+  // -- NUISIBLES (FK / Pièges / Colles / Raticide) --------
+  renderPest();
 }
 
 
@@ -4588,6 +4855,540 @@ function askG(prompt,display){
     .askGeminiForClient(buildCtx()+prompt);
 }
 function sendAI(){var inp=document.getElementById('aiIn'),p=inp.value.trim();if(!p)return;inp.value='';askG(p);}
+
+// ════════════════════════════════════════════════════════════
+// ══ NUISIBLES — Executive Summary, Heatmap & Hotspots       ══
+// ════════════════════════════════════════════════════════════
+// Logique :
+//   1. Filtrer (période, dispositif, zone) sur D.nuisibles.
+//   2. Construire un index pivot { zone × emplacement → {dispositifs}}
+//      pour la heatmap et un score de pression global par zone.
+//   3. Le score pondère les captures + bonus de corrélation
+//      lorsque plusieurs dispositifs détectent simultanément
+//      des captures dans la même zone.
+//   4. KPI Executive Summary, charts et registre détaillé.
+//   5. Les feuilles sources s'ouvrent dans un modal embed
+//      (jamais de redirection externe — iframe interne).
+
+var DISP_LABELS = { FK:'FK', PIEGES:'Pièges mécaniques',
+                    COLLES:'Boîtes à colles', RATICIDE:'Boîtes à raticide' };
+var DISP_ICONS  = { FK:'🪰', PIEGES:'🪤', COLLES:'🟧', RATICIDE:'☠️' };
+var DISP_COLORS = { FK:'#10c985', PIEGES:'#f5a623', COLLES:'#0da8d2', RATICIDE:'#e8445a' };
+
+// Niveau de pression nuisible (échelle de couleurs Heatmap)
+//   0 → aucune capture       (vert/gris : lvl-0 pour vide, lvl-1 pour 1-2)
+//   1 → 1-2 captures         (vert)
+//   2 → 3-5                   (jaune)
+//   3 → 6-9                   (orange)
+//   4 → 10+                   (rouge)
+//   5 → critique récurrente   (rouge foncé + bonus multi-dispositifs)
+function pestLevel(score, distinctDevices){
+  if (!score || score <= 0) return 0;
+  if (distinctDevices >= 3 && score >= 6) return 5;
+  if (distinctDevices >= 2 && score >= 8) return 5;
+  if (score >= 10) return 4;
+  if (score >= 6)  return 3;
+  if (score >= 3)  return 2;
+  return 1;
+}
+
+// Période courante (utilisée par "captures du mois" / "mois précédent")
+function pestCurrentMonthIso(){
+  var d = new Date();
+  return { y:d.getFullYear(), m:d.getMonth() };
+}
+function pestPrevMonth(){
+  var d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-1);
+  return { y:d.getFullYear(), m:d.getMonth() };
+}
+
+// Filtre période (réutilise les sélecteurs HTML)
+function onPestPer(){
+  var p=document.getElementById('pestPer').value;
+  ['pestYr','pestMo','pestD1','pestSep','pestD2'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.style.display='none';
+  });
+  if(p==='month'){
+    document.getElementById('pestYr').style.display='inline-block';
+    document.getElementById('pestMo').style.display='inline-block';
+  } else if(p==='custom'){
+    document.getElementById('pestD1').style.display='inline-block';
+    document.getElementById('pestSep').style.display='inline-block';
+    document.getElementById('pestD2').style.display='inline-block';
+  }
+  applyPestF();
+}
+
+function pestPeriodMatches(iso){
+  if(!iso) return false;
+  var p=document.getElementById('pestPer').value;
+  if(p==='all') return true;
+  if(p==='ytd'){ return iso.indexOf('2026')===0; }
+  if(p==='month'){
+    var y=document.getElementById('pestYr').value;
+    var m=String(parseInt(document.getElementById('pestMo').value,10)).padStart(2,'0');
+    return iso.indexOf(y+'-'+m)===0;
+  }
+  if(p==='custom'){
+    var d1=document.getElementById('pestD1').value;
+    var d2=document.getElementById('pestD2').value;
+    if(d1 && iso < d1) return false;
+    if(d2 && iso > d2) return false;
+    return true;
+  }
+  return true;
+}
+
+// Construit le tableau de bord Nuisibles à partir de D.nuisibles
+function applyPestF(){
+  if(!D) return;
+  var raw = (D.nuisibles||[]);
+  var disp = document.getElementById('pestDisp').value;
+  var zoneF= document.getElementById('pestZone').value;
+
+  var filtered = raw.filter(function(e){
+    if(disp!=='all' && e.dispositif!==disp) return false;
+    if(zoneF!=='all' && e.zone!==zoneF) return false;
+    if(!pestPeriodMatches(e.isoDate)) return false;
+    return true;
+  });
+
+  // Stats de base
+  var totalCap = 0;
+  var byMonthCap = {};                 // 'YYYY-MM' → captures
+  var byDispCap  = {FK:0,PIEGES:0,COLLES:0,RATICIDE:0};
+  var byTypeCap  = {};                 // type nuisible → captures
+  var byZoneCap  = {};                 // zone → captures
+  var byZoneDevices = {};              // zone → set(dispositif)
+  var byKey      = {};                 // 'zone||emplacement' → {zone, emp, captures, devices, types, lastDate}
+  var byEmpCap   = {};                 // emplacement → captures
+  var activeDevs = {FK:new Set(),PIEGES:new Set(),COLLES:new Set(),RATICIDE:new Set()};
+
+  filtered.forEach(function(e){
+    var c = e.captures || 0;
+    totalCap += c;
+    if(e.isoDate){
+      var ym = e.isoDate.substring(0,7);
+      byMonthCap[ym] = (byMonthCap[ym]||0) + c;
+    }
+    byDispCap[e.dispositif] = (byDispCap[e.dispositif]||0) + c;
+    if(e.typeNuisible){ byTypeCap[e.typeNuisible] = (byTypeCap[e.typeNuisible]||0) + c; }
+    if(e.zone){
+      byZoneCap[e.zone] = (byZoneCap[e.zone]||0) + c;
+      if(!byZoneDevices[e.zone]) byZoneDevices[e.zone] = {};
+      if(c>0) byZoneDevices[e.zone][e.dispositif] = (byZoneDevices[e.zone][e.dispositif]||0)+c;
+    }
+    if(e.emplacement){
+      byEmpCap[e.emplacement] = (byEmpCap[e.emplacement]||0) + c;
+    }
+    var k = e.key || ((e.zone||'')+'||'+(e.emplacement||'')).toLowerCase();
+    if(!byKey[k]) byKey[k] = { zone:e.zone||'—', emp:e.emplacement||'—',
+                               captures:0, devices:{}, types:{}, lastDate:'', count:0 };
+    byKey[k].captures += c;
+    byKey[k].count    += 1;
+    if(c>0) byKey[k].devices[e.dispositif] = (byKey[k].devices[e.dispositif]||0)+c;
+    if(e.typeNuisible) byKey[k].types[e.typeNuisible] = (byKey[k].types[e.typeNuisible]||0)+c;
+    if(e.isoDate && (!byKey[k].lastDate || e.isoDate>byKey[k].lastDate)) byKey[k].lastDate = e.isoDate;
+    // Dispositif actif = présence d'au moins un relevé sur la période
+    if(activeDevs[e.dispositif]) activeDevs[e.dispositif].add(((e.zone||'')+'|'+(e.emplacement||''))||'?');
+  });
+
+  // ─── KPI Executive Summary ───────────────────────────────
+  // Captures du mois en cours / mois précédent (calculs sur l'ensemble
+  // brut, pas le filtré, pour rester cohérent même quand l'utilisateur
+  // a sélectionné un autre mois).
+  var cur = pestCurrentMonthIso();
+  var prev= pestPrevMonth();
+  function capForMonth(y,m){
+    var prefix = y + '-' + String(m+1).padStart(2,'0');
+    var s = 0;
+    raw.forEach(function(e){
+      if(disp!=='all' && e.dispositif!==disp) return;
+      if(zoneF!=='all' && e.zone!==zoneF) return;
+      if(e.isoDate && e.isoDate.indexOf(prefix)===0) s += (e.captures||0);
+    });
+    return s;
+  }
+  var capCurMonth = capForMonth(cur.y, cur.m);
+  var capPrevMonth= capForMonth(prev.y, prev.m);
+  var deltaPct = capPrevMonth>0 ? Math.round((capCurMonth-capPrevMonth)/capPrevMonth*100) : (capCurMonth>0?100:0);
+  var deltaSign = deltaPct>0?'▲':(deltaPct<0?'▼':'■');
+  var deltaColor= deltaPct>15?'r':(deltaPct<-15?'g':'a');
+
+  // Zone la plus critique (score = captures + bonus multi-dispositifs)
+  var zoneScores = Object.keys(byZoneCap).map(function(z){
+    var devCount = byZoneDevices[z] ? Object.keys(byZoneDevices[z]).length : 0;
+    return { zone:z, captures:byZoneCap[z], devices:devCount,
+             score: byZoneCap[z] + (devCount>=2 ? Math.round(byZoneCap[z]*0.5) : 0) };
+  }).sort(function(a,b){ return b.score - a.score; });
+  var topZone = zoneScores.length ? zoneScores[0] : { zone:'—', captures:0, devices:0, score:0 };
+
+  // Type de nuisible dominant
+  var typeArr = Object.keys(byTypeCap).map(function(t){ return {t:t,c:byTypeCap[t]}; })
+                  .sort(function(a,b){return b.c-a.c;});
+  var topType = typeArr.length ? typeArr[0] : {t:'—',c:0};
+
+  // Dispositifs actifs (nombre de points de relevé par type)
+  var activeFK   = activeDevs.FK.size;
+  var activePI   = activeDevs.PIEGES.size;
+  var activeCO   = activeDevs.COLLES.size;
+  var activeRA   = activeDevs.RATICIDE.size;
+  var activeTotal= activeFK+activePI+activeCO+activeRA;
+
+  document.getElementById('pestStat').textContent = fmtNum(totalCap)+' capture'+(totalCap>1?'s':'')+' · '+filtered.length+' relevés';
+
+  document.getElementById('pestKpi').innerHTML = [
+    kpiCard('Captures totales', totalCap, 'r', 'sur la période filtrée', 'k-r', null, null),
+    kpiCard('Captures '+ML[cur.m]+' '+cur.y, capCurMonth, 'a', 'mois en cours', 'k-a', null, null),
+    kpiCard('Évolution vs M-1',
+      (deltaPct>0?'+':'')+deltaPct+'%',
+      deltaColor, ML[prev.m]+' : '+fmtNum(capPrevMonth)+' '+deltaSign,
+      'k-'+deltaColor, null, null),
+    kpiCard('Zone critique', topZone.zone||'—', 'r',
+      fmtNum(topZone.captures)+' captures · '+topZone.devices+' dispositif'+(topZone.devices>1?'s':''),
+      'k-r', null, null),
+    kpiCard('Nuisible dominant', topType.t, 'a',
+      fmtNum(topType.c)+' captures', 'k-a', null, null),
+    kpiCard('Dispositifs actifs', activeTotal, 'b',
+      'FK:'+activeFK+' · Piè:'+activePI+' · Col:'+activeCO+' · Rat:'+activeRA,
+      'k-b', null, null)
+  ].join('');
+
+  // ─── HEATMAP zone × emplacement ───────────────────────────
+  renderPestHeatmap(filtered, byKey);
+
+  // ─── Indice global de pression nuisible par zone ──────────
+  renderPestPressureList(zoneScores, byZoneDevices);
+
+  // ─── Charts ──────────────────────────────────────────────
+  renderPestCharts(filtered, byMonthCap, byDispCap, byTypeCap, byEmpCap);
+
+  // ─── Registre détaillé ───────────────────────────────────
+  renderPestTable(filtered);
+}
+
+// ══ Heatmap ══════════════════════════════════════════════════
+// Crée une grille zone × emplacement. Chaque cellule = somme des
+// captures de tous les dispositifs sur cette intersection, avec
+// indication du nombre de dispositifs distincts (badge).
+function renderPestHeatmap(filtered, byKey){
+  var hostId = 'pestHeatmap';
+  var host = document.getElementById(hostId);
+  if(!host) return;
+
+  // Construire l'axe X = emplacements, axe Y = zones
+  var zones = {};
+  var emps  = {};
+  Object.keys(byKey).forEach(function(k){
+    var item = byKey[k];
+    if(!zones[item.zone]) zones[item.zone] = 0;
+    if(!emps[item.emp])   emps[item.emp]   = 0;
+    zones[item.zone] += item.captures;
+    emps[item.emp]   += item.captures;
+  });
+  var zoneList = Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];});
+  var empList  = Object.keys(emps ).sort(function(a,b){return emps[b]-emps[a];});
+
+  if(zoneList.length===0 || empList.length===0){
+    host.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text3);font-size:11px;font-style:italic">Aucune donnée à afficher pour la période sélectionnée.</div>';
+    return;
+  }
+
+  // Limiter à 14 colonnes (emplacements) max — sinon scroll horizontal
+  var maxCols = Math.min(empList.length, 14);
+  var emplacementsShown = empList.slice(0, maxCols);
+
+  var gridTemplate = '170px repeat(' + emplacementsShown.length + ', minmax(72px, 1fr))';
+
+  // Header
+  var header = '<div class="pest-hm-header" style="grid-template-columns:'+gridTemplate+'">'
+    + '<div class="pest-hm-h-cell h-zone">Zone ↓ / Emplacement →</div>'
+    + emplacementsShown.map(function(e){ return '<div class="pest-hm-h-cell" title="'+esc(e)+'">'+esc(truncate(e,18))+'</div>'; }).join('')
+    + '</div>';
+
+  // Rows
+  var rows = zoneList.map(function(z){
+    var cells = emplacementsShown.map(function(e){
+      var key = (z+'||'+e).toLowerCase();
+      var item = byKey[key];
+      var cap = item ? item.captures : 0;
+      var devices = item ? Object.keys(item.devices).length : 0;
+      var lvl = pestLevel(cap, devices);
+      var devList = item ? Object.keys(item.devices).map(function(d){return DISP_LABELS[d];}).join(', ') : '';
+      var tip = z+' / '+e+'\n'+cap+' captures'+(devices>0?' · '+devices+' dispositif'+(devices>1?'s':''):'')
+              +(devList?' ('+devList+')':'')
+              +(item && item.lastDate ? '\nDernier relevé : '+item.lastDate : '');
+      var label = cap > 0 ? cap : '·';
+      var multi = devices > 1 ? '<span class="hm-multi">×'+devices+'</span>' : '';
+      return '<div class="pest-hm-cell lvl-'+lvl+'" title="'+esc(tip)+'" '
+           + 'onclick="openPestCellDetails(\''+esc(z).replace(/'/g,"\\'")+'\',\''+esc(e).replace(/'/g,"\\'")+'\')">'
+           + label + multi + '</div>';
+    }).join('');
+    return '<div class="pest-hm-row" style="grid-template-columns:'+gridTemplate+'">'
+         + '<div class="pest-hm-zone" title="'+esc(z)+'">'+esc(z)+'</div>'
+         + cells + '</div>';
+  }).join('');
+
+  host.innerHTML = '<div class="pest-heatmap">' + header + rows + '</div>'
+                 + (empList.length>maxCols
+                    ? '<div style="font-size:9px;color:var(--text3);margin-top:6px;font-style:italic">+ '+(empList.length-maxCols)+' emplacements masqués (filtre dispositif/zone pour les voir).</div>'
+                    : '');
+}
+
+function truncate(s, n){
+  s = String(s||'');
+  return s.length > n ? s.substring(0,n-1)+'…' : s;
+}
+
+// ── Index global de pression par zone ════════════════════════
+function renderPestPressureList(zoneScores, byZoneDevices){
+  var host = document.getElementById('pestPressureList');
+  if(!host) return;
+  if(!zoneScores.length){
+    host.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;font-style:italic">Aucune zone active sur la période.</div>';
+    return;
+  }
+  var top = zoneScores.slice(0, 10);
+  host.innerHTML = top.map(function(z){
+    var devs = byZoneDevices[z.zone] || {};
+    var devCount = Object.keys(devs).length;
+    var lvl = pestLevel(z.captures, devCount);
+    var devTxt = Object.keys(devs).map(function(d){
+      return '<span style="color:'+DISP_COLORS[d]+';font-weight:600">'+DISP_LABELS[d]+'</span>';
+    }).join(' · ');
+    return '<div class="pest-pressure-row lvl-'+lvl+'" title="Cliquer pour filtrer cette zone" onclick="filterPestZone(\''+esc(z.zone).replace(/'/g,"\\'")+'\')">'
+         +   '<div class="pest-pressure-zone">'+esc(z.zone)+'</div>'
+         +   '<div class="pest-pressure-meta">'+(devTxt||'<span style="color:var(--text3)">—</span>')+'</div>'
+         +   '<div class="pest-pressure-score lvl-'+lvl+'">'+fmtNum(z.score)+'</div>'
+         + '</div>';
+  }).join('');
+}
+
+function filterPestZone(zone){
+  var sel = document.getElementById('pestZone');
+  if(!sel) return;
+  // Vérifie que l'option existe avant de l'utiliser
+  var found = false;
+  for(var i=0;i<sel.options.length;i++){
+    if(sel.options[i].value===zone){ found=true; break; }
+  }
+  if(found){ sel.value = zone; applyPestF(); }
+}
+
+// ══ Charts ═══════════════════════════════════════════════════
+function renderPestCharts(filtered, byMonthCap, byDispCap, byTypeCap, byEmpCap){
+  // 1. Comparaison FK / Pièges / Colles / Raticide ────────────
+  var dispOrder = ['FK','PIEGES','COLLES','RATICIDE'];
+  mkChart('pestDispC', 'doughnut',
+    dispOrder.map(function(d){return DISP_LABELS[d];}),
+    [{ data: dispOrder.map(function(d){return byDispCap[d]||0;}),
+       backgroundColor: dispOrder.map(function(d){return DISP_COLORS[d];}),
+       borderColor: 'rgba(0,0,0,.15)', borderWidth: 1 }],
+    Object.assign({}, BASE, {
+      cutout:'58%',
+      plugins:{legend:{display:true,position:'right',
+        labels:{color:C.txt,font:{size:10},boxWidth:10,padding:6}}}
+    })
+  );
+
+  // 2. Évolution mensuelle des captures (par dispositif) ──────
+  // Construire les 12 derniers mois étiquetés
+  var now = new Date();
+  var monthLabels = [], monthKeys = [];
+  for(var i=11;i>=0;i--){
+    var d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    monthKeys.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+    monthLabels.push(ML[d.getMonth()]+' '+String(d.getFullYear()).slice(-2));
+  }
+  var dispMonthly = {FK:[],PIEGES:[],COLLES:[],RATICIDE:[]};
+  monthKeys.forEach(function(mk){
+    dispOrder.forEach(function(d){ dispMonthly[d].push(0); });
+  });
+  filtered.forEach(function(e){
+    if(!e.isoDate) return;
+    var mk = e.isoDate.substring(0,7);
+    var idx = monthKeys.indexOf(mk);
+    if(idx<0) return;
+    dispMonthly[e.dispositif][idx] = (dispMonthly[e.dispositif][idx]||0) + (e.captures||0);
+  });
+  mkChart('pestMonthC', 'line', monthLabels,
+    dispOrder.map(function(d){
+      return { label:DISP_LABELS[d], data:dispMonthly[d],
+               borderColor:DISP_COLORS[d], backgroundColor:DISP_COLORS[d]+'22',
+               fill:false, tension:.35, borderWidth:2, pointRadius:3 };
+    }),
+    Object.assign({}, BASE, {
+      plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}
+    })
+  );
+
+  // 3. Répartition par type de nuisible ───────────────────────
+  var typeArr = Object.keys(byTypeCap).map(function(t){ return [t, byTypeCap[t]]; })
+                  .sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  var typeColors = ['#e8445a','#f5a623','#0da8d2','#10c985','#8b5cf6','#fb7c2e','#14b8a6','#7a0020'];
+  if(typeArr.length === 0) typeArr = [['—',0]];
+  mkChart('pestTypeC', 'bar',
+    typeArr.map(function(x){return truncate(x[0],14);}),
+    [{ label:'Captures', data:typeArr.map(function(x){return x[1];}),
+       backgroundColor:typeArr.map(function(_,i){return typeColors[i%typeColors.length];}),
+       borderRadius:4 }],
+    Object.assign({}, BASE, {
+      indexAxis:'y',
+      plugins:{legend:{display:false}}
+    })
+  );
+
+  // 4. Tendance hebdomadaire (8 dernières semaines) ───────────
+  var weekData = []; var weekLabels = [];
+  for(var w=7; w>=0; w--){
+    var end = new Date(); end.setHours(0,0,0,0);
+    end.setDate(end.getDate() - (w*7));
+    var start = new Date(end); start.setDate(start.getDate()-6);
+    var startIso = start.toISOString().substring(0,10);
+    var endIso   = end.toISOString().substring(0,10);
+    var sum = 0;
+    filtered.forEach(function(e){
+      if(e.isoDate >= startIso && e.isoDate <= endIso) sum += (e.captures||0);
+    });
+    weekData.push(sum);
+    weekLabels.push('S-'+w);
+  }
+  mkChart('pestWeekC','bar', weekLabels,
+    [{ label:'Captures', data:weekData,
+       backgroundColor:weekData.map(function(v,i){
+         if(v===0) return '#1a4055';
+         if(v<3) return '#10b981';
+         if(v<6) return '#f5a623';
+         if(v<10)return '#fb7c2e';
+         return '#e8445a';
+       }),
+       borderRadius:4 }],
+    BASE
+  );
+
+  // 5. Histogramme par emplacement (top 12) ───────────────────
+  var empArr = Object.keys(byEmpCap).map(function(e){return [e,byEmpCap[e]];})
+                .sort(function(a,b){return b[1]-a[1];}).slice(0,12);
+  if(empArr.length === 0) empArr = [['—',0]];
+  mkChart('pestEmpC','bar',
+    empArr.map(function(x){return truncate(x[0],14);}),
+    [{ label:'Captures', data:empArr.map(function(x){return x[1];}),
+       backgroundColor:'#0da8d2', borderRadius:4 }],
+    Object.assign({}, BASE, {
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{title:function(items){return empArr[items[0].dataIndex][0];}}}}
+    })
+  );
+}
+
+// ══ Registre détaillé ════════════════════════════════════════
+function renderPestTable(filtered){
+  var tbody = document.getElementById('pestTbody');
+  if(!tbody) return;
+  if(!filtered.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);font-style:italic;padding:20px">Aucun relevé sur la période sélectionnée.</td></tr>';
+    return;
+  }
+  // Limite à 250 lignes pour rester performant
+  var rows = filtered.slice(0, 250);
+  tbody.innerHTML = rows.map(function(e){
+    var capColor = e.captures>=10?'var(--red)':e.captures>=6?'#fb7c2e':e.captures>=3?'var(--amber)':e.captures>0?'var(--green)':'var(--text3)';
+    return '<tr>'
+      +'<td class="mono" style="font-size:10px">'+esc(e.date||'—')+'</td>'
+      +'<td><span class="rbadge" style="background:'+DISP_COLORS[e.dispositif]+'22;color:'+DISP_COLORS[e.dispositif]+'">'+esc(DISP_LABELS[e.dispositif]||e.dispositif)+'</span></td>'
+      +'<td>'+esc(e.zone||'—')+'</td>'
+      +'<td>'+esc(e.emplacement||'—')+'</td>'
+      +'<td>'+esc(e.typeNuisible||'—')+'</td>'
+      +'<td class="mono" style="font-weight:700;color:'+capColor+'">'+fmtNum(e.captures||0)+'</td>'
+      +'<td>'+esc(e.statut||'—')+'</td>'
+      +'<td style="font-size:10px;color:var(--text3);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(e.remarque||'')+'">'+esc(e.remarque||'—')+'</td>'
+      +'</tr>';
+  }).join('') + (filtered.length>250
+    ? '<tr><td colspan="8" style="text-align:center;color:var(--text3);font-style:italic;font-size:10px;padding:8px">… '+(filtered.length-250)+' lignes supplémentaires masquées (affinez les filtres)</td></tr>'
+    : '');
+}
+
+// ══ Sources : 4 cartes "dispositif" ouvrant la feuille en embed ═
+function renderPestSources(){
+  var host = document.getElementById('pestSources');
+  if(!host) return;
+  var sources = (D && D.nuisiblesSources) ? D.nuisiblesSources : [];
+  // Stats par dispositif (sur l'ensemble, sans filtre)
+  var capByDisp = {};
+  (D.nuisibles||[]).forEach(function(e){ capByDisp[e.dispositif] = (capByDisp[e.dispositif]||0)+(e.captures||0); });
+
+  host.innerHTML = sources.map(function(s){
+    var found = !!(s.name && s.embedUrl);
+    var cap = capByDisp[s.code] || 0;
+    var openAttr = found
+      ? 'onclick="openPestEmbed(\''+esc(s.embedUrl)+'\',\''+esc(s.url)+'\',\''+esc(s.label).replace(/'/g,"\\'")+'\',\''+s.code+'\')"'
+      : 'title="Feuille introuvable dans le classeur"';
+    return '<div class="pest-src-card s-'+s.code+(found?'':' disabled')+'" '+openAttr+'>'
+      +   '<div class="pest-src-title"><span style="font-size:14px">'+(DISP_ICONS[s.code]||'•')+'</span>'+esc(s.label)+'</div>'
+      +   '<div class="pest-src-meta">'+esc(found?(s.name||'—'):'feuille introuvable')+'</div>'
+      +   '<div class="pest-src-cap">'+fmtNum(cap)+' <span style="font-size:9px;color:var(--text3);font-weight:400">captures</span></div>'
+      +   (found ? '<div class="pest-src-hint">↗ Ouvrir la feuille dans le dashboard</div>' : '<div class="pest-src-hint" style="color:var(--amber)">⚠ Vérifier le nom de l\'onglet</div>')
+      + '</div>';
+  }).join('');
+}
+
+// ══ Modal embed (iframe interne, pas de redirection externe) ══
+function openPestEmbed(embedUrl, externalUrl, title, code){
+  var modal  = document.getElementById('pestEmbedModal');
+  var frame  = document.getElementById('pestEmbedFrame');
+  var loader = document.getElementById('pestEmbedLoading');
+  var titleEl= document.getElementById('pestEmbedTitle');
+  var kindEl = document.getElementById('pestEmbedKind');
+  var newTab = document.getElementById('pestEmbedNewTab');
+  var badge  = document.getElementById('pestEmbedBadge');
+
+  if(titleEl) titleEl.textContent = title || 'Feuille nuisibles';
+  if(kindEl)  kindEl.textContent  = 'NUISIBLES · '+(code||'');
+  if(newTab)  newTab.href = externalUrl || embedUrl;
+  if(badge)   badge.textContent = DISP_ICONS[code] || '🐀';
+  if(loader)  loader.classList.remove('hide');
+  if(frame){
+    frame.onload = function(){ if(loader) loader.classList.add('hide'); };
+    frame.src = embedUrl;
+  }
+  openModal('pestEmbedModal');
+}
+
+// Lorsqu'on clique sur une cellule de heatmap → on filtre la zone
+// puis on ouvre une fenêtre détail. Pour rester simple : on filtre
+// la zone (l'emplacement reste dans la heatmap).
+function openPestCellDetails(zone, emplacement){
+  filterPestZone(zone);
+  // Scrolle vers la table pour les détails
+  var tbl = document.getElementById('pestTable');
+  if(tbl) tbl.scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+// Initialise le filtre Zone (liste déroulante) à partir des données
+function populatePestDropdowns(){
+  if(!D) return;
+  var zoneSel = document.getElementById('pestZone');
+  if(!zoneSel) return;
+  var current = zoneSel.value || 'all';
+  var zones = {};
+  (D.nuisibles||[]).forEach(function(e){ if(e.zone) zones[e.zone] = (zones[e.zone]||0)+(e.captures||0); });
+  var sorted = Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];});
+  zoneSel.innerHTML = '<option value="all">Toutes</option>' +
+    sorted.map(function(z){ return '<option value="'+esc(z)+'">'+esc(z)+'</option>'; }).join('');
+  if(current && current!=='all'){
+    for(var i=0;i<zoneSel.options.length;i++){
+      if(zoneSel.options[i].value===current){ zoneSel.value=current; break; }
+    }
+  }
+}
+
+// Point d'entrée appelé depuis render()
+function renderPest(){
+  if(!D) return;
+  renderPestSources();
+  populatePestDropdowns();
+  applyPestF();
+}
 
 // ══ NOTIFICATIONS COMPLÈTES (MODAL) ══════════════════════════
 function openNotifFull(){

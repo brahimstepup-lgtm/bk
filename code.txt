@@ -59,6 +59,23 @@ var EPI_SHEET_NAME = 'Gestion du Stock des EPI (Équipements de Protection Indiv
 var EPI_SLIDES_ID    = '1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk';
 var EPI_SLIDES_SLIDE = 'id.p4';
 
+// ── NUISIBLES (4 feuilles) ───────────────────────────────────
+// Chaque dispositif est suivi sur une feuille distincte. On
+// détecte les feuilles par GID (lorsqu'il est connu) ET par
+// mots-clés du nom (FK / piège / colle / raticide) pour rester
+// résilient si les onglets sont renommés.
+// Colonnes normalisées (auto-détection souple) :
+//   date | zone | emplacement | type nuisible | captures
+//   | statut | remarque
+// Le client construit la clé « zone + emplacement » pour la
+// heatmap et la corrélation entre dispositifs.
+var NUISIBLES_SHEETS = [
+  { code:'FK',       label:'FK',                gid:1333145847, keywords:['fk','fly killer','flying','insect','tue mouche'] },
+  { code:'PIEGES',   label:'Pièges mécaniques', gid:null,       keywords:['piege','mecaniqu','mechanical','snap','rat trap','souricier'] },
+  { code:'COLLES',   label:'Boîtes à colles',   gid:null,       keywords:['colle','glue','adhesif'] },
+  { code:'RATICIDE', label:'Boîtes à raticide', gid:null,       keywords:['raticide','rodenticide','poison','appat','appât','bait'] }
+];
+
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
@@ -1691,6 +1708,183 @@ function readContracts(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── NUISIBLES — lecture des 4 feuilles (FK / Pièges /
+//    Colles / Raticide) avec auto-détection des colonnes ─────
+//
+// Chaque feuille a son propre format mais partage les mêmes
+// concepts : DATE, ZONE, EMPLACEMENT, TYPE NUISIBLE, CAPTURES,
+// STATUT, REMARQUE. On essaye de mapper toutes les variantes
+// d'entêtes courantes (français / anglais, accents, abréviations).
+//
+// Sortie : { entries: [...], sources: [{code,label,name,url}] }
+//   chaque entrée = {
+//     dispositif:      'FK' | 'PIEGES' | 'COLLES' | 'RATICIDE',
+//     dispositifLabel: 'FK' | 'Pièges mécaniques' | …,
+//     date, isoDate, zone, emplacement, key (zone||emplacement),
+//     typeNuisible, captures, statut, remarque, sourceUrl
+//   }
+// ════════════════════════════════════════════════════════════
+function readNuisibles(ss) {
+  var entries = [];
+  var sources = [];
+  var allSheets = ss.getSheets();
+
+  function findPestSheet(cfg) {
+    if (cfg.gid) {
+      for (var i = 0; i < allSheets.length; i++) {
+        if (allSheets[i].getSheetId() === cfg.gid) return allSheets[i];
+      }
+    }
+    var best = null, bestScore = 0;
+    for (var i = 0; i < allSheets.length; i++) {
+      var n = normalize(allSheets[i].getName());
+      var score = 0;
+      for (var k = 0; k < cfg.keywords.length; k++) {
+        if (n.indexOf(cfg.keywords[k]) > -1) score++;
+      }
+      if (score > bestScore) { bestScore = score; best = allSheets[i]; }
+    }
+    return best;
+  }
+
+  function detectCol(headers, candidates) {
+    for (var k = 0; k < candidates.length; k++) {
+      var key = candidates[k];
+      for (var c = 0; c < headers.length; c++) {
+        var h = normalize(String(headers[c]||'').replace(/[\n\r#]/g,'').trim());
+        if (!h) continue;
+        if (h.indexOf(key) > -1) return c;
+      }
+    }
+    return -1;
+  }
+
+  NUISIBLES_SHEETS.forEach(function(cfg) {
+    try {
+      var sh = findPestSheet(cfg);
+      var sheetName = sh ? sh.getName() : '';
+      var gid = sh ? sh.getSheetId() : (cfg.gid || 0);
+      var sourceUrl = sh
+        ? ('https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+           '/edit?gid=' + gid + '#gid=' + gid)
+        : '';
+      sources.push({
+        code: cfg.code,
+        label: cfg.label,
+        name: sheetName,
+        gid:  gid,
+        url:  sourceUrl,
+        embedUrl: sh
+          ? ('https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+             '/preview?gid=' + gid)
+          : ''
+      });
+
+      if (!sh) { Logger.log('Nuisibles : feuille « ' + cfg.label + ' » introuvable'); return; }
+
+      var data = sh.getDataRange().getValues();
+      if (!data || data.length < 2) return;
+
+      // Localiser la ligne d'entêtes (souvent la 1ère, parfois la 2e)
+      var headerRow = 0;
+      for (var i = 0; i < Math.min(data.length, 5); i++) {
+        var row = data[i];
+        var hits = 0;
+        for (var c = 0; c < row.length; c++) {
+          var h = normalize(String(row[c]||''));
+          if (h.indexOf('date') > -1 || h.indexOf('zone') > -1 ||
+              h.indexOf('emplace') > -1 || h.indexOf('captur') > -1 ||
+              h.indexOf('nuisi') > -1 || h.indexOf('statut') > -1) hits++;
+        }
+        if (hits >= 2) { headerRow = i; break; }
+      }
+      var headers = data[headerRow] || [];
+
+      var COL = {
+        date:        detectCol(headers, ['date','jour','releve','relevé','inspect']),
+        zone:        detectCol(headers, ['zone','secteur','batiment','bâtiment','atelier','site']),
+        emplacement: detectCol(headers, ['emplace','localisation','position','poste','endroit','lieu','n°','numero','numéro','reference']),
+        typeNuisible:detectCol(headers, ['type nuisible','nuisible','espece','espèce','type d','insecte','rongeur','animal']),
+        captures:    detectCol(headers, ['capture','nombre','quantit','qte','qté','count','cadavre','prises','prise']),
+        statut:      detectCol(headers, ['statut','etat','état','status','condition']),
+        remarque:    detectCol(headers, ['remarque','observation','note','commentaire','comment'])
+      };
+
+      // Fallback positionnel si l'auto-détection échoue
+      // (ordre habituel : date | zone | emplacement | type | captures | statut | remarque)
+      var fallbackOrder = ['date','zone','emplacement','typeNuisible','captures','statut','remarque'];
+      for (var fi = 0; fi < fallbackOrder.length; fi++) {
+        var fk = fallbackOrder[fi];
+        if (COL[fk] < 0 && fi < headers.length && !isNull(headers[fi])) {
+          var taken = false;
+          for (var k in COL) { if (COL[k] === fi) { taken = true; break; } }
+          if (!taken) COL[fk] = fi;
+        }
+      }
+
+      Logger.log('Nuisibles « ' + cfg.label + ' » COL: ' + JSON.stringify(COL));
+
+      for (var i = headerRow + 1; i < data.length; i++) {
+        var r = data[i];
+        var hasAny = false;
+        for (var k in COL) {
+          if (COL[k] >= 0 && !isNull(r[COL[k]])) { hasAny = true; break; }
+        }
+        if (!hasAny) continue;
+
+        var dateRaw = (COL.date >= 0) ? r[COL.date] : null;
+        var pd  = parseDate(dateRaw);
+        var iso = (pd && !isNaN(pd.getTime())) ? Utilities.formatDate(pd, 'GMT+1', 'yyyy-MM-dd') : '';
+        var zoneVal = (COL.zone >= 0 && !isNull(r[COL.zone])) ? String(r[COL.zone]).trim() : '';
+        var empVal  = (COL.emplacement >= 0 && !isNull(r[COL.emplacement])) ? String(r[COL.emplacement]).trim() : '';
+        if (!iso && !zoneVal && !empVal) continue;
+
+        var captures = (COL.captures >= 0) ? toNumZ(r[COL.captures]) : 0;
+        var typeN = (COL.typeNuisible >= 0 && !isNull(r[COL.typeNuisible])) ? String(r[COL.typeNuisible]).trim() : '';
+        var stat  = (COL.statut       >= 0 && !isNull(r[COL.statut]))        ? String(r[COL.statut]).trim()        : '';
+        var rem   = (COL.remarque     >= 0 && !isNull(r[COL.remarque]))      ? String(r[COL.remarque]).trim()      : '';
+
+        if (!typeN) {
+          if (cfg.code === 'FK')                                   typeN = 'Insectes volants';
+          else if (cfg.code === 'COLLES')                          typeN = 'Insectes / Rongeurs';
+          else if (cfg.code === 'PIEGES' || cfg.code === 'RATICIDE') typeN = 'Rongeurs';
+        }
+
+        var key = (zoneVal + '||' + empVal).toLowerCase();
+
+        entries.push({
+          dispositif:      cfg.code,
+          dispositifLabel: cfg.label,
+          date:            fmtDate(dateRaw),
+          isoDate:         iso,
+          zone:            zoneVal,
+          emplacement:     empVal,
+          key:             key,
+          typeNuisible:    typeN,
+          captures:        captures,
+          statut:          stat,
+          remarque:        rem,
+          sourceUrl:       sourceUrl
+        });
+      }
+    } catch(e) {
+      Logger.log('readNuisibles « ' + cfg.label + ' » erreur : ' + e.message);
+    }
+  });
+
+  // Plus récent en haut
+  entries.sort(function(a,b){
+    if (!a.isoDate) return 1;
+    if (!b.isoDate) return -1;
+    return b.isoDate.localeCompare(a.isoDate);
+  });
+
+  Logger.log('Nuisibles : ' + entries.length + ' entrées (' +
+             sources.filter(function(s){return s.name;}).length + ' feuilles)');
+  return { entries: entries, sources: sources };
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 function getData() {
@@ -1764,6 +1958,11 @@ function getData() {
   out.epiSlideEmbedUrl = 'https://docs.google.com/presentation/d/' + EPI_SLIDES_ID +
                          '/embed?slide=' + EPI_SLIDES_SLIDE +
                          '&start=false&loop=false&delayms=60000';
+
+  // ── NUISIBLES (FK / Pièges / Colles / Raticide) ──────────
+  var nuis = readNuisibles(ss);
+  out.nuisibles        = (nuis && nuis.entries) ? nuis.entries : [];
+  out.nuisiblesSources = (nuis && nuis.sources) ? nuis.sources : [];
 
 
   // ── KPI ──────────────────────────────────────────────────
