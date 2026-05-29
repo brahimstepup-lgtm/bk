@@ -5359,6 +5359,9 @@ function renderPestSources(){
     if (found) {
       meta = esc(s.name) + ' · ' + rows + ' relevé' + (rows>1?'s':'');
       if (s.lastDate) meta += ' · dernier ' + s.lastDate;
+      if (s.format === 'wide' && s.typeColumns && s.typeColumns.length) {
+        meta += '<br><span style="font-size:9px;color:var(--p4)">📊 wide : ' + esc(s.typeColumns.join(' · ')) + '</span>';
+      }
     } else {
       meta = '<span style="color:var(--amber)">feuille introuvable</span>';
     }

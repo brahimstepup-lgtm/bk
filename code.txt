@@ -1824,25 +1824,72 @@ function readNuisibles(ss) {
         remarque:    detectCol(headers, ['remarque','observation','note','commentaire','comment'])
       };
 
+      // ── Détection du format LARGE (wide) : plusieurs colonnes
+      //    portant directement le nom d'un nuisible (ex. FK :
+      //    Mouches | MOUSTIQUE | ABEILLE | PAPILLON | AUTRES).
+      //    Quand >= 2 entêtes correspondent à un nom de nuisible
+      //    connu, on passe en mode pivot wide→long et on émet
+      //    une ligne par (relevé × type nuisible).
+      // ─────────────────────────────────────────────────────
+      var PEST_NAMES = [
+        'mouche','mouches','moustique','moustiques','abeille','abeilles',
+        'papillon','papillons','guepe','guepes','frelon','frelons',
+        'fourmi','fourmis','blatte','blattes','cafard','cafards','cancrelat',
+        'mite','mites','charancon','tribolium','teigne','teignes',
+        'rat','rats','souris','mulot','mulots','rongeur','rongeurs',
+        'autre','autres','divers'
+      ];
+      var typeColumns = [];   // [ {idx, name}, … ]
+      var typeColsTaken = {}; // index colonne → true (à exclure des autres mappings)
+      headers.forEach(function(h, c) {
+        var hn = normalize(String(h||'').replace(/[\n\r#()]/g,'').trim());
+        if (!hn) return;
+        // Évite que les colonnes déjà mappées soient confondues avec un type
+        if (c === COL.date || c === COL.zone || c === COL.emplacement ||
+            c === COL.typeNuisible || c === COL.captures ||
+            c === COL.statut || c === COL.remarque) return;
+        for (var i = 0; i < PEST_NAMES.length; i++) {
+          var pn = PEST_NAMES[i];
+          if (hn === pn || hn.indexOf(pn) > -1) {
+            typeColumns.push({ idx:c, name:String(h).trim() });
+            typeColsTaken[c] = true;
+            break;
+          }
+        }
+      });
+      var isWideFormat = typeColumns.length >= 2;
+
       // Fallback positionnel si l'auto-détection échoue
       // (ordre habituel : date | zone | emplacement | type | captures | statut | remarque)
-      var fallbackOrder = ['date','zone','emplacement','typeNuisible','captures','statut','remarque'];
+      // En mode wide on n'attribue PAS de colonne « captures » ni
+      // « typeNuisible » par défaut → elles viennent du pivot.
+      var fallbackOrder = isWideFormat
+        ? ['date','zone','emplacement','statut','remarque']
+        : ['date','zone','emplacement','typeNuisible','captures','statut','remarque'];
       for (var fi = 0; fi < fallbackOrder.length; fi++) {
         var fk = fallbackOrder[fi];
         if (COL[fk] < 0 && fi < headers.length && !isNull(headers[fi])) {
           var taken = false;
+          if (typeColsTaken[fi]) taken = true;
           for (var k in COL) { if (COL[k] === fi) { taken = true; break; } }
           if (!taken) COL[fk] = fi;
         }
       }
 
-      Logger.log('Nuisibles « ' + cfg.label + ' » COL: ' + JSON.stringify(COL));
+      Logger.log('Nuisibles « ' + cfg.label + ' » COL: ' + JSON.stringify(COL) +
+                 ' wide=' + isWideFormat + ' typeCols=' + JSON.stringify(typeColumns.map(function(t){return t.name;})));
 
       for (var i = headerRow + 1; i < data.length; i++) {
         var r = data[i];
         var hasAny = false;
         for (var k in COL) {
           if (COL[k] >= 0 && !isNull(r[COL[k]])) { hasAny = true; break; }
+        }
+        if (!hasAny && isWideFormat) {
+          // En wide : on accepte aussi la ligne si elle n'a qu'un compteur
+          for (var ti = 0; ti < typeColumns.length; ti++) {
+            if (!isNull(r[typeColumns[ti].idx])) { hasAny = true; break; }
+          }
         }
         if (!hasAny) continue;
 
@@ -1853,64 +1900,134 @@ function readNuisibles(ss) {
         var empVal  = (COL.emplacement >= 0 && !isNull(r[COL.emplacement])) ? String(r[COL.emplacement]).trim() : '';
         if (!iso && !zoneVal && !empVal) continue;
 
-        // ── Lecture captures, robuste aux marqueurs textuels ──
-        // Si la cellule contient un nombre → on le prend tel quel.
-        // Si elle contient un marqueur de présence (X, ✓, OUI,
-        // PRÉSENCE, ACTIF, CAPTURÉ…) → on compte 1 capture.
-        // Sinon (vide, RAS, NON, AUCUNE, INACTIF…) → 0.
-        var captures = 0;
-        if (COL.captures >= 0) {
-          var capRaw = r[COL.captures];
-          var capNum = toNum(capRaw);
-          if (capNum !== null) {
-            captures = capNum;
-          } else if (!isNull(capRaw)) {
-            var capTxt = normalize(String(capRaw));
-            // Détection de marqueurs positifs
-            if (/^(x|✓|v|oui|yes|presence|present|presents|presentes|capture|capturee|capturees|captures|actif|active|infest|prise|prises)$/.test(capTxt) ||
-                capTxt.indexOf('captur') > -1 || capTxt.indexOf('present') > -1 ||
-                capTxt.indexOf('infest')  > -1 || capTxt === 'x' || capTxt === '✓') {
-              captures = 1;
-            } else {
-              captures = 0;
-            }
-          }
-        }
-        var typeN = (COL.typeNuisible >= 0 && !isNull(r[COL.typeNuisible])) ? String(r[COL.typeNuisible]).trim() : '';
         var stat  = (COL.statut       >= 0 && !isNull(r[COL.statut]))        ? String(r[COL.statut]).trim()        : '';
         var rem   = (COL.remarque     >= 0 && !isNull(r[COL.remarque]))      ? String(r[COL.remarque]).trim()      : '';
+        var dateFmt = fmtDate(dateRaw);
+        var key     = (zoneVal + '||' + empVal).toLowerCase();
 
-        if (!typeN) {
-          if (cfg.code === 'FK')                                   typeN = 'Insectes volants';
-          else if (cfg.code === 'COLLES')                          typeN = 'Insectes / Rongeurs';
-          else if (cfg.code === 'PIEGES' || cfg.code === 'RATICIDE') typeN = 'Rongeurs';
+        if (isWideFormat) {
+          // ─── PIVOT WIDE → LONG ───
+          // Une ligne par type de nuisible présent. Les colonnes
+          // numériques avec valeur 0 sont incluses (pour matérialiser
+          // un relevé négatif), mais on filtrera ensuite côté client
+          // si l'utilisateur préfère ne voir que les captures > 0.
+          var rowEmitted = false;
+          for (var ti = 0; ti < typeColumns.length; ti++) {
+            var tc = typeColumns[ti];
+            var capRaw = r[tc.idx];
+            var capNum = toNum(capRaw);
+            var captures = 0;
+            if (capNum !== null) {
+              captures = capNum;
+            } else if (!isNull(capRaw)) {
+              var capTxt = normalize(String(capRaw));
+              if (/^(x|✓|v|oui|yes|presence|present|capture|capturee|capturees|prise|prises)$/.test(capTxt) ||
+                  capTxt.indexOf('captur') > -1 || capTxt.indexOf('present') > -1) {
+                captures = 1;
+              } else if (capTxt === '0' || capTxt === 'ras' || capTxt === 'non' || capTxt === 'aucune' || capTxt === 'aucun') {
+                captures = 0;
+              } else {
+                // Cellule vide ou inconnue → ne pas émettre de ligne
+                continue;
+              }
+            } else {
+              // Cellule strictement vide → ne pas émettre
+              continue;
+            }
+            entries.push({
+              dispositif:      cfg.code,
+              dispositifLabel: cfg.label,
+              date:            dateFmt,
+              isoDate:         iso,
+              zone:            zoneVal,
+              emplacement:     empVal,
+              key:             key,
+              typeNuisible:    tc.name,
+              captures:        captures,
+              statut:          stat,
+              remarque:        rem,
+              sourceUrl:       sourceUrl
+            });
+            entryCount++;
+            sumCaptures += captures;
+            if (iso && (!lastIso || iso > lastIso)) lastIso = iso;
+            rowEmitted = true;
+          }
+          // Si la ligne n'a aucun compteur renseigné, on émet quand
+          // même un relevé « inspection sans capture » pour matérialiser
+          // que le dispositif a été visité.
+          if (!rowEmitted && (iso || zoneVal || empVal)) {
+            entries.push({
+              dispositif:      cfg.code,
+              dispositifLabel: cfg.label,
+              date:            dateFmt,
+              isoDate:         iso,
+              zone:            zoneVal,
+              emplacement:     empVal,
+              key:             key,
+              typeNuisible:    cfg.code === 'FK' ? 'Insectes volants' :
+                                cfg.code === 'COLLES' ? 'Insectes / Rongeurs' :
+                                'Rongeurs',
+              captures:        0,
+              statut:          stat || 'Inspection',
+              remarque:        rem,
+              sourceUrl:       sourceUrl
+            });
+            entryCount++;
+          }
+        } else {
+          // ─── FORMAT LONG (1 ligne = 1 entrée) ───
+          var captures = 0;
+          if (COL.captures >= 0) {
+            var capRaw = r[COL.captures];
+            var capNum = toNum(capRaw);
+            if (capNum !== null) {
+              captures = capNum;
+            } else if (!isNull(capRaw)) {
+              var capTxt = normalize(String(capRaw));
+              if (/^(x|✓|v|oui|yes|presence|present|presents|presentes|capture|capturee|capturees|captures|actif|active|infest|prise|prises)$/.test(capTxt) ||
+                  capTxt.indexOf('captur') > -1 || capTxt.indexOf('present') > -1 ||
+                  capTxt.indexOf('infest')  > -1 || capTxt === 'x' || capTxt === '✓') {
+                captures = 1;
+              } else {
+                captures = 0;
+              }
+            }
+          }
+          var typeN = (COL.typeNuisible >= 0 && !isNull(r[COL.typeNuisible])) ? String(r[COL.typeNuisible]).trim() : '';
+
+          if (!typeN) {
+            if (cfg.code === 'FK')                                   typeN = 'Insectes volants';
+            else if (cfg.code === 'COLLES')                          typeN = 'Insectes / Rongeurs';
+            else if (cfg.code === 'PIEGES' || cfg.code === 'RATICIDE') typeN = 'Rongeurs';
+          }
+
+          entries.push({
+            dispositif:      cfg.code,
+            dispositifLabel: cfg.label,
+            date:            dateFmt,
+            isoDate:         iso,
+            zone:            zoneVal,
+            emplacement:     empVal,
+            key:             key,
+            typeNuisible:    typeN,
+            captures:        captures,
+            statut:          stat,
+            remarque:        rem,
+            sourceUrl:       sourceUrl
+          });
+          entryCount++;
+          sumCaptures += captures;
+          if (iso && (!lastIso || iso > lastIso)) lastIso = iso;
         }
-
-        var key = (zoneVal + '||' + empVal).toLowerCase();
-
-        entries.push({
-          dispositif:      cfg.code,
-          dispositifLabel: cfg.label,
-          date:            fmtDate(dateRaw),
-          isoDate:         iso,
-          zone:            zoneVal,
-          emplacement:     empVal,
-          key:             key,
-          typeNuisible:    typeN,
-          captures:        captures,
-          statut:          stat,
-          remarque:        rem,
-          sourceUrl:       sourceUrl
-        });
-        entryCount++;
-        sumCaptures += captures;
-        if (iso && (!lastIso || iso > lastIso)) lastIso = iso;
       }
 
       srcDescriptor.rows = entryCount;
       srcDescriptor.captures = sumCaptures;
       srcDescriptor.lastDate = lastIso;
-      Logger.log('Nuisibles « ' + cfg.label + ' » : ' + entryCount + ' lignes, ' + sumCaptures + ' captures');
+      srcDescriptor.format = isWideFormat ? 'wide' : 'long';
+      srcDescriptor.typeColumns = typeColumns.map(function(t){return t.name;});
+      Logger.log('Nuisibles « ' + cfg.label + ' » : ' + entryCount + ' lignes (' + (isWideFormat?'wide':'long') + '), ' + sumCaptures + ' captures');
     } catch(e) {
       Logger.log('readNuisibles « ' + cfg.label + ' » erreur : ' + e.message);
     }
