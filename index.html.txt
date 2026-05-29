@@ -1854,6 +1854,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
       <span style="flex:1"></span>
       <button class="btn" onclick="exportPestCSV()" title="Exporter les données filtrées en CSV (compatible Excel)">📥 Export CSV</button>
       <button class="btn btn-ai" onclick="askPestAI()" title="Analyse IA Gemini des nuisibles (sur les filtres actifs)">✨ Analyse IA</button>
+      <button class="btn" onclick="togglePestDiag(true)" title="Voir le mapping de colonnes détecté par feuille">🔧 Diagnostic</button>
     </div>
   </div>
 
@@ -1904,6 +1905,19 @@ html.light .notif-full-filters .pf-sel{background:#fff}
     </select>
 
     <span class="pf-stat" id="pestStat">— captures</span>
+  </div>
+
+  <!-- Diagnostic des feuilles sources (repliable) -->
+  <div class="card" id="pestDiagCard" style="margin-bottom:12px;display:none">
+    <div class="ct" style="cursor:pointer;user-select:none" onclick="togglePestDiag()">
+      <span class="ct-dot" style="background:var(--p4)"></span>
+      <span>🔧 Diagnostic des feuilles sources</span>
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Mapping détecté pour chaque onglet · cliquer pour développer
+      </span>
+      <span id="pestDiagToggle" style="margin-left:auto;font-size:11px;color:var(--p4)">▼</span>
+    </div>
+    <div id="pestDiagBody" style="display:none;margin-top:10px"></div>
   </div>
 
   <!-- KPI -->
@@ -5177,6 +5191,9 @@ function applyPestF(){
   drawPestSources(rows);
   drawPestCategories(insQ, ronQ, autQ);
   renderPestTable(rows);
+  // Diagnostic : si visible, on le rafraîchit aussi
+  var pdc = document.getElementById('pestDiagCard');
+  if(pdc && pdc.style.display !== 'none') renderPestDiagnostic();
 }
 
 // ── Évolution mensuelle ─────────────────────────────────────
@@ -5419,6 +5436,144 @@ function togglePestYoY(btn){
   pestYoYOn = !pestYoYOn;
   if(btn) btn.classList.toggle('on', pestYoYOn);
   if(D && D.nuisibles) drawPestEvolution(getPestFiltered());
+}
+
+// ── Diagnostic : afficher / masquer le panneau ─────────────
+function togglePestDiag(forceOpen){
+  var card = document.getElementById('pestDiagCard');
+  var body = document.getElementById('pestDiagBody');
+  var arrow= document.getElementById('pestDiagToggle');
+  if(!card || !body) return;
+  if(forceOpen === true){
+    card.style.display = 'block';
+    body.style.display = 'block';
+    if(arrow) arrow.textContent = '▲';
+    renderPestDiagnostic();
+    card.scrollIntoView({behavior:'smooth', block:'start'});
+    return;
+  }
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  if(arrow) arrow.textContent = open ? '▼' : '▲';
+  if(!open) renderPestDiagnostic();
+}
+
+// ── Construit le tableau de diagnostic par feuille source ───
+function renderPestDiagnostic(){
+  var body = document.getElementById('pestDiagBody');
+  if(!body) return;
+  if(!D || !D.nuisiblesSourceUrls){
+    body.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:8px">Aucune information de diagnostic disponible.</div>';
+    return;
+  }
+  var SRC_ORDER = ['fk','mecanique','colle','raticide'];
+  var html = '';
+
+  var foundCount = 0, totalLines = 0, totalQty = 0;
+  SRC_ORDER.forEach(function(k){
+    var s = D.nuisiblesSourceUrls[k];
+    if(s && s.found){ foundCount++; totalLines += (s.count||0); totalQty += (s.totalQty||0); }
+  });
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
+    + '<span class="tag-stat-pill tsp-total">'+foundCount+' / 4 feuilles trouvées</span>'
+    + '<span class="tag-stat-pill tsp-filtered">'+fmtNum(totalLines)+' lignes lues</span>'
+    + '<span class="tag-stat-pill tsp-closed">'+fmtNum(totalQty)+' captures</span>'
+    + '</div>';
+
+  html += '<div class="tblw"><table style="font-size:11px">';
+  html += '<thead><tr>'
+    + '<th>Clé</th><th>Feuille trouvée</th><th>Format</th>'
+    + '<th>Lignes</th><th>Captures</th>'
+    + '<th>Colonnes mappées</th><th>Avertissements</th><th>Action</th>'
+    + '</tr></thead><tbody>';
+
+  function colTag_(label, idx){
+    if(idx === undefined || idx === null || idx < 0){
+      return '<span class="rbadge" style="background:rgba(232,68,90,.12);color:var(--red)">'+label+': ✗</span>';
+    }
+    return '<span class="rbadge" style="background:rgba(16,201,133,.15);color:var(--green)">'+label+': col['+idx+']</span>';
+  }
+
+  SRC_ORDER.forEach(function(k){
+    var s = D.nuisiblesSourceUrls[k] || { found:false, label:k };
+    var labelTxt = s.label || k;
+    if(!s.found){
+      var av = (s.availableSheets && s.availableSheets.length)
+        ? '<br><span style="color:var(--text3)">Onglets disponibles : </span>'
+          + s.availableSheets.slice(0,12).map(function(n){return '<code style="font-size:10px">'+esc(n)+'</code>';}).join(' · ')
+        : '';
+      var w = (s.warnings && s.warnings.length) ? s.warnings.map(function(w){return esc(w);}).join('<br>') : '';
+      html += '<tr style="background:rgba(232,68,90,.05)">'
+        + '<td><span class="rbadge" style="color:var(--red)">'+esc(k)+'</span></td>'
+        + '<td colspan="2" style="color:var(--red);font-weight:600">❌ '+esc(labelTxt)+' — feuille introuvable</td>'
+        + '<td colspan="2" class="mono">—</td>'
+        + '<td colspan="2" style="color:var(--text3);font-size:10px">'+w+av+'</td>'
+        + '<td>—</td>'
+        + '</tr>';
+      return;
+    }
+    var modeMap = { wide:'📊 Large (colonnes mensuelles)', long:'📋 Long (1 ligne / obs)', error:'⚠ Erreur', not_found:'❌' };
+    var modeLbl = modeMap[s.mode] || s.mode;
+    var hdr = (s.rawHeader||[]).slice(0,12)
+              .map(function(h,i){
+                return '<code style="font-size:10px">['+i+'] '+esc(h||'∅')+'</code>';
+              }).join(' · ');
+
+    var mc = s.mappedCols || {};
+    var mappingHtml = '';
+    if(s.mode === 'wide' && mc.months){
+      mappingHtml = colTag_('Libellé ('+esc(mc.labelKind||'?')+')', mc.labelCol)
+                  + ' <span class="rbadge" style="background:rgba(13,168,210,.12);color:var(--p4)">Mois mappés: '+mc.months.length+'</span>';
+    } else {
+      mappingHtml = colTag_('Date', mc.date)
+                  + ' ' + colTag_('Zone', mc.zone)
+                  + ' ' + colTag_('Type', mc.type)
+                  + ' ' + colTag_('Qté', mc.qty)
+                  + ' ' + colTag_('Obs', mc.observ)
+                  + ' ' + colTag_('Action', mc.action)
+                  + ' ' + colTag_('Statut', mc.statut)
+                  + ' ' + colTag_('Resp', mc.resp);
+    }
+
+    var warn = (s.warnings||[]).map(function(w){return '⚠ '+esc(w);}).join('<br>');
+    if(s.error) warn = (warn?warn+'<br>':'') + '<span style="color:var(--red)">❌ '+esc(s.error)+'</span>';
+
+    html += '<tr>'
+      + '<td><span class="rbadge" style="background:rgba(13,168,210,.15);color:var(--p4)">'+esc(k)+'</span></td>'
+      + '<td><div style="font-weight:600">'+esc(labelTxt)+'</div>'
+        + '<div style="font-size:10px;color:var(--text3);font-family:\'JetBrains Mono\',monospace">'+esc(s.sheetName||'')+'</div>'
+        + (hdr ? '<div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.6">Entête : '+hdr+'</div>' : '')
+        + '</td>'
+      + '<td style="font-size:10px">'+esc(modeLbl)+'<br><span style="color:var(--text3)">ligne '+(s.hdrRow!=null?s.hdrRow+1:'?')+'</span></td>'
+      + '<td class="mono" style="text-align:right">'+fmtNum(s.count||0)+'</td>'
+      + '<td class="mono" style="text-align:right">'+fmtNum(s.totalQty||0)+'</td>'
+      + '<td style="font-size:10px;line-height:1.8">'+mappingHtml+'</td>'
+      + '<td style="font-size:10px;color:var(--amber)">'+(warn||'<span style="color:var(--green)">✓ OK</span>')+'</td>'
+      + '<td>'+(s.url ? '<button class="btn" style="font-size:10px;padding:3px 8px" onclick="openPestSheet(\''+k+'\')">📊 Ouvrir</button>' : '—')+'</td>'
+      + '</tr>';
+
+    if(s.rawRows && s.rawRows.length){
+      var sample = s.rawRows.slice(0, 3).map(function(rr){
+        var cells = (rr.cells||[]).slice(0, 8).map(function(c){return '<code style="font-size:10px">'+esc(c||'∅')+'</code>';}).join(' | ');
+        return '<div style="font-size:10px;color:var(--text3);margin-top:2px">L'+(rr.row+1)+' : '+cells+'</div>';
+      }).join('');
+      html += '<tr><td colspan="8" style="background:rgba(9,99,126,.05);padding:6px 9px">'
+        + '<div style="font-size:10px;color:var(--text3);font-weight:600;margin-bottom:3px">Échantillon brut (3 premières lignes non vides)</div>'
+        + sample
+        + '</td></tr>';
+    }
+  });
+  html += '</tbody></table></div>';
+
+  html += '<div style="margin-top:10px;padding:9px 12px;background:rgba(13,168,210,.08);border-left:3px solid var(--p3);border-radius:6px;font-size:11px;color:var(--text2);line-height:1.6">'
+    + '<strong>Comment lire ce diagnostic ?</strong><br>'
+    + '• <strong>Format Long</strong> : 1 observation par ligne (date, zone, type, quantité…). Chaque colonne attendue est mappée séparément.<br>'
+    + '• <strong>Format Large</strong> : la 1<sup>re</sup> colonne contient un libellé (zone ou type), les colonnes suivantes contiennent les comptages mensuels (Janvier, Février…).<br>'
+    + '• Si une colonne s\'affiche en <span style="color:var(--red)">rouge ✗</span>, c\'est qu\'elle n\'a pas été reconnue automatiquement → partage les noms d\'entêtes exacts pour ajuster.<br>'
+    + '• Bouton <strong>📊 Ouvrir</strong> : ouvre la feuille source dans l\'embed du dashboard pour comparer.'
+    + '</div>';
+
+  body.innerHTML = html;
 }
 
 // ── Ouvrir une feuille source en embed interne ─────────────
