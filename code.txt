@@ -1691,6 +1691,227 @@ function readContracts(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── NUISIBLES (4 feuilles) ──────────────────────────────────
+// Lecteur générique pour les feuilles « Nuisibles » :
+//   • FK                  → Insectes volants
+//   • boites à raticide   → Rongeurs / Voie extérieure
+//   • pièges mécanique    → Rongeurs / Intérieur usine
+//   • boites à colles     → Rongeurs / Intérieur usine
+//
+// La structure exacte de ces feuilles n'est pas figée — on lit
+// donc TOUT en mode générique :
+//   1) Détection souple de la feuille (par mots-clés normalisés)
+//   2) Détection dynamique de la ligne d'entête
+//   3) Classification automatique des colonnes :
+//        date, zone/emplacement, statut, action, numérique
+//        (consommation, vérifications, etc.), texte
+//   4) Capture des cellules brutes + entêtes pour rendu côté client
+// Cela permet d'afficher tableaux, KPI et graphiques sans
+// dépendre d'un schéma précis des colonnes.
+// ════════════════════════════════════════════════════════════
+function readPestSheet(ss, kwds, label) {
+  var entries    = [];
+  var rawHeaders = [];
+  var sheetName  = '';
+  var meta       = {
+    dateCols:   [],   // index des colonnes contenant une date
+    zoneCols:   [],   // emplacement / zone / numéro piège
+    statutCols: [],   // statut / état / conformité
+    actionCols: [],   // action / mesure
+    numCols:    [],   // colonnes purement numériques (compteurs, captures…)
+    primaryDate:   -1,
+    primaryZone:   -1,
+    primaryStatut: -1,
+    primaryAction: -1
+  };
+  try {
+    var sheets = ss.getSheets();
+    var sh     = null;
+    // Recherche par mots-clés normalisés
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      for (var k = 0; k < kwds.length; k++) {
+        if (n.indexOf(kwds[k]) > -1) { sh = sheets[i]; break; }
+      }
+      if (sh) break;
+    }
+    if (!sh) {
+      Logger.log('[Nuisibles] feuille NON trouvée pour ' + label + ' / kwds=' + JSON.stringify(kwds));
+      return { entries: entries, headers: rawHeaders, sheetName: '', meta: meta };
+    }
+    sheetName = sh.getName();
+    Logger.log('[Nuisibles] ' + label + ' → feuille trouvée : ' + sheetName);
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    if (!data || data.length < 1) {
+      return { entries: entries, headers: rawHeaders, sheetName: sheetName, meta: meta };
+    }
+
+    // ── Détection de la ligne d'entête ────────────────────
+    // Heuristique : on prend la première ligne où ≥ 2 cellules
+    // contiennent un mot-clé reconnu (date / zone / statut /
+    // action / quantité / numéro / type).
+    var hdrKeys = [
+      'date', 'zone', 'emplace', 'lieu', 'secteur', 'piege', 'piège',
+      'numero', 'numéro', 'n°', 'ref',
+      'statut', 'etat', 'état', 'conform',
+      'action', 'mesure', 'observ', 'remarque', 'commentaire',
+      'quantit', 'nombre', 'capture', 'consom',
+      'type', 'produit', 'app', 'verif', 'vérif',
+      'responsable', 'controle', 'contrôle'
+    ];
+    var hdrRow = -1;
+    for (var i = 0; i < Math.min(data.length, 12); i++) {
+      var row  = data[i] || [];
+      var hits = 0;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||'').replace(/[\n\r#]/g,'').trim());
+        if (!h) continue;
+        for (var kk = 0; kk < hdrKeys.length; kk++) {
+          if (h.indexOf(hdrKeys[kk]) > -1) { hits++; break; }
+        }
+      }
+      if (hits >= 2) { hdrRow = i; break; }
+    }
+    if (hdrRow < 0) hdrRow = 0;
+
+    // Capturer les entêtes brutes
+    var hdrRowVals = data[hdrRow] || [];
+    for (var c = 0; c < hdrRowVals.length; c++) {
+      rawHeaders.push(String(hdrRowVals[c] || '').trim());
+    }
+
+    // ── Classification automatique des colonnes ───────────
+    var ncols = rawHeaders.length;
+    for (var c = 0; c < ncols; c++) {
+      var hh = normalize(rawHeaders[c].replace(/[\n\r#]/g,'').trim());
+      if (!hh) continue;
+      // Date
+      if (hh.indexOf('date') > -1) {
+        meta.dateCols.push(c);
+        if (meta.primaryDate < 0) meta.primaryDate = c;
+      }
+      // Zone / emplacement / piège
+      if (meta.primaryZone < 0 &&
+          (hh.indexOf('zone') > -1 || hh.indexOf('emplace') > -1 ||
+           hh.indexOf('lieu')  > -1 || hh.indexOf('secteur') > -1 ||
+           hh.indexOf('piege') > -1 || hh.indexOf('boite')  > -1)) {
+        meta.zoneCols.push(c);
+        meta.primaryZone = c;
+      } else if ((hh.indexOf('zone') > -1 || hh.indexOf('emplace') > -1 ||
+                  hh.indexOf('secteur') > -1) && meta.zoneCols.indexOf(c) < 0) {
+        meta.zoneCols.push(c);
+      }
+      // Statut / conformité
+      if (hh.indexOf('statut') > -1 || hh.indexOf('etat') > -1 ||
+          hh.indexOf('conform') > -1) {
+        meta.statutCols.push(c);
+        if (meta.primaryStatut < 0) meta.primaryStatut = c;
+      }
+      // Action / mesure / observation
+      if (hh.indexOf('action') > -1 || hh.indexOf('mesure') > -1 ||
+          hh.indexOf('observ') > -1 || hh.indexOf('remarque') > -1 ||
+          hh.indexOf('commentaire') > -1) {
+        meta.actionCols.push(c);
+        if (meta.primaryAction < 0) meta.primaryAction = c;
+      }
+    }
+
+    // ── Parcourir les lignes de données ───────────────────
+    var firstDataRow = hdrRow + 1;
+    var numHits = {}; // colIdx → count of numeric cells
+
+    for (var i = firstDataRow; i < data.length; i++) {
+      var row    = data[i] || [];
+      var rowLen = row.length;
+
+      // Skip lignes complètement vides
+      var anyVal = false;
+      for (var c2 = 0; c2 < rowLen; c2++) {
+        if (!isNull(row[c2])) { anyVal = true; break; }
+      }
+      if (!anyVal) continue;
+
+      // Sauter ré-impression de l'entête
+      var firstTxt = '';
+      for (var c3 = 0; c3 < rowLen; c3++) {
+        if (!isNull(row[c3])) { firstTxt = String(row[c3]).trim(); break; }
+      }
+      var lcFirst = normalize(firstTxt);
+      if (lcFirst === 'date' || lcFirst === 'zone' || lcFirst === 'n' ||
+          lcFirst === 'no'   || lcFirst === 'num'  || lcFirst === 'id' ||
+          lcFirst.indexOf('total') === 0) continue;
+
+      // Capturer les cellules brutes + détecter les colonnes numériques
+      var rawCells = [];
+      var dateRaw = (meta.primaryDate >= 0) ? row[meta.primaryDate] : '';
+      for (var c4 = 0; c4 < rowLen; c4++) {
+        rawCells.push(safeText(row[c4]));
+        var num = toNum(row[c4]);
+        if (num !== null && !isNull(row[c4])) {
+          // Exclure les colonnes manifestement « date » ou « zone »
+          if (meta.dateCols.indexOf(c4) < 0 && meta.zoneCols.indexOf(c4) < 0) {
+            numHits[c4] = (numHits[c4] || 0) + 1;
+          }
+        }
+      }
+
+      var entry = {
+        raw:        rawCells,
+        date:       fmtDate(dateRaw),
+        isoDate:    getIso(dateRaw),
+        zone:       (meta.primaryZone   >= 0) ? safeText(row[meta.primaryZone])   : '',
+        statut:     (meta.primaryStatut >= 0) ? safeText(row[meta.primaryStatut]) : '',
+        action:     (meta.primaryAction >= 0) ? safeText(row[meta.primaryAction]) : '',
+        rowIdx:     i + 1
+      };
+      entries.push(entry);
+    }
+
+    // Finaliser numCols : colonnes avec >= 2 valeurs numériques
+    Object.keys(numHits).forEach(function(k){
+      if (numHits[k] >= 2) meta.numCols.push(parseInt(k, 10));
+    });
+    meta.numCols.sort(function(a,b){ return a - b; });
+
+    Logger.log('[Nuisibles] ' + label + ' : ' + entries.length + ' entrées · meta=' + JSON.stringify(meta));
+  } catch(e) {
+    Logger.log('readPestSheet error (' + label + '): ' + e.message);
+  }
+  return { entries: entries, headers: rawHeaders, sheetName: sheetName, meta: meta };
+}
+
+function readPests(ss) {
+  var fk = readPestSheet(
+    ss,
+    ['fk', 'flying', 'insecte volant', 'insectes volants'],
+    'FK / Insectes volants'
+  );
+  var rat = readPestSheet(
+    ss,
+    ['boites a raticide', 'boite a raticide', 'raticide'],
+    'Boîtes à raticide'
+  );
+  var mech = readPestSheet(
+    ss,
+    ['pieges mecanique', 'piege mecanique', 'pieges mecaniques', 'mecanique'],
+    'Pièges mécanique'
+  );
+  var glue = readPestSheet(
+    ss,
+    ['boites a colles', 'boite a colle', 'boites a colle', 'boite a colles', 'colle'],
+    'Boîtes à colles'
+  );
+  return {
+    fk:   fk,
+    rat:  rat,
+    mech: mech,
+    glue: glue
+  };
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 function getData() {
@@ -1765,6 +1986,12 @@ function getData() {
                          '/embed?slide=' + EPI_SLIDES_SLIDE +
                          '&start=false&loop=false&delayms=60000';
 
+  // ── NUISIBLES (4 feuilles) ───────────────────────────────
+  // FK · Boîtes à raticide · Pièges mécanique · Boîtes à colles
+  var pests = readPests(ss);
+  out.pests = pests;   // { fk, rat, mech, glue } — chacun = { entries, headers, sheetName, meta }
+  out.pestsSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                       '/edit?gid=1333145847#gid=1333145847';
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
