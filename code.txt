@@ -2025,6 +2025,12 @@ function getData() {
   }
 
   out.metrics = calcMetrics(out);
+
+  // ── NUISIBLES (4 feuilles : FK / pièges méca / colles / raticide) ──
+  var nuis = readNuisibles(ss);
+  out.nuisibles           = (nuis && nuis.entries) ? nuis.entries : [];
+  out.nuisiblesSourceUrls = (nuis && nuis.sources) ? nuis.sources : {};
+
   return out;
 }
 
@@ -2091,6 +2097,435 @@ function calcMetrics(d) {
     cleaning_closed: clClosed,
     cleaning_rate: clTotal > 0 ? Math.round(clClosed / clTotal * 100) : 0
   };
+}
+
+// ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLES "NUISIBLES" ─────────────────────────────
+// 4 feuilles lues depuis le classeur :
+//   • FK                    → fiches de contrôle (mixte)
+//   • Pièges mécanique      → rongeurs (pièges mécaniques)
+//   • Boîtes à colles       → insectes (pièges adhésifs)
+//   • Boîtes à raticide     → rongeurs (postes d'appâtage)
+//
+// Détection automatique des colonnes depuis l'entête : Date, Zone /
+// Emplacement, Type de nuisible, Quantité capturée, Observation,
+// Action / Statut / Responsable. Tolérant aux variations de noms.
+//
+// Chaque entrée est typée :
+//   - categorie : 'insecte' | 'rongeur' | 'autre'
+//   - source    : 'fk' | 'mecanique' | 'colle' | 'raticide'
+// pour permettre l'agrégation côté client (graphiques mensuels,
+// par zone, par type, par dispositif).
+// ════════════════════════════════════════════════════════════
+function readNuisibles(ss) {
+  var entries = [];
+  var sources = {};   // key → diagnostic complet par source (y compris si non trouvée)
+  var sheets  = ss.getSheets();
+
+  // Inventaire des onglets disponibles (pour diagnostic en cas
+  // d'erreur de détection)
+  var allSheetNames = sheets.map(function(s){ return s.getName(); });
+
+  // Définition des 4 feuilles cibles + mots-clés tolérants
+  var targets = [
+    { key:'fk',        label:'FK',
+      keywords:['fk','f.k','f k','fiche kontrol','fiche de contr','fiche control','fiche contr'],
+      category:'mixte'   },
+    { key:'mecanique', label:'Pièges mécaniques',
+      keywords:['piege meca','pieges meca','piege mec','pieges mec','piege mécanique','pieges mécanique','mecanique','mécanique','mechanical','tapette','snap trap'],
+      category:'rongeur' },
+    { key:'colle',     label:'Boîtes à colle',
+      keywords:['boite a colle','boites a colle','boite à colle','boites à colle','a colle','à colle','colle','glue','adhesif','adhésif','glue board','plaque collante'],
+      category:'insecte' },
+    { key:'raticide',  label:'Boîtes à raticide',
+      keywords:['boite a raticide','boites a raticide','boite à raticide','boites à raticide','raticide','rodenticide','poste appat','poste d\'appat','appat rongeur','bait station','bait box'],
+      category:'rongeur' }
+  ];
+
+  // Liste normalisée des noms de mois pour la détection « format large »
+  var MONTHS_NORM = ['janvier','fevrier','mars','avril','mai','juin','juillet','aout','septembre','octobre','novembre','decembre'];
+  var MONTHS_SHORT = ['jan','fev','mar','avr','mai','juin','juil','aou','sep','oct','nov','dec'];
+
+  // Helpers ---------------------------------------------------
+  function findSheetByKw(kwds) {
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      for (var k = 0; k < kwds.length; k++) {
+        if (n.indexOf(normalize(kwds[k])) > -1) return sheets[i];
+      }
+    }
+    return null;
+  }
+  function classifyType_(typeStr) {
+    var t = normalize(typeStr);
+    if (!t) return 'autre';
+    if (t.indexOf('insect') > -1 || t.indexOf('mouche') > -1 || t.indexOf('cafa') > -1 ||
+        t.indexOf('blatte') > -1 || t.indexOf('cancrelat') > -1 || t.indexOf('moustiq') > -1 ||
+        t.indexOf('fourmi') > -1 || t.indexOf('papillon') > -1 || t.indexOf('charanc') > -1 ||
+        t.indexOf('puce') > -1   || t.indexOf('teign') > -1   || t.indexOf('larve') > -1 ||
+        t.indexOf('coleopt') > -1 || t.indexOf('lepidopt') > -1) return 'insecte';
+    if (t.indexOf('rat')   > -1 || t.indexOf('souris') > -1 || t.indexOf('mulot') > -1 ||
+        t.indexOf('rongeur') > -1 || t.indexOf('mus ') > -1) return 'rongeur';
+    return 'autre';
+  }
+  function monthIndex_(h) {
+    var n = normalize(h);
+    if (!n) return -1;
+    var idx = MONTHS_NORM.indexOf(n);
+    if (idx >= 0) return idx;
+    // Forme courte : "jan", "fev", "mar"…
+    for (var i = 0; i < MONTHS_SHORT.length; i++) {
+      if (n === MONTHS_SHORT[i] || n.indexOf(MONTHS_SHORT[i]+' ') === 0 ||
+          n.indexOf(MONTHS_SHORT[i]+'-') === 0 || n.indexOf(MONTHS_SHORT[i]+'.') === 0) return i;
+    }
+    // Format "MM/YYYY" ou "YYYY-MM"
+    var m1 = n.match(/^(\d{1,2})[\/\-](20\d{2})$/);
+    if (m1) { var mo = parseInt(m1[1],10); if (mo>=1 && mo<=12) return mo-1; }
+    var m2 = n.match(/^20\d{2}[\/\-](\d{1,2})$/);
+    if (m2) { var mo2 = parseInt(m2[1],10); if (mo2>=1 && mo2<=12) return mo2-1; }
+    return -1;
+  }
+  function tryYearFromText_(s) {
+    var m = String(s||'').match(/(20\d{2})/);
+    return m ? parseInt(m[1],10) : null;
+  }
+  function emptyRow_(row) {
+    if (!row) return true;
+    for (var c = 0; c < row.length; c++) if (!isNull(row[c])) return false;
+    return true;
+  }
+  function rowToText_(row, max) {
+    var out = [];
+    for (var c = 0; c < (row||[]).length && c < (max||40); c++) out.push(safeText(row[c]));
+    return out;
+  }
+
+  // ---- Lecture d'une feuille ---------------------------------
+  function readOne_(tg, sh) {
+    var gid  = sh.getSheetId();
+    var data = sh.getDataRange().getValues();
+    var url  = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + gid + '#gid=' + gid;
+    var sheetYear = tryYearFromText_(sh.getName()) || (new Date()).getFullYear();
+
+    var info = {
+      url       : url,
+      sheetName : sh.getName(),
+      label     : tg.label,
+      gid       : gid,
+      found     : true,
+      mode      : 'long',
+      hdrRow    : -1,
+      rawHeader : [],
+      rawRows   : [],
+      mappedCols: {},
+      sheetYear : sheetYear,
+      count     : 0,
+      totalQty  : 0,
+      warnings  : [],
+      error     : ''
+    };
+
+    if (!data || data.length < 1) {
+      info.warnings.push('Feuille vide');
+      return { entries: [], info: info };
+    }
+
+    // Échantillon des 5 premières lignes non vides — utile pour
+    // diagnostic côté client si la détection est incorrecte
+    var sampleRows = [];
+    for (var s = 0; s < data.length && sampleRows.length < 5; s++) {
+      if (!emptyRow_(data[s])) sampleRows.push({ row:s, cells: rowToText_(data[s], 30) });
+    }
+    info.rawRows = sampleRows;
+
+    // ── 1. Détection « format large » : ligne contenant ≥2 noms de mois
+    var wideHdrRow = -1, monthCols = [];
+    for (var i = 0; i < Math.min(data.length, 12); i++) {
+      var row = data[i] || [];
+      var mc = [];
+      for (var c = 0; c < row.length; c++) {
+        var idx = monthIndex_(safeText(row[c]));
+        if (idx >= 0) mc.push({ col:c, mois: idx + 1 });
+      }
+      if (mc.length >= 2) { wideHdrRow = i; monthCols = mc; break; }
+    }
+
+    var localEntries = [];
+
+    if (wideHdrRow >= 0) {
+      // ═══ FORMAT LARGE (chaque mois = 1 colonne) ═══
+      info.mode      = 'wide';
+      info.hdrRow    = wideHdrRow;
+      info.rawHeader = rowToText_(data[wideHdrRow], 30);
+      info.mappedCols = { months: monthCols };
+
+      // Trouver la colonne « libellé » : 1er non-mois avec contenu
+      var labelCol = 0;
+      var hdrCells = data[wideHdrRow] || [];
+      for (var c2 = 0; c2 < hdrCells.length; c2++) {
+        if (monthIndex_(safeText(hdrCells[c2])) < 0 && !isNull(hdrCells[c2])) {
+          labelCol = c2; break;
+        }
+      }
+      info.mappedCols.labelCol    = labelCol;
+      info.mappedCols.labelHeader = safeText(hdrCells[labelCol]);
+
+      // Déduire ce que représente la colonne libellé
+      var labelHdrN = normalize(info.mappedCols.labelHeader);
+      var labelKind = 'type';
+      if (labelHdrN.indexOf('zone') > -1 || labelHdrN.indexOf('emplac') > -1 ||
+          labelHdrN.indexOf('lieu') > -1 || labelHdrN.indexOf('atelier') > -1 ||
+          labelHdrN.indexOf('secteur') > -1 || labelHdrN.indexOf('numero') > -1 ||
+          labelHdrN.indexOf('n°') > -1 || labelHdrN.indexOf('piege') > -1 ||
+          labelHdrN.indexOf('boite') > -1 || labelHdrN.indexOf('station') > -1 ||
+          labelHdrN.indexOf('poste') > -1) labelKind = 'zone';
+      info.mappedCols.labelKind = labelKind;
+
+      // Lecture des lignes de données
+      for (var r = wideHdrRow + 1; r < data.length; r++) {
+        var row2 = data[r] || [];
+        var label = safeText(row2[labelCol]);
+        if (!label) continue;
+        if (normalize(label).indexOf('total') > -1) continue;  // ignorer lignes totaux
+
+        for (var mci = 0; mci < monthCols.length; mci++) {
+          var mc = monthCols[mci];
+          var qty = toNum(row2[mc.col]);
+          if (qty === null || qty <= 0) continue;
+
+          var entryZone = labelKind === 'zone' ? label : '';
+          var entryType = labelKind === 'type' ? label : '';
+
+          var cat = tg.category;
+          if (cat === 'mixte') cat = classifyType_(entryType || label);
+
+          // Date synthétique = dernier jour du mois (utile pour les filtres)
+          var iso = '';
+          var lastDay = null;
+          try {
+            lastDay = new Date(sheetYear, mc.mois, 0); // jour 0 = dernier du mois précédent
+            iso = Utilities.formatDate(lastDay, 'GMT+1', 'yyyy-MM-dd');
+          } catch(eDt) {}
+
+          localEntries.push({
+            source      : tg.key,
+            sourceLabel : tg.label,
+            sheetName   : sh.getName(),
+            date        : ML[mc.mois-1] + ' ' + sheetYear,
+            isoDate     : iso,
+            annee       : sheetYear,
+            mois        : mc.mois,
+            zone        : entryZone,
+            type        : entryType,
+            categorie   : cat,
+            quantite    : qty,
+            observation : '',
+            action      : '',
+            statut      : '',
+            responsable : ''
+          });
+          info.count    += 1;
+          info.totalQty += qty;
+        }
+      }
+
+      if (localEntries.length === 0) {
+        info.warnings.push('Format large détecté mais aucune valeur numérique trouvée dans les colonnes mensuelles');
+      }
+      return { entries: localEntries, info: info };
+    }
+
+    // ═══ FORMAT LONG (chaque ligne = 1 observation) ═══
+    var COL = { date:-1, zone:-1, type:-1, qty:-1, observ:-1, action:-1, statut:-1, resp:-1 };
+    var hdrRow = -1;
+
+    // Recherche d'entête sur jusqu'à 15 premières lignes
+    for (var i2 = 0; i2 < Math.min(data.length, 15); i2++) {
+      var row3 = data[i2] || [];
+      var cur = { date:-1, zone:-1, type:-1, qty:-1, observ:-1, action:-1, statut:-1, resp:-1 };
+      var hits = 0;
+      for (var c3 = 0; c3 < row3.length; c3++) {
+        var h = normalize(String(row3[c3]||'').replace(/[\n\r#]/g,' ').trim());
+        if (!h) continue;
+
+        if (cur.date < 0 && (h === 'date' || h.indexOf('date ') === 0 ||
+                             h.indexOf(' date') > -1 || h.indexOf('date de') > -1 ||
+                             h.indexOf('jour') > -1 || h.indexOf('control') > -1 ||
+                             h.indexOf('inspect') > -1)) {
+          cur.date = c3; hits++; continue;
+        }
+        if (cur.qty < 0 && (h.indexOf('quantit') > -1 || h.indexOf('nombre') > -1 ||
+                            h === 'nb' || h.indexOf('nb ') === 0 || h.indexOf(' nb') > -1 ||
+                            h.indexOf('compt') > -1 || h.indexOf('captur') > -1 ||
+                            h.indexOf('total') > -1 || h.indexOf('effect') > -1 ||
+                            h.indexOf('qte') > -1 || h.indexOf('qt.') > -1)) {
+          cur.qty = c3; hits++; continue;
+        }
+        if (cur.zone < 0 && (h.indexOf('zone') > -1 || h.indexOf('emplac') > -1 ||
+                             h.indexOf('lieu') > -1 || h.indexOf('local') > -1 ||
+                             h.indexOf('atelier') > -1 || h.indexOf('secteur') > -1 ||
+                             h.indexOf('point') > -1 || h.indexOf('poste') > -1 ||
+                             h.indexOf('numero') > -1 || h.indexOf('n°') > -1 ||
+                             h.indexOf('piege') > -1 || h.indexOf('boite') > -1 ||
+                             h.indexOf('station') > -1 || h.indexOf('code') > -1 ||
+                             h.indexOf('reference') > -1 || h.indexOf('id') === 0)) {
+          cur.zone = c3; hits++; continue;
+        }
+        if (cur.type < 0 && (h.indexOf('type') > -1 || h.indexOf('nuisible') > -1 ||
+                             h.indexOf('espece') > -1 || h.indexOf('designat') > -1 ||
+                             h.indexOf('nature') > -1 || h.indexOf('insecte') > -1 ||
+                             h.indexOf('rongeur') > -1 || h.indexOf('libelle') > -1 ||
+                             h.indexOf('description') > -1)) {
+          cur.type = c3; hits++; continue;
+        }
+        if (cur.observ < 0 && (h.indexOf('observ') > -1 || h.indexOf('remarq') > -1 ||
+                               h.indexOf('comment') > -1 || h.indexOf('note') > -1 ||
+                               h.indexOf('constat') > -1)) {
+          cur.observ = c3; hits++; continue;
+        }
+        if (cur.action < 0 && (h.indexOf('action') > -1 || h.indexOf('mesur') > -1 ||
+                               h.indexOf('corre') > -1 || h.indexOf('traitem') > -1 ||
+                               h.indexOf('interven') > -1)) {
+          cur.action = c3; hits++; continue;
+        }
+        if (cur.statut < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1 ||
+                               h.indexOf('resultat') > -1)) {
+          cur.statut = c3; hits++; continue;
+        }
+        if (cur.resp < 0 && (h.indexOf('respons') > -1 || h.indexOf('agent') > -1 ||
+                             h.indexOf('controleur') > -1 || h.indexOf('operateur') > -1 ||
+                             h.indexOf('inspecteur') > -1 || h.indexOf('par') === 0)) {
+          cur.resp = c3; hits++; continue;
+        }
+      }
+      if (hits >= 2) { COL = cur; hdrRow = i2; break; }
+    }
+
+    // Pas d'entête identifiable → fallback positionnel sur la 1re ligne non vide
+    if (hdrRow < 0) {
+      for (var fb = 0; fb < data.length; fb++) {
+        if (!emptyRow_(data[fb])) { hdrRow = fb; break; }
+      }
+      if (hdrRow < 0) hdrRow = 0;
+      info.warnings.push('Aucune entête reconnue — fallback positionnel : col0=date, col1=zone, col2=type, col3=quantité');
+      if (data[hdrRow]) {
+        if (data[hdrRow].length > 0) COL.date = 0;
+        if (data[hdrRow].length > 1) COL.zone = 1;
+        if (data[hdrRow].length > 2) COL.type = 2;
+        if (data[hdrRow].length > 3) COL.qty  = 3;
+      }
+    }
+
+    info.hdrRow     = hdrRow;
+    info.rawHeader  = rowToText_(data[hdrRow] || [], 30);
+    info.mappedCols = {
+      date  : COL.date,    zone  : COL.zone,   type   : COL.type,
+      qty   : COL.qty,     observ: COL.observ, action : COL.action,
+      statut: COL.statut,  resp  : COL.resp
+    };
+
+    // Avertissements sur colonnes non détectées
+    if (COL.date < 0) info.warnings.push('Colonne « Date » non détectée');
+    if (COL.qty  < 0) info.warnings.push('Colonne « Quantité » non détectée — chaque ligne sera comptée comme 1 capture');
+    if (COL.zone < 0) info.warnings.push('Colonne « Zone / Emplacement » non détectée');
+    if (COL.type < 0 && tg.category === 'mixte') info.warnings.push('Colonne « Type de nuisible » non détectée pour FK — catégorisation insecte/rongeur impossible');
+
+    // ── Lecture des lignes de données ──────────────────────────
+    for (var r2 = hdrRow + 1; r2 < data.length; r2++) {
+      var row4 = data[r2] || [];
+      if (emptyRow_(row4)) continue;
+
+      var dCell = COL.date >= 0 ? row4[COL.date] : null;
+      var pd    = parseDate(dCell);
+      var iso2  = (pd && !isNaN(pd.getTime())) ? Utilities.formatDate(pd, 'GMT+1', 'yyyy-MM-dd') : '';
+      var mois2 = pd ? (pd.getMonth() + 1) : null;
+      var ann2  = pd ? pd.getFullYear()    : null;
+
+      var typeStr = COL.type >= 0 ? safeText(row4[COL.type]) : '';
+      var zoneStr = COL.zone >= 0 ? safeText(row4[COL.zone]) : '';
+
+      // Quantité : numérique de la cellule, sinon 1 par ligne
+      var qty2 = 0;
+      if (COL.qty >= 0) qty2 = toNumZ(row4[COL.qty]);
+      if (!qty2 || qty2 < 0) {
+        if (iso2 || typeStr || zoneStr) qty2 = 1;
+      }
+
+      // Skip lignes où aucune info exploitable
+      if (!iso2 && !typeStr && !zoneStr && qty2 === 0) continue;
+
+      var cat = tg.category;
+      if (cat === 'mixte') cat = classifyType_(typeStr);
+
+      localEntries.push({
+        source      : tg.key,
+        sourceLabel : tg.label,
+        sheetName   : sh.getName(),
+        date        : fmtDate(dCell),
+        isoDate     : iso2,
+        annee       : ann2,
+        mois        : mois2,
+        zone        : zoneStr,
+        type        : typeStr,
+        categorie   : cat,
+        quantite    : qty2,
+        observation : COL.observ >= 0 ? safeText(row4[COL.observ]) : '',
+        action      : COL.action >= 0 ? safeText(row4[COL.action]) : '',
+        statut      : COL.statut >= 0 ? safeText(row4[COL.statut]) : '',
+        responsable : COL.resp   >= 0 ? safeText(row4[COL.resp])   : ''
+      });
+      info.count    += 1;
+      info.totalQty += qty2;
+    }
+
+    if (localEntries.length === 0) {
+      info.warnings.push('Aucune ligne de données exploitable lue après l\'entête');
+    }
+    return { entries: localEntries, info: info };
+  }
+
+  // ── Lecture des 4 cibles ─────────────────────────────────
+  targets.forEach(function(tg) {
+    var sh = findSheetByKw(tg.keywords);
+    if (!sh) {
+      sources[tg.key] = {
+        url:'', sheetName:'', label:tg.label, gid:0,
+        found:false, mode:'not_found',
+        hdrRow:-1, rawHeader:[], rawRows:[], mappedCols:{},
+        sheetYear:null, count:0, totalQty:0,
+        warnings:['Aucun onglet ne correspond aux mots-clés : '+tg.keywords.join(', ')],
+        error:'Feuille introuvable',
+        availableSheets: allSheetNames
+      };
+      Logger.log('Nuisibles ['+tg.key+'] sheet NOT found');
+      return;
+    }
+    Logger.log('Nuisibles ['+tg.key+'] sheet: ' + sh.getName());
+    try {
+      var res = readOne_(tg, sh);
+      sources[tg.key] = res.info;
+      for (var i = 0; i < res.entries.length; i++) entries.push(res.entries[i]);
+    } catch (eRead) {
+      sources[tg.key] = {
+        url:'https://docs.google.com/spreadsheets/d/'+SHEET_ID+'/edit',
+        sheetName:sh.getName(), label:tg.label, gid:sh.getSheetId(),
+        found:true, mode:'error',
+        hdrRow:-1, rawHeader:[], rawRows:[], mappedCols:{},
+        sheetYear:null, count:0, totalQty:0,
+        warnings:[], error: 'Exception : '+eRead.message
+      };
+    }
+  });
+
+  // Tri par date décroissante (entrées sans date à la fin)
+  entries.sort(function(a, b) {
+    if (!a.isoDate) return 1;
+    if (!b.isoDate) return -1;
+    return b.isoDate.localeCompare(a.isoDate);
+  });
+
+  Logger.log('Nuisibles : ' + entries.length + ' lignes lues au total');
+  return { entries: entries, sources: sources };
 }
 
 function callGemini(prompt) {
