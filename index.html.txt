@@ -5322,34 +5322,49 @@ function pestTopValues(entries, getter, topN){
 }
 
 // Série temporelle : nb d'enregistrements par mois (sur l'année la plus représentée)
+// IMPORTANT : ne renvoie QUE les mois réellement présents dans la source.
+// Aucun mois manquant / futur n'est généré pour éviter toute extrapolation.
 function pestMonthlyCounts(entries){
-  // Compter les enregistrements par année-mois
   var byMonth={}; // 'YYYY-MM' → count
-  var byYear={};  // 'YYYY' → count
   entries.forEach(function(e){
     if(!e.isoDate) return;
     var ym=e.isoDate.substring(0,7);
-    var yr=e.isoDate.substring(0,4);
     byMonth[ym]=(byMonth[ym]||0)+1;
-    byYear[yr]=(byYear[yr]||0)+1;
   });
-  // Choisir l'année avec le plus d'enregistrements (priorité : 2026 > autres)
-  var years=Object.keys(byYear);
-  if(years.length===0) return {labels:[],data:[],year:null};
-  years.sort(function(a,b){
-    if(a==='2026') return -1;
-    if(b==='2026') return 1;
-    return byYear[b]-byYear[a];
-  });
-  var year=years[0];
-  var labels=[], data=[];
-  for(var m=1;m<=12;m++){
-    var mm=(m<10?'0':'')+m;
-    var key=year+'-'+mm;
-    labels.push(ML[m-1]);
-    data.push(byMonth[key]||0);
-  }
+  var yms=Object.keys(byMonth).sort();
+  if(yms.length===0) return {labels:[],data:[],year:null};
+  var labels=pestFormatMonths(yms);
+  var data=yms.map(function(ym){ return byMonth[ym]; });
+  var years={};
+  yms.forEach(function(ym){ years[ym.substring(0,4)]=1; });
+  var yearKeys=Object.keys(years);
+  var year=yearKeys.length===1?yearKeys[0]:null;
   return {labels:labels,data:data,year:year};
+}
+
+// Liste triée des YYYY-MM réellement présents dans une liste d'entries
+function pestPresentMonths(entries){
+  var set={};
+  (entries||[]).forEach(function(e){
+    if(e.isoDate) set[e.isoDate.substring(0,7)]=1;
+  });
+  return Object.keys(set).sort();
+}
+
+// Formatage des labels mensuels :
+//   • année unique     → 'Jan', 'Fév', 'Mar', …
+//   • plusieurs années → 'Jan 26', 'Fév 26', 'Jan 27', …
+function pestFormatMonths(yms){
+  if(!yms||yms.length===0) return [];
+  var years={};
+  yms.forEach(function(ym){ years[ym.substring(0,4)]=1; });
+  var multi=Object.keys(years).length>1;
+  return yms.map(function(ym){
+    var p=ym.split('-');
+    var m=parseInt(p[1],10);
+    var lbl=ML[m-1]||('M'+m);
+    return multi ? (lbl+' '+p[0].substring(2)) : lbl;
+  });
 }
 
 // Somme d'une colonne numérique sur un sous-ensemble
@@ -5710,36 +5725,6 @@ function flyComputeStats(entries, typeDef, idxMap){
   };
 }
 
-// Sélectionne l'année avec le plus de captures pour ce type
-function flyPickYear(byMonth){
-  var byYear = {};
-  Object.keys(byMonth).forEach(function(ym){
-    var y = ym.substring(0,4);
-    byYear[y] = (byYear[y]||0) + byMonth[ym];
-  });
-  var years = Object.keys(byYear);
-  if(years.length===0) return null;
-  years.sort(function(a,b){
-    if(a==='2026') return -1;
-    if(b==='2026') return 1;
-    return byYear[b]-byYear[a];
-  });
-  return years[0];
-}
-
-// Construit la série mensuelle pour un type sur une année
-function flyMonthlySeries(byMonth, year){
-  if(!year){
-    return { labels:ML.slice(), data:[0,0,0,0,0,0,0,0,0,0,0,0], year:null };
-  }
-  var data = [];
-  for(var m=1;m<=12;m++){
-    var mm = (m<10?'0':'')+m;
-    data.push(byMonth[year+'-'+mm] || 0);
-  }
-  return { labels: ML.slice(), data: data, year: year };
-}
-
 // Construit l'index des colonnes utilitaires de FK
 function flyBuildIdxMap(headers){
   return {
@@ -5868,19 +5853,16 @@ function renderPestFlying(){
   });
 
   // ── Line chart : évolution mensuelle multi-types ─────
-  // Année dominante : celle avec le plus de captures cumulées
-  var aggByMonth = {};
-  types.forEach(function(t){
-    Object.keys(statsByKey[t.key].byMonth).forEach(function(ym){
-      aggByMonth[ym] = (aggByMonth[ym]||0) + statsByKey[t.key].byMonth[ym];
-    });
-  });
-  var year = flyPickYear(aggByMonth);
+  // X-axis = uniquement les mois réellement présents dans la
+  // feuille FK (pas d'extrapolation ni de mois futurs vides).
+  var sheetMonths = pestPresentMonths(s.entries);
+  var labels      = pestFormatMonths(sheetMonths);
   var datasets = types.map(function(t){
-    var ms = flyMonthlySeries(statsByKey[t.key].byMonth, year);
+    var byMonth = statsByKey[t.key].byMonth;
+    var data = sheetMonths.map(function(ym){ return byMonth[ym] || 0; });
     return {
       label: t.icon+' '+t.label,
-      data: ms.data,
+      data: data,
       borderColor: t.color,
       backgroundColor: t.color+'22',
       tension:.3, fill:false,
@@ -5891,7 +5873,7 @@ function renderPestFlying(){
   if(charts['pestsFlyingTypesLine']) charts['pestsFlyingTypesLine'].destroy();
   charts['pestsFlyingTypesLine'] = new Chart(document.getElementById('pestsFlyingTypesLine'), {
     type:'line',
-    data:{ labels: ML.slice(), datasets: datasets },
+    data:{ labels: labels, datasets: datasets },
     options: Object.assign({}, BASE, {
       plugins:{
         legend:{ display:true, position:'bottom',
@@ -6012,16 +5994,19 @@ function renderPestFlyingTypeDetail(){
   document.getElementById('pestsFlyingTypeCntHdr').textContent = 'Captures '+typeDef.label;
 
   // ── Graphique évolution mensuelle pour ce type ──────
-  var year = flyPickYear(st.byMonth);
-  var ms   = flyMonthlySeries(st.byMonth, year);
+  // X-axis = uniquement les mois réellement présents dans la feuille FK
+  // (mêmes mois que le graphique multi-types pour cohérence visuelle).
+  var sheetMonths = pestPresentMonths(s.entries);
+  var labels      = pestFormatMonths(sheetMonths);
+  var seriesData  = sheetMonths.map(function(ym){ return st.byMonth[ym] || 0; });
   if(charts['pestsFlyingTypeChart']) charts['pestsFlyingTypeChart'].destroy();
   charts['pestsFlyingTypeChart'] = new Chart(document.getElementById('pestsFlyingTypeChart'),{
     type:'line',
     data:{
-      labels: ms.labels,
+      labels: labels,
       datasets:[{
         label: typeDef.label,
-        data: ms.data,
+        data: seriesData,
         borderColor: typeDef.color,
         backgroundColor: typeDef.color+'33',
         tension:.3, fill:true,
