@@ -1072,6 +1072,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
   <button class="tab"    onclick="goTab('contracts',this)">📑 Contrats</button>
+  <button class="tab"    onclick="goTab('permits',this)">📜 Permis de travail</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
   <button class="tab"    onclick="goTab('pests',this)">🐀 Nuisibles</button>
 </div>
@@ -1913,6 +1914,148 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 
+<!-- ═══ PERMIS DE TRAVAIL ═══ -->
+<div id="permits" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>Permis de travail — SOBCO 3
+      <span id="permitsSourceMeta" style="color:var(--text3);font-size:9px;margin-left:6px;font-family:'JetBrains Mono',monospace"></span>
+    </div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Suivi de l'ensemble des permis de travail extraits de la feuille
+      <em style="color:var(--text3)">« Gestion des Permis de Travail »</em>.
+      Cliquez sur une référence <strong style="color:var(--p4)">soulignée</strong> ou sur l'icône
+      <strong>📋</strong> pour afficher la fiche détaillée du permis.
+      L'icône <strong>📎</strong> ouvre la pièce jointe (photo ou document)
+      <strong>directement à l'intérieur du dashboard</strong>, sans redirection externe.
+      <a id="permitsSourceLink" href="#" rel="noopener"
+         data-p-url="" data-p-title="Gestion des Permis de Travail"
+         onclick="openPermitsSource();return false;"
+         style="margin-left:8px;display:inline-block;color:var(--p4);font-size:10px;text-decoration:underline;cursor:pointer">↗ Feuille source</a>
+    </p>
+  </div>
+
+  <!-- Synthèse -->
+  <div class="tsum" id="permitsSum"></div>
+
+  <!-- Graphiques : par mois + par type -->
+  <div class="row2">
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Permis par mois</div>
+      <div class="cw" style="height:185px"><canvas id="permitsMonthC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>Répartition par type</div>
+      <div class="cw" style="height:185px"><canvas id="permitsTypeC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Graphique : par zone (Top 10) + alertes échéance -->
+  <div class="row3">
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Répartition par zone / emplacement (Top 10)</div>
+      <div class="cw" style="height:220px"><canvas id="permitsZoneC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--red)"></span>⚠ Permis arrivant à échéance ou expirés</div>
+      <div id="permitsAlertList" style="display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;padding:4px 2px"></div>
+    </div>
+  </div>
+
+  <!-- Barre recherche + tri -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="permitsSearch"
+           placeholder="Rechercher référence, titre, type, zone, demandeur…"
+           oninput="renderPermits()">
+    <select class="tag-sort-sel" id="permitsSort" onchange="renderPermits()">
+      <option value="end_asc">Fin validité ↑ proche</option>
+      <option value="end_desc">Fin validité ↓ lointaine</option>
+      <option value="start_desc">Date début ↓ récent</option>
+      <option value="start_asc">Date début ↑ ancien</option>
+      <option value="ref_az">Référence A→Z</option>
+      <option value="title_az">Titre A→Z</option>
+      <option value="zone_az">Zone A→Z</option>
+    </select>
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+            onclick="clearPermitsFilters()">↺ Reset</button>
+  </div>
+
+  <!-- Chips statut -->
+  <div class="tag-filter-row">
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">Statut :</span>
+      <div class="tag-chips" id="permitsStatChips">
+        <button class="tag-filter-chip chip-all on"   onclick="setPermitsStat('all',this)">Tous</button>
+        <button class="tag-filter-chip chip-open"     onclick="setPermitsStat('active',this)">⏵ Actifs</button>
+        <button class="tag-filter-chip chip-open"     onclick="setPermitsStat('pending',this)">⏳ En attente</button>
+        <button class="tag-filter-chip chip-closed"   onclick="setPermitsStat('closed',this)">✓ Clôturés</button>
+        <button class="tag-filter-chip chip-open"     onclick="setPermitsStat('expired',this)">📛 Expirés</button>
+      </div>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">📂 Type :</span>
+      <select class="tag-dropdown" id="permitsFilterType" onchange="renderPermits()">
+        <option value="all">Tous</option>
+      </select>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">📍 Zone :</span>
+      <select class="tag-dropdown" id="permitsFilterZone" onchange="renderPermits()">
+        <option value="all">Toutes</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>Liste des permis de travail
+      <span id="permitsListCount"
+            style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Plus proches d'échéance en haut · Pièces jointes ouvertes en embed interne
+      </span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:90px">Référence</th>
+            <th>Titre</th>
+            <th>Type</th>
+            <th>Statut</th>
+            <th>Valide à partir du</th>
+            <th>Valide jusqu'au</th>
+            <th>Demandé par</th>
+            <th>Interventions</th>
+            <th style="width:60px;text-align:center">PJ</th>
+          </tr>
+        </thead>
+        <tbody id="permitsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL DÉTAIL PERMIS ═══ -->
+<div class="modal-bg" id="permitDetailModal" style="display:none" onclick="if(event.target===this)closeModal('permitDetailModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="mPermitBadge" style="background:rgba(11,145,181,.2);border-color:var(--p3)">📜</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="mPermitId">—</div>
+        <div class="modal-hdr-name" id="mPermitTitle">Permis de travail</div>
+        <div id="mPermitStateBadge" style="margin-top:4px"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('permitDetailModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="tag-detail-grid" id="mPermitGrid"></div>
+      <div id="mPermitDescriptionBox" style="margin-top:6px"></div>
+      <div id="mPermitPhotoBox" style="margin-top:10px"></div>
+    </div>
+  </div>
+</div>
+
+
 <!-- ═══ EPI ═══ -->
 <div id="epi" class="page">
   <!-- Présentation EPI affichée DIRECTEMENT dans le dashboard (iframe interne) -->
@@ -2617,7 +2760,7 @@ function goVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -4287,6 +4430,8 @@ function render(data){
 
   // ── CONTRATS ────────────────────────────────────────────
   renderContracts();
+  // ── PERMIS DE TRAVAIL ───────────────────────────────────
+  renderPermits();
 
   // -- EPI -------------------------------------------------
   renderEPI();
@@ -4698,6 +4843,569 @@ function openContractsSource(){
   openCleaningEmbed(url, 'Suivi des Contrats et Liens Drive',
                     'FEUILLE SOURCE', '📊');
 }
+
+// ══ PERMIS DE TRAVAIL ════════════════════════════════════════
+// Filtres + rendu de la feuille « Gestion des Permis de Travail ».
+// Tous les liens (référence, pièce jointe, feuille source) ouvrent
+// l'embed modal interne — aucune redirection externe vers Drive.
+var permitsStatFilter = 'all';
+
+function setPermitsStat(stat, el){
+  permitsStatFilter = stat;
+  document.querySelectorAll('#permitsStatChips .tag-filter-chip')
+    .forEach(function(c){c.classList.remove('on');});
+  if (el) el.classList.add('on');
+  renderPermits();
+}
+function clearPermitsFilters(){
+  var s  = document.getElementById('permitsSearch');     if (s)  s.value  = '';
+  var so = document.getElementById('permitsSort');       if (so) so.value = 'end_asc';
+  var ft = document.getElementById('permitsFilterType'); if (ft) ft.value = 'all';
+  var fz = document.getElementById('permitsFilterZone'); if (fz) fz.value = 'all';
+  permitsStatFilter = 'all';
+  document.querySelectorAll('#permitsStatChips .tag-filter-chip')
+    .forEach(function(c,i){c.classList.toggle('on', i===0);});
+  renderPermits();
+}
+
+// Couleur + libellé pour chaque état
+function permitStateInfo(p){
+  switch(p.state){
+    case 'expired': return {label:'📛 Expiré',     color:'var(--red)',    bg:'rgba(232,68,90,.12)'};
+    case 'closed':  return {label:'✓ Clôturé',     color:'var(--green)',  bg:'rgba(16,201,133,.12)'};
+    case 'pending': return {label:'⏳ En attente', color:'var(--amber)',  bg:'rgba(245,166,35,.14)'};
+    case 'active':
+    default:        return {label:'⏵ Actif',       color:'var(--p4)',     bg:'rgba(13,168,210,.12)'};
+  }
+}
+function permitStateBadge(p){
+  var inf = permitStateInfo(p);
+  var txt = inf.label;
+  if (p.state === 'active' && p.daysLeft != null && p.daysLeft <= 7 && p.daysLeft >= 0) {
+    txt = '⚠ J-' + p.daysLeft;
+    inf.color = 'var(--amber)';
+    inf.bg    = 'rgba(245,166,35,.14)';
+  }
+  return '<span style="font-size:9px;font-weight:700;padding:2px 7px;'
+       + 'border-radius:4px;background:' + inf.bg + ';color:' + inf.color
+       + ';font-family:\'JetBrains Mono\',monospace">' + txt + '</span>';
+}
+
+// Mise en valeur si le permis arrive à échéance / est expiré
+function permitDateFinHtml(p){
+  var txt = p.dateFin || '';
+  if (!txt) return '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+  if (!p.isoDateFin) return '<span class="mono" style="font-size:11px">' + esc(txt) + '</span>';
+  var today = new Date();
+  var fin   = new Date(p.isoDateFin + 'T00:00:00');
+  var diff  = Math.round((fin - today) / 86400000);
+  var color = 'var(--text2)';
+  var hint  = '';
+  if (diff < 0) {
+    color = 'var(--red)';
+    hint  = ' <span style="font-size:9px;color:var(--red)">expiré</span>';
+  } else if (diff <= 7) {
+    color = 'var(--red)';
+    hint  = ' <span style="font-size:9px;color:var(--red)">J-' + diff + '</span>';
+  } else if (diff <= 30) {
+    color = 'var(--amber)';
+    hint  = ' <span style="font-size:9px;color:var(--amber)">J-' + diff + '</span>';
+  }
+  return '<span class="mono" style="font-size:11px;color:' + color + '">'
+       + esc(txt) + '</span>' + hint;
+}
+
+function populatePermitsDropdowns(list){
+  var types = {}, zones = {};
+  list.forEach(function(p){
+    var t = (p.type || '').trim();
+    var z = (p.zone || p.interventions || '').trim();
+    if (t) types[t] = (types[t] || 0) + 1;
+    if (z) zones[z] = (zones[z] || 0) + 1;
+  });
+  function fill(selId, dict){
+    var sel = document.getElementById(selId); if (!sel) return;
+    var prev = sel.value;
+    var keys = Object.keys(dict).sort(function(a,b){return a.localeCompare(b);});
+    sel.innerHTML = '<option value="all">'
+      + (selId === 'permitsFilterType' ? 'Tous' : 'Toutes')
+      + '</option>'
+      + keys.map(function(k){
+          return '<option value="'+escAttr(k)+'">'+esc(k)+' ('+dict[k]+')</option>';
+        }).join('');
+    if (prev) sel.value = prev;
+  }
+  fill('permitsFilterType', types);
+  fill('permitsFilterZone', zones);
+}
+
+// ── GRAPHIQUES PERMIS ───────────────────────────────────────
+function renderPermitsCharts(list){
+  // 1. Permis par mois (12 mois — année courante uniquement si dispo)
+  var counts = new Array(12).fill(0);
+  var years  = {};
+  list.forEach(function(p){
+    if (p.month >= 0 && p.month <= 11) counts[p.month]++;
+    if (p.year) years[p.year] = (years[p.year]||0) + 1;
+  });
+  if (charts['permitsMonthC']) charts['permitsMonthC'].destroy();
+  try {
+    charts['permitsMonthC'] = new Chart(document.getElementById('permitsMonthC'),{
+      type:'bar',
+      data:{
+        labels:ML,
+        datasets:[{
+          label:'Permis',
+          data:counts,
+          backgroundColor:C.p4,
+          borderColor:C.p3,
+          borderWidth:1,
+          borderRadius:4
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{
+          title:function(items){return items[0].label;},
+          label:function(it){return it.formattedValue + ' permis';}
+        }}},
+        scales:{
+          x:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:10}}},
+          y:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:10},stepSize:1,precision:0},beginAtZero:true}
+        }
+      }
+    });
+  } catch(e){}
+
+  // 2. Répartition par type (donut)
+  var typeMap = {};
+  list.forEach(function(p){
+    var t = (p.type || '').trim() || '— Non spécifié —';
+    typeMap[t] = (typeMap[t]||0) + 1;
+  });
+  var tk = Object.keys(typeMap).sort(function(a,b){return typeMap[b]-typeMap[a];}).slice(0, 8);
+  if (charts['permitsTypeC']) charts['permitsTypeC'].destroy();
+  if (tk.length > 0) {
+    try {
+      charts['permitsTypeC'] = new Chart(document.getElementById('permitsTypeC'),{
+        type:'doughnut',
+        data:{
+          labels:tk,
+          datasets:[{
+            data:tk.map(function(k){return typeMap[k];}),
+            backgroundColor:[C.p4,C.amber,C.green,C.red,C.purple,C.teal,C.orange,C.p2],
+            borderWidth:0,
+            hoverOffset:4
+          }]
+        },
+        options:{
+          responsive:true,maintainAspectRatio:false,
+          plugins:{
+            legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}
+          },
+          cutout:'55%'
+        }
+      });
+    } catch(e){}
+  }
+
+  // 3. Répartition par zone (Top 10 — barres horizontales)
+  var zoneMap = {};
+  list.forEach(function(p){
+    var z = (p.zone || p.interventions || '').trim();
+    if (!z) return;
+    // Si le champ contient plusieurs zones séparées par virgule / point-virgule, on splitte
+    z.split(/\s*[;,/]\s*/).forEach(function(part){
+      var v = part.trim(); if (!v) return;
+      // Limiter la longueur pour l'affichage
+      if (v.length > 40) v = v.substring(0,38) + '…';
+      zoneMap[v] = (zoneMap[v]||0) + 1;
+    });
+  });
+  var zk = Object.keys(zoneMap).sort(function(a,b){return zoneMap[b]-zoneMap[a];}).slice(0, 10);
+  if (charts['permitsZoneC']) charts['permitsZoneC'].destroy();
+  if (zk.length > 0) {
+    try {
+      charts['permitsZoneC'] = new Chart(document.getElementById('permitsZoneC'),{
+        type:'bar',
+        data:{
+          labels:zk,
+          datasets:[{
+            label:'Permis',
+            data:zk.map(function(k){return zoneMap[k];}),
+            backgroundColor:C.green,
+            borderColor:C.teal,
+            borderWidth:1,
+            borderRadius:4
+          }]
+        },
+        options:{
+          indexAxis:'y',
+          responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:10},stepSize:1,precision:0},beginAtZero:true},
+            y:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:9}}}
+          }
+        }
+      });
+    } catch(e){}
+  }
+}
+
+function renderPermitsAlerts(list){
+  var box = document.getElementById('permitsAlertList');
+  if (!box) return;
+  var today = new Date();
+  // Inclure : expirés (≤ 30 jours après) + actifs avec ≤ 30 jours restants + déjà expirés
+  var alerts = list.filter(function(p){
+    if (p.state === 'expired') return true;
+    if (p.state === 'closed')  return false;
+    if (!p.isoDateFin) return false;
+    var fin = new Date(p.isoDateFin + 'T00:00:00');
+    var d   = Math.round((fin - today) / 86400000);
+    return d <= 30;
+  });
+  // Tri : expirés depuis le plus longtemps en haut, puis échéances proches
+  alerts.sort(function(a,b){
+    return (a.isoDateFin || '9999-99-99').localeCompare(b.isoDateFin || '9999-99-99');
+  });
+  if (!alerts.length) {
+    box.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:11px;padding:14px">'
+                  + '✅ Aucun permis arrivant à échéance ni expiré</div>';
+    return;
+  }
+  box.innerHTML = alerts.slice(0, 20).map(function(p){
+    var inf  = permitStateInfo(p);
+    var fin  = new Date((p.isoDateFin || '') + 'T00:00:00');
+    var diff = p.isoDateFin ? Math.round((fin - today)/86400000) : null;
+    var dHint = '';
+    if (diff != null) {
+      if (diff < 0)        dHint = '<span style="color:var(--red);font-weight:700">expiré depuis ' + (-diff) + ' j</span>';
+      else if (diff === 0) dHint = '<span style="color:var(--red);font-weight:700">expire aujourd\'hui</span>';
+      else                 dHint = '<span style="color:var(--amber);font-weight:700">J-' + diff + '</span>';
+    }
+    var safeId    = escAttr(p.id || '');
+    var lbl       = esc(p.id || p.titre || 'Permis');
+    return '<div class="notif-item" '
+         + 'onclick="openPermitDetail(\''+safeId+'\')" '
+         + 'style="cursor:pointer;background:'+inf.bg+';border-color:'+inf.color+';padding:7px 10px">'
+         + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+         + '<span style="font-size:10px;font-weight:700;color:'+inf.color+';font-family:\'JetBrains Mono\',monospace">'+lbl+'</span>'
+         + '<span style="font-size:10px;color:var(--text2);flex:1;min-width:120px">'+esc(p.titre||'—')+'</span>'
+         + dHint
+         + '</div>'
+         + '<div style="font-size:9px;color:var(--text3);margin-top:3px">'
+         + '📅 ' + esc(p.dateFin || '—') + (p.zone ? ' · 📍 ' + esc(p.zone) : '')
+         + '</div></div>';
+  }).join('');
+}
+
+function renderPermits(){
+  if (!D) return;
+  var list = (D.permits || []);
+
+  // Méta de la feuille source
+  var metaEl = document.getElementById('permitsSourceMeta');
+  if (metaEl) {
+    metaEl.textContent = (D.permitsSheetName || 'Gestion des Permis de Travail')
+                       + ' · ' + list.length + ' permis';
+  }
+
+  // Population des dropdowns
+  populatePermitsDropdowns(list);
+
+  // Filtres
+  var qEl    = document.getElementById('permitsSearch');
+  var sortEl = document.getElementById('permitsSort');
+  var ftEl   = document.getElementById('permitsFilterType');
+  var fzEl   = document.getElementById('permitsFilterZone');
+  var q      = qEl    ? qEl.value.trim().toLowerCase() : '';
+  var sort   = sortEl ? sortEl.value : 'end_asc';
+  var fType  = ftEl   ? ftEl.value   : 'all';
+  var fZone  = fzEl   ? fzEl.value   : 'all';
+
+  var filtered = list.filter(function(p){
+    if (permitsStatFilter !== 'all' && p.state !== permitsStatFilter) return false;
+    if (fType !== 'all' && (p.type || '') !== fType) return false;
+    if (fZone !== 'all' && (p.zone || p.interventions || '') !== fZone) return false;
+    if (q) {
+      var hay = [p.id, p.titre, p.type, p.statut, p.demandePar,
+                 p.zone, p.interventions, p.dateDebut, p.dateFin,
+                 (p.raw||[]).join(' ')].join(' ').toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Tri
+  filtered.sort(function(a,b){
+    if (sort === 'end_asc') {
+      var av = a.isoDateFin || '9999-99-99';
+      var bv = b.isoDateFin || '9999-99-99';
+      return av.localeCompare(bv);
+    }
+    if (sort === 'end_desc') {
+      return (b.isoDateFin || '').localeCompare(a.isoDateFin || '');
+    }
+    if (sort === 'start_desc') {
+      return (b.isoDateDebut || '').localeCompare(a.isoDateDebut || '');
+    }
+    if (sort === 'start_asc') {
+      return (a.isoDateDebut || '').localeCompare(b.isoDateDebut || '');
+    }
+    if (sort === 'ref_az') {
+      return String(a.id||'').localeCompare(String(b.id||''));
+    }
+    if (sort === 'title_az') {
+      return String(a.titre||'').localeCompare(String(b.titre||''));
+    }
+    if (sort === 'zone_az') {
+      return String(a.zone||a.interventions||'').localeCompare(String(b.zone||b.interventions||''));
+    }
+    return 0;
+  });
+
+  // Synthèse — KPI cards
+  var total   = list.length;
+  var active  = list.filter(function(p){return p.state === 'active';}).length;
+  var pending = list.filter(function(p){return p.state === 'pending';}).length;
+  var closed  = list.filter(function(p){return p.state === 'closed';}).length;
+  var expired = list.filter(function(p){return p.state === 'expired';}).length;
+  // Échéance proche (≤ 7j) parmi les actifs
+  var soon = list.filter(function(p){
+    return p.state === 'active' && p.daysLeft != null && p.daysLeft >= 0 && p.daysLeft <= 7;
+  }).length;
+  var sumEl = document.getElementById('permitsSum');
+  if (sumEl) {
+    sumEl.innerHTML =
+        '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(total)+'</div><div class="tsl">Total des permis</div></div>'
+      + '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(active)+'</div><div class="tsl">Permis actifs</div></div>'
+      + '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(pending)+'</div><div class="tsl">En attente d\'approbation</div></div>'
+      + '<div class="tsc"><div class="tsv" style="color:var(--text3)">'+fmtNum(closed + expired)+'</div><div class="tsl">Terminés / Expirés</div></div>';
+  }
+
+  // Compteur
+  var cntEl = document.getElementById('permitsListCount');
+  if (cntEl) {
+    cntEl.textContent = filtered.length + (q ? ' / ' + total : '')
+                      + ' affiché' + (filtered.length>1?'s':'');
+  }
+
+  // Graphiques + alertes (basés sur la liste COMPLÈTE — pas filtrée)
+  renderPermitsCharts(list);
+  renderPermitsAlerts(list);
+
+  // Tableau
+  var body = document.getElementById('permitsBody');
+  if (body) {
+    if (!filtered.length) {
+      body.innerHTML = '<tr><td colspan="9" style="text-align:center;'
+        + 'padding:18px;color:var(--text3);font-size:11px">'
+        + (list.length ? 'Aucun permis ne correspond aux filtres.'
+                       : 'Aucun permis trouvé dans la feuille source.')
+        + '</td></tr>';
+    } else {
+      body.innerHTML = filtered.map(function(p, i){
+        var safeId    = escAttr(p.id || '');
+        var refTxt    = p.id
+          ? '<a href="#" rel="noopener" '
+            + 'data-p-id="' + safeId + '" '
+            + 'onclick="openPermitDetail(this.getAttribute(\'data-p-id\'));return false;" '
+            + 'class="rbadge mono" style="color:var(--p4);text-decoration:underline;cursor:pointer">'
+            + esc(p.id) + '</a>'
+          : '<span style="color:var(--text3)">'+(i+1)+'</span>';
+        var titreTxt  = '<a href="#" rel="noopener" '
+          + 'data-p-id="' + safeId + '" '
+          + 'onclick="openPermitDetail(this.getAttribute(\'data-p-id\'));return false;" '
+          + 'style="color:var(--text);font-weight:600;text-decoration:none;cursor:pointer">'
+          + esc(p.titre || '—') + '</a>';
+        var typeTxt   = p.type
+          ? '<span class="itag">'+esc(p.type)+'</span>'
+          : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+        var statTxt   = permitStateBadge(p);
+        var debutTxt  = p.dateDebut
+          ? '<span class="mono" style="font-size:11px">'+esc(p.dateDebut)+'</span>'
+          : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+        var finTxt    = permitDateFinHtml(p);
+        var demandeTxt= p.demandePar
+          ? esc(p.demandePar)
+          : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+        var interTxt  = p.interventions
+          ? esc(p.interventions)
+          : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+
+        var pjHtml;
+        if (p.hasPhoto) {
+          var safeUrl   = escAttr(p.photoUrl || '');
+          var safeTitle = escAttr((p.id ? p.id + ' — ' : '') + (p.titre || 'Permis de travail'));
+          pjHtml = '<a href="#" rel="noopener" '
+                 + 'class="tag-btn has-photo" '
+                 + 'title="Ouvrir la pièce jointe dans le dashboard" '
+                 + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
+                 + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;">📎</a>';
+        } else {
+          pjHtml = '<span class="tag-btn no-photo" title="Aucune pièce jointe" style="cursor:default">—</span>';
+        }
+
+        return '<tr>'
+          + '<td>' + refTxt + '</td>'
+          + '<td>' + titreTxt + '</td>'
+          + '<td>' + typeTxt + '</td>'
+          + '<td>' + statTxt + '</td>'
+          + '<td>' + debutTxt + '</td>'
+          + '<td>' + finTxt + '</td>'
+          + '<td style="font-size:11px">' + demandeTxt + '</td>'
+          + '<td style="font-size:11px;max-width:200px">' + interTxt + '</td>'
+          + '<td style="text-align:center">' + pjHtml + '</td>'
+          + '</tr>';
+      }).join('');
+    }
+  }
+}
+
+// ── EMBED PERMIS — réutilise le modal iframe générique ──────
+// Ouvre une pièce jointe (Drive / Docs / image) DANS le dashboard.
+function openPermitEmbed(url, title){
+  if (!url) return;
+  openCleaningEmbed(url, title || 'Permis de travail', 'PERMIS DE TRAVAIL', '📜');
+}
+
+// ── DÉTAIL PERMIS — modal interne avec tous les champs ──────
+// Affiche : référence, statut (badge), titre, type, dates de validité,
+// demandeur, interventions, photo embarquée si Drive.
+function openPermitDetail(id){
+  if (!D || !D.permits) return;
+  var p = null;
+  for (var i = 0; i < D.permits.length; i++) {
+    if (String(D.permits[i].id) === String(id)) { p = D.permits[i]; break; }
+  }
+  if (!p) return;
+
+  document.getElementById('mPermitId').textContent    = p.id || 'Permis';
+  document.getElementById('mPermitTitle').textContent = p.titre || 'Permis de travail';
+
+  var inf = permitStateInfo(p);
+  var stateHint = '';
+  if (p.state === 'active' && p.daysLeft != null) {
+    if (p.daysLeft < 0)        stateHint = ' · expiré depuis ' + (-p.daysLeft) + ' j';
+    else if (p.daysLeft <= 30) stateHint = ' · J-' + p.daysLeft + ' avant expiration';
+  }
+  document.getElementById('mPermitStateBadge').innerHTML =
+      '<span style="font-size:10px;font-weight:700;padding:3px 9px;'
+    + 'border-radius:5px;background:'+inf.bg+';color:'+inf.color
+    + ';font-family:\'JetBrains Mono\',monospace">' + inf.label
+    + '<span style="opacity:.85;font-weight:500">' + esc(stateHint) + '</span></span>';
+
+  // Détail grid
+  var gridHtml = '';
+  function addItem(lbl, val, mono){
+    if (val == null || val === '' || val === '—') return;
+    gridHtml += '<div class="info-item">'
+             + '<div class="info-lbl">' + esc(lbl) + '</div>'
+             + '<div class="info-val' + (mono?' mono':'') + '">' + esc(String(val)) + '</div>'
+             + '</div>';
+  }
+  addItem('Référence',          p.id, true);
+  addItem('Type',               p.type);
+  addItem('Statut',             p.statut);
+  addItem('Valide à partir du', p.dateDebut, true);
+  addItem('Valide jusqu\'au',   p.dateFin, true);
+  addItem('Demandé par',        p.demandePar);
+  addItem('Interventions / Zone', p.interventions);
+  document.getElementById('mPermitGrid').innerHTML = gridHtml
+    || '<div style="grid-column:1/-1;color:var(--text3);font-size:11px;'
+       + 'text-align:center;padding:10px">Aucune information complémentaire.</div>';
+
+  // Description longue (titre / objet du travail) — déjà en hdr, mais
+  // on peut aussi afficher d'éventuelles colonnes brutes non mappées.
+  var descBox = document.getElementById('mPermitDescriptionBox');
+  var hdrs = (D && D.permitsHeaders) ? D.permitsHeaders : [];
+  var raw  = p.raw || [];
+  var extraRows = [];
+  // Indices déjà couverts dans la grid ci-dessus
+  var coveredHeaders = ['reference','ref','titre','type','statut',
+                        'valide a partir du','valide jusquau',
+                        'demande par','demandeur','interventions',
+                        'photo','image','document','lien'];
+  for (var c = 0; c < hdrs.length; c++) {
+    var hLow = normalize(String(hdrs[c]||''));
+    var v    = String(raw[c] || '').trim();
+    if (!hLow || !v) continue;
+    var skip = false;
+    for (var k = 0; k < coveredHeaders.length; k++) {
+      if (hLow.indexOf(coveredHeaders[k]) > -1) { skip = true; break; }
+    }
+    if (skip) continue;
+    if (/^https?:\/\//i.test(v)) continue;       // déjà capturé via photoUrl
+    extraRows.push('<div class="info-item" style="grid-column:1/-1">'
+                 + '<div class="info-lbl">' + esc(hdrs[c]) + '</div>'
+                 + '<div class="info-val">' + esc(v) + '</div></div>');
+  }
+  if (extraRows.length) {
+    descBox.innerHTML = '<div class="tag-detail-grid">' + extraRows.join('') + '</div>';
+    descBox.style.display = 'block';
+  } else {
+    descBox.innerHTML = '';
+    descBox.style.display = 'none';
+  }
+
+  // Pièce jointe (photo / document) — embed iframe DANS le modal
+  var photoBox = document.getElementById('mPermitPhotoBox');
+  if (p.hasPhoto && p.photoUrl) {
+    var safeUrl   = escAttr(p.photoUrl);
+    var safeTitle = escAttr((p.id ? p.id + ' — ' : '') + (p.titre || 'Permis'));
+    var embedUrl  = clnToEmbedUrl(p.photoUrl);
+    photoBox.innerHTML =
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+      + '<span style="font-size:10px;font-weight:700;color:var(--text2);'
+      + 'text-transform:uppercase;letter-spacing:.5px">📎 Pièce jointe</span>'
+      + '<button class="btn btn-ai" '
+      + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
+      + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;" '
+      + 'style="font-size:10px;padding:5px 10px">↗ Plein écran (embed)</button>'
+      + '</div>'
+      + '<div style="position:relative;border:1px solid var(--border);'
+      + 'border-radius:10px;overflow:hidden;background:var(--bg3);'
+      + 'aspect-ratio:16/10;min-height:260px">'
+      + '<iframe src="' + escAttr(embedUrl) + '" '
+      + 'referrerpolicy="no-referrer" '
+      + 'sandbox="allow-scripts allow-same-origin allow-popups allow-forms" '
+      + 'style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>'
+      + '</div>';
+    photoBox.style.display = 'block';
+  } else {
+    photoBox.innerHTML = '';
+    photoBox.style.display = 'none';
+  }
+
+  openModal('permitDetailModal');
+}
+
+// Ouvre la feuille source « Gestion des Permis de Travail » en embed.
+function openPermitsSource(){
+  var url = (D && D.permitsSourceUrl) ? D.permitsSourceUrl : '';
+  if (!url) {
+    url = 'https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=40923444#gid=40923444';
+  }
+  openCleaningEmbed(url, 'Gestion des Permis de Travail',
+                    'FEUILLE SOURCE', '📜');
+}
+
+// Helper : normalisation côté client (utilisé par openPermitDetail
+// pour comparer les entêtes brutes — tolère accents et casse).
+// Définit window.normalize si non encore disponible.
+if (typeof window.normalize !== 'function') {
+  window.normalize = function(s){
+    if (!s) return '';
+    return String(s).toLowerCase()
+      .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e')
+      .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+      .replace(/[ùúûü]/g,'u').replace(/[ç]/g,'c').replace(/[ñ]/g,'n')
+      .replace(/\s+/g,' ').trim();
+  };
+}
+
 
 // ══ IA ════════════════════════════════════════════════════════
 // ══ EPI ══════════════════════════════════════════════════════
