@@ -2025,6 +2025,10 @@ function getData() {
   }
 
   out.metrics = calcMetrics(out);
+
+  // ── NUISIBLES (4 feuilles : FK / pièges méca / colles / raticide) ──
+  out.nuisibles = readNuisibles(ss);
+
   return out;
 }
 
@@ -2091,6 +2095,204 @@ function calcMetrics(d) {
     cleaning_closed: clClosed,
     cleaning_rate: clTotal > 0 ? Math.round(clClosed / clTotal * 100) : 0
   };
+}
+
+// ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLES "NUISIBLES" ─────────────────────────────
+// 4 feuilles lues depuis le classeur :
+//   • FK                    → fiches de contrôle (mixte)
+//   • Pièges mécanique      → rongeurs (pièges mécaniques)
+//   • Boîtes à colles       → insectes (pièges adhésifs)
+//   • Boîtes à raticide     → rongeurs (postes d'appâtage)
+//
+// Détection automatique des colonnes depuis l'entête : Date, Zone /
+// Emplacement, Type de nuisible, Quantité capturée, Observation,
+// Action / Statut / Responsable. Tolérant aux variations de noms.
+//
+// Chaque entrée est typée :
+//   - categorie : 'insecte' | 'rongeur' | 'autre'
+//   - source    : 'fk' | 'mecanique' | 'colle' | 'raticide'
+// pour permettre l'agrégation côté client (graphiques mensuels,
+// par zone, par type, par dispositif).
+// ════════════════════════════════════════════════════════════
+function readNuisibles(ss) {
+  var entries = [];
+  var sheets  = ss.getSheets();
+
+  // Définition des 4 feuilles cibles + mots-clés de détection
+  var targets = [
+    { key:'fk',        label:'FK',                  keywords:['fk','fiche kontrol','fiche de contr','fiche control'], category:'mixte'   },
+    { key:'mecanique', label:'Pièges mécaniques',   keywords:['piege meca','pieges meca','mecanique','mechanical','piege mec'], category:'rongeur' },
+    { key:'colle',     label:'Boîtes à colle',      keywords:['boite a colle','boites a colle','a colle','colle','glue'], category:'insecte' },
+    { key:'raticide',  label:'Boîtes à raticide',   keywords:['boite a raticide','boites a raticide','raticide','rodenticide'], category:'rongeur' }
+  ];
+
+  function findSheetByKw(kwds) {
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      for (var k = 0; k < kwds.length; k++) {
+        if (n.indexOf(normalize(kwds[k])) > -1) return sheets[i];
+      }
+    }
+    return null;
+  }
+
+  // Mots-clés pour catégoriser un type de nuisible (FK = mixte)
+  function classifyType_(typeStr) {
+    var t = normalize(typeStr);
+    if (!t) return 'autre';
+    if (t.indexOf('insect') > -1 || t.indexOf('mouche') > -1 || t.indexOf('cafa') > -1 ||
+        t.indexOf('blatte') > -1 || t.indexOf('cancrelat') > -1 || t.indexOf('moustiq') > -1 ||
+        t.indexOf('fourmi') > -1 || t.indexOf('papillon') > -1 || t.indexOf('charanc') > -1 ||
+        t.indexOf('puce') > -1   || t.indexOf('teign') > -1   || t.indexOf('larve') > -1) return 'insecte';
+    if (t.indexOf('rat')   > -1 || t.indexOf('souris') > -1 || t.indexOf('mulot') > -1 ||
+        t.indexOf('rongeur') > -1 || t.indexOf('mus') > -1) return 'rongeur';
+    return 'autre';
+  }
+
+  targets.forEach(function(tg) {
+    var sh = findSheetByKw(tg.keywords);
+    if (!sh) { Logger.log('Nuisibles ['+tg.key+'] sheet NOT found'); return; }
+    Logger.log('Nuisibles ['+tg.key+'] sheet: ' + sh.getName());
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 1) return;
+
+    // Détection des colonnes — on parcourt jusqu'aux 8 premières lignes
+    // pour repérer la ligne d'entête (celle qui contient « date » + au
+    // moins une autre colonne reconnue).
+    var COL = { date:-1, zone:-1, type:-1, qty:-1, observ:-1, action:-1, statut:-1, resp:-1 };
+    var hdrRow = -1;
+    for (var i = 0; i < Math.min(data.length, 8); i++) {
+      var row = data[i] || [];
+      var cur = { date:-1, zone:-1, type:-1, qty:-1, observ:-1, action:-1, statut:-1, resp:-1 };
+      var hits = 0;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||'').replace(/[\n\r#]/g,' ').trim());
+        if (!h) continue;
+
+        if (cur.date < 0 && (h === 'date' || h.indexOf('date ') === 0 ||
+                             h.indexOf(' date') > -1 || h.indexOf('date de') > -1 ||
+                             h.indexOf('jour') > -1)) {
+          cur.date = c; hits++; continue;
+        }
+        if (cur.qty < 0 && (h.indexOf('quantit') > -1 || h.indexOf('nombre') > -1 ||
+                            h === 'nb' || h.indexOf('nb ') === 0 || h.indexOf(' nb') > -1 ||
+                            h.indexOf('compt') > -1 || h.indexOf('captur') > -1 ||
+                            h.indexOf('total') > -1 || h.indexOf('effect') > -1)) {
+          cur.qty = c; hits++; continue;
+        }
+        if (cur.zone < 0 && (h.indexOf('zone') > -1 || h.indexOf('emplac') > -1 ||
+                             h.indexOf('lieu') > -1 || h.indexOf('local') > -1 ||
+                             h.indexOf('atelier') > -1 || h.indexOf('secteur') > -1 ||
+                             h.indexOf('point') > -1 || h.indexOf('poste') > -1 ||
+                             h.indexOf('numero') > -1 || h.indexOf('n°') > -1 ||
+                             h.indexOf('piege') > -1 || h.indexOf('boite') > -1 ||
+                             h.indexOf('station') > -1)) {
+          cur.zone = c; hits++; continue;
+        }
+        if (cur.type < 0 && (h.indexOf('type') > -1 || h.indexOf('nuisible') > -1 ||
+                             h.indexOf('espece') > -1 || h.indexOf('designat') > -1 ||
+                             h.indexOf('nature') > -1 || h.indexOf('insecte') > -1 ||
+                             h.indexOf('rongeur') > -1)) {
+          cur.type = c; hits++; continue;
+        }
+        if (cur.observ < 0 && (h.indexOf('observ') > -1 || h.indexOf('remarq') > -1 ||
+                               h.indexOf('comment') > -1 || h.indexOf('note') > -1 ||
+                               h.indexOf('constat') > -1)) {
+          cur.observ = c; hits++; continue;
+        }
+        if (cur.action < 0 && (h.indexOf('action') > -1 || h.indexOf('mesur') > -1 ||
+                               h.indexOf('corre') > -1 || h.indexOf('traitem') > -1)) {
+          cur.action = c; hits++; continue;
+        }
+        if (cur.statut < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)) {
+          cur.statut = c; hits++; continue;
+        }
+        if (cur.resp < 0 && (h.indexOf('respons') > -1 || h.indexOf('agent') > -1 ||
+                             h.indexOf('controleur') > -1 || h.indexOf('operateur') > -1)) {
+          cur.resp = c; hits++; continue;
+        }
+      }
+      if (hits >= 2 && cur.date >= 0) {
+        COL = cur; hdrRow = i; break;
+      }
+    }
+    // Pas d'entête détectée → on suppose ligne 0 et on tente quand même
+    // de lire les colonnes positionnelles standard (date=0, zone=1, type=2, qty=3).
+    if (hdrRow < 0) {
+      hdrRow = 0;
+      if (COL.date < 0) COL.date = 0;
+      if (COL.zone < 0 && data[0] && data[0].length > 1) COL.zone = 1;
+      if (COL.type < 0 && data[0] && data[0].length > 2) COL.type = 2;
+      if (COL.qty  < 0 && data[0] && data[0].length > 3) COL.qty  = 3;
+    }
+
+    // Lecture des lignes de données
+    for (var r = hdrRow + 1; r < data.length; r++) {
+      var row = data[r] || [];
+      // Ligne entièrement vide → skip
+      var allEmpty = true;
+      for (var c = 0; c < row.length; c++) {
+        if (!isNull(row[c])) { allEmpty = false; break; }
+      }
+      if (allEmpty) continue;
+
+      var dCell = COL.date >= 0 ? row[COL.date] : null;
+      var pd    = parseDate(dCell);
+      var iso   = (pd && !isNaN(pd.getTime())) ? Utilities.formatDate(pd, 'GMT+1', 'yyyy-MM-dd') : '';
+      var mois  = pd ? (pd.getMonth() + 1) : null;
+      var annee = pd ? pd.getFullYear()    : null;
+
+      var typeStr = COL.type >= 0 ? safeText(row[COL.type]) : '';
+      var zoneStr = COL.zone >= 0 ? safeText(row[COL.zone]) : '';
+
+      // Quantité : valeur numérique de la cellule, sinon 1 par ligne
+      // (chaque ligne représente alors une capture / observation).
+      var qty = 0;
+      if (COL.qty >= 0) qty = toNumZ(row[COL.qty]);
+      if (!qty || qty < 0) {
+        // Si pas de quantité explicite mais ligne valable, on considère
+        // 1 capture/observation par ligne pour permettre l'agrégation.
+        if (iso || typeStr || zoneStr) qty = 1;
+      }
+
+      // Catégorie : selon la feuille, ou selon le type pour FK
+      var cat = tg.category;
+      if (cat === 'mixte') {
+        var detected = classifyType_(typeStr);
+        cat = detected;
+      }
+
+      entries.push({
+        source       : tg.key,
+        sourceLabel  : tg.label,
+        sheetName    : sh.getName(),
+        date         : fmtDate(dCell),
+        isoDate      : iso,
+        annee        : annee,
+        mois         : mois,
+        zone         : zoneStr,
+        type         : typeStr,
+        categorie    : cat,           // 'insecte' | 'rongeur' | 'autre'
+        quantite     : qty,
+        observation  : COL.observ >= 0 ? safeText(row[COL.observ]) : '',
+        action       : COL.action >= 0 ? safeText(row[COL.action]) : '',
+        statut       : COL.statut >= 0 ? safeText(row[COL.statut]) : '',
+        responsable  : COL.resp   >= 0 ? safeText(row[COL.resp])   : ''
+      });
+    }
+  });
+
+  // Tri par date décroissante (entrées sans date à la fin)
+  entries.sort(function(a, b) {
+    if (!a.isoDate) return 1;
+    if (!b.isoDate) return -1;
+    return b.isoDate.localeCompare(a.isoDate);
+  });
+
+  Logger.log('Nuisibles : ' + entries.length + ' lignes lues');
+  return entries;
 }
 
 function callGemini(prompt) {

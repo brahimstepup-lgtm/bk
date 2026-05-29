@@ -904,6 +904,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
   <button class="tab"    onclick="goTab('contracts',this)">📑 Contrats</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
+  <button class="tab"    onclick="goTab('pests',this)">🐜 Nuisibles</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -1825,6 +1826,136 @@ html.light .notif-full-filters .pf-sel{background:#fff}
           <!-- entêtes générées dynamiquement à partir de D.epiHeaders -->
         </thead>
         <tbody id="epiBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NUISIBLES ═══ -->
+<div id="pests" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--orange,#f97316)"></span>Suivi des Nuisibles — SOBCO 3
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Source : feuilles « FK », « Pièges mécanique », « Boîtes à colle », « Boîtes à raticide »
+      </span>
+    </div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin:6px 0 0">
+      Tableau de bord du suivi mensuel des <strong>insectes</strong> et <strong>rongeurs</strong> dans l'usine.
+      Analyses croisées par <strong>type de nuisible</strong>, <strong>zone / emplacement</strong>,
+      <strong>période</strong> et <strong>évolution mensuelle</strong>.
+    </p>
+  </div>
+
+  <!-- Barre filtres -->
+  <div class="pf-bar">
+    <span class="pf-lbl">Période :</span>
+    <select class="pf-sel" id="pestPer" onchange="onPestPer()">
+      <option value="all">Tout</option>
+      <option value="ytd" selected>YTD 2026</option>
+      <option value="month">Mois</option>
+      <option value="custom">Personnalisé</option>
+    </select>
+    <select class="pf-sel" id="pestYr" onchange="applyPestF()">
+      <option value="2026" selected>2026</option>
+      <option value="2025">2025</option>
+      <option value="2024">2024</option>
+    </select>
+    <select class="pf-sel" id="pestMo" style="display:none" onchange="applyPestF()">
+      <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+      <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+      <option value="7">Juillet</option><option value="8">Août</option><option value="9">Septembre</option>
+      <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+    </select>
+    <input type="date" class="pf-input" id="pestD1" style="display:none" onchange="applyPestF()">
+    <span id="pestSep" style="display:none;color:var(--text3);font-size:10px">→</span>
+    <input type="date" class="pf-input" id="pestD2" style="display:none" onchange="applyPestF()">
+
+    <span class="pf-lbl" style="margin-left:6px">Dispositif :</span>
+    <select class="pf-sel" id="pestSrc" onchange="applyPestF()">
+      <option value="all">Tous</option>
+      <option value="fk">FK (fiches contrôle)</option>
+      <option value="mecanique">Pièges mécaniques</option>
+      <option value="colle">Boîtes à colle</option>
+      <option value="raticide">Boîtes à raticide</option>
+    </select>
+
+    <span class="pf-lbl" style="margin-left:6px">Catégorie :</span>
+    <select class="pf-sel" id="pestCat" onchange="applyPestF()">
+      <option value="all">Toutes</option>
+      <option value="insecte">🦟 Insectes</option>
+      <option value="rongeur">🐀 Rongeurs</option>
+      <option value="autre">❔ Autres</option>
+    </select>
+
+    <span class="pf-lbl" style="margin-left:6px">📍 Zone :</span>
+    <select class="pf-sel pf-zone-sel" id="pestZone" onchange="applyPestF()">
+      <option value="all">Toutes</option>
+    </select>
+
+    <span class="pf-stat" id="pestStat">— captures</span>
+  </div>
+
+  <!-- KPI -->
+  <div class="kpi-grid" id="pestKpi"></div>
+
+  <!-- Charts row 1 : évolution mensuelle (gros) -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="ct">
+      <span class="ct-dot" style="background:var(--orange,#f97316)"></span>
+      Évolution mensuelle — insectes vs rongeurs
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">
+        Captures cumulées par mois sur la période filtrée
+      </span>
+    </div>
+    <div class="cw" style="height:230px"><canvas id="pestEvoC"></canvas></div>
+  </div>
+
+  <!-- Charts row 2 : type + zone -->
+  <div class="row2">
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Répartition par type de nuisible</div>
+      <div class="cw" style="height:210px"><canvas id="pestTypeC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Top zones / emplacements</div>
+      <div class="cw" style="height:210px"><canvas id="pestZoneC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Charts row 3 : dispositifs (stack) + catégorie globale -->
+  <div class="row2">
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Dispositifs par mois (cumulé)</div>
+      <div class="cw" style="height:210px"><canvas id="pestSrcC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot"></span>Insectes / Rongeurs / Autres</div>
+      <div class="cw" style="height:210px"><canvas id="pestCatC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Liste détaillée -->
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Registre des observations
+      <span id="pestListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">Plus récent en haut</span>
+    </div>
+    <div class="tblw" style="max-height:480px">
+      <table>
+        <thead>
+          <tr>
+            <th>Date ↓</th>
+            <th>Dispositif</th>
+            <th>Catégorie</th>
+            <th>Type</th>
+            <th>Zone / Emplacement</th>
+            <th>Quantité</th>
+            <th>Observation</th>
+            <th>Action</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="pestBody"></tbody>
       </table>
     </div>
   </div>
@@ -3838,6 +3969,10 @@ function render(data){
 
   // -- EPI -------------------------------------------------
   renderEPI();
+
+  // -- NUISIBLES -------------------------------------------
+  populatePestDropdowns();
+  applyPestF();
 }
 
 
@@ -4850,6 +4985,372 @@ function refreshData(){
       if(btn){ btn.dataset.busy=''; btn.disabled=false; btn.classList.remove('spinning'); }
     })
     .getDataForClient();
+}
+
+
+// ════════════════════════════════════════════════════════════
+// ══ NUISIBLES (Insectes / Rongeurs) ══════════════════════════
+// ════════════════════════════════════════════════════════════
+// Données : D.nuisibles (array). Chaque entrée :
+//   { source, sourceLabel, sheetName, date, isoDate, annee, mois,
+//     zone, type, categorie, quantite, observation, action,
+//     statut, responsable }
+// Filtres UI : période (all/ytd/month/custom), dispositif (source),
+// catégorie, zone. Synchronise les filtres et redessine charts +
+// tableau à chaque changement.
+// ════════════════════════════════════════════════════════════
+
+// ── Couleurs cohérentes par catégorie / dispositif ──
+var PEST_CAT_COLORS = {
+  insecte:'#f5a623',  // ambre — insectes
+  rongeur:'#e8445a',  // rouge — rongeurs
+  autre  :'#8b5cf6'   // violet — autres
+};
+var PEST_SRC_COLORS = {
+  fk        :'#0da8d2',  // bleu cyan — fiches contrôle
+  mecanique :'#10c985',  // vert      — pièges mécaniques
+  colle     :'#f5a623',  // ambre     — boîtes à colle
+  raticide  :'#e8445a'   // rouge     — boîtes à raticide
+};
+var PEST_SRC_LABEL = {
+  fk        :'FK',
+  mecanique :'Pièges méca.',
+  colle     :'Boîtes à colle',
+  raticide  :'Boîtes à raticide'
+};
+
+// ── Bascule période (mois / dates) ──────────────────────────
+function onPestPer(){
+  var v = document.getElementById('pestPer').value;
+  document.getElementById('pestMo').style.display  = (v==='month')   ? 'inline-block' : 'none';
+  document.getElementById('pestYr').style.display  = (v==='month'||v==='ytd') ? 'inline-block' : 'none';
+  document.getElementById('pestD1').style.display  = (v==='custom')  ? 'inline-block' : 'none';
+  document.getElementById('pestD2').style.display  = (v==='custom')  ? 'inline-block' : 'none';
+  document.getElementById('pestSep').style.display = (v==='custom')  ? 'inline-block' : 'none';
+  applyPestF();
+}
+
+// ── Remplit les dropdowns (zones + années disponibles) ──────
+function populatePestDropdowns(){
+  if(!D || !D.nuisibles) return;
+  var data = D.nuisibles;
+
+  // Zones
+  var zSet = {};
+  data.forEach(function(p){ if(p.zone) zSet[p.zone] = true; });
+  var zones = Object.keys(zSet).sort(function(a,b){ return a.localeCompare(b,'fr',{sensitivity:'base'}); });
+  var zSel = document.getElementById('pestZone');
+  if(zSel){
+    var current = zSel.value || 'all';
+    zSel.innerHTML = '<option value="all">Toutes</option>' +
+      zones.map(function(z){ return '<option value="'+escAttr(z)+'">'+esc(z)+'</option>'; }).join('');
+    if(current && (current==='all' || zones.indexOf(current)>-1)) zSel.value = current;
+  }
+
+  // Années disponibles
+  var ySet = {};
+  data.forEach(function(p){ if(p.annee) ySet[p.annee] = true; });
+  var years = Object.keys(ySet).map(function(y){ return parseInt(y,10); })
+    .filter(function(y){ return !isNaN(y) && y>2000; })
+    .sort(function(a,b){ return b-a; });
+  var ySel = document.getElementById('pestYr');
+  if(ySel && years.length){
+    var cur = ySel.value || String(years[0]);
+    var opts = years.map(function(y){ return '<option value="'+y+'">'+y+'</option>'; }).join('');
+    ySel.innerHTML = opts;
+    if(years.map(String).indexOf(cur) > -1) ySel.value = cur;
+  }
+}
+
+// ── Filtre courant → tableau d'entrées ──────────────────────
+function getPestFiltered(){
+  if(!D || !D.nuisibles) return [];
+  var per   = document.getElementById('pestPer').value;
+  var year  = parseInt(document.getElementById('pestYr').value, 10);
+  var month = parseInt(document.getElementById('pestMo').value, 10);
+  var d1    = document.getElementById('pestD1').value;
+  var d2    = document.getElementById('pestD2').value;
+  var src   = document.getElementById('pestSrc').value;
+  var cat   = document.getElementById('pestCat').value;
+  var zone  = document.getElementById('pestZone').value;
+
+  return D.nuisibles.filter(function(p){
+    if(src  !== 'all' && p.source     !== src)  return false;
+    if(cat  !== 'all' && p.categorie  !== cat)  return false;
+    if(zone !== 'all' && p.zone       !== zone) return false;
+
+    if(per === 'all') return true;
+    if(!p.isoDate) return per === 'all';
+    if(per === 'ytd')   return p.annee === year;
+    if(per === 'month') return p.annee === year && p.mois === month;
+    if(per === 'custom'){
+      if(d1 && p.isoDate < d1) return false;
+      if(d2 && p.isoDate > d2) return false;
+      return true;
+    }
+    return true;
+  });
+}
+
+// ── Helper : somme des quantités ─────────────────────────────
+function sumPestQty(arr){
+  var s = 0;
+  for(var i=0;i<arr.length;i++) s += (arr[i].quantite||0);
+  return s;
+}
+
+// ── Rendu principal ──────────────────────────────────────────
+function applyPestF(){
+  if(!D || !D.nuisibles) return;
+  var rows = getPestFiltered();
+
+  var nbObs   = rows.length;
+  var totalQ  = sumPestQty(rows);
+  var insQ    = sumPestQty(rows.filter(function(p){ return p.categorie==='insecte'; }));
+  var ronQ    = sumPestQty(rows.filter(function(p){ return p.categorie==='rongeur'; }));
+  var autQ    = sumPestQty(rows.filter(function(p){ return p.categorie==='autre';   }));
+  var zonesNb = (function(){ var s={}; rows.forEach(function(p){ if(p.zone) s[p.zone]=true; }); return Object.keys(s).length; })();
+
+  var per   = document.getElementById('pestPer').value;
+  var year  = parseInt(document.getElementById('pestYr').value, 10);
+  var month = parseInt(document.getElementById('pestMo').value, 10);
+  var trendHtml = '';
+  if(per === 'month' && D.nuisibles){
+    var prevMonth = month === 1 ? 12 : (month-1);
+    var prevYear  = month === 1 ? (year-1) : year;
+    var prev = D.nuisibles.filter(function(p){ return p.annee===prevYear && p.mois===prevMonth; });
+    var prevQ = sumPestQty(prev);
+    var delta = totalQ - prevQ;
+    var pct   = prevQ ? Math.round(delta / prevQ * 100) : (totalQ ? 100 : 0);
+    var arrow = delta > 0 ? '▲' : (delta < 0 ? '▼' : '=');
+    var col   = delta > 0 ? 'r' : (delta < 0 ? 'g' : 'b');
+    trendHtml = kpiCard('Évolution M-1', arrow+' '+(delta>0?'+':'')+fmtNum(delta), col,
+                        'M-1 : '+fmtNum(prevQ)+' ('+(pct>0?'+':'')+pct+'%)',
+                        col==='r'?'k-r':(col==='g'?'k-g':'k-b'), null, null);
+  }
+
+  document.getElementById('pestKpi').innerHTML = [
+    kpiCard('Captures totales', totalQ,  'b', nbObs+' observation'+(nbObs>1?'s':''), 'k-b', null, null),
+    kpiCard('🦟 Insectes',      insQ,    'a', insQ&&totalQ?Math.round(insQ/totalQ*100)+'% du total':'—', 'k-a', null, null),
+    kpiCard('🐀 Rongeurs',      ronQ,    'r', ronQ&&totalQ?Math.round(ronQ/totalQ*100)+'% du total':'—', 'k-r', null, null),
+    kpiCard('Autres',           autQ,    'b', autQ&&totalQ?Math.round(autQ/totalQ*100)+'% du total':'—', 'k-b', null, null),
+    kpiCard('Zones touchées',   zonesNb, 'g', 'emplacements distincts', 'k-g', null, null),
+    trendHtml
+  ].filter(Boolean).join('');
+
+  document.getElementById('pestStat').textContent = nbObs + ' observation' + (nbObs>1?'s':'') + ' · ' + fmtNum(totalQ) + ' captures';
+  var lc = document.getElementById('pestListCount'); if(lc) lc.textContent = nbObs + ' ligne' + (nbObs>1?'s':'');
+
+  drawPestEvolution(rows);
+  drawPestTypes(rows);
+  drawPestZones(rows);
+  drawPestSources(rows);
+  drawPestCategories(insQ, ronQ, autQ);
+  renderPestTable(rows);
+}
+
+// ── Évolution mensuelle ─────────────────────────────────────
+function drawPestEvolution(rows){
+  var per  = document.getElementById('pestPer').value;
+  var year = parseInt(document.getElementById('pestYr').value, 10);
+
+  var ins = [0,0,0,0,0,0,0,0,0,0,0,0];
+  var ron = [0,0,0,0,0,0,0,0,0,0,0,0];
+  var aut = [0,0,0,0,0,0,0,0,0,0,0,0];
+  rows.forEach(function(p){
+    if(!p.mois) return;
+    var i = p.mois - 1;
+    if(p.categorie==='insecte')      ins[i] += (p.quantite||0);
+    else if(p.categorie==='rongeur') ron[i] += (p.quantite||0);
+    else                             aut[i] += (p.quantite||0);
+  });
+
+  var titleSuffix = '';
+  if(per==='ytd' || per==='month') titleSuffix = ' — '+year;
+
+  mkChart('pestEvoC','line', ML, [
+    { label:'Insectes'+titleSuffix, data:ins, borderColor:PEST_CAT_COLORS.insecte,
+      backgroundColor:'rgba(245,166,35,.15)', borderWidth:2, tension:.3, fill:true,
+      pointRadius:3, pointBackgroundColor:PEST_CAT_COLORS.insecte },
+    { label:'Rongeurs'+titleSuffix, data:ron, borderColor:PEST_CAT_COLORS.rongeur,
+      backgroundColor:'rgba(232,68,90,.15)', borderWidth:2, tension:.3, fill:true,
+      pointRadius:3, pointBackgroundColor:PEST_CAT_COLORS.rongeur },
+    { label:'Autres'+titleSuffix, data:aut, borderColor:PEST_CAT_COLORS.autre,
+      backgroundColor:'rgba(139,92,246,.12)', borderWidth:2, tension:.3, fill:false,
+      pointRadius:2, pointBackgroundColor:PEST_CAT_COLORS.autre,
+      hidden: aut.reduce(function(a,b){return a+b;},0)===0 }
+  ], {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:true, position:'bottom',
+      labels:{ color:C.txt, font:{size:10}, boxWidth:10, padding:8 } } },
+    scales:{
+      x:{ grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}} },
+      y:{ grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}}, beginAtZero:true }
+    }
+  });
+}
+
+// ── Répartition par type de nuisible ────────────────────────
+function drawPestTypes(rows){
+  var agg = {};
+  rows.forEach(function(p){
+    var t = (p.type && p.type.trim()) ? p.type.trim() : '(non spécifié)';
+    agg[t] = (agg[t]||0) + (p.quantite||0);
+  });
+  var keys = Object.keys(agg).sort(function(a,b){ return agg[b]-agg[a]; }).slice(0,8);
+  if(charts['pestTypeC']) charts['pestTypeC'].destroy();
+  if(keys.length === 0) return;
+  var palette = ['#f5a623','#e8445a','#0da8d2','#10c985','#8b5cf6','#14b8a6','#f97316','#0a7a9a'];
+  var cols = keys.map(function(_,i){ return palette[i % palette.length]; });
+
+  mkChart('pestTypeC','bar', keys, [{
+    label:'Captures', data:keys.map(function(k){return agg[k];}),
+    backgroundColor:cols, borderRadius:6, borderSkipped:false
+  }], {
+    responsive:true, maintainAspectRatio:false, indexAxis:'y',
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:function(ctx){ return ' '+fmtNum(ctx.parsed.x)+' captures'; } } } },
+    scales:{
+      x:{ grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}}, beginAtZero:true },
+      y:{ grid:{display:false}, ticks:{color:C.txt, font:{size:10}} }
+    }
+  });
+}
+
+// ── Top zones ───────────────────────────────────────────────
+function drawPestZones(rows){
+  var agg = {};
+  rows.forEach(function(p){
+    var z = (p.zone && p.zone.trim()) ? p.zone.trim() : '(non spécifiée)';
+    agg[z] = (agg[z]||0) + (p.quantite||0);
+  });
+  var keys = Object.keys(agg).sort(function(a,b){ return agg[b]-agg[a]; }).slice(0,10);
+  if(charts['pestZoneC']) charts['pestZoneC'].destroy();
+  if(keys.length === 0) return;
+
+  mkChart('pestZoneC','bar', keys, [{
+    label:'Captures', data:keys.map(function(k){return agg[k];}),
+    backgroundColor:'rgba(13,168,210,.7)', borderColor:'#0b91b5',
+    borderWidth:1, borderRadius:6, borderSkipped:false
+  }], {
+    responsive:true, maintainAspectRatio:false, indexAxis:'y',
+    plugins:{ legend:{display:false},
+      tooltip:{ callbacks:{ label:function(ctx){ return ' '+fmtNum(ctx.parsed.x)+' captures'; } } } },
+    scales:{
+      x:{ grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}}, beginAtZero:true },
+      y:{ grid:{display:false}, ticks:{color:C.txt, font:{size:10}} }
+    }
+  });
+}
+
+// ── Dispositifs par mois (stacked bar) ──────────────────────
+function drawPestSources(rows){
+  var srcs = ['fk','mecanique','colle','raticide'];
+  var perSrc = { fk:[0,0,0,0,0,0,0,0,0,0,0,0],
+                 mecanique:[0,0,0,0,0,0,0,0,0,0,0,0],
+                 colle:[0,0,0,0,0,0,0,0,0,0,0,0],
+                 raticide:[0,0,0,0,0,0,0,0,0,0,0,0] };
+  rows.forEach(function(p){
+    if(!p.mois || !perSrc[p.source]) return;
+    perSrc[p.source][p.mois-1] += (p.quantite||0);
+  });
+
+  var ds = srcs.map(function(s){
+    return {
+      label: PEST_SRC_LABEL[s],
+      data : perSrc[s],
+      backgroundColor: PEST_SRC_COLORS[s],
+      borderRadius: 4,
+      borderSkipped:false,
+      stack: 'pests'
+    };
+  });
+
+  mkChart('pestSrcC','bar', ML, ds, {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ display:true, position:'bottom',
+      labels:{ color:C.txt, font:{size:10}, boxWidth:10, padding:8 } } },
+    scales:{
+      x:{ stacked:true, grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}} },
+      y:{ stacked:true, grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}}, beginAtZero:true }
+    }
+  });
+}
+
+// ── Catégorie globale (doughnut) ────────────────────────────
+function drawPestCategories(ins, ron, aut){
+  var labels=[], data=[], colors=[];
+  if(ins>0){ labels.push('Insectes');  data.push(ins); colors.push(PEST_CAT_COLORS.insecte); }
+  if(ron>0){ labels.push('Rongeurs');  data.push(ron); colors.push(PEST_CAT_COLORS.rongeur); }
+  if(aut>0){ labels.push('Autres');    data.push(aut); colors.push(PEST_CAT_COLORS.autre);   }
+
+  if(charts['pestCatC']) charts['pestCatC'].destroy();
+  if(labels.length === 0) return;
+  charts['pestCatC'] = new Chart(document.getElementById('pestCatC'), {
+    type:'doughnut',
+    data:{ labels:labels, datasets:[{ data:data, backgroundColor:colors, borderWidth:0, hoverOffset:6 }] },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, position:'right',
+          labels:{ color:C.txt, font:{size:11}, boxWidth:10, padding:10 } },
+        tooltip:{ callbacks:{ label:function(ctx){
+          var total = ctx.dataset.data.reduce(function(a,b){return a+b;},0);
+          var pct = total ? Math.round(ctx.parsed/total*100) : 0;
+          return ' '+ctx.label+' : '+fmtNum(ctx.parsed)+' ('+pct+'%)';
+        } } }
+      },
+      cutout:'58%'
+    }
+  });
+}
+
+// ── Tableau détaillé ────────────────────────────────────────
+function renderPestTable(rows){
+  var body = document.getElementById('pestBody');
+  if(!body) return;
+  if(rows.length === 0){
+    body.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">Aucune observation pour les filtres sélectionnés.</td></tr>';
+    return;
+  }
+  var html = '';
+  var MAX = 500;
+  var slice = rows.slice(0, MAX);
+  slice.forEach(function(p){
+    var catBadge = '';
+    if(p.categorie==='insecte')      catBadge = '<span class="rbadge" style="background:rgba(245,166,35,.18);color:'+PEST_CAT_COLORS.insecte+'">🦟 Insecte</span>';
+    else if(p.categorie==='rongeur') catBadge = '<span class="rbadge" style="background:rgba(232,68,90,.18);color:'+PEST_CAT_COLORS.rongeur+'">🐀 Rongeur</span>';
+    else                             catBadge = '<span class="rbadge">❔ Autre</span>';
+
+    var srcCol = PEST_SRC_COLORS[p.source] || 'var(--p4)';
+    var srcBadge = '<span class="rbadge" style="background:rgba(13,168,210,.12);color:'+srcCol+'">'+esc(p.sourceLabel||p.source||'')+'</span>';
+
+    var statut = p.statut || '';
+    var statBadge = '';
+    if(statut){
+      var sl = statut.toLowerCase();
+      var cls = (sl.indexOf('ferm')>-1 || sl.indexOf('clos')>-1 || sl.indexOf('trait')>-1 || sl.indexOf('ok')>-1) ? 's-close' :
+                ((sl.indexOf('ouvert')>-1 || sl.indexOf('cours')>-1 || sl.indexOf('attente')>-1) ? 's-open' : '');
+      statBadge = cls ? '<span class="'+cls+'">'+esc(statut)+'</span>' : '<span class="rbadge">'+esc(statut)+'</span>';
+    }
+
+    html += '<tr>'
+      + '<td class="mono" style="white-space:nowrap">'+esc(p.date||'—')+'</td>'
+      + '<td>'+srcBadge+'</td>'
+      + '<td>'+catBadge+'</td>'
+      + '<td>'+esc(p.type||'—')+'</td>'
+      + '<td>'+esc(p.zone||'—')+'</td>'
+      + '<td class="mono" style="text-align:right;font-weight:600">'+fmtNum(p.quantite||0)+'</td>'
+      + '<td style="font-size:10px;color:var(--text3);max-width:220px">'+esc(p.observation||'')+'</td>'
+      + '<td style="font-size:10px;color:var(--text3);max-width:200px">'+esc(p.action||'')+'</td>'
+      + '<td>'+statBadge+'</td>'
+      + '</tr>';
+  });
+  if(rows.length > MAX){
+    html += '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:8px;font-style:italic">'
+         + '… '+(rows.length-MAX)+' lignes supplémentaires masquées (filtrer pour affiner)</td></tr>';
+  }
+  body.innerHTML = html;
 }
 </script>
 </body>
