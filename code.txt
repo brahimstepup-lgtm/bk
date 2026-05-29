@@ -33,6 +33,16 @@ var CLEAN_PLAN_SHEET_NAME= 'nettoyage 1';
 var PROCEDURES_SHEET_GID  = 1171171688;
 var PROCEDURES_SHEET_NAME = 'procédures';
 
+// ── PERMIS DE TRAVAIL (feuille "Gestion des Permis de Travail", gid=40923444) ─
+// Détection souple des colonnes — typiquement :
+//   Référence | Titre | Type | Statut | Valide à partir du | Valide jusqu'au
+//   Demandé par | Interventions | Photo
+// Les hyperliens (=HYPERLINK ou RichText) sont extraits sur la cellule
+// PHOTO et — en fallback — sur n'importe quelle autre cellule de la ligne
+// pour exposer un seul champ « photoUrl » utilisé côté client (embed interne).
+var PERMITS_SHEET_GID  = 40923444;
+var PERMITS_SHEET_NAME = 'Gestion des Permis de Travail';
+
 // ── CONTRATS (feuille "Suivi des Contrats et Liens Drive", gid=2050763956) ─
 // Détection souple des colonnes — typiquement :
 //   N° / Type / Intitulé (ou Objet) / Tiers (Fournisseur/Client/Partenaire)
@@ -1912,6 +1922,404 @@ function readPests(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLE "Gestion des Permis de Travail" ──────────
+// Renvoie un objet :
+//   { entries:[{...}], headers:[...], sheetName:'...' }
+//
+// Chaque entry contient :
+//   - id (référence)
+//   - titre, type, statut
+//   - dateDebut, dateFin (validité)  + isoDateDebut, isoDateFin
+//   - demandePar, interventions
+//   - zone (alias de "interventions" — pour les graphiques par zone)
+//   - photoRef         : valeur brute de la cellule photo
+//   - photoUrl         : URL exploitable (Drive / http) si trouvée
+//   - hasPhoto         : booléen
+//   - month, year      : index/année déduits de la date de début
+//   - state            : 'active' | 'pending' | 'closed' | 'expired'
+//   - daysLeft         : jours restants avant expiration (si actif)
+//   - raw[]            : toutes les colonnes brutes
+//
+// Détection tolérante des colonnes :
+//   RÉFÉRENCE / ID    : « ref » / « n° » / « numero » / « id »
+//   TITRE             : « titre » / « libelle » / « designation » /
+//                       « intitule » / « objet » / « description »
+//   TYPE              : « type » / « categorie » / « nature »
+//   STATUT            : « statut » / « etat »
+//   DATE DÉBUT        : « valide a partir » / « debut » / « delivrance » /
+//                       « emis » / « date du » / « partir »
+//   DATE FIN          : « valide jusqu » / « fin » / « echeance » /
+//                       « expiration » / « validite » / « jusqu »
+//   DEMANDÉ PAR       : « demande » / « demandeur » / « par »
+//   INTERVENTIONS     : « intervention » / « lieu » / « emplacement » /
+//                       « zone » / « localisation » / « atelier »
+//   PHOTO             : « photo » / « image » / « piece jointe » /
+//                       « justificatif » / « lien » / « document »
+//
+// Les hyperliens sont extraits dans cet ordre :
+//   1) =HYPERLINK("url",…)
+//   2) RichTextValues.getLinkUrl()
+//   3) Objet Drive natif (getUrl)
+//   4) URL en clair dans la valeur brute
+// ════════════════════════════════════════════════════════════
+function readPermits(ss) {
+  var entries    = [];
+  var rawHeaders = [];
+  var sheetName  = '';
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+
+    // 1. Cherche par GID
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === PERMITS_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon par nom exact
+    if (!sh) {
+      var target = normalize(PERMITS_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "permis"
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('permis') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) {
+      Logger.log('Permis sheet NOT found');
+      return { entries: entries, headers: rawHeaders, sheetName: '' };
+    }
+    sheetName = sh.getName();
+    Logger.log('Permis sheet found: ' + sheetName);
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null;
+    var formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e0) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(eF) { formulas = null; }
+    if (!data || data.length < 1) {
+      return { entries: entries, headers: rawHeaders, sheetName: sheetName };
+    }
+
+    // ── Helper : extrait l'URL d'une cellule ─────────────────
+    function cellUrl(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      // 1) Formule =HYPERLINK("url", "libellé")
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      // 2) RichText
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      // 3) Objet Drive natif
+      var v = data[rIdx][cIdx];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(eU) {}
+      }
+      // 4) URL en clair dans la valeur brute
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
+    function cellText(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      var v = data[rIdx][cIdx];
+      return isNull(v) ? '' : safeText(v);
+    }
+    // Cherche une URL n'importe où sur la ligne (toutes colonnes)
+    function anyUrlOnRow(rIdx, exceptCol) {
+      var rowLen = (data[rIdx] || []).length;
+      for (var c = 0; c < rowLen; c++) {
+        if (c === exceptCol) continue;
+        var u = cellUrl(rIdx, c);
+        if (u) return u;
+      }
+      return '';
+    }
+
+    // ── Détecter la ligne d'entête + colonnes ──
+    var COL = { id:-1, titre:-1, type:-1, statut:-1, dateDebut:-1,
+                dateFin:-1, demandePar:-1, interventions:-1, photo:-1 };
+    var hdrRow = -1;
+    for (var i = 0; i < Math.min(data.length, 8); i++) {
+      var row = data[i];
+      var cur = { id:-1, titre:-1, type:-1, statut:-1, dateDebut:-1,
+                  dateFin:-1, demandePar:-1, interventions:-1, photo:-1 };
+      var hits = 0;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||'').replace(/[\n\r#]/g,'').trim());
+        if (!h) continue;
+
+        // PHOTO / Pièce jointe / lien (testé tôt)
+        if (cur.photo < 0 &&
+            (h.indexOf('photo') > -1 || h.indexOf('image') > -1 ||
+             h.indexOf('piece jointe') > -1 || h.indexOf('pj') === 0 ||
+             h.indexOf('justificatif') > -1 || h.indexOf('document') > -1 ||
+             h.indexOf('fichier') > -1 ||
+             (h.indexOf('lien') > -1 && h.indexOf('jusqu') < 0) ||
+             h.indexOf('url') > -1 || h.indexOf('drive') > -1)) {
+          cur.photo = c; hits++; continue;
+        }
+        // DATE FIN (testé avant date début pour éviter de voler "valide à partir du")
+        if (cur.dateFin < 0 &&
+            (h.indexOf('valide jusqu') > -1 || h.indexOf('jusqu') > -1 ||
+             h.indexOf('echeance')      > -1 || h.indexOf('expiration') > -1 ||
+             h.indexOf('fin')           > -1 || h.indexOf('validite')   > -1)) {
+          cur.dateFin = c; hits++; continue;
+        }
+        // DATE DÉBUT
+        if (cur.dateDebut < 0 &&
+            (h.indexOf('valide a partir') > -1 || h.indexOf('a partir') > -1 ||
+             h.indexOf('partir du')       > -1 || h.indexOf('debut')    > -1 ||
+             h.indexOf('emis')            > -1 || h.indexOf('delivrance') > -1 ||
+             h.indexOf('signature')       > -1 || h === 'date' ||
+             h.indexOf('date de')         > -1 || h.indexOf('date du')  > -1)) {
+          cur.dateDebut = c; hits++; continue;
+        }
+        // STATUT
+        if (cur.statut < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)) {
+          cur.statut = c; hits++; continue;
+        }
+        // RÉFÉRENCE / ID
+        if (cur.id < 0 &&
+            (h.indexOf('reference') > -1 || h.match(/^n.?\s*$/) ||
+             h === 'no' || h === 'num' || h.indexOf('numero') > -1 ||
+             h === 'id' ||
+             (h.indexOf('ref') > -1 && h.length < 12))) {
+          cur.id = c; hits++; continue;
+        }
+        // DEMANDÉ PAR
+        if (cur.demandePar < 0 &&
+            (h.indexOf('demande par') > -1 || h.indexOf('demandeur') > -1 ||
+             h.indexOf('demande') > -1 || h === 'par' || h.indexOf('emis par') > -1 ||
+             h.indexOf('responsable') > -1 || h.indexOf('signataire') > -1)) {
+          cur.demandePar = c; hits++; continue;
+        }
+        // INTERVENTIONS / Zone / Lieu
+        if (cur.interventions < 0 &&
+            (h.indexOf('intervention') > -1 || h.indexOf('lieu') > -1 ||
+             h.indexOf('emplace') > -1 || h.indexOf('zone') > -1 ||
+             h.indexOf('localisation') > -1 || h.indexOf('atelier') > -1 ||
+             h.indexOf('secteur') > -1 || h.indexOf('site') > -1)) {
+          cur.interventions = c; hits++; continue;
+        }
+        // TYPE
+        if (cur.type < 0 &&
+            (h.indexOf('type') > -1 || h.indexOf('categorie') > -1 ||
+             h.indexOf('nature') > -1)) {
+          cur.type = c; hits++; continue;
+        }
+        // TITRE / Intitulé / Objet
+        if (cur.titre < 0 &&
+            (h.indexOf('titre') > -1 || h.indexOf('libelle') > -1 ||
+             h.indexOf('designation') > -1 || h.indexOf('intitule') > -1 ||
+             h.indexOf('objet') > -1 || h.indexOf('description') > -1 ||
+             h.indexOf('travaux') > -1)) {
+          cur.titre = c; hits++; continue;
+        }
+      }
+      if (hits >= 2) { hdrRow = i; COL = cur; break; }
+    }
+
+    // Fallback : pas d'entête détectée → mapping positionnel basé sur la
+    // structure observée :
+    //   A=Référence  B=Titre  C=Type  D=Statut  E=Valide à partir
+    //   F=Valide jusqu'au  G=Demandé par  H=Interventions  I=Photo
+    if (hdrRow < 0) {
+      hdrRow            = -1;
+      COL.id            = 0;
+      COL.titre         = 1;
+      COL.type          = 2;
+      COL.statut        = 3;
+      COL.dateDebut     = 4;
+      COL.dateFin       = 5;
+      COL.demandePar    = 6;
+      COL.interventions = 7;
+      COL.photo         = 8;
+    }
+    Logger.log('Permis COL: ' + JSON.stringify(COL) + ' hdrRow=' + hdrRow);
+    if (hdrRow >= 0 && data[hdrRow]) {
+      for (var c = 0; c < data[hdrRow].length; c++) {
+        rawHeaders.push(String(data[hdrRow][c] || '').trim());
+      }
+      Logger.log('Permis headers: ' + JSON.stringify(rawHeaders));
+    }
+
+    // Aujourd'hui (heure locale GMT+1) — pour calculer l'état
+    var todayIso = Utilities.formatDate(new Date(), 'GMT+1', 'yyyy-MM-dd');
+
+    // ── Parcourir les lignes de données ──
+    var firstDataRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
+    for (var i = firstDataRow; i < data.length; i++) {
+      var row    = data[i] || [];
+      var rowLen = row.length;
+
+      // Skip lignes totalement vides
+      var anyVal = false;
+      for (var c = 0; c < rowLen; c++) {
+        if (!isNull(row[c])) { anyVal = true; break; }
+      }
+      if (!anyVal) continue;
+
+      var idVal       = cellText(i, COL.id);
+      var titreVal    = cellText(i, COL.titre);
+      var typeVal     = cellText(i, COL.type);
+      var statutVal   = cellText(i, COL.statut);
+      var dateDebutR  = (COL.dateDebut >= 0) ? row[COL.dateDebut] : '';
+      var dateFinR    = (COL.dateFin   >= 0) ? row[COL.dateFin]   : '';
+      var demandeVal  = cellText(i, COL.demandePar);
+      var intervVal   = cellText(i, COL.interventions);
+      var photoRef    = cellText(i, COL.photo);
+
+      // Sauter ré-impression de l'entête
+      var firstTxt = '';
+      for (var c = 0; c < rowLen; c++) {
+        if (!isNull(row[c])) { firstTxt = String(row[c]).trim(); break; }
+      }
+      var lcFirst = normalize(firstTxt);
+      if (lcFirst === 'reference' || lcFirst === 'ref' ||
+          lcFirst === 'n' || lcFirst === 'no' || lcFirst === 'num' ||
+          lcFirst === 'id' || lcFirst.indexOf('total') === 0) {
+        continue;
+      }
+
+      // Sauter lignes informatives sans contenu utile
+      if (!idVal && !titreVal && !typeVal && !statutVal &&
+          !demandeVal && !intervVal && !photoRef &&
+          isNull(dateDebutR) && isNull(dateFinR)) {
+        continue;
+      }
+
+      // URL Photo : colonne dédiée d'abord, puis n'importe où sur la ligne
+      var photoUrl = cellUrl(i, COL.photo);
+      if (!photoUrl) photoUrl = cellUrl(i, COL.titre);
+      if (!photoUrl) photoUrl = anyUrlOnRow(i, -1);
+
+      // Capturer toutes les colonnes brutes
+      var rawCells = [];
+      for (var c = 0; c < rowLen; c++) {
+        rawCells.push(safeText(row[c]));
+      }
+
+      var isoDeb = getIso(dateDebutR);
+      var isoFin = getIso(dateFinR);
+
+      // Mois / année (basé sur dateDebut, sinon dateFin)
+      var monthIdx = -1, yearVal = '';
+      var refDate = parseDate(dateDebutR) || parseDate(dateFinR);
+      if (refDate) {
+        monthIdx = refDate.getMonth();
+        yearVal  = String(refDate.getFullYear());
+      }
+
+      // ── Calcul de l'état (state) ────────────────────────
+      // Combine le champ statut explicite ET les dates de validité.
+      var state = '';
+      var lcStat = String(statutVal).toLowerCase();
+      if (lcStat.indexOf('expir') > -1 || lcStat.indexOf('échu') > -1 ||
+          lcStat.indexOf('echu')  > -1) {
+        state = 'expired';
+      } else if (lcStat.indexOf('cloture') > -1 || lcStat.indexOf('clôtur') > -1 ||
+                 lcStat.indexOf('termin')  > -1 || lcStat.indexOf('ferm')   > -1 ||
+                 lcStat.indexOf('clos')    > -1) {
+        state = 'closed';
+      } else if (lcStat.indexOf('attente') > -1 || lcStat.indexOf('approbation') > -1 ||
+                 lcStat.indexOf('pending') > -1) {
+        state = 'pending';
+      } else if (lcStat.indexOf('actif')    > -1 || lcStat.indexOf('en cours') > -1 ||
+                 lcStat.indexOf('ouvert')   > -1 || lcStat.indexOf('open')     > -1 ||
+                 lcStat.indexOf('approuv')  > -1 || lcStat.indexOf('signe')    > -1 ||
+                 lcStat.indexOf('signé')    > -1 || lcStat.indexOf('valid')    > -1) {
+        state = 'active';
+      }
+      // Override par la date de fin si on a une date d'échéance dépassée
+      if (isoFin && isoFin < todayIso && state !== 'closed') {
+        state = 'expired';
+      }
+      // Si pas de statut explicite, déduire depuis les dates
+      if (!state) {
+        if (isoFin && isoFin < todayIso) state = 'expired';
+        else if (isoDeb && isoDeb > todayIso) state = 'pending';
+        else state = 'active';
+      }
+      // Jours restants si encore actif
+      var daysLeft = null;
+      if (isoFin && state === 'active') {
+        var t  = new Date(todayIso + 'T00:00:00');
+        var f  = new Date(isoFin   + 'T00:00:00');
+        daysLeft = Math.round((f - t) / 86400000);
+      }
+
+      entries.push({
+        id:             idVal,
+        titre:          titreVal,
+        type:           typeVal,
+        statut:         statutVal,
+        dateDebut:      fmtDate(dateDebutR),
+        isoDateDebut:   isoDeb,
+        dateFin:        fmtDate(dateFinR),
+        isoDateFin:     isoFin,
+        demandePar:     demandeVal,
+        interventions:  intervVal,
+        zone:           intervVal,
+        photoRef:       photoRef,
+        photoUrl:       photoUrl,
+        hasPhoto:       !!photoUrl,
+        month:          monthIdx,
+        year:           yearVal,
+        daysLeft:       daysLeft,
+        state:          state,
+        raw:            rawCells
+      });
+    }
+
+    // Tri : plus récent en haut (date début décroissante puis ID)
+    entries.sort(function(a, b) {
+      var ad = a.isoDateDebut || '';
+      var bd = b.isoDateDebut || '';
+      if (ad && bd && ad !== bd) return bd.localeCompare(ad);
+      var na = parseInt(String(a.id).match(/\d+/), 10);
+      var nb = parseInt(String(b.id).match(/\d+/), 10);
+      if (isNaN(na) && isNaN(nb)) return String(b.id).localeCompare(String(a.id));
+      if (isNaN(na)) return 1;
+      if (isNaN(nb)) return -1;
+      return nb - na;
+    });
+
+    Logger.log('Permis: ' + entries.length + ' entrées');
+    return { entries: entries, headers: rawHeaders, sheetName: sheetName };
+  } catch(e) {
+    Logger.log('readPermits error: ' + e.message);
+    return { entries: entries, headers: rawHeaders, sheetName: sheetName };
+  }
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GETDATA ──────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 function getData() {
@@ -1941,6 +2349,10 @@ function getData() {
     contractsHeaders:[],
     contractsSheetName:'',
     contractsSourceUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + CONTRACTS_SHEET_GID + '#gid=' + CONTRACTS_SHEET_GID,
+    permits:[],
+    permitsHeaders:[],
+    permitsSheetName:'',
+    permitsSourceUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + PERMITS_SHEET_GID + '#gid=' + PERMITS_SHEET_GID,
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
   };
@@ -1972,6 +2384,13 @@ function getData() {
   out.contracts          = (co && co.entries)    ? co.entries    : [];
   out.contractsHeaders   = (co && co.headers)    ? co.headers    : [];
   out.contractsSheetName = (co && co.sheetName)  ? co.sheetName  : CONTRACTS_SHEET_NAME;
+  // ── Permis de travail (feuille "Gestion des Permis de Travail") ─
+  var pe = readPermits(ss);
+  out.permits          = (pe && pe.entries)   ? pe.entries   : [];
+  out.permitsHeaders   = (pe && pe.headers)   ? pe.headers   : [];
+  out.permitsSheetName = (pe && pe.sheetName) ? pe.sheetName : PERMITS_SHEET_NAME;
+  out.permitsSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                         '/edit?gid=' + PERMITS_SHEET_GID + '#gid=' + PERMITS_SHEET_GID;
 
   // -- EPI (feuille "Gestion du Stock des EPI...") ----------
   var epi = readEPI(ss);
