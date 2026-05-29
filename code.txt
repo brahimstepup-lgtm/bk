@@ -1767,8 +1767,15 @@ function readNuisibles(ss) {
       var sourceUrl = sh
         ? ('https://docs.google.com/spreadsheets/d/' + SHEET_ID +
            '/edit?gid=' + gid + '#gid=' + gid)
-        : '';
-      sources.push({
+        : (cfg.gid
+            ? ('https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+               '/edit?gid=' + cfg.gid + '#gid=' + cfg.gid)
+            : '');
+      var entryCount = 0;          // sera mis à jour après lecture
+      var sumCaptures = 0;
+      var lastIso = '';
+
+      var srcDescriptor = {
         code: cfg.code,
         label: cfg.label,
         name: sheetName,
@@ -1777,8 +1784,15 @@ function readNuisibles(ss) {
         embedUrl: sh
           ? ('https://docs.google.com/spreadsheets/d/' + SHEET_ID +
              '/preview?gid=' + gid)
-          : ''
-      });
+          : (cfg.gid
+              ? ('https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                 '/preview?gid=' + cfg.gid)
+              : ''),
+        rows: 0,
+        captures: 0,
+        lastDate: ''
+      };
+      sources.push(srcDescriptor);
 
       if (!sh) { Logger.log('Nuisibles : feuille « ' + cfg.label + ' » introuvable'); return; }
 
@@ -1805,7 +1819,7 @@ function readNuisibles(ss) {
         zone:        detectCol(headers, ['zone','secteur','batiment','bâtiment','atelier','site']),
         emplacement: detectCol(headers, ['emplace','localisation','position','poste','endroit','lieu','n°','numero','numéro','reference']),
         typeNuisible:detectCol(headers, ['type nuisible','nuisible','espece','espèce','type d','insecte','rongeur','animal']),
-        captures:    detectCol(headers, ['capture','nombre','quantit','qte','qté','count','cadavre','prises','prise']),
+        captures:    detectCol(headers, ['capture','nombre','quantit','qte','qté','count','cadavre','prises','prise','nb capture','nb prise','nb','nbr','effectif','presence','présence','etat','état']),
         statut:      detectCol(headers, ['statut','etat','état','status','condition']),
         remarque:    detectCol(headers, ['remarque','observation','note','commentaire','comment'])
       };
@@ -1839,7 +1853,29 @@ function readNuisibles(ss) {
         var empVal  = (COL.emplacement >= 0 && !isNull(r[COL.emplacement])) ? String(r[COL.emplacement]).trim() : '';
         if (!iso && !zoneVal && !empVal) continue;
 
-        var captures = (COL.captures >= 0) ? toNumZ(r[COL.captures]) : 0;
+        // ── Lecture captures, robuste aux marqueurs textuels ──
+        // Si la cellule contient un nombre → on le prend tel quel.
+        // Si elle contient un marqueur de présence (X, ✓, OUI,
+        // PRÉSENCE, ACTIF, CAPTURÉ…) → on compte 1 capture.
+        // Sinon (vide, RAS, NON, AUCUNE, INACTIF…) → 0.
+        var captures = 0;
+        if (COL.captures >= 0) {
+          var capRaw = r[COL.captures];
+          var capNum = toNum(capRaw);
+          if (capNum !== null) {
+            captures = capNum;
+          } else if (!isNull(capRaw)) {
+            var capTxt = normalize(String(capRaw));
+            // Détection de marqueurs positifs
+            if (/^(x|✓|v|oui|yes|presence|present|presents|presentes|capture|capturee|capturees|captures|actif|active|infest|prise|prises)$/.test(capTxt) ||
+                capTxt.indexOf('captur') > -1 || capTxt.indexOf('present') > -1 ||
+                capTxt.indexOf('infest')  > -1 || capTxt === 'x' || capTxt === '✓') {
+              captures = 1;
+            } else {
+              captures = 0;
+            }
+          }
+        }
         var typeN = (COL.typeNuisible >= 0 && !isNull(r[COL.typeNuisible])) ? String(r[COL.typeNuisible]).trim() : '';
         var stat  = (COL.statut       >= 0 && !isNull(r[COL.statut]))        ? String(r[COL.statut]).trim()        : '';
         var rem   = (COL.remarque     >= 0 && !isNull(r[COL.remarque]))      ? String(r[COL.remarque]).trim()      : '';
@@ -1866,7 +1902,15 @@ function readNuisibles(ss) {
           remarque:        rem,
           sourceUrl:       sourceUrl
         });
+        entryCount++;
+        sumCaptures += captures;
+        if (iso && (!lastIso || iso > lastIso)) lastIso = iso;
       }
+
+      srcDescriptor.rows = entryCount;
+      srcDescriptor.captures = sumCaptures;
+      srcDescriptor.lastDate = lastIso;
+      Logger.log('Nuisibles « ' + cfg.label + ' » : ' + entryCount + ' lignes, ' + sumCaptures + ' captures');
     } catch(e) {
       Logger.log('readNuisibles « ' + cfg.label + ' » erreur : ' + e.message);
     }

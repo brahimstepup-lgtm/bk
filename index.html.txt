@@ -1948,14 +1948,14 @@ html.light .notif-full-filters .pf-sel{background:#fff}
 
   <!-- Sources : 4 dispositifs (FK / Pièges / Colles / Raticide).
        Chaque carte ouvre la feuille dans un modal embed (in-dashboard). -->
-  <div class="pest-sources" id="pestSources"></div>
+  <div id="pestSources" style="margin-bottom:11px"></div>
 
   <!-- Filtres -->
   <div class="pf-bar">
     <span class="pf-lbl">Période :</span>
     <select class="pf-sel" id="pestPer" onchange="onPestPer()">
-      <option value="all">Tout</option>
-      <option value="ytd" selected>YTD 2026</option>
+      <option value="all" selected>Tout</option>
+      <option value="ytd">YTD 2026</option>
       <option value="month">Mois</option>
       <option value="custom">Personnalisé</option>
     </select>
@@ -4920,9 +4920,9 @@ function onPestPer(){
 }
 
 function pestPeriodMatches(iso){
-  if(!iso) return false;
   var p=document.getElementById('pestPer').value;
-  if(p==='all') return true;
+  if(p==='all') return true;            // ← Tout : on accepte tout, même sans date
+  if(!iso) return false;
   if(p==='ytd'){ return iso.indexOf('2026')===0; }
   if(p==='month'){
     var y=document.getElementById('pestYr').value;
@@ -5090,7 +5090,14 @@ function renderPestHeatmap(filtered, byKey){
   var empList  = Object.keys(emps ).sort(function(a,b){return emps[b]-emps[a];});
 
   if(zoneList.length===0 || empList.length===0){
-    host.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text3);font-size:11px;font-style:italic">Aucune donnée à afficher pour la période sélectionnée.</div>';
+    var rawCount = (D && D.nuisibles) ? D.nuisibles.length : 0;
+    var msg;
+    if (rawCount === 0) {
+      msg = 'Aucune donnée nuisible n\'a été lue depuis les feuilles sources. Vérifie les onglets / GID.';
+    } else {
+      msg = 'Aucune donnée pour la combinaison de filtres actuelle. Réinitialise la période ou choisis « Tout ».';
+    }
+    host.innerHTML = '<div style="padding:18px;text-align:center;color:var(--text3);font-size:11px;font-style:italic">'+esc(msg)+'</div>';
     return;
   }
 
@@ -5315,21 +5322,55 @@ function renderPestSources(){
   var sources = (D && D.nuisiblesSources) ? D.nuisiblesSources : [];
   // Stats par dispositif (sur l'ensemble, sans filtre)
   var capByDisp = {};
-  (D.nuisibles||[]).forEach(function(e){ capByDisp[e.dispositif] = (capByDisp[e.dispositif]||0)+(e.captures||0); });
+  var rowByDisp = {};
+  (D.nuisibles||[]).forEach(function(e){
+    capByDisp[e.dispositif] = (capByDisp[e.dispositif]||0)+(e.captures||0);
+    rowByDisp[e.dispositif] = (rowByDisp[e.dispositif]||0)+1;
+  });
 
-  host.innerHTML = sources.map(function(s){
+  // ── Bandeau diagnostic global (si aucune ligne lue → affiche pourquoi) ──
+  var totalRows = (D.nuisibles||[]).length;
+  var diag = '';
+  if (totalRows === 0) {
+    var foundCount = sources.filter(function(s){return s.name;}).length;
+    if (foundCount === 0) {
+      diag = '<div class="alert" style="margin-bottom:10px"><span class="alert-ico">⚠</span><div class="alert-txt">'
+        + '<strong>Aucune des 4 feuilles n\'a été trouvée</strong> dans le classeur. Vérifie que les onglets contiennent bien les mots-clés '
+        + '« FK », « pièges », « colles », « raticide » dans leur nom — ou indique-moi les <em>GID</em> exacts pour les figer.'
+        + '</div></div>';
+    } else {
+      var missing = sources.filter(function(s){return !s.name;}).map(function(s){return s.label;});
+      diag = '<div class="alert" style="margin-bottom:10px;background:rgba(245,166,35,.07);border-color:rgba(245,166,35,.3)">'
+        + '<span class="alert-ico" style="color:var(--amber)">⚠</span><div class="alert-txt">'
+        + '<strong>Feuilles trouvées mais aucune donnée lue.</strong> Vérifie les en-têtes de colonnes (date, zone, emplacement, captures) ou contacte-moi avec une capture des entêtes pour ajuster la détection.'
+        + (missing.length ? '<br><span style="color:var(--amber);font-size:10px">Feuilles manquantes : '+missing.join(', ')+'</span>' : '')
+        + '</div></div>';
+    }
+  }
+
+  var cards = sources.map(function(s){
     var found = !!(s.name && s.embedUrl);
     var cap = capByDisp[s.code] || 0;
+    var rows = rowByDisp[s.code] || 0;
     var openAttr = found
       ? 'onclick="openPestEmbed(\''+esc(s.embedUrl)+'\',\''+esc(s.url)+'\',\''+esc(s.label).replace(/'/g,"\\'")+'\',\''+s.code+'\')"'
       : 'title="Feuille introuvable dans le classeur"';
+    var meta;
+    if (found) {
+      meta = esc(s.name) + ' · ' + rows + ' relevé' + (rows>1?'s':'');
+      if (s.lastDate) meta += ' · dernier ' + s.lastDate;
+    } else {
+      meta = '<span style="color:var(--amber)">feuille introuvable</span>';
+    }
     return '<div class="pest-src-card s-'+s.code+(found?'':' disabled')+'" '+openAttr+'>'
       +   '<div class="pest-src-title"><span style="font-size:14px">'+(DISP_ICONS[s.code]||'•')+'</span>'+esc(s.label)+'</div>'
-      +   '<div class="pest-src-meta">'+esc(found?(s.name||'—'):'feuille introuvable')+'</div>'
+      +   '<div class="pest-src-meta">'+meta+'</div>'
       +   '<div class="pest-src-cap">'+fmtNum(cap)+' <span style="font-size:9px;color:var(--text3);font-weight:400">captures</span></div>'
       +   (found ? '<div class="pest-src-hint">↗ Ouvrir la feuille dans le dashboard</div>' : '<div class="pest-src-hint" style="color:var(--amber)">⚠ Vérifier le nom de l\'onglet</div>')
       + '</div>';
   }).join('');
+
+  host.innerHTML = diag + '<div class="pest-sources-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">' + cards + '</div>';
 }
 
 // ══ Modal embed (iframe interne, pas de redirection externe) ══
