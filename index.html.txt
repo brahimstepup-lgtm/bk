@@ -841,6 +841,150 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   #epiTable{font-size:10px}
 }
 
+/* ══ NUISIBLES ══ */
+.pests-intro{margin-bottom:14px}
+.pests-section{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px;margin-bottom:14px;transition:background .3s;
+  border-left:3px solid var(--p3)}
+.pests-section.flying{border-left-color:#14b8a6}
+.pests-section.rodents{border-left-color:#f97316}
+.pests-section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.pests-section-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:20px;background:var(--bg3);border:1px solid var(--border);flex-shrink:0}
+.pests-section-icon.flying{background:rgba(20,184,166,.15);border-color:rgba(20,184,166,.4);color:#14b8a6}
+.pests-section-icon.rodents{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.4);color:#f97316}
+.pests-section-title{font-size:14px;font-weight:700;color:var(--text);line-height:1.2}
+.pests-section-sub{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:2px}
+.pests-source-link{margin-left:auto;font-size:10px;padding:4px 9px;border-radius:6px;
+  background:var(--bg3);border:1px solid var(--border);color:var(--text2);
+  font-family:'JetBrains Mono',monospace;cursor:pointer;text-decoration:none;transition:all .2s}
+.pests-source-link:hover{background:var(--bg4);color:var(--text);border-color:var(--p2)}
+
+/* Sous-section Rongeurs (Voie ext. / Intérieur usine) */
+.pests-sub{background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  padding:14px;margin-bottom:12px;transition:background .3s}
+html.light .pests-sub{background:#e4ebf1}
+.pests-sub-head{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap;
+  padding-bottom:10px;border-bottom:1px solid var(--border)}
+.pests-sub-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:15px;background:var(--bg3);border:1px solid var(--border);flex-shrink:0}
+.pests-sub-icon.outdoor{background:rgba(245,166,35,.15);border-color:rgba(245,166,35,.4);color:#f5a623}
+.pests-sub-icon.indoor{background:rgba(13,168,210,.15);border-color:rgba(13,168,210,.4);color:#0da8d2}
+.pests-sub-title{font-size:12px;font-weight:700;color:var(--text);line-height:1.2}
+.pests-sub-sub{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:1px}
+
+/* Tabs internes pour Intérieur usine (mécanique / colles) */
+.pests-mini-tabs{display:flex;gap:3px;background:var(--bg3);padding:3px;border-radius:8px;
+  border:1px solid var(--border);margin-bottom:11px;flex-wrap:wrap}
+.pests-mini-tab{padding:5px 12px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;
+  color:var(--text3);border:none;background:transparent;transition:all .15s;font-family:'Inter',sans-serif}
+.pests-mini-tab.on{background:var(--bg2);color:var(--text);border:1px solid var(--border)}
+.pests-mini-tab:hover:not(.on){color:var(--text2)}
+html.light .pests-mini-tab.on{background:#edf2f7}
+.pests-mini-pane{display:none}
+.pests-mini-pane.on{display:block}
+
+/* KPI compacts par sous-section */
+.pests-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px;margin-bottom:11px}
+.pests-kpi{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 12px;
+  position:relative;overflow:hidden;transition:transform .15s,background .3s}
+.pests-kpi:hover{transform:translateY(-1px)}
+.pests-kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.pests-kpi.k-b::after{background:linear-gradient(90deg,var(--p1),var(--p4))}
+.pests-kpi.k-g::after{background:linear-gradient(90deg,var(--green),#5dffc0)}
+.pests-kpi.k-a::after{background:linear-gradient(90deg,var(--amber),#ffc85c)}
+.pests-kpi.k-r::after{background:linear-gradient(90deg,var(--red),#ff6b80)}
+.pests-kpi.k-t::after{background:linear-gradient(90deg,#14b8a6,#5dffc0)}
+.pests-kpi.k-o::after{background:linear-gradient(90deg,#f97316,#ffc85c)}
+.pests-kpi-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-weight:600;margin-bottom:5px}
+.pests-kpi-val{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;margin-bottom:2px}
+.pests-kpi-sub{font-size:9px;color:var(--text3)}
+html.light .pests-kpi{background:#dee5ec}
+
+/* Cartes graphiques + tableaux */
+.pests-cards{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;margin-bottom:11px}
+.pests-card{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px;transition:background .3s}
+html.light .pests-card{background:#dee5ec}
+.pests-card-title{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.pests-card-title .ct-dot{width:6px;height:6px;border-radius:50%;background:var(--p3);flex-shrink:0}
+.pests-card .cw{position:relative;height:200px}
+
+/* Distribution par catégorie (zone / statut) */
+.pests-dist-list{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;padding-right:3px}
+.pests-dist-list::-webkit-scrollbar{width:3px}
+.pests-dist-list::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.pests-dist-row{display:flex;flex-direction:column;gap:3px}
+.pests-dist-hdr{display:flex;justify-content:space-between;font-size:11px}
+.pests-dist-lbl{color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
+.pests-dist-num{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--p4);font-size:10px}
+.pests-dist-bg{height:4px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.pests-dist-bar{height:4px;border-radius:3px;background:linear-gradient(90deg,var(--p1),var(--p4));transition:width 1s ease}
+.pests-dist-bar.warn{background:linear-gradient(90deg,var(--amber),#ffc85c)}
+.pests-dist-bar.bad{background:linear-gradient(90deg,var(--red),#ff6b80)}
+.pests-dist-bar.ok{background:linear-gradient(90deg,var(--green),#5dffc0)}
+.pests-dist-bar.flying{background:linear-gradient(90deg,#14b8a6,#5dffc0)}
+.pests-dist-bar.rodent{background:linear-gradient(90deg,#f97316,#ffc85c)}
+.pests-empty{text-align:center;padding:18px 12px;color:var(--text3);font-size:11px;
+  background:var(--bg3);border:1px dashed var(--border);border-radius:8px;font-style:italic}
+html.light .pests-empty{background:#dee5ec}
+
+/* Tableau dynamique */
+.pests-table-wrap{overflow-x:auto;max-height:380px;overflow-y:auto;
+  border:1px solid var(--border);border-radius:8px}
+.pests-table-wrap::-webkit-scrollbar{width:3px;height:3px}
+.pests-table-wrap::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.pests-table{width:100%;border-collapse:collapse;font-size:11px;min-width:520px}
+.pests-table th{position:sticky;top:0;background:var(--bg3);z-index:1;
+  text-align:left;padding:7px 9px;color:var(--text3);font-size:9px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);white-space:nowrap}
+.pests-table td{padding:7px 9px;border-bottom:1px solid rgba(26,64,85,.4);color:var(--text2);vertical-align:middle}
+html.light .pests-table th{background:#dee5ec}
+html.light .pests-table td{border-bottom-color:rgba(9,99,126,.12)}
+.pests-table tr:hover td{background:var(--bg3);color:var(--text)}
+html.light .pests-table tr:hover td{background:#d8e2ea}
+.pests-table .num{font-family:'JetBrains Mono',monospace;text-align:right;color:var(--text)}
+.pests-table .date-cell{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);white-space:nowrap}
+
+/* Search bar */
+.pests-search-bar{display:flex;align-items:center;gap:8px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:8px;padding:7px 11px;margin-bottom:9px;flex-wrap:wrap;
+  transition:background .3s}
+html.light .pests-search-bar{background:#dee5ec}
+.pests-search-input{flex:1;min-width:140px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:11px;padding:5px 9px;
+  outline:none;font-family:'Inter',sans-serif;transition:background .3s}
+html.light .pests-search-input{background:#edf2f7}
+.pests-search-input:focus{border-color:var(--p2)}
+.pests-search-input::placeholder{color:var(--text3)}
+.pests-stat-pill{font-size:10px;padding:3px 9px;border-radius:10px;font-family:'JetBrains Mono',monospace;
+  font-weight:600;background:rgba(9,99,126,.15);color:var(--p4);border:1px solid rgba(9,99,126,.3)}
+
+/* Chip statut dans le tableau */
+.pests-chip{display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;
+  font-weight:600;font-family:'JetBrains Mono',monospace;letter-spacing:.2px}
+.pests-chip.ok  {background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3)}
+.pests-chip.warn{background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+.pests-chip.bad {background:rgba(232,68,90,.15);color:var(--red);  border:1px solid rgba(232,68,90,.3)}
+.pests-chip.neu {background:var(--bg4);color:var(--text2)}
+
+@media (max-width:900px){
+  .pests-cards{grid-template-columns:1fr}
+}
+@media (max-width:768px){
+  .pests-section{padding:12px}
+  .pests-sub{padding:11px}
+  .pests-section-icon{width:32px;height:32px;font-size:16px}
+  .pests-section-title{font-size:13px}
+  .pests-kpi-grid{grid-template-columns:repeat(2,1fr);gap:7px}
+  .pests-kpi-val{font-size:15px}
+  .pests-kpi{padding:8px 10px}
+  .pests-card .cw{height:170px}
+  .pests-table{font-size:10px;min-width:440px}
+  .pests-table th,.pests-table td{padding:5px 6px}
+  .pests-table th{font-size:8px}
+}
+
 </style>
 </head>
 <body>
@@ -904,6 +1048,7 @@ html.light .notif-full-filters .pf-sel{background:#fff}
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
   <button class="tab"    onclick="goTab('contracts',this)">📑 Contrats</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
+  <button class="tab"    onclick="goTab('pests',this)">🐀 Nuisibles</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -1826,6 +1971,228 @@ html.light .notif-full-filters .pf-sel{background:#fff}
         </thead>
         <tbody id="epiBody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NUISIBLES ═══ -->
+<div id="pests" class="page">
+  <div class="card pests-intro">
+    <div class="ct"><span class="ct-dot" style="background:#f97316"></span>Suivi des Nuisibles — SOBCO 3</div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Suivi des opérations de lutte contre les nuisibles, structuré en
+      <strong style="color:#14b8a6">Insectes volants</strong> (FK) et
+      <strong style="color:#f97316">Rongeurs</strong>
+      (Voie extérieure : <em>boîtes à raticide</em> · Intérieur usine :
+      <em>pièges mécanique</em> + <em>boîtes à colles</em>).
+      Indicateurs et graphiques sont construits dynamiquement à partir
+      des feuilles sources — la structure des colonnes est détectée
+      automatiquement.
+      <a id="pestsSourceLink" class="pests-source-link" href="#" target="_blank" rel="noopener noreferrer"
+         style="margin-left:8px;display:inline-block">↗ Feuille source</a>
+    </p>
+  </div>
+
+  <!-- ─── SECTION 1 : INSECTES VOLANTS (FK) ─── -->
+  <div class="pests-section flying" id="pestsFlyingSection">
+    <div class="pests-section-head">
+      <div class="pests-section-icon flying">🦟</div>
+      <div>
+        <div class="pests-section-title">Insectes volants</div>
+        <div class="pests-section-sub" id="pestsFlyingSheetMeta">Source : feuille « FK »</div>
+      </div>
+    </div>
+
+    <div class="pests-kpi-grid" id="pestsFlyingKpis"></div>
+
+    <div class="pests-cards">
+      <div class="pests-card">
+        <div class="pests-card-title"><span class="ct-dot" style="background:#14b8a6"></span>
+          <span id="pestsFlyingChartTitle">Évolution dans le temps</span>
+        </div>
+        <div class="cw"><canvas id="pestsFlyingChart"></canvas></div>
+      </div>
+      <div class="pests-card">
+        <div class="pests-card-title"><span class="ct-dot" style="background:#14b8a6"></span>
+          <span id="pestsFlyingDistTitle">Répartition par zone / statut</span>
+        </div>
+        <div class="pests-dist-list" id="pestsFlyingDist"></div>
+      </div>
+    </div>
+
+    <div class="pests-search-bar">
+      <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+      <input type="text" class="pests-search-input" id="pestsFlyingSearch"
+             placeholder="Rechercher dans la feuille FK…" oninput="renderPestFlying()">
+      <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+              onclick="document.getElementById('pestsFlyingSearch').value='';renderPestFlying()">↺ Reset</button>
+      <span class="pests-stat-pill" id="pestsFlyingStat">— lignes</span>
+    </div>
+
+    <div class="pests-table-wrap">
+      <table class="pests-table" id="pestsFlyingTable">
+        <thead id="pestsFlyingThead"></thead>
+        <tbody id="pestsFlyingBody"></tbody>
+      </table>
+    </div>
+    <div class="pests-empty" id="pestsFlyingEmpty" style="display:none;margin-top:8px">
+      Aucune donnée trouvée dans la feuille <strong>« FK »</strong>.
+    </div>
+  </div>
+
+  <!-- ─── SECTION 2 : RONGEURS (Voie ext. + Intérieur usine) ─── -->
+  <div class="pests-section rodents" id="pestsRodentsSection">
+    <div class="pests-section-head">
+      <div class="pests-section-icon rodents">🐀</div>
+      <div>
+        <div class="pests-section-title">Rongeurs</div>
+        <div class="pests-section-sub">Sources : <em>boîtes à raticide</em> (extérieur) · <em>pièges mécanique</em> + <em>boîtes à colles</em> (intérieur usine)</div>
+      </div>
+    </div>
+
+    <!-- Sous-section : Voie extérieure -->
+    <div class="pests-sub" id="pestsRatSub">
+      <div class="pests-sub-head">
+        <div class="pests-sub-icon outdoor">🌳</div>
+        <div>
+          <div class="pests-sub-title">Voie extérieure</div>
+          <div class="pests-sub-sub" id="pestsRatSheetMeta">Source : feuille « boîtes à raticide »</div>
+        </div>
+      </div>
+
+      <div class="pests-kpi-grid" id="pestsRatKpis"></div>
+
+      <div class="pests-cards">
+        <div class="pests-card">
+          <div class="pests-card-title"><span class="ct-dot" style="background:#f97316"></span>
+            <span id="pestsRatChartTitle">Évolution / Suivi</span>
+          </div>
+          <div class="cw"><canvas id="pestsRatChart"></canvas></div>
+        </div>
+        <div class="pests-card">
+          <div class="pests-card-title"><span class="ct-dot" style="background:#f97316"></span>
+            <span id="pestsRatDistTitle">Répartition par emplacement / statut</span>
+          </div>
+          <div class="pests-dist-list" id="pestsRatDist"></div>
+        </div>
+      </div>
+
+      <div class="pests-search-bar">
+        <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+        <input type="text" class="pests-search-input" id="pestsRatSearch"
+               placeholder="Rechercher (boîtes à raticide)…" oninput="renderPestRat()">
+        <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+                onclick="document.getElementById('pestsRatSearch').value='';renderPestRat()">↺ Reset</button>
+        <span class="pests-stat-pill" id="pestsRatStat">— lignes</span>
+      </div>
+
+      <div class="pests-table-wrap">
+        <table class="pests-table" id="pestsRatTable">
+          <thead id="pestsRatThead"></thead>
+          <tbody id="pestsRatBody"></tbody>
+        </table>
+      </div>
+      <div class="pests-empty" id="pestsRatEmpty" style="display:none;margin-top:8px">
+        Aucune donnée trouvée dans la feuille <strong>« boîtes à raticide »</strong>.
+      </div>
+    </div>
+
+    <!-- Sous-section : Intérieur usine -->
+    <div class="pests-sub" id="pestsIndoorSub">
+      <div class="pests-sub-head">
+        <div class="pests-sub-icon indoor">🏭</div>
+        <div>
+          <div class="pests-sub-title">Intérieur usine</div>
+          <div class="pests-sub-sub">Sources : <em>pièges mécanique</em> + <em>boîtes à colles</em></div>
+        </div>
+      </div>
+
+      <!-- KPI agrégés intérieur -->
+      <div class="pests-kpi-grid" id="pestsIndoorKpis"></div>
+
+      <!-- Tabs internes : Pièges mécanique / Boîtes à colles -->
+      <div class="pests-mini-tabs">
+        <button class="pests-mini-tab on" id="pestsTabMech" onclick="goPestSub('mech',this)">🪤 Pièges mécanique</button>
+        <button class="pests-mini-tab"    id="pestsTabGlue" onclick="goPestSub('glue',this)">🧪 Boîtes à colles</button>
+      </div>
+
+      <!-- ── Pane MÉCANIQUE ── -->
+      <div class="pests-mini-pane on" id="pestsPaneMech">
+        <div class="pests-section-sub" id="pestsMechSheetMeta" style="margin-bottom:10px">Source : feuille « pièges mécanique »</div>
+
+        <div class="pests-cards">
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#0da8d2"></span>
+              <span id="pestsMechChartTitle">Évolution / Suivi</span>
+            </div>
+            <div class="cw"><canvas id="pestsMechChart"></canvas></div>
+          </div>
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#0da8d2"></span>
+              <span id="pestsMechDistTitle">Répartition par emplacement / statut</span>
+            </div>
+            <div class="pests-dist-list" id="pestsMechDist"></div>
+          </div>
+        </div>
+
+        <div class="pests-search-bar">
+          <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+          <input type="text" class="pests-search-input" id="pestsMechSearch"
+                 placeholder="Rechercher (pièges mécanique)…" oninput="renderPestMech()">
+          <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+                  onclick="document.getElementById('pestsMechSearch').value='';renderPestMech()">↺ Reset</button>
+          <span class="pests-stat-pill" id="pestsMechStat">— lignes</span>
+        </div>
+
+        <div class="pests-table-wrap">
+          <table class="pests-table" id="pestsMechTable">
+            <thead id="pestsMechThead"></thead>
+            <tbody id="pestsMechBody"></tbody>
+          </table>
+        </div>
+        <div class="pests-empty" id="pestsMechEmpty" style="display:none;margin-top:8px">
+          Aucune donnée trouvée dans la feuille <strong>« pièges mécanique »</strong>.
+        </div>
+      </div>
+
+      <!-- ── Pane COLLES ── -->
+      <div class="pests-mini-pane" id="pestsPaneGlue">
+        <div class="pests-section-sub" id="pestsGlueSheetMeta" style="margin-bottom:10px">Source : feuille « boîtes à colles »</div>
+
+        <div class="pests-cards">
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#0da8d2"></span>
+              <span id="pestsGlueChartTitle">Évolution / Suivi</span>
+            </div>
+            <div class="cw"><canvas id="pestsGlueChart"></canvas></div>
+          </div>
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#0da8d2"></span>
+              <span id="pestsGlueDistTitle">Répartition par emplacement / statut</span>
+            </div>
+            <div class="pests-dist-list" id="pestsGlueDist"></div>
+          </div>
+        </div>
+
+        <div class="pests-search-bar">
+          <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+          <input type="text" class="pests-search-input" id="pestsGlueSearch"
+                 placeholder="Rechercher (boîtes à colles)…" oninput="renderPestGlue()">
+          <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+                  onclick="document.getElementById('pestsGlueSearch').value='';renderPestGlue()">↺ Reset</button>
+          <span class="pests-stat-pill" id="pestsGlueStat">— lignes</span>
+        </div>
+
+        <div class="pests-table-wrap">
+          <table class="pests-table" id="pestsGlueTable">
+            <thead id="pestsGlueThead"></thead>
+            <tbody id="pestsGlueBody"></tbody>
+          </table>
+        </div>
+        <div class="pests-empty" id="pestsGlueEmpty" style="display:none;margin-top:8px">
+          Aucune donnée trouvée dans la feuille <strong>« boîtes à colles »</strong>.
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -3838,6 +4205,9 @@ function render(data){
 
   // -- EPI -------------------------------------------------
   renderEPI();
+
+  // ── NUISIBLES ───────────────────────────────────────────
+  renderPests();
 }
 
 
@@ -4801,6 +5171,510 @@ function applyNotifFullFilter(){
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&document.getElementById('notifFullBg').classList.contains('open')) closeNotifFull();
 });
+
+// ══ NUISIBLES ═════════════════════════════════════════════════
+// Rendu dynamique des 4 feuilles « Nuisibles » :
+//   • FK                  → Insectes volants
+//   • boîtes à raticide   → Rongeurs / Voie extérieure
+//   • pièges mécanique    → Rongeurs / Intérieur usine (onglet 1)
+//   • boîtes à colles     → Rongeurs / Intérieur usine (onglet 2)
+//
+// Les feuilles ne partagent pas un schéma fixe : on s'appuie sur
+// la classification automatique du backend (meta.dateCols /
+// zoneCols / statutCols / actionCols / numCols) pour générer
+// graphiques, distributions et tableaux.
+// ══════════════════════════════════════════════════════════════
+
+// Bascule onglet interne (Pièges mécanique / Boîtes à colles)
+function goPestSub(which, el){
+  document.querySelectorAll('#pestsIndoorSub .pests-mini-tab')
+    .forEach(function(t){t.classList.remove('on');});
+  document.querySelectorAll('#pestsIndoorSub .pests-mini-pane')
+    .forEach(function(p){p.classList.remove('on');});
+  if(el) el.classList.add('on');
+  if(which==='mech'){
+    document.getElementById('pestsPaneMech').classList.add('on');
+    // Le canvas peut nécessiter un rerender (redimensionnement)
+    if(D) renderPestMech();
+  } else {
+    document.getElementById('pestsPaneGlue').classList.add('on');
+    if(D) renderPestGlue();
+  }
+}
+
+// Heuristique : couleur d'un statut texte → "ok" / "warn" / "bad" / "neu"
+function pestStatutKind(s){
+  var t=String(s||'').toLowerCase()
+    .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a')
+    .replace(/[ùûü]/g,'u').replace(/[ç]/g,'c');
+  if(!t) return 'neu';
+  if(t.indexOf('conforme')>-1 && t.indexOf('non')<0) return 'ok';
+  if(t.indexOf('ok')>-1 || t.indexOf('bon')>-1 || t.indexOf('terminé')>-1 ||
+     t.indexOf('termine')>-1 || t.indexOf('clôturé')>-1 || t.indexOf('cloture')>-1 ||
+     t.indexOf('ferme')>-1   || t.indexOf('valid')>-1) return 'ok';
+  if(t.indexOf('non conforme')>-1 || t.indexOf('rupture')>-1 ||
+     t.indexOf('hs')>-1 || t.indexOf('cassé')>-1 || t.indexOf('casse')>-1 ||
+     t.indexOf('endommag')>-1 || t.indexOf('absent')>-1 || t.indexOf('manquant')>-1 ||
+     t.indexOf('alarme')>-1   || t.indexOf('urgent')>-1 || t.indexOf('critique')>-1) return 'bad';
+  if(t.indexOf('attention')>-1 || t.indexOf('faible')>-1 || t.indexOf('alerte')>-1 ||
+     t.indexOf('en cours')>-1  || t.indexOf('a faire')>-1 || t.indexOf('à faire')>-1 ||
+     t.indexOf('partiel')>-1   || t.indexOf('attente')>-1) return 'warn';
+  return 'neu';
+}
+
+// Compte les valeurs distinctes d'une colonne (top-N triés desc)
+function pestTopValues(entries, getter, topN){
+  var counts={};
+  entries.forEach(function(e){
+    var v=String(getter(e)||'').trim();
+    if(!v) return;
+    counts[v]=(counts[v]||0)+1;
+  });
+  var arr=Object.keys(counts).map(function(k){ return {label:k,count:counts[k]}; });
+  arr.sort(function(a,b){ return b.count-a.count; });
+  if(topN&&arr.length>topN) arr=arr.slice(0,topN);
+  return arr;
+}
+
+// Série temporelle : nb d'enregistrements par mois (sur l'année la plus représentée)
+function pestMonthlyCounts(entries){
+  // Compter les enregistrements par année-mois
+  var byMonth={}; // 'YYYY-MM' → count
+  var byYear={};  // 'YYYY' → count
+  entries.forEach(function(e){
+    if(!e.isoDate) return;
+    var ym=e.isoDate.substring(0,7);
+    var yr=e.isoDate.substring(0,4);
+    byMonth[ym]=(byMonth[ym]||0)+1;
+    byYear[yr]=(byYear[yr]||0)+1;
+  });
+  // Choisir l'année avec le plus d'enregistrements (priorité : 2026 > autres)
+  var years=Object.keys(byYear);
+  if(years.length===0) return {labels:[],data:[],year:null};
+  years.sort(function(a,b){
+    if(a==='2026') return -1;
+    if(b==='2026') return 1;
+    return byYear[b]-byYear[a];
+  });
+  var year=years[0];
+  var labels=[], data=[];
+  for(var m=1;m<=12;m++){
+    var mm=(m<10?'0':'')+m;
+    var key=year+'-'+mm;
+    labels.push(ML[m-1]);
+    data.push(byMonth[key]||0);
+  }
+  return {labels:labels,data:data,year:year};
+}
+
+// Somme d'une colonne numérique sur un sous-ensemble
+function pestSumNumCol(entries, colIdx){
+  var sum=0;
+  entries.forEach(function(e){
+    var v=(e.raw||[])[colIdx];
+    if(v===undefined||v===null||v==='') return;
+    var n=parseFloat(String(v).replace(/\s/g,'').replace(/,/g,'.'));
+    if(!isNaN(n)) sum+=n;
+  });
+  return sum;
+}
+
+// Construit le HTML d'une distribution (liste à barres horizontales)
+function pestDistHtml(items, total, colorClass){
+  if(!items||items.length===0){
+    return '<div class="pests-empty">Pas de données catégorielles disponibles</div>';
+  }
+  var max=Math.max.apply(null, items.map(function(i){return i.count;}));
+  return items.map(function(it){
+    var pct=max?Math.round(it.count/max*100):0;
+    var pctTotal=total?Math.round(it.count/total*100):0;
+    var cls=colorClass||'';
+    // Si l'item est un statut, on colorie selon sa nature
+    if(colorClass==='__statut__'){
+      cls=pestStatutKind(it.label);
+      if(cls==='ok') cls='ok';
+      else if(cls==='warn') cls='warn';
+      else if(cls==='bad') cls='bad';
+      else cls='';
+    }
+    return '<div class="pests-dist-row">'
+      +'<div class="pests-dist-hdr">'
+      +'<span class="pests-dist-lbl" title="'+escAttr(it.label)+'">'+esc(it.label)+'</span>'
+      +'<span class="pests-dist-num">'+it.count+' · '+pctTotal+'%</span>'
+      +'</div>'
+      +'<div class="pests-dist-bg"><div class="pests-dist-bar '+cls+'" style="width:'+pct+'%"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+// Construit les KPI d'une sous-section (renvoie HTML)
+// kind : 'flying' (vert/teal) | 'rat' (orange) | 'indoor' (mixte)
+function pestKpisHtml(section, kind){
+  if(!section || !section.entries) return '';
+  var entries=section.entries;
+  var meta=section.meta||{};
+  var total=entries.length;
+  var withDate=entries.filter(function(e){return !!e.isoDate;});
+
+  // Plage de dates
+  var minIso='', maxIso='';
+  withDate.forEach(function(e){
+    if(!minIso||e.isoDate<minIso) minIso=e.isoDate;
+    if(!maxIso||e.isoDate>maxIso) maxIso=e.isoDate;
+  });
+  function fmtIso(iso){
+    if(!iso) return '—';
+    var p=iso.split('-');
+    return p[2]+'/'+p[1]+'/'+p[0];
+  }
+
+  // Mois en cours / nb interventions ce mois-ci
+  var nowYM=TODAY_ISO.substring(0,7);
+  var thisMonth=withDate.filter(function(e){return e.isoDate.substring(0,7)===nowYM;}).length;
+
+  // Statuts : ok / warn / bad / neu
+  var statKinds={ok:0,warn:0,bad:0,neu:0};
+  entries.forEach(function(e){
+    statKinds[pestStatutKind(e.statut)]++;
+  });
+  var totalStat=statKinds.ok+statKinds.warn+statKinds.bad+statKinds.neu;
+  var pctConforme= totalStat>0 ? Math.round(statKinds.ok/totalStat*100) : null;
+  var anomalies=statKinds.warn+statKinds.bad;
+
+  // Zones distinctes
+  var zones={};
+  entries.forEach(function(e){ if(e.zone) zones[e.zone]=1; });
+  var nbZones=Object.keys(zones).length;
+
+  // Première colonne numérique = consommation / captures (si présente)
+  var numColIdx=(meta.numCols&&meta.numCols.length)?meta.numCols[0]:-1;
+  var numColLabel='';
+  var numSum=null;
+  if(numColIdx>=0){
+    numColLabel=String((section.headers||[])[numColIdx]||'').trim() || ('Col '+(numColIdx+1));
+    numSum=pestSumNumCol(entries, numColIdx);
+  }
+
+  function kpi(lbl,val,cls,sub){
+    return '<div class="pests-kpi '+cls+'">'
+      +'<div class="pests-kpi-lbl">'+esc(lbl)+'</div>'
+      +'<div class="pests-kpi-val">'+(typeof val==='number'?fmtNum(val):val)+'</div>'
+      +'<div class="pests-kpi-sub">'+esc(sub||'')+'</div>'
+      +'</div>';
+  }
+  var prefixCls=(kind==='flying')?'k-t':(kind==='rat'?'k-o':'k-b');
+  var html='';
+  html+=kpi('Total enregistrements', total, prefixCls, total?fmtIso(minIso)+' → '+fmtIso(maxIso):'aucune date');
+  html+=kpi('Ce mois-ci', thisMonth, 'k-b', nowYM);
+  if(nbZones>0) html+=kpi('Emplacements distincts', nbZones, 'k-b', 'zones / pièges suivis');
+  if(pctConforme!==null) html+=kpi('Conformité', pctConforme+'%', pctConforme>=80?'k-g':(pctConforme>=50?'k-a':'k-r'),
+    statKinds.ok+' OK / '+totalStat+' évalués');
+  if(anomalies>0) html+=kpi('Anomalies', anomalies, 'k-r', statKinds.bad+' critiques · '+statKinds.warn+' à surveiller');
+  if(numSum!==null && numSum>0)
+    html+=kpi(numColLabel||'Total numérique', numSum, 'k-a', 'somme '+numColLabel.toLowerCase());
+  return html;
+}
+
+// Construit la chart d'évolution mensuelle (renvoie {labels, data, year})
+function pestBuildMonthlyChart(canvasId, section, color){
+  if(!section || !section.entries || !document.getElementById(canvasId)) return null;
+  var ts=pestMonthlyCounts(section.entries);
+  if(!ts.year || ts.data.every(function(v){return v===0;})){
+    // Pas de date → graphique de répartition par zone
+    var top=pestTopValues(section.entries, function(e){return e.zone;}, 8);
+    if(top.length===0){
+      // Aucun graphique possible → afficher un message
+      var c=document.getElementById(canvasId);
+      if(c&&c.parentNode){
+        c.style.display='none';
+        var prev=c.parentNode.querySelector('.pests-chart-empty');
+        if(!prev){
+          var em=document.createElement('div');
+          em.className='pests-chart-empty pests-empty';
+          em.style.marginTop='8px';
+          em.textContent='Pas assez de données pour générer un graphique';
+          c.parentNode.appendChild(em);
+        }
+      }
+      return null;
+    }
+    if(charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId]=new Chart(document.getElementById(canvasId),{
+      type:'bar',
+      data:{labels:top.map(function(t){return t.label;}),
+            datasets:[{label:'Enregistrements',data:top.map(function(t){return t.count;}),
+                       backgroundColor:color, borderRadius:4}]},
+      options:Object.assign({}, BASE, {
+        plugins:{legend:{display:false}, tooltip:{enabled:true}},
+        indexAxis:'y'
+      })
+    });
+    return {kind:'bar',year:null};
+  }
+  if(charts[canvasId]) charts[canvasId].destroy();
+  charts[canvasId]=new Chart(document.getElementById(canvasId),{
+    type:'line',
+    data:{labels:ts.labels,
+          datasets:[{
+            label:'Enregistrements',
+            data:ts.data,
+            borderColor:color,
+            backgroundColor:color+'33',
+            tension:.3, fill:true,
+            pointBackgroundColor:color, pointRadius:3, pointHoverRadius:5,
+            borderWidth:2
+          }]},
+    options:Object.assign({}, BASE, {
+      plugins:{legend:{display:false}, tooltip:{enabled:true}},
+      scales:{
+        x:BASE.scales.x,
+        y:Object.assign({}, BASE.scales.y, {beginAtZero:true, ticks:Object.assign({},BASE.scales.y.ticks,{precision:0})})
+      }
+    })
+  });
+  return {kind:'line',year:ts.year};
+}
+
+// Renderer générique de tableau dynamique (entêtes + lignes brutes)
+// Param ids = { thead, body, search, stat, empty }
+function pestRenderTable(section, ids){
+  var theadEl=document.getElementById(ids.thead);
+  var bodyEl =document.getElementById(ids.body);
+  var statEl =document.getElementById(ids.stat);
+  var emptyEl=document.getElementById(ids.empty);
+  if(!theadEl||!bodyEl) return;
+
+  var headers=(section&&section.headers)||[];
+  var entries=(section&&section.entries)||[];
+
+  if(!section||headers.length===0){
+    theadEl.innerHTML='';
+    bodyEl.innerHTML='';
+    if(statEl) statEl.textContent='— lignes';
+    if(emptyEl) emptyEl.style.display='block';
+    return;
+  }
+  if(emptyEl) emptyEl.style.display=entries.length===0?'block':'none';
+
+  // Tri des entrées : plus récent en haut (si date), sinon ordre d'origine
+  var sorted=entries.slice();
+  if(sorted.some(function(e){return !!e.isoDate;})){
+    sorted.sort(function(a,b){
+      if(!a.isoDate&&!b.isoDate) return 0;
+      if(!a.isoDate) return 1;
+      if(!b.isoDate) return -1;
+      return b.isoDate.localeCompare(a.isoDate);
+    });
+  }
+
+  // Filtre recherche
+  var q='';
+  if(ids.search){
+    var inp=document.getElementById(ids.search);
+    q=inp?inp.value.trim().toLowerCase():'';
+  }
+  var filtered=sorted.filter(function(e){
+    if(!q) return true;
+    var hay=(e.raw||[]).join(' ').toLowerCase();
+    return hay.indexOf(q)>=0;
+  });
+
+  if(statEl) statEl.textContent=filtered.length+' / '+entries.length+' lignes';
+
+  // Entêtes
+  var hdrHtml='<tr>';
+  headers.forEach(function(h){
+    hdrHtml+='<th>'+esc(h||'—')+'</th>';
+  });
+  hdrHtml+='</tr>';
+  theadEl.innerHTML=hdrHtml;
+
+  // Lignes : limiter à 200 pour éviter le freeze
+  var maxRows=200;
+  var trimmed=filtered.length>maxRows?filtered.slice(0,maxRows):filtered;
+  var meta=section.meta||{};
+  var statutSet={}; (meta.statutCols||[]).forEach(function(c){statutSet[c]=1;});
+  var dateSet={};   (meta.dateCols  ||[]).forEach(function(c){dateSet[c]=1;});
+  var numSet={};    (meta.numCols   ||[]).forEach(function(c){numSet[c]=1;});
+
+  var rowsHtml=trimmed.map(function(e){
+    var cells=e.raw||[];
+    var tds='';
+    for(var c=0;c<headers.length;c++){
+      var v=cells[c];
+      var disp=(v===undefined||v===null)?'':String(v);
+      if(!disp.trim()){ tds+='<td><span style="color:var(--text3);font-size:10px">—</span></td>'; continue; }
+      if(statutSet[c]){
+        var k=pestStatutKind(disp);
+        tds+='<td><span class="pests-chip '+k+'">'+esc(disp)+'</span></td>';
+      } else if(dateSet[c]){
+        // Si la cellule vient déjà au format jj/mm/aaaa, on l'affiche tel quel
+        tds+='<td><span class="date-cell">'+esc(disp)+'</span></td>';
+      } else if(numSet[c]){
+        tds+='<td class="num">'+esc(disp)+'</td>';
+      } else {
+        tds+='<td>'+esc(disp)+'</td>';
+      }
+    }
+    return '<tr>'+tds+'</tr>';
+  }).join('');
+
+  if(filtered.length>maxRows){
+    rowsHtml+='<tr><td colspan="'+headers.length+'" style="text-align:center;color:var(--text3);font-style:italic;font-size:10px">'
+      +'… '+(filtered.length-maxRows)+' ligne(s) supplémentaire(s) — affiner la recherche pour voir plus</td></tr>';
+  }
+  bodyEl.innerHTML=rowsHtml || '<tr><td colspan="'+headers.length+'" style="text-align:center;color:var(--text3);font-size:11px;padding:18px">Aucune ligne ne correspond à la recherche</td></tr>';
+}
+
+// ── Renderers spécifiques ─────────────────────────────────
+function renderPestFlying(){
+  if(!D||!D.pests) return;
+  var s=D.pests.fk;
+  // Méta-feuille
+  var meta=document.getElementById('pestsFlyingSheetMeta');
+  if(meta) meta.textContent='Source : feuille « '+(s&&s.sheetName?s.sheetName:'FK')+' »';
+  // KPIs
+  document.getElementById('pestsFlyingKpis').innerHTML=pestKpisHtml(s,'flying');
+  // Chart
+  pestBuildMonthlyChart('pestsFlyingChart', s, '#14b8a6');
+  // Distribution : statut prioritaire, sinon zone
+  var distEl=document.getElementById('pestsFlyingDist');
+  if(distEl && s){
+    var statTop=pestTopValues(s.entries, function(e){return e.statut;}, 8);
+    var zoneTop=pestTopValues(s.entries, function(e){return e.zone;}, 8);
+    var titleEl=document.getElementById('pestsFlyingDistTitle');
+    if(statTop.length>=2){
+      if(titleEl) titleEl.textContent='Répartition par statut';
+      distEl.innerHTML=pestDistHtml(statTop, s.entries.length, '__statut__');
+    } else if(zoneTop.length>0){
+      if(titleEl) titleEl.textContent='Répartition par emplacement';
+      distEl.innerHTML=pestDistHtml(zoneTop, s.entries.length, 'flying');
+    } else {
+      distEl.innerHTML='<div class="pests-empty">Pas de données catégorielles disponibles</div>';
+    }
+  }
+  // Table
+  pestRenderTable(s, {
+    thead:'pestsFlyingThead', body:'pestsFlyingBody',
+    search:'pestsFlyingSearch', stat:'pestsFlyingStat', empty:'pestsFlyingEmpty'
+  });
+}
+
+function renderPestRat(){
+  if(!D||!D.pests) return;
+  var s=D.pests.rat;
+  var meta=document.getElementById('pestsRatSheetMeta');
+  if(meta) meta.textContent='Source : feuille « '+(s&&s.sheetName?s.sheetName:'boîtes à raticide')+' »';
+  document.getElementById('pestsRatKpis').innerHTML=pestKpisHtml(s,'rat');
+  pestBuildMonthlyChart('pestsRatChart', s, '#f97316');
+  var distEl=document.getElementById('pestsRatDist');
+  if(distEl && s){
+    var statTop=pestTopValues(s.entries, function(e){return e.statut;}, 8);
+    var zoneTop=pestTopValues(s.entries, function(e){return e.zone;}, 8);
+    var titleEl=document.getElementById('pestsRatDistTitle');
+    if(statTop.length>=2){
+      if(titleEl) titleEl.textContent='Répartition par statut';
+      distEl.innerHTML=pestDistHtml(statTop, s.entries.length, '__statut__');
+    } else if(zoneTop.length>0){
+      if(titleEl) titleEl.textContent='Répartition par emplacement / boîte';
+      distEl.innerHTML=pestDistHtml(zoneTop, s.entries.length, 'rodent');
+    } else {
+      distEl.innerHTML='<div class="pests-empty">Pas de données catégorielles disponibles</div>';
+    }
+  }
+  pestRenderTable(s, {
+    thead:'pestsRatThead', body:'pestsRatBody',
+    search:'pestsRatSearch', stat:'pestsRatStat', empty:'pestsRatEmpty'
+  });
+}
+
+function renderPestMech(){
+  if(!D||!D.pests) return;
+  var s=D.pests.mech;
+  var meta=document.getElementById('pestsMechSheetMeta');
+  if(meta) meta.textContent='Source : feuille « '+(s&&s.sheetName?s.sheetName:'pièges mécanique')+' »';
+  pestBuildMonthlyChart('pestsMechChart', s, '#0da8d2');
+  var distEl=document.getElementById('pestsMechDist');
+  if(distEl && s){
+    var statTop=pestTopValues(s.entries, function(e){return e.statut;}, 8);
+    var zoneTop=pestTopValues(s.entries, function(e){return e.zone;}, 8);
+    var titleEl=document.getElementById('pestsMechDistTitle');
+    if(statTop.length>=2){
+      if(titleEl) titleEl.textContent='Répartition par statut';
+      distEl.innerHTML=pestDistHtml(statTop, s.entries.length, '__statut__');
+    } else if(zoneTop.length>0){
+      if(titleEl) titleEl.textContent='Répartition par emplacement / piège';
+      distEl.innerHTML=pestDistHtml(zoneTop, s.entries.length, '');
+    } else {
+      distEl.innerHTML='<div class="pests-empty">Pas de données catégorielles disponibles</div>';
+    }
+  }
+  pestRenderTable(s, {
+    thead:'pestsMechThead', body:'pestsMechBody',
+    search:'pestsMechSearch', stat:'pestsMechStat', empty:'pestsMechEmpty'
+  });
+}
+
+function renderPestGlue(){
+  if(!D||!D.pests) return;
+  var s=D.pests.glue;
+  var meta=document.getElementById('pestsGlueSheetMeta');
+  if(meta) meta.textContent='Source : feuille « '+(s&&s.sheetName?s.sheetName:'boîtes à colles')+' »';
+  pestBuildMonthlyChart('pestsGlueChart', s, '#0a7a9a');
+  var distEl=document.getElementById('pestsGlueDist');
+  if(distEl && s){
+    var statTop=pestTopValues(s.entries, function(e){return e.statut;}, 8);
+    var zoneTop=pestTopValues(s.entries, function(e){return e.zone;}, 8);
+    var titleEl=document.getElementById('pestsGlueDistTitle');
+    if(statTop.length>=2){
+      if(titleEl) titleEl.textContent='Répartition par statut';
+      distEl.innerHTML=pestDistHtml(statTop, s.entries.length, '__statut__');
+    } else if(zoneTop.length>0){
+      if(titleEl) titleEl.textContent='Répartition par emplacement / boîte';
+      distEl.innerHTML=pestDistHtml(zoneTop, s.entries.length, '');
+    } else {
+      distEl.innerHTML='<div class="pests-empty">Pas de données catégorielles disponibles</div>';
+    }
+  }
+  pestRenderTable(s, {
+    thead:'pestsGlueThead', body:'pestsGlueBody',
+    search:'pestsGlueSearch', stat:'pestsGlueStat', empty:'pestsGlueEmpty'
+  });
+}
+
+// KPIs agrégés "Intérieur usine" = mech + glue combinés
+function renderPestIndoorKpis(){
+  if(!D||!D.pests) return;
+  var mech=D.pests.mech, glue=D.pests.glue;
+  var combined={
+    entries:[].concat(mech&&mech.entries||[], glue&&glue.entries||[]),
+    headers:[],
+    meta:{ numCols:[], dateCols:[], zoneCols:[], statutCols:[], actionCols:[],
+           primaryDate:-1, primaryZone:-1, primaryStatut:-1, primaryAction:-1 }
+  };
+  document.getElementById('pestsIndoorKpis').innerHTML=pestKpisHtml(combined,'indoor');
+}
+
+function renderPests(){
+  if(!D||!D.pests){
+    // Marquer les sections comme vides
+    ['pestsFlyingEmpty','pestsRatEmpty','pestsMechEmpty','pestsGlueEmpty'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.style.display='block';
+    });
+    return;
+  }
+  // Lien feuille source
+  var srcLink=document.getElementById('pestsSourceLink');
+  if(srcLink){
+    if(D.pestsSourceUrl){ srcLink.href=D.pestsSourceUrl; srcLink.style.display='inline-block'; }
+    else srcLink.style.display='none';
+  }
+  renderPestFlying();
+  renderPestRat();
+  renderPestIndoorKpis();
+  renderPestMech();
+  renderPestGlue();
+}
 
 window.onload=function(){
   google.script.run
