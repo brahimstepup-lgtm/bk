@@ -884,6 +884,31 @@ html.light .pests-mini-tab.on{background:#edf2f7}
 .pests-mini-pane{display:none}
 .pests-mini-pane.on{display:block}
 
+/* Suivi par type d'insecte volant : header + tabs colorés */
+.pests-types-header{display:flex;align-items:center;gap:9px;margin:6px 0 9px;padding:10px 12px;
+  background:linear-gradient(135deg,rgba(20,184,166,.10),rgba(20,184,166,.04));
+  border-left:3px solid #14b8a6;border-radius:8px;flex-wrap:wrap}
+.pests-types-bullet{font-size:14px;flex-shrink:0}
+.pests-types-title{font-size:12px;font-weight:700;color:var(--text)}
+.pests-types-hint{font-size:10px;color:var(--text3);font-style:italic;margin-left:auto}
+html.light .pests-types-header{background:linear-gradient(135deg,rgba(20,184,166,.18),rgba(20,184,166,.06))}
+
+/* Tabs des types : un par type d'insecte (couleurs dédiées) */
+.pests-type-tab{padding:5px 11px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;
+  color:var(--text3);border:1px solid transparent;background:transparent;
+  transition:all .15s;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:5px}
+.pests-type-tab .pt-ico{font-size:13px}
+.pests-type-tab .pt-cnt{font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;
+  padding:1px 5px;border-radius:8px;background:var(--bg4);color:var(--text2);margin-left:2px}
+.pests-type-tab.on{background:var(--bg2);color:var(--text);border-color:var(--border);
+  box-shadow:inset 0 -2px 0 0 currentColor}
+.pests-type-tab:hover:not(.on){color:var(--text2);background:rgba(255,255,255,.03)}
+html.light .pests-type-tab.on{background:#edf2f7}
+html.light .pests-type-tab:hover:not(.on){background:rgba(0,0,0,.03)}
+.pests-type-tab.on .pt-cnt{background:rgba(20,184,166,.2);color:var(--text)}
+
+.pests-type-panel{margin-top:4px}
+
 /* KPI compacts par sous-section */
 .pests-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px;margin-bottom:11px}
 .pests-kpi{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:10px 12px;
@@ -2003,38 +2028,98 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
     </div>
 
+    <!-- KPI globaux (toutes catégories confondues) -->
     <div class="pests-kpi-grid" id="pestsFlyingKpis"></div>
 
+    <!-- Vue comparative globale entre les types -->
     <div class="pests-cards">
       <div class="pests-card">
         <div class="pests-card-title"><span class="ct-dot" style="background:#14b8a6"></span>
-          <span id="pestsFlyingChartTitle">Évolution dans le temps</span>
+          Captures totales par type
         </div>
-        <div class="cw"><canvas id="pestsFlyingChart"></canvas></div>
+        <div class="cw"><canvas id="pestsFlyingTypesBar"></canvas></div>
       </div>
       <div class="pests-card">
         <div class="pests-card-title"><span class="ct-dot" style="background:#14b8a6"></span>
-          <span id="pestsFlyingDistTitle">Répartition par zone / statut</span>
+          Évolution mensuelle — tous types confondus
         </div>
-        <div class="pests-dist-list" id="pestsFlyingDist"></div>
+        <div class="cw"><canvas id="pestsFlyingTypesLine"></canvas></div>
       </div>
     </div>
 
-    <div class="pests-search-bar">
-      <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
-      <input type="text" class="pests-search-input" id="pestsFlyingSearch"
-             placeholder="Rechercher dans la feuille FK…" oninput="renderPestFlying()">
-      <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
-              onclick="document.getElementById('pestsFlyingSearch').value='';renderPestFlying()">↺ Reset</button>
-      <span class="pests-stat-pill" id="pestsFlyingStat">— lignes</span>
+    <!-- ── Suivi détaillé par type ────────────────────── -->
+    <div class="pests-types-header">
+      <span class="pests-types-bullet">🔍</span>
+      <span class="pests-types-title">Suivi détaillé par type d'insecte volant</span>
+      <span class="pests-types-hint">Chaque catégorie est analysée séparément</span>
     </div>
 
-    <div class="pests-table-wrap">
-      <table class="pests-table" id="pestsFlyingTable">
-        <thead id="pestsFlyingThead"></thead>
-        <tbody id="pestsFlyingBody"></tbody>
-      </table>
+    <!-- Onglets dynamiques (un par type détecté dans FK) -->
+    <div class="pests-mini-tabs" id="pestsFlyingTypeTabs"></div>
+
+    <!-- Panel de détail par type -->
+    <div id="pestsFlyingTypePanel" class="pests-type-panel">
+      <div class="pests-kpi-grid" id="pestsFlyingTypeKpis"></div>
+
+      <div class="pests-cards">
+        <div class="pests-card">
+          <div class="pests-card-title"><span class="ct-dot" id="pestsFlyingTypeDot1" style="background:#14b8a6"></span>
+            <span id="pestsFlyingTypeChartTitle">Évolution mensuelle — captures</span>
+          </div>
+          <div class="cw"><canvas id="pestsFlyingTypeChart"></canvas></div>
+        </div>
+        <div class="pests-card">
+          <div class="pests-card-title"><span class="ct-dot" id="pestsFlyingTypeDot2" style="background:#14b8a6"></span>
+            <span id="pestsFlyingTypeZoneTitle">Top zones impactées</span>
+          </div>
+          <div class="pests-dist-list" id="pestsFlyingTypeZones"></div>
+        </div>
+      </div>
+
+      <!-- Tableau dédié : visites avec capture pour ce type -->
+      <div class="pests-search-bar">
+        <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+        <input type="text" class="pests-search-input" id="pestsFlyingTypeSearch"
+               placeholder="Rechercher dans les visites avec capture…" oninput="renderPestFlyingTypeDetail()">
+        <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+                onclick="document.getElementById('pestsFlyingTypeSearch').value='';renderPestFlyingTypeDetail()">↺ Reset</button>
+        <span class="pests-stat-pill" id="pestsFlyingTypeStat">— visites</span>
+      </div>
+      <div class="pests-table-wrap">
+        <table class="pests-table" id="pestsFlyingTypeTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Zone</th>
+              <th>Type piège</th>
+              <th>N°</th>
+              <th id="pestsFlyingTypeCntHdr" style="text-align:right">Captures</th>
+              <th>Observation</th>
+            </tr>
+          </thead>
+          <tbody id="pestsFlyingTypeBody"></tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- Repli si aucun type détecté : ancien tableau brut FK -->
+    <div id="pestsFlyingFallback" style="display:none">
+      <div class="pests-search-bar">
+        <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+        <input type="text" class="pests-search-input" id="pestsFlyingSearch"
+               placeholder="Rechercher dans la feuille FK…" oninput="renderPestFlyingFallback()">
+        <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+                onclick="document.getElementById('pestsFlyingSearch').value='';renderPestFlyingFallback()">↺ Reset</button>
+        <span class="pests-stat-pill" id="pestsFlyingStat">— lignes</span>
+      </div>
+      <div class="pests-table-wrap">
+        <table class="pests-table" id="pestsFlyingTable">
+          <thead id="pestsFlyingThead"></thead>
+          <tbody id="pestsFlyingBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="pests-empty" id="pestsFlyingEmpty" style="display:none;margin-top:8px">
       Aucune donnée trouvée dans la feuille <strong>« FK »</strong>.
     </div>
@@ -5527,34 +5612,517 @@ function pestRenderTable(section, ids){
 }
 
 // ── Renderers spécifiques ─────────────────────────────────
+
+// ══ INSECTES VOLANTS — suivi par type ════════════════════
+// Détecte dynamiquement les colonnes de comptage (Mouches, Moustique,
+// Abeille, Papillon, Autres) dans les entêtes de la feuille FK.
+// Chaque type est suivi séparément avec son propre panneau d'analyse :
+// KPI dédiés, évolution mensuelle, top zones impactées, tableau filtré.
+
+// Catalogue des types reconnus (clé → libellé / icône / couleur)
+var FLY_TYPES_DEF = [
+  { key:'mouche',    label:'Mouches',   icon:'🪰', color:'#14b8a6' },
+  { key:'moustique', label:'Moustique', icon:'🦟', color:'#0ea5e9' },
+  { key:'abeille',   label:'Abeille',   icon:'🐝', color:'#f5a623' },
+  { key:'papillon',  label:'Papillon',  icon:'🦋', color:'#a855f7' },
+  { key:'autre',     label:'Autres',    icon:'🐛', color:'#94a3b8' }
+];
+
+// État courant : type sélectionné dans les onglets
+var pestFlyTypeCur = null;
+
+// Détecter quels types sont présents dans les entêtes FK
+function flyDetectTypes(headers){
+  var found = [];
+  (headers||[]).forEach(function(h, idx){
+    var n = String(h||'').toLowerCase()
+      .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a')
+      .replace(/[ùûü]/g,'u').replace(/[ç]/g,'c').trim();
+    if(!n) return;
+    FLY_TYPES_DEF.forEach(function(def){
+      if(found.some(function(f){return f.key===def.key;})) return;
+      if(n.indexOf(def.key) > -1){
+        found.push({
+          key:    def.key,
+          label:  def.label,
+          icon:   def.icon,
+          color:  def.color,
+          colIdx: idx,
+          header: String(h||'').trim()
+        });
+      }
+    });
+  });
+  return found;
+}
+
+// Trouver l'index d'une colonne par mot-clé (case insensitive)
+function flyFindCol(headers, keyword){
+  for(var i=0;i<(headers||[]).length;i++){
+    var n = String(headers[i]||'').toLowerCase()
+      .replace(/[éèêë]/g,'e').replace(/[àâä]/g,'a')
+      .replace(/[ùûü]/g,'u').replace(/[ç]/g,'c').trim();
+    if(n.indexOf(keyword) > -1) return i;
+  }
+  return -1;
+}
+
+// Convertir une cellule en nombre (tolérante aux virgules / espaces)
+function flyCellNum(v){
+  if(v===undefined||v===null||v==='') return 0;
+  var s=String(v).replace(/\s/g,'').replace(/,/g,'.');
+  var n=parseFloat(s);
+  return isNaN(n)?0:n;
+}
+
+// Pour un type donné, calcule les statistiques globales
+function flyComputeStats(entries, typeDef, idxMap){
+  // entries = lignes brutes FK · idxMap = {date, zone, type, num, obs}
+  var total=0, withCapture=0, maxSingle=0, maxRow=null;
+  var byMonth={};   // 'YYYY-MM' → captures totales
+  var byZone={};    // zone → captures totales
+  var rows=[];      // visites avec capture > 0
+  entries.forEach(function(e){
+    var raw = e.raw || [];
+    var v = flyCellNum(raw[typeDef.colIdx]);
+    if(v <= 0) return;
+    total += v;
+    withCapture++;
+    if(v > maxSingle){ maxSingle = v; maxRow = e; }
+    if(e.isoDate){
+      var ym = e.isoDate.substring(0,7);
+      byMonth[ym] = (byMonth[ym]||0) + v;
+    }
+    var zone = (idxMap.zone>=0) ? String(raw[idxMap.zone]||'').trim() : '';
+    if(zone) byZone[zone] = (byZone[zone]||0) + v;
+    rows.push({
+      raw:e.raw, isoDate:e.isoDate, date:e.date,
+      zone:zone,
+      typeP:(idxMap.type>=0)? String(raw[idxMap.type]||'').trim() : '',
+      num:  (idxMap.num >=0)? String(raw[idxMap.num] ||'').trim() : '',
+      obs:  (idxMap.obs >=0)? String(raw[idxMap.obs] ||'').trim() : '',
+      cnt:v
+    });
+  });
+  return {
+    total:total, withCapture:withCapture, maxSingle:maxSingle, maxRow:maxRow,
+    byMonth:byMonth, byZone:byZone, rows:rows
+  };
+}
+
+// Sélectionne l'année avec le plus de captures pour ce type
+function flyPickYear(byMonth){
+  var byYear = {};
+  Object.keys(byMonth).forEach(function(ym){
+    var y = ym.substring(0,4);
+    byYear[y] = (byYear[y]||0) + byMonth[ym];
+  });
+  var years = Object.keys(byYear);
+  if(years.length===0) return null;
+  years.sort(function(a,b){
+    if(a==='2026') return -1;
+    if(b==='2026') return 1;
+    return byYear[b]-byYear[a];
+  });
+  return years[0];
+}
+
+// Construit la série mensuelle pour un type sur une année
+function flyMonthlySeries(byMonth, year){
+  if(!year){
+    return { labels:ML.slice(), data:[0,0,0,0,0,0,0,0,0,0,0,0], year:null };
+  }
+  var data = [];
+  for(var m=1;m<=12;m++){
+    var mm = (m<10?'0':'')+m;
+    data.push(byMonth[year+'-'+mm] || 0);
+  }
+  return { labels: ML.slice(), data: data, year: year };
+}
+
+// Construit l'index des colonnes utilitaires de FK
+function flyBuildIdxMap(headers){
+  return {
+    visite: flyFindCol(headers, 'visite'),
+    date:   flyFindCol(headers, 'date'),
+    zone:   flyFindCol(headers, 'zone'),
+    type:   flyFindCol(headers, 'type'),
+    num:    flyFindCol(headers, 'n°'),  // n° (avec degré) — peut échouer, fallback ci-dessous
+    obs:    flyFindCol(headers, 'observ')
+  };
+}
+
+// renderPestFlying — orchestrateur : KPI globaux + comparatif inter-types
+//   + onglets par type + premier rendu du panneau de détail
 function renderPestFlying(){
   if(!D||!D.pests) return;
-  var s=D.pests.fk;
+  var s = D.pests.fk;
+
   // Méta-feuille
-  var meta=document.getElementById('pestsFlyingSheetMeta');
-  if(meta) meta.textContent='Source : feuille « '+(s&&s.sheetName?s.sheetName:'FK')+' »';
-  // KPIs
-  document.getElementById('pestsFlyingKpis').innerHTML=pestKpisHtml(s,'flying');
-  // Chart
-  pestBuildMonthlyChart('pestsFlyingChart', s, '#14b8a6');
-  // Distribution : statut prioritaire, sinon zone
-  var distEl=document.getElementById('pestsFlyingDist');
-  if(distEl && s){
-    var statTop=pestTopValues(s.entries, function(e){return e.statut;}, 8);
-    var zoneTop=pestTopValues(s.entries, function(e){return e.zone;}, 8);
-    var titleEl=document.getElementById('pestsFlyingDistTitle');
-    if(statTop.length>=2){
-      if(titleEl) titleEl.textContent='Répartition par statut';
-      distEl.innerHTML=pestDistHtml(statTop, s.entries.length, '__statut__');
-    } else if(zoneTop.length>0){
-      if(titleEl) titleEl.textContent='Répartition par emplacement';
-      distEl.innerHTML=pestDistHtml(zoneTop, s.entries.length, 'flying');
-    } else {
-      distEl.innerHTML='<div class="pests-empty">Pas de données catégorielles disponibles</div>';
-    }
+  var metaEl = document.getElementById('pestsFlyingSheetMeta');
+  if(metaEl) metaEl.textContent='Source : feuille « '+(s&&s.sheetName?s.sheetName:'FK')+' »';
+
+  if(!s || !s.entries || s.entries.length===0){
+    document.getElementById('pestsFlyingKpis').innerHTML='';
+    document.getElementById('pestsFlyingTypeTabs').innerHTML='';
+    document.getElementById('pestsFlyingTypePanel').style.display='none';
+    document.getElementById('pestsFlyingFallback').style.display='none';
+    document.getElementById('pestsFlyingEmpty').style.display='block';
+    return;
   }
-  // Table
-  pestRenderTable(s, {
+  document.getElementById('pestsFlyingEmpty').style.display='none';
+
+  var headers = s.headers || [];
+  var types   = flyDetectTypes(headers);
+  var idxMap  = flyBuildIdxMap(headers);
+  // Fallback pour la colonne N° (chercher 'numero' ou 'num')
+  if(idxMap.num<0) idxMap.num = flyFindCol(headers, 'numero');
+  if(idxMap.num<0) idxMap.num = flyFindCol(headers, 'num');
+
+  // Si aucun type d'insecte n'est détecté → repli sur tableau brut
+  if(types.length === 0){
+    document.getElementById('pestsFlyingTypeTabs').innerHTML=
+      '<div class="pests-empty" style="margin:0;border:0">Aucune colonne de type d\'insecte détectée — mode brut activé</div>';
+    document.getElementById('pestsFlyingTypePanel').style.display='none';
+    document.getElementById('pestsFlyingFallback').style.display='block';
+    document.getElementById('pestsFlyingKpis').innerHTML=pestKpisHtml(s,'flying');
+    renderPestFlyingFallback();
+    return;
+  }
+
+  document.getElementById('pestsFlyingFallback').style.display='none';
+  document.getElementById('pestsFlyingTypePanel').style.display='block';
+
+  // Pré-calculer les stats par type (pour KPI + onglets + comparatif)
+  var statsByKey = {};
+  var grandTotal = 0;
+  types.forEach(function(t){
+    var st = flyComputeStats(s.entries, t, idxMap);
+    statsByKey[t.key] = st;
+    grandTotal += st.total;
+  });
+
+  // ── KPI globaux (tous types confondus) ───────────────
+  var totalVisites = s.entries.length;
+  var visitesAvec = 0, zonesSet = {};
+  s.entries.forEach(function(e){
+    var anyCap = false;
+    types.forEach(function(t){
+      if(flyCellNum((e.raw||[])[t.colIdx]) > 0) anyCap=true;
+    });
+    if(anyCap) visitesAvec++;
+    if(e.zone) zonesSet[e.zone]=1;
+  });
+  var nowYM = TODAY_ISO.substring(0,7);
+  var thisMonthCap = 0;
+  s.entries.forEach(function(e){
+    if(!e.isoDate || e.isoDate.substring(0,7)!==nowYM) return;
+    types.forEach(function(t){
+      thisMonthCap += flyCellNum((e.raw||[])[t.colIdx]);
+    });
+  });
+  // Type le plus capturé
+  var topType = null, topTotal = 0;
+  types.forEach(function(t){
+    var tt = statsByKey[t.key].total;
+    if(tt > topTotal){ topTotal = tt; topType = t; }
+  });
+  function kpi(lbl,val,cls,sub){
+    return '<div class="pests-kpi '+cls+'">'
+      +'<div class="pests-kpi-lbl">'+esc(lbl)+'</div>'
+      +'<div class="pests-kpi-val">'+(typeof val==='number'?fmtNum(val):val)+'</div>'
+      +'<div class="pests-kpi-sub">'+esc(sub||'')+'</div>'
+      +'</div>';
+  }
+  var html='';
+  html += kpi('Total visites', totalVisites, 'k-b', visitesAvec+' avec capture');
+  html += kpi('Captures totales', grandTotal, 'k-t', types.length+' types suivis');
+  html += kpi('Captures ce mois', thisMonthCap, 'k-a', nowYM);
+  html += kpi('Zones surveillées', Object.keys(zonesSet).length, 'k-b', 'emplacements distincts');
+  if(topType) html += kpi('Type dominant', topType.icon+' '+topType.label, 'k-r',
+                          fmtNum(topTotal)+' captures');
+  document.getElementById('pestsFlyingKpis').innerHTML = html;
+
+  // ── Bar chart : captures totales par type ────────────
+  if(charts['pestsFlyingTypesBar']) charts['pestsFlyingTypesBar'].destroy();
+  charts['pestsFlyingTypesBar'] = new Chart(document.getElementById('pestsFlyingTypesBar'), {
+    type:'bar',
+    data:{
+      labels: types.map(function(t){ return t.icon+' '+t.label; }),
+      datasets:[{
+        label:'Captures totales',
+        data: types.map(function(t){ return statsByKey[t.key].total; }),
+        backgroundColor: types.map(function(t){ return t.color; }),
+        borderRadius:5,
+        borderSkipped:false
+      }]
+    },
+    options: Object.assign({}, BASE, {
+      plugins:{ legend:{display:false}, tooltip:{enabled:true} },
+      scales:{
+        x:BASE.scales.x,
+        y: Object.assign({}, BASE.scales.y, { beginAtZero:true,
+          ticks:Object.assign({}, BASE.scales.y.ticks, {precision:0}) })
+      }
+    })
+  });
+
+  // ── Line chart : évolution mensuelle multi-types ─────
+  // Année dominante : celle avec le plus de captures cumulées
+  var aggByMonth = {};
+  types.forEach(function(t){
+    Object.keys(statsByKey[t.key].byMonth).forEach(function(ym){
+      aggByMonth[ym] = (aggByMonth[ym]||0) + statsByKey[t.key].byMonth[ym];
+    });
+  });
+  var year = flyPickYear(aggByMonth);
+  var datasets = types.map(function(t){
+    var ms = flyMonthlySeries(statsByKey[t.key].byMonth, year);
+    return {
+      label: t.icon+' '+t.label,
+      data: ms.data,
+      borderColor: t.color,
+      backgroundColor: t.color+'22',
+      tension:.3, fill:false,
+      pointRadius:2.5, pointHoverRadius:4.5,
+      borderWidth:2
+    };
+  });
+  if(charts['pestsFlyingTypesLine']) charts['pestsFlyingTypesLine'].destroy();
+  charts['pestsFlyingTypesLine'] = new Chart(document.getElementById('pestsFlyingTypesLine'), {
+    type:'line',
+    data:{ labels: ML.slice(), datasets: datasets },
+    options: Object.assign({}, BASE, {
+      plugins:{
+        legend:{ display:true, position:'bottom',
+                 labels:{ color: C.txt, font:{size:9}, boxWidth:10, boxHeight:10 } },
+        tooltip:{enabled:true}
+      },
+      scales:{
+        x:BASE.scales.x,
+        y: Object.assign({}, BASE.scales.y, { beginAtZero:true,
+          ticks:Object.assign({}, BASE.scales.y.ticks, {precision:0}) })
+      }
+    })
+  });
+
+  // ── Onglets : un par type (avec compteur) ────────────
+  var tabsEl = document.getElementById('pestsFlyingTypeTabs');
+  tabsEl.innerHTML = types.map(function(t){
+    var cnt = statsByKey[t.key].total;
+    return '<button class="pests-type-tab" data-key="'+t.key+'" '
+      +'style="--tab-color:'+t.color+'" '
+      +'onclick="goPestFlyType(\''+t.key+'\',this)">'
+      +'<span class="pt-ico">'+t.icon+'</span> '
+      +esc(t.label)
+      +'<span class="pt-cnt">'+fmtNum(cnt)+'</span>'
+      +'</button>';
+  }).join('');
+
+  // Onglet par défaut : le type dominant (sinon le premier)
+  var defaultKey = (topType ? topType.key : types[0].key);
+  // Conserver le choix précédent si toujours valide
+  if(pestFlyTypeCur && types.some(function(t){return t.key===pestFlyTypeCur;})){
+    defaultKey = pestFlyTypeCur;
+  }
+  var defBtn = tabsEl.querySelector('[data-key="'+defaultKey+'"]');
+  goPestFlyType(defaultKey, defBtn);
+}
+
+// Sélection d'un type d'insecte → met à jour le panel détail
+function goPestFlyType(key, el){
+  pestFlyTypeCur = key;
+  // Trouver la couleur du type pour la barre du tab actif
+  var typeDef = FLY_TYPES_DEF.filter(function(t){ return t.key===key; })[0];
+  var color = typeDef ? typeDef.color : '#14b8a6';
+  document.querySelectorAll('#pestsFlyingTypeTabs .pests-type-tab').forEach(function(t){
+    var on = (t.getAttribute('data-key')===key);
+    t.classList.toggle('on', on);
+    t.style.color = on ? color : '';
+    t.style.boxShadow = on ? ('inset 0 -2px 0 0 '+color) : '';
+  });
+  renderPestFlyingTypeDetail();
+}
+
+// Rendu du panneau de détail pour le type courant
+function renderPestFlyingTypeDetail(){
+  if(!D||!D.pests||!D.pests.fk) return;
+  var s = D.pests.fk;
+  var headers = s.headers || [];
+  var types   = flyDetectTypes(headers);
+  var typeDef = types.filter(function(t){ return t.key===pestFlyTypeCur; })[0]
+                || types[0];
+  if(!typeDef) return;
+
+  var idxMap  = flyBuildIdxMap(headers);
+  if(idxMap.num<0) idxMap.num = flyFindCol(headers, 'numero');
+  if(idxMap.num<0) idxMap.num = flyFindCol(headers, 'num');
+
+  var st = flyComputeStats(s.entries, typeDef, idxMap);
+
+  // ── KPIs spécifiques au type ─────────────────────────
+  var avg = st.withCapture>0 ? (st.total/st.withCapture) : 0;
+  // Captures du mois courant
+  var nowYM = TODAY_ISO.substring(0,7);
+  var thisMonth = st.byMonth[nowYM] || 0;
+  // Dernière visite avec capture (date la plus récente)
+  var lastDate = '';
+  st.rows.forEach(function(r){
+    if(r.isoDate && r.isoDate > lastDate) lastDate = r.isoDate;
+  });
+  function fmtIso(iso){
+    if(!iso) return '—';
+    var p = iso.split('-');
+    return p[2]+'/'+p[1]+'/'+p[0];
+  }
+  function kpi(lbl,val,cls,sub){
+    return '<div class="pests-kpi '+cls+'">'
+      +'<div class="pests-kpi-lbl">'+esc(lbl)+'</div>'
+      +'<div class="pests-kpi-val">'+(typeof val==='number'?fmtNum(val):val)+'</div>'
+      +'<div class="pests-kpi-sub">'+esc(sub||'')+'</div>'
+      +'</div>';
+  }
+  var nbZones = Object.keys(st.byZone).length;
+  // Zones totales surveillées (toutes visites confondues)
+  var totalZonesSet = {};
+  s.entries.forEach(function(e){ if(e.zone) totalZonesSet[e.zone]=1; });
+  var totalZones = Object.keys(totalZonesSet).length;
+  var html='';
+  html += kpi(typeDef.label+' — total', st.total, 'k-t',
+              st.withCapture+' visites avec capture');
+  html += kpi('Pic en une visite', st.maxSingle, 'k-r',
+              st.maxRow ? (st.maxRow.zone||'—')+' · '+(st.maxRow.date||'—') : '—');
+  html += kpi('Moyenne / visite', avg.toFixed(1).replace('.0',''), 'k-a',
+              'sur visites avec capture');
+  html += kpi('Ce mois-ci', thisMonth, 'k-b', nowYM);
+  html += kpi('Zones impactées', nbZones, 'k-b',
+              'sur '+totalZones+' surveillées');
+  html += kpi('Dernière capture', fmtIso(lastDate), 'k-b', '');
+  document.getElementById('pestsFlyingTypeKpis').innerHTML = html;
+
+  // ── Couleur d'accent du panneau ──────────────────────
+  var dot1=document.getElementById('pestsFlyingTypeDot1');
+  var dot2=document.getElementById('pestsFlyingTypeDot2');
+  if(dot1) dot1.style.background = typeDef.color;
+  if(dot2) dot2.style.background = typeDef.color;
+  document.getElementById('pestsFlyingTypeChartTitle').textContent =
+    'Évolution mensuelle — '+typeDef.label;
+  document.getElementById('pestsFlyingTypeZoneTitle').textContent =
+    'Top zones impactées — '+typeDef.label;
+  document.getElementById('pestsFlyingTypeCntHdr').textContent = 'Captures '+typeDef.label;
+
+  // ── Graphique évolution mensuelle pour ce type ──────
+  var year = flyPickYear(st.byMonth);
+  var ms   = flyMonthlySeries(st.byMonth, year);
+  if(charts['pestsFlyingTypeChart']) charts['pestsFlyingTypeChart'].destroy();
+  charts['pestsFlyingTypeChart'] = new Chart(document.getElementById('pestsFlyingTypeChart'),{
+    type:'line',
+    data:{
+      labels: ms.labels,
+      datasets:[{
+        label: typeDef.label,
+        data: ms.data,
+        borderColor: typeDef.color,
+        backgroundColor: typeDef.color+'33',
+        tension:.3, fill:true,
+        pointBackgroundColor: typeDef.color,
+        pointRadius:3, pointHoverRadius:5, borderWidth:2
+      }]
+    },
+    options: Object.assign({}, BASE, {
+      plugins:{ legend:{display:false}, tooltip:{enabled:true} },
+      scales:{
+        x:BASE.scales.x,
+        y: Object.assign({}, BASE.scales.y, { beginAtZero:true,
+          ticks:Object.assign({}, BASE.scales.y.ticks, {precision:0}) })
+      }
+    })
+  });
+
+  // ── Top zones impactées (distribution barres) ───────
+  var zoneArr = Object.keys(st.byZone).map(function(z){
+    return { label:z, count: st.byZone[z] };
+  });
+  zoneArr.sort(function(a,b){ return b.count - a.count; });
+  if(zoneArr.length > 8) zoneArr = zoneArr.slice(0,8);
+  var distEl = document.getElementById('pestsFlyingTypeZones');
+  if(zoneArr.length === 0){
+    distEl.innerHTML = '<div class="pests-empty">Aucune capture pour ce type</div>';
+  } else {
+    var maxV = zoneArr[0].count;
+    distEl.innerHTML = zoneArr.map(function(it){
+      var pct = maxV ? Math.round(it.count/maxV*100) : 0;
+      var pctTotal = st.total ? Math.round(it.count/st.total*100) : 0;
+      return '<div class="pests-dist-row">'
+        +'<div class="pests-dist-hdr">'
+        +'<span class="pests-dist-lbl" title="'+escAttr(it.label)+'">'+esc(it.label)+'</span>'
+        +'<span class="pests-dist-num">'+fmtNum(it.count)+' · '+pctTotal+'%</span>'
+        +'</div>'
+        +'<div class="pests-dist-bg"><div class="pests-dist-bar" '
+        +'style="width:'+pct+'%;background:linear-gradient(90deg,'+typeDef.color+'cc,'+typeDef.color+')"></div></div>'
+        +'</div>';
+    }).join('');
+  }
+
+  // ── Tableau filtré : visites avec capture pour ce type
+  var rows = st.rows.slice();
+  // Tri : par date desc puis par captures desc
+  rows.sort(function(a,b){
+    if(a.isoDate && b.isoDate && a.isoDate !== b.isoDate)
+      return b.isoDate.localeCompare(a.isoDate);
+    return b.cnt - a.cnt;
+  });
+  var qInp = document.getElementById('pestsFlyingTypeSearch');
+  var q = qInp ? qInp.value.trim().toLowerCase() : '';
+  var filtered = rows.filter(function(r){
+    if(!q) return true;
+    var hay = [r.date, r.zone, r.typeP, r.num, r.obs, r.cnt].join(' ').toLowerCase();
+    return hay.indexOf(q) >= 0;
+  });
+
+  var statEl = document.getElementById('pestsFlyingTypeStat');
+  if(statEl) statEl.textContent = filtered.length+' / '+rows.length+' visites · '
+    + fmtNum(filtered.reduce(function(a,r){return a+r.cnt;},0))+' captures';
+
+  var maxRows = 200;
+  var trimmed = filtered.length > maxRows ? filtered.slice(0,maxRows) : filtered;
+  var bodyEl = document.getElementById('pestsFlyingTypeBody');
+  if(rows.length === 0){
+    bodyEl.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);font-size:11px;padding:18px;font-style:italic">'
+      +'Aucune capture enregistrée pour <strong>'+esc(typeDef.label)+'</strong></td></tr>';
+  } else {
+    var rowsHtml = trimmed.map(function(r){
+      // Cellule "Captures" colorée selon l'intensité
+      var intensity = st.maxSingle ? (r.cnt/st.maxSingle) : 0;
+      var chipCls = 'neu';
+      if(intensity >= .66) chipCls = 'bad';
+      else if(intensity >= .33) chipCls = 'warn';
+      else if(r.cnt > 0) chipCls = 'ok';
+      return '<tr>'
+        +'<td><span class="date-cell">'+esc(r.date||'—')+'</span></td>'
+        +'<td>'+esc(r.zone||'—')+'</td>'
+        +'<td>'+esc(r.typeP||'—')+'</td>'
+        +'<td class="num">'+esc(r.num||'—')+'</td>'
+        +'<td class="num"><span class="pests-chip '+chipCls+'">'+fmtNum(r.cnt)+'</span></td>'
+        +'<td>'+(r.obs?esc(r.obs):'<span style="color:var(--text3);font-size:10px">—</span>')+'</td>'
+        +'</tr>';
+    }).join('');
+    if(filtered.length > maxRows){
+      rowsHtml += '<tr><td colspan="6" style="text-align:center;color:var(--text3);font-style:italic;font-size:10px">'
+        +'… '+(filtered.length-maxRows)+' visite(s) supplémentaire(s) — affiner la recherche pour voir plus</td></tr>';
+    }
+    if(filtered.length === 0){
+      rowsHtml = '<tr><td colspan="6" style="text-align:center;color:var(--text3);font-size:11px;padding:18px">'
+        +'Aucune visite ne correspond à la recherche</td></tr>';
+    }
+    bodyEl.innerHTML = rowsHtml;
+  }
+}
+
+// Repli : mode brut (ancienne table FK) si aucun type d'insecte détecté
+function renderPestFlyingFallback(){
+  if(!D||!D.pests||!D.pests.fk) return;
+  pestRenderTable(D.pests.fk, {
     thead:'pestsFlyingThead', body:'pestsFlyingBody',
     search:'pestsFlyingSearch', stat:'pestsFlyingStat', empty:'pestsFlyingEmpty'
   });
