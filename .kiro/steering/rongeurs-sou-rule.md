@@ -1,62 +1,103 @@
-# Règle d'analyse — Rongeurs (Nuisibles > Rongeurs)
+# Rongeurs (Nuisibles > Rongeurs) — deux systèmes séparés
 
-## Codes État (colonne « Critère / État »)
+La sous-section **Rongeurs** repose sur **deux systèmes totalement
+indépendants**, jamais fusionnés au niveau des indicateurs détaillés.
+La comparaison entre les deux n'est autorisée qu'au niveau du
+tableau de bord global (totaux uniquement).
 
-| Code  | Signification         |
-|-------|-----------------------|
-| NT    | Piège non trouvé      |
-| CAS   | Piège cassé           |
-| RT    | Piège retiré          |
-| INAC  | Piège inaccessible    |
-| RAS   | Rien à signaler       |
-| SOU   | Souris (capture)      |
+## 1. Intérieur usine
 
-## Règle de comptage
+- **Sources** : feuilles `pièges mécaniques` + `boîtes à colles`
+  (ces deux dispositifs partagent la même légende).
+- **Code Sheets** : `D.pests.mech` et `D.pests.glue`.
+- **Légende** :
 
-Dans la section **Nuisibles > Rongeurs** (sources : *boîtes à raticide*,
-*pièges mécanique*, *boîtes à colles*), seule la valeur **`SOU`**
-(« Souris ») dans la colonne État doit être comptabilisée comme une
-détection / capture de rongeur.
+  | Code | Signification        |
+  |------|----------------------|
+  | SOU  | Souris (capture)     |
+  | NT   | Piège non trouvé     |
+  | CAS  | Piège cassé          |
+  | RT   | Piège retiré         |
+  | INAC | Piège inaccessible   |
+  | RAS  | Rien à signaler      |
 
-Les codes `NT`, `CAS`, `RT`, `INAC` et `RAS` **ne doivent pas** être
-comptés comme captures.
+- **Règle de comptage** : seul `SOU` est une capture. `NT`/`CAS`/`RT`/
+  `INAC` alimentent l'indicateur séparé de qualité du dispositif. `RAS`
+  est neutre.
+- **Analyses attendues** :
+  - suivi des captures par zone et emplacement,
+  - évolution temporelle des captures,
+  - comparaison entre pièges mécaniques et boîtes à colles,
+  - identification des hotspots à l'intérieur de l'usine,
+  - mesure de la pression rongeurs en zone interne
+    (taux d'activité = SOU / visites).
 
-## Indicateurs / visualisations à dériver de SOU
+## 2. Voie extérieure
 
-Tous les calculs ci-dessous portent uniquement sur les enregistrements
-dont l'État est `SOU` :
+- **Source** : feuille `boîtes à raticide` uniquement.
+- **Code Sheet** : `D.pests.rat`.
+- **Légende** (différente de l'intérieur — appâts toxiques) :
 
-1. **Total captures (SOU)** — tous postes confondus.
-2. **Top postes de piégeage** — points de contrôle ayant enregistré le
-   plus de SOU (champ « emplacement / piège »).
-3. **Comparatif Intérieur vs Voie extérieure**
-   - Voie extérieure : feuille *boîtes à raticide* (`D.pests.rat`)
-   - Intérieur usine : feuilles *pièges mécanique* (`D.pests.mech`)
-     + *boîtes à colles* (`D.pests.glue`)
-4. **Évolution mensuelle des SOU** (par source et cumulée).
-5. **Alerte** : déclenchée lorsqu'un même point de contrôle (zone /
-   piège) cumule **≥ 2 SOU sur 30 jours glissants**.
-6. **Taux d'activité rongeurs par zone et par période**
-   = `SOU(zone, période) / total_visites(zone, période)`.
+  | Code | Signification         |
+  |------|-----------------------|
+  | SOU  | Souris (capture)      |
+  | EBR  | Boîte ébréchée        |
+  | CON  | Appât consommé        |
+  | NT   | Boîte non trouvée     |
+  | CAS  | Boîte cassée          |
+  | RT   | Boîte retirée         |
+  | INAC | Boîte inaccessible    |
+  | RAS  | Rien à signaler       |
 
-## Indicateur séparé — Qualité du dispositif de piégeage
+- **Règle de comptage** :
+  - `SOU` = capture (souris trouvée morte).
+  - `EBR` + `CON` = activité rongeur (appât touché ou consommé) — c'est
+    un signal de présence, pas une capture. À suivre dans l'indicateur
+    « activité raticide » (séparé de SOU).
+  - `NT`/`CAS`/`RT`/`INAC` = qualité du dispositif extérieur.
+  - `RAS` neutre.
+- **Analyses attendues** :
+  - suivi des captures par emplacement extérieur,
+  - évolution mensuelle (SOU + EBR + CON empilés),
+  - identification des zones extérieures à forte activité,
+  - détection des zones critiques récurrentes,
+  - analyses spécifiques aux raticides (activité globale = SOU+EBR+CON,
+    qualité boîtes), distinctes de l'intérieur.
 
-Les codes `NT`, `CAS`, `RT`, `INAC` ne sont **pas** des captures mais
-doivent être suivis dans un **indicateur séparé de qualité du dispositif**
-afin d'identifier les pièges manquants, détériorés, retirés ou
-inaccessibles. Le code `RAS` reste neutre (visite normale sans capture
-ni anomalie).
+## Règle de séparation
 
-## Implémentation
+- Intérieur usine et voie extérieure sont **deux systèmes totalement
+  séparés**.
+- Aucune fusion directe des légendes : `EBR` et `CON` n'existent que
+  côté extérieur.
+- Aucun indicateur croisé détaillé. Les hotspots, alertes, taux
+  d'activité, qualité dispositif sont calculés indépendamment dans
+  chaque sous-section.
+- Comparaison autorisée **uniquement** au niveau du tableau de bord
+  global (carte « Vue globale rongeurs » en haut de la sous-section
+  Rongeurs) : totaux SOU intérieur vs extérieur, évolution mensuelle
+  cumulée, donut de répartition.
 
-- Front-end : `index.html.txt`
-  - Helper `rodentEtatCode(v)` normalise l'État vers
-    `SOU | NT | CAS | RT | INAC | RAS | ''`.
-  - Bloc `pestsRodentDashSub` (en tête de la sous-section Rongeurs)
-    affiche les KPI SOU, les graphiques, les alertes, le taux
-    d'activité par zone et l'indicateur de qualité du dispositif.
-  - Les sous-sections existantes (raticide, mécanique, colles)
-    affichent en plus un chip « Captures SOU ».
-- Back-end : `code.txt` — aucune modification structurelle, l'État
-  arrive déjà dans `entry.statut` via la détection des entêtes
-  contenant « etat » / « statut ».
+## Implémentation (front-end uniquement)
+
+Fichier `index.html.txt` :
+
+- `rodentNormalize(v)` — normalise une valeur d'État (majuscules, sans
+  accents/ponctuation).
+- `rodentCodeIndoor(v)` → `SOU|NT|CAS|RT|INAC|RAS|''`.
+- `rodentCodeOutdoor(v)` → `SOU|EBR|CON|NT|CAS|RT|INAC|RAS|''`.
+- `rodentGlobalAggregate / KpisHtml / MonthlyChart / CompareChart`
+  — vue globale (totaux uniquement).
+- `rodentIndoorAggregate / KpisHtml / AlertsHtml / HotspotsHtml /
+  PressureHtml / TrapQualityHtml / MonthlyChart / MechVsGlueChart`
+  — dashboard intérieur usine, à l'intérieur de `pestsIndoorSub`.
+- `rodentOutdoorAggregate / KpisHtml / AlertsHtml / TopPointsHtml /
+  CritiquesHtml / TrapQualityHtml / MonthlyChart / ActivityChart`
+  — dashboard voie extérieure, à l'intérieur de `pestsRatSub`.
+- Orchestrateur `renderPests()` appelle dans l'ordre :
+  `renderRodentSouDashboard()` → `renderIndoorRodentDetailed()` →
+  `renderOutdoorRodentDetailed()`. Le sélecteur de période
+  `#pestsSouPeriodSel` synchronise les trois.
+
+Aucune modification côté `code.txt` (back-end Apps Script) — les
+trois feuilles sont déjà exposées dans `D.pests.{rat,mech,glue}`.
