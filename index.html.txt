@@ -1067,7 +1067,6 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('tags',this)">🏷️ TAGs</button>
   <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
-  <button class="tab"    onclick="goTab('ai',this)">✨ IA Gemini</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
@@ -1090,14 +1089,14 @@ html.light .pests-search-input{background:#edf2f7}
   <div class="kpi-grid" id="kpiGrid"></div>
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px;flex-wrap:wrap">
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">MODE :</span>
-    <button class="modeBtn on" id="btnYtd" onclick="setMode('ytd')">YTD</button>
-    <button class="modeBtn"    id="btnMois" onclick="setMode('mois')">MOIS</button>
+    <button class="modeBtn"    id="btnYtd" onclick="setMode('ytd')">YTD</button>
+    <button class="modeBtn on" id="btnMois" onclick="setMode('mois')">MOIS</button>
   </div>
   <div class="row2">
     <div class="card">
-      <div class="ct"><span class="ct-dot"></span><span id="tC1">Accidents AT</span>
+      <div class="ct"><span class="ct-dot"></span><span id="tC1">TG</span>
         <select class="kpi-sel" id="selC1" onchange="updateC1()" style="margin-left:auto">
-          <option value="at">Accidents AT</option><option value="tf1">TF1</option><option value="tg">TG</option>
+          <option value="at">Accidents AT</option><option value="tf1">TF1</option><option value="tg" selected>TG</option>
           <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
           <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
           <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
@@ -1108,7 +1107,7 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="card">
       <div class="ct"><span class="ct-dot"></span><span id="tC2">TF1 mensuel</span>
         <select class="kpi-sel" id="selC2" onchange="updateC2()" style="margin-left:auto">
-          <option value="tf1">TF1</option><option value="tg">TG</option><option value="at">AT Total</option>
+          <option value="tf1">TF1</option><option value="tg">TG</option><option value="at">Nombre d'accidents</option>
           <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
           <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
           <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
@@ -2691,7 +2690,7 @@ html.light .pests-search-input{background:#edf2f7}
 
 <script>
 // ════════════════════════════════════════════════════════════
-var D=null, viewMode='ytd', pyrMode='ytd', envMode='conso';
+var D=null, viewMode='mois', pyrMode='ytd', envMode='conso';
 var tagStatFilter='all';
 var clnStatFilter='all';
 var charts={};
@@ -2746,12 +2745,14 @@ function goTab(id,el){
   document.getElementById(id).classList.add('on'); el.classList.add('on');
 }
 function goAI(){
-  document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',i===5);});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
   document.getElementById('ai').classList.add('on');
 }
 function goVeille(){
-  document.querySelectorAll('.tab').forEach(function(t,i){t.classList.toggle('on',i===6);});
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.classList.toggle('on', /goTab\('veille'/.test(t.getAttribute('onclick')||''));
+  });
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
   document.getElementById('veille').classList.add('on');
 }
@@ -2941,7 +2942,7 @@ function renderPyramid(){
   var W=[44,82,126,172,216];
   var cc=['--pyr-conn1','--pyr-conn2','--pyr-conn3','--pyr-conn4'].map(function(v){return getCSSVar(v)||'#333';});
   var legC=['--pyr1b','--pyr2b','--pyr3b','--pyr4b','--pyr5b'].map(function(v){return getCSSVar(v)||'#555';});
-  var lv=[{l:'FATAL',i:'💀',v:fatal,c:'pL1',w:W[0]},{l:'MAJEUR',i:'🔴',v:majeur,c:'pL2',w:W[1]},
+  var lv=[{l:'FATAL',i:'',v:fatal,c:'pL1',w:W[0]},{l:'MAJEUR',i:'🔴',v:majeur,c:'pL2',w:W[1]},
           {l:'MINEUR',i:'🟠',v:mineur,c:'pL3',w:W[2]},{l:'INCIDENTS',i:'🔵',v:incident,c:'pL4',w:W[3]},
           {l:'TAGs',i:'🟢',v:tags,c:'pL5',w:W[4]}];
   var html='<div class="pyr-outer"><div class="pyr-levels">';
@@ -2953,7 +2954,7 @@ function renderPyramid(){
     }
     html+='<div style="display:flex;justify-content:center;width:216px;margin:0 auto">'
       +'<div class="pyr-block '+l.c+'" style="width:'+l.w+'px;height:30px">'
-      +'<span class="pi">'+l.i+'</span><span class="pn">'+l.l+'</span><span class="pv">'+fmtNum(l.v)+'</span>'
+      +(l.i?'<span class="pi">'+l.i+'</span>':'')+'<span class="pn">'+l.l+'</span><span class="pv">'+fmtNum(l.v)+'</span>'
       +'</div></div>';
   });
   html+='</div><div class="pyr-leg">';
@@ -4338,7 +4339,7 @@ function render(data){
   })();
 
   document.getElementById('kpiGrid').innerHTML=[
-    kpiCard('AT Total',    m.at_total,       'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
+    kpiCard("Nombre d'accidents", m.at_total, 'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
     kpiCard('TF1',         m.tf1_ytd,        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
     kpiCard('TG',          m.tg_ytd,         'a','YTD·Obj.≤0.8', 'k-a',p(m.tg_ytd,0.8,true),  bc(m.tg_ytd,0.8,true)),
     kpiCard('Jours sans AT', noAtStats.hasData?noAtStats.days:'—', 'g',
