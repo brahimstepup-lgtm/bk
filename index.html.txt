@@ -1138,7 +1138,7 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
   <div class="hdr-right">
     <span class="badge b-r" id="h-at">AT: —</span>
-    <span class="badge b-a" id="h-tf">TF1: —</span>
+    <span class="badge b-a" id="h-tf">TF: —</span>
     <span class="badge b-b" id="h-tags">TAGs: —</span>
     <span class="badge b-g">2026</span>
     <!-- Cloche notifications -->
@@ -1203,7 +1203,7 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="card">
       <div class="ct"><span class="ct-dot"></span><span id="tC1">TG</span>
         <select class="kpi-sel" id="selC1" onchange="updateC1()" style="margin-left:auto">
-          <option value="at">Accidents AT</option><option value="tf1">TF1</option><option value="tg" selected>TG</option>
+          <option value="at">Accidents AT</option><option value="tf">TF</option><option value="tg" selected>TG</option>
           <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
           <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
           <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
@@ -1212,9 +1212,9 @@ html.light .pests-search-input{background:#edf2f7}
       <div class="cw" style="height:185px"><canvas id="c1"></canvas></div>
     </div>
     <div class="card">
-      <div class="ct"><span class="ct-dot"></span><span id="tC2">TF1 mensuel</span>
+      <div class="ct"><span class="ct-dot"></span><span id="tC2">TF mensuel</span>
         <select class="kpi-sel" id="selC2" onchange="updateC2()" style="margin-left:auto">
-          <option value="tf1">TF1</option><option value="tg">TG</option><option value="at">Nombre d'accidents</option>
+          <option value="tf">TF</option><option value="tg">TG</option><option value="at">Nombre d'accidents</option>
           <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
           <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
           <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
@@ -1231,6 +1231,11 @@ html.light .pests-search-input{background:#edf2f7}
         <button class="modeBtn on" id="pyrYB" onclick="setPyrMode('ytd')" style="margin-left:auto;font-size:9px">YTD</button>
         <button class="modeBtn"    id="pyrMB" onclick="setPyrMode('mois')" style="font-size:9px">MOIS</button>
         <select id="pyrSel" style="display:none" class="kpi-sel" onchange="renderPyramid()"></select>
+      </div>
+      <div class="pyr-help" style="font-size:10px;color:var(--text3);line-height:1.5;margin:-2px 0 8px;padding:6px 9px;border-left:2px solid var(--p2);background:rgba(9,99,126,.06);border-radius:0 6px 6px 0">
+        <div><strong style="color:var(--text2)">Accident mineur</strong> : ≤ 3 jours d'arrêt de travail</div>
+        <div><strong style="color:var(--text2)">Accident majeur</strong> : &gt; 3 jours d'arrêt de travail</div>
+        <div><strong style="color:var(--text2)">Fatal</strong> : accident mortel</div>
       </div>
       <div id="pyrBox"></div>
     </div>
@@ -1445,7 +1450,7 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="ai-row">
       <button class="btn btn-ai" onclick="autoAI()" id="btnAuto">🔍 Analyser</button>
       <button class="btn" onclick="askG('Top 3 risques HSE SOBCO 3 et actions urgentes')">🚨 Risques</button>
-      <button class="btn" onclick="askG('Analyse TF1 et TG tendances 2026 SOBCO 3')">📈 Tendances</button>
+      <button class="btn" onclick="askG('Analyse TF et TG tendances 2026 SOBCO 3')">📈 Tendances</button>
       <button class="btn" onclick="askG('Résumé exécutif HSE SOBCO 3 2026 pour la direction')">📋 Rapport</button>
     </div>
     <div class="ai-row">
@@ -3278,7 +3283,7 @@ function renderPyramid(){
 function getCD(sel,m,hdrs){
   var map={
     at:{t:'Accidents AT',sp:'at'},
-    tf1:{t:'TF1',c:C.amber,arr:m.tf1_months,ytd:m.tf1_ytd,obj:30,lower:true},
+    tf:{t:'TF',c:C.amber,arr:m.tf_months,ytd:m.tf_ytd,obj:30,lower:true},
     tg: {t:'TG',c:C.red,  arr:m.tg_months, ytd:m.tg_ytd, obj:0.8,lower:true},
     tvm:{t:'TVM %',c:C.p3,arr:m.tvm_months,ytd:m.tvm,    obj:95, lower:false},
     inc:{t:'Incidents',c:C.purple,arr:m.inc_months,ytd:m.inc_ytd},
@@ -3288,7 +3293,7 @@ function getCD(sel,m,hdrs){
     rgaz:{t:'Ratio GAZ',c:C.red,  arr:m.rgaz_months,ytd:m.ratio_gaz_ytd,obj:1200,lower:true},
     reau:{t:'Ratio EAU',c:C.p3,   arr:m.reau_months,ytd:m.ratio_eau_ytd,obj:5,lower:true}
   };
-  return map[sel]||map.tf1;
+  return map[sel]||map.tf;
 }
 function drawChart(cid,tid,sel,m,hdrs){
   var dat=getCD(sel,m,hdrs);
@@ -3649,15 +3654,44 @@ function renderIncidents(incs){
   var zk=Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];}).slice(0,5);
   mkChart('zoneC','bar',zk,[{data:zk.map(function(k){return zones[k];}),backgroundColor:[C.red,C.amber,C.p2,C.teal,C.purple],borderRadius:5}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
-  // Causes racines (statique)
-  document.getElementById('causeGrid').innerHTML=[
-    ['Sol mouillé / glissade'],['Bords tranchants / carton'],['Chute d\'objet / palette'],
-    ['Mauvaise méthode'],['Manque vigilance'],['Collision engin']
-  ].map(function(c,i){
-    return'<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;transition:background .3s">'
-      +'<div style="font-size:17px;font-weight:800;font-family:\'JetBrains Mono\',monospace;color:var(--amber);margin-bottom:1px">'+(6-i)+'</div>'
-      +'<div style="font-size:10px;color:var(--text3)">'+c[0]+'</div></div>';
-  }).join('');
+  // Causes racines — dynamiques, calculées en temps réel sur la liste
+  // filtrée. Une seule source de vérité (incs) : le total et la
+  // répartition restent toujours synchronisés.
+  var causeMap = {};
+  incs.forEach(function(i){
+    var c = (i.causes||'').trim();
+    if (!c) return;
+    // Nettoyage léger : majuscule en tête, troncature visuelle
+    var key = c.charAt(0).toUpperCase() + c.slice(1);
+    causeMap[key] = (causeMap[key]||0) + 1;
+  });
+  var causeTot = 0;
+  Object.keys(causeMap).forEach(function(k){ causeTot += causeMap[k]; });
+  var causeKeys = Object.keys(causeMap).sort(function(a,b){ return causeMap[b]-causeMap[a]; }).slice(0,6);
+  var causeGridEl = document.getElementById('causeGrid');
+  if (causeKeys.length === 0) {
+    causeGridEl.innerHTML =
+      '<div style="grid-column:1/-1;text-align:center;color:var(--text3);'
+      +'font-size:11px;padding:14px 6px;background:var(--bg3);border-radius:7px">'
+      +'Aucune cause renseignée pour la période filtrée'
+      +' <span style="color:var(--text2)">(0 / '+incs.length+' incidents)</span>'
+      +'</div>';
+  } else {
+    causeGridEl.innerHTML = causeKeys.map(function(k){
+      var n   = causeMap[k];
+      var pct = causeTot>0 ? Math.round(n/causeTot*100) : 0;
+      return '<div style="background:var(--bg3);border-radius:7px;padding:8px 10px;transition:background .3s" '
+        + 'title="'+esc(k)+' — '+n+' incident(s) ('+pct+'%)">'
+        + '<div style="display:flex;align-items:baseline;gap:6px;margin-bottom:1px">'
+        +   '<div style="font-size:17px;font-weight:800;font-family:\'JetBrains Mono\',monospace;color:var(--amber)">'+n+'</div>'
+        +   '<div style="font-size:9px;color:var(--text3);font-family:\'JetBrains Mono\',monospace">'+pct+'%</div>'
+        + '</div>'
+        + '<div style="font-size:10px;color:var(--text3);line-height:1.3;'
+        +   'overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">'
+        +   esc(k.length>60?k.substring(0,57)+'…':k)+'</div>'
+        + '</div>';
+    }).join('');
+  }
   // Liste
   var il=document.getElementById('incList'); il.innerHTML='';
   if(incs.length===0){il.innerHTML='<div style="padding:16px;text-align:center;color:var(--text3);font-size:12px">Aucun incident pour cette période</div>';return;}
@@ -3804,6 +3838,12 @@ function applyTagF(){
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
 
   // Table avec vignettes Avant / Après inline (chargement asynchrone)
+  // ── Token de rendu : invalide les chargements de photos en cours
+  // d'un rendu précédent → garantit qu'aucune vignette d'un TAG non
+  // filtré ne vienne s'afficher dans la table après un changement
+  // de filtre.
+  window._tagRenderToken = (window._tagRenderToken || 0) + 1;
+  var renderToken = window._tagRenderToken;
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
   if(filtered.length===0){
     var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
@@ -3856,16 +3896,22 @@ function applyTagF(){
   // ── Chargement asynchrone des vignettes (avec cache partagé) ──
   if(!window._tagPhotoCache) window._tagPhotoCache={};
   pendingTagThumbs.forEach(function(p){
+    // Si un nouveau rendu a démarré entre-temps, on abandonne
+    // pour éviter d'injecter des photos d'un TAG non filtré.
+    if (renderToken !== window._tagRenderToken) return;
     var slot=document.getElementById(p.cellId);
     if(!slot) return;
     var cached=window._tagPhotoCache[p.fid];
     if(cached){ replaceTagThumb(slot,cached,p); return; }
     google.script.run
       .withSuccessHandler(function(d){
+        // Vérifie que le rendu courant est toujours le même
+        if (renderToken !== window._tagRenderToken) return;
         if(d){ window._tagPhotoCache[p.fid]=d; replaceTagThumb(slot,d,p); }
         else if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
       })
       .withFailureHandler(function(){
+        if (renderToken !== window._tagRenderToken) return;
         if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
       })
       .getTagPhotoForClient(p.fid);
@@ -4593,11 +4639,11 @@ function render(data){
   document.getElementById('main').style.display='block';
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
   document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
-  document.getElementById('h-tf').textContent='TF1: '+fmtNum(m.tf1_ytd);
+  document.getElementById('h-tf').textContent='TF: '+fmtNum(m.tf_ytd);
   document.getElementById('h-tags').textContent='TAGs: '+fmtNum(m.tags_ytd);
   document.getElementById('footer').textContent='SOBCO 3 – HSE Dashboard v9.2 · BK Design · '+new Date().toLocaleDateString('fr-FR')+' · BRAHIM KAOUACHI';
   document.getElementById('alertTxt').innerHTML=
-    '<strong>SOBCO 3 HSE 2026 :</strong> TF1=<strong>'+fmtNum(m.tf1_ytd)+'</strong>(obj≤30) · '
+    '<strong>SOBCO 3 HSE 2026 :</strong> TF=<strong>'+fmtNum(m.tf_ytd)+'</strong>(obj≤30) · '
     +'TG=<strong>'+fmtNum(m.tg_ytd)+'</strong>(obj≤0.8) · TVM=<strong>'+fmtNum(m.tvm)+'%</strong>(obj95%) · '
     +'TAGs=<strong>'+fmtNum(m.taux_tags)+'%</strong>(obj≥20%) · Résol.=<strong>'+fmtNum(m.taux_res_tags)+'%</strong>(obj95%) · '
     +'<strong>'+fmtNum(m.at_total)+'</strong> AT YTD · NJP=<strong>'+fmtNum(m.jp_ytd)+'</strong>';
@@ -4649,7 +4695,7 @@ function render(data){
 
   document.getElementById('kpiGrid').innerHTML=[
     kpiCard("Nombre d'accidents", m.at_total, 'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
-    kpiCard('TF1',         m.tf1_ytd,        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
+    kpiCard('TF',          m.tf_ytd,         'a','YTD·Obj.≤30',  'k-a',p(m.tf_ytd,30,true),  bc(m.tf_ytd,30,true)),
     kpiCard('TG',          m.tg_ytd,         'a','YTD·Obj.≤0.8', 'k-a',p(m.tg_ytd,0.8,true),  bc(m.tg_ytd,0.8,true)),
     kpiCard('Jours sans AT', noAtStats.hasData?noAtStats.days:'—', 'g',
             noAtStats.hasData?('Dernier AT : '+noAtStats.lastDateFmt):'aucun AT enregistré',
@@ -4688,7 +4734,7 @@ function render(data){
   updateC1(); updateC2();
 
   document.getElementById('progList').innerHTML=[
-    prog('TF1 (obj.≤30)',            m.tf1_ytd,       30,  true, false),
+    prog('TF (obj.≤30)',             m.tf_ytd,        30,  true, false),
     prog('TG (obj.≤0.8)',            m.tg_ytd,        0.8, true, false),
     prog('Taux TAGs (obj.≥20%)',     m.taux_tags,     20,  false,true),
     prog('Résolution TAGs (obj.95%)',m.taux_res_tags, 95,  false,true),
@@ -5135,6 +5181,47 @@ function renderContracts(){
       }).join('');
     }
   }
+
+  // ── Chargement asynchrone des vignettes Drive (PJ permis) ──
+  // Réutilise le proxy serveur getTagPhotoForClient + un cache
+  // partagé pour ne télécharger chaque image qu'une seule fois.
+  if (!window._permitPhotoCache) window._permitPhotoCache = {};
+  pendingPermitThumbs.forEach(function(pp){
+    if (permitRenderToken !== window._permitRenderToken) return;
+    var slot = document.getElementById(pp.slotId);
+    if (!slot) return;
+    function showImg(dataUrl){
+      if (!dataUrl) {
+        slot.textContent = '📎';
+        return;
+      }
+      var img = document.createElement('img');
+      img.src = dataUrl;
+      img.alt = pp.title || 'PJ';
+      img.title = 'Ouvrir la PJ dans le dashboard';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+      if (slot && slot.parentNode) {
+        slot.parentNode.replaceChild(img, slot);
+      }
+    }
+    var cached = window._permitPhotoCache[pp.fid];
+    if (cached) { showImg(cached); return; }
+    google.script.run
+      .withSuccessHandler(function(d){
+        if (permitRenderToken !== window._permitRenderToken) return;
+        if (d) {
+          window._permitPhotoCache[pp.fid] = d;
+          showImg(d);
+        } else {
+          showImg('');
+        }
+      })
+      .withFailureHandler(function(){
+        if (permitRenderToken !== window._permitRenderToken) return;
+        showImg('');
+      })
+      .getTagPhotoForClient(pp.fid);
+  });
 }
 
 // ── EMBED CONTRAT — réutilise le modal iframe générique ──────
@@ -5508,6 +5595,11 @@ function renderPermits(){
 
   // Tableau
   var body = document.getElementById('permitsBody');
+  // Vignettes Drive à charger en asynchrone après injection du HTML.
+  // Token pour invalider les chargements d'un rendu précédent.
+  var pendingPermitThumbs = [];
+  window._permitRenderToken = (window._permitRenderToken || 0) + 1;
+  var permitRenderToken = window._permitRenderToken;
   if (body) {
     if (!filtered.length) {
       body.innerHTML = '<tr><td colspan="9" style="text-align:center;'
@@ -5549,11 +5641,34 @@ function renderPermits(){
         if (p.hasPhoto) {
           var safeUrl   = escAttr(p.photoUrl || '');
           var safeTitle = escAttr((p.id ? p.id + ' — ' : '') + (p.titre || 'Permis de travail'));
-          pjHtml = '<a href="#" rel="noopener" '
-                 + 'class="tag-btn has-photo" '
-                 + 'title="Ouvrir la pièce jointe dans le dashboard" '
-                 + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
-                 + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;">📎</a>';
+          if (p.hasDriveImage && p.driveFileId) {
+            // Vignette image Drive directement dans la cellule. L'image
+            // est chargée en base64 via getTagPhotoForClient (proxy Apps
+            // Script). Le clic ouvre l'aperçu dans le dashboard, sans
+            // redirection externe.
+            var safeFid = escAttr(p.driveFileId);
+            var slotId  = 'permitThumb_' + (p.id || ('row' + i)).toString().replace(/[^a-zA-Z0-9_-]/g,'_') + '_' + i;
+            pendingPermitThumbs.push({ fid: p.driveFileId, slotId: slotId,
+              url: p.photoUrl, title: safeTitle });
+            pjHtml = '<a href="#" rel="noopener" '
+                   + 'class="permit-pj-thumb" '
+                   + 'title="Pièce jointe — cliquer pour agrandir dans le dashboard" '
+                   + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
+                   + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;" '
+                   + 'style="display:inline-flex;align-items:center;justify-content:center;'
+                   + 'width:46px;height:46px;border-radius:6px;overflow:hidden;'
+                   + 'background:var(--bg3);border:1px solid var(--border);text-decoration:none">'
+                   + '<span id="' + slotId + '" class="permit-pj-load" '
+                   + 'style="font-size:14px;color:var(--text3)" '
+                   + 'data-fid="' + safeFid + '">⏳</span>'
+                   + '</a>';
+          } else {
+            pjHtml = '<a href="#" rel="noopener" '
+                   + 'class="tag-btn has-photo" '
+                   + 'title="Ouvrir la pièce jointe dans le dashboard" '
+                   + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
+                   + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;">📎</a>';
+          }
         } else {
           pjHtml = '<span class="tag-btn no-photo" title="Aucune pièce jointe" style="cursor:default">—</span>';
         }
@@ -5660,13 +5775,17 @@ function openPermitDetail(id){
     descBox.style.display = 'none';
   }
 
-  // Pièce jointe (photo / document) — embed iframe DANS le modal
+  // Pièce jointe (photo / document) — embed iframe DANS le modal.
+  // Si l'URL pointe vers un fichier Drive identifiable, on charge
+  // directement l'image en base64 via le proxy Apps Script
+  // (getTagPhotoForClient) afin d'afficher un vrai <img> et non un
+  // iframe Drive — meilleure intégration et zéro redirection.
   var photoBox = document.getElementById('mPermitPhotoBox');
   if (p.hasPhoto && p.photoUrl) {
     var safeUrl   = escAttr(p.photoUrl);
     var safeTitle = escAttr((p.id ? p.id + ' — ' : '') + (p.titre || 'Permis'));
     var embedUrl  = clnToEmbedUrl(p.photoUrl);
-    photoBox.innerHTML =
+    var hdr =
         '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
       + '<span style="font-size:10px;font-weight:700;color:var(--text2);'
       + 'text-transform:uppercase;letter-spacing:.5px">📎 Pièce jointe</span>'
@@ -5674,8 +5793,9 @@ function openPermitDetail(id){
       + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
       + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;" '
       + 'style="font-size:10px;padding:5px 10px">↗ Plein écran (embed)</button>'
-      + '</div>'
-      + '<div style="position:relative;border:1px solid var(--border);'
+      + '</div>';
+    var frameWrap =
+        '<div style="position:relative;border:1px solid var(--border);'
       + 'border-radius:10px;overflow:hidden;background:var(--bg3);'
       + 'aspect-ratio:16/10;min-height:260px">'
       + '<iframe src="' + escAttr(embedUrl) + '" '
@@ -5683,7 +5803,40 @@ function openPermitDetail(id){
       + 'sandbox="allow-scripts allow-same-origin allow-popups allow-forms" '
       + 'style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>'
       + '</div>';
+    photoBox.innerHTML = hdr + frameWrap;
     photoBox.style.display = 'block';
+
+    // Tentative de chargement direct de l'image via le proxy serveur :
+    // si la PJ est une image Drive, on remplace l'iframe par <img>.
+    if (p.hasDriveImage && p.driveFileId) {
+      if (!window._permitPhotoCache) window._permitPhotoCache = {};
+      var renderImage = function(dataUrl){
+        if (!dataUrl) return; // garder l'iframe en fallback
+        if (!/^data:image\//i.test(dataUrl)) return;
+        photoBox.innerHTML = hdr +
+            '<div style="border:1px solid var(--border);border-radius:10px;'
+          + 'overflow:hidden;background:var(--bg3);text-align:center;'
+          + 'min-height:260px;display:flex;align-items:center;justify-content:center">'
+          + '<img src="' + escAttr(dataUrl) + '" alt="' + safeTitle + '" '
+          + 'style="max-width:100%;max-height:70vh;display:block;cursor:zoom-in" '
+          + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
+          + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;">'
+          + '</div>';
+      };
+      var cached = window._permitPhotoCache[p.driveFileId];
+      if (cached) {
+        renderImage(cached);
+      } else {
+        google.script.run
+          .withSuccessHandler(function(d){
+            if (d) {
+              window._permitPhotoCache[p.driveFileId] = d;
+              renderImage(d);
+            }
+          })
+          .getTagPhotoForClient(p.driveFileId);
+      }
+    }
   } else {
     photoBox.innerHTML = '';
     photoBox.style.display = 'none';
@@ -6037,7 +6190,7 @@ function renderEPI(){
 var aiH=[];
 function buildCtx(){
   if(!D)return''; var m=D.metrics;
-  return'Expert HSE SOBCO 3. Réponds en français.\nYTD2026: AT='+m.at_total+' FATAL='+m.at_fatal+' MAJ='+m.at_majeur+' MIN='+m.at_mineur+' TF1='+m.tf1_ytd+'(obj≤30) TG='+m.tg_ytd+'(obj≤0.8) JP='+m.jp_ytd+' Inc='+m.inc_ytd+' TAGs='+m.tags_ytd+' TauxTAGs='+m.taux_tags+'%(obj≥20%) RésolTAGs='+m.taux_res_tags+'%(obj95%) TVM='+m.tvm+'%(obj95%) Prest='+m.prestataires+'% TAGsOuverts='+m.open_tags+'/'+m.total_tags+'\n\n';
+  return'Expert HSE SOBCO 3. Réponds en français.\nYTD2026: AT='+m.at_total+' FATAL='+m.at_fatal+' MAJ='+m.at_majeur+' MIN='+m.at_mineur+' TF='+m.tf_ytd+'(obj≤30) TG='+m.tg_ytd+'(obj≤0.8) JP='+m.jp_ytd+' Inc='+m.inc_ytd+' TAGs='+m.tags_ytd+' TauxTAGs='+m.taux_tags+'%(obj≥20%) RésolTAGs='+m.taux_res_tags+'%(obj95%) TVM='+m.tvm+'%(obj95%) Prest='+m.prestataires+'% TAGsOuverts='+m.open_tags+'/'+m.total_tags+'\n\n';
 }
 function autoAI(){askG(buildCtx()+'Analyse HSE SOBCO 3: 1)Synthèse 2)Top3 risques 3)Actions urgentes 4)Points positifs 5)Prévisions','Auto-analyse');}
 function askG(prompt,display){

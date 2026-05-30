@@ -2220,6 +2220,19 @@ function readPermits(ss) {
       if (!photoUrl) photoUrl = cellUrl(i, COL.titre);
       if (!photoUrl) photoUrl = anyUrlOnRow(i, -1);
 
+      // ── Extraction de l'identifiant Drive depuis photoUrl ────
+      // Permet au client d'afficher directement l'image (base64 via
+      // getTagPhotoForClient) plutôt qu'une icône 📎. Couvre les
+      // formats Drive courants : /file/d/ID/, ?id=ID, /folders/ID/,
+      // /uc?id=ID, etc.
+      var driveFileId = '';
+      if (photoUrl) {
+        var mFid = photoUrl.match(/\/file\/d\/([a-zA-Z0-9_-]{20,})/i)
+                || photoUrl.match(/[?&]id=([a-zA-Z0-9_-]{20,})/i)
+                || photoUrl.match(/\/d\/([a-zA-Z0-9_-]{20,})/i);
+        if (mFid) driveFileId = mFid[1];
+      }
+
       // Capturer toutes les colonnes brutes
       var rawCells = [];
       for (var c = 0; c < rowLen; c++) {
@@ -2289,7 +2302,9 @@ function readPermits(ss) {
         zone:           intervVal,
         photoRef:       photoRef,
         photoUrl:       photoUrl,
+        driveFileId:    driveFileId,
         hasPhoto:       !!photoUrl,
+        hasDriveImage:  driveFileId !== '',
         month:          monthIdx,
         year:           yearVal,
         daysLeft:       daysLeft,
@@ -2424,6 +2439,10 @@ function getData() {
     var ind = String(r[0]||'').trim();
     if (!ind) continue;
     if (ind.toLowerCase() === 'date') break;
+    // ── Normalisation de l'indicateur TF :
+    // Le libellé historique « Taux de Fréquence (TF1) » est ramené à
+    // « Taux de Fréquence (TF) » côté client, sans modifier la feuille.
+    ind = ind.replace(/\(\s*TF1\s*\)/gi, '(TF)');
     var months = [];
     for (var c = 3; c < ytdIdx; c++) months.push(toNum(r[c]));
     out.kpis[ind] = {
@@ -2697,7 +2716,7 @@ function calcMetrics(d) {
   });
   var clClosed = clTotal - clOpen;
   return {
-    tf1_ytd:ytd('Taux de Fréquence (TF1)'),tg_ytd:ytd('Taux de Gravité (TG)'),
+    tf_ytd:ytd('Taux de Fréquence (TF)'),tg_ytd:ytd('Taux de Gravité (TG)'),
     at_fatal:ytd('Accident Travail (FATAL)'),at_majeur:ytd('Accident Travail (MAJEUR)'),
     at_mineur:ytd('Accident Travail (MINEUR)'),at_total:ytd('Accident Travail (AT) (Total)'),
     jp_ytd:ytd('Jours Perdus'),inc_ytd:ytd('Accident Travail (SANS AT) - INCIDENT'),
@@ -2707,7 +2726,7 @@ function calcMetrics(d) {
     ratio_elt_ytd:ytd('Ratio ELT (kWh/unité prod)'),ratio_gaz_ytd:ytd('Ratio GAZ (m3/unité prod)'),
     ratio_eau_ytd:ytd('Ratio EAU (m3/unité prod)'),
     elt_ytd:ytd('Consommation ELT (kWh)'),gaz_ytd:ytd('Consommation GAZ (m3)'),eau_ytd:ytd('Consommation EAU (m3)'),
-    tf1_jan:mon('Taux de Fréquence (TF1)','jan'),tf1_fev:mon('Taux de Fréquence (TF1)','fev'),tf1_mar:mon('Taux de Fréquence (TF1)','mar'),tf1_avr:mon('Taux de Fréquence (TF1)','avr'),
+    tf_jan:mon('Taux de Fréquence (TF)','jan'),tf_fev:mon('Taux de Fréquence (TF)','fev'),tf_mar:mon('Taux de Fréquence (TF)','mar'),tf_avr:mon('Taux de Fréquence (TF)','avr'),
     tg_jan:mon('Taux de Gravité (TG)','jan'),tg_fev:mon('Taux de Gravité (TG)','fev'),tg_mar:mon('Taux de Gravité (TG)','mar'),tg_avr:mon('Taux de Gravité (TG)','avr'),
     tvm_jan:mon('TVM - Taux de visite médicale','jan'),tvm_fev:mon('TVM - Taux de visite médicale','fev'),tvm_mar:mon('TVM - Taux de visite médicale','mar'),
     atM_jan:mon('Accident Travail (MAJEUR)','jan'),atM_fev:mon('Accident Travail (MAJEUR)','fev'),atM_mar:mon('Accident Travail (MAJEUR)','mar'),atM_avr:mon('Accident Travail (MAJEUR)','avr'),
@@ -2722,7 +2741,7 @@ function calcMetrics(d) {
     elt_jan:mon('Consommation ELT (kWh)','jan'),elt_fev:mon('Consommation ELT (kWh)','fev'),elt_mar:mon('Consommation ELT (kWh)','mar'),
     gaz_jan:mon('Consommation GAZ (m3)','jan'),gaz_fev:mon('Consommation GAZ (m3)','fev'),gaz_mar:mon('Consommation GAZ (m3)','mar'),
     eau_jan:mon('Consommation EAU (m3)','jan'),eau_fev:mon('Consommation EAU (m3)','fev'),eau_mar:mon('Consommation EAU (m3)','mar'),
-    tf1_months:mths('Taux de Fréquence (TF1)'),tg_months:mths('Taux de Gravité (TG)'),
+    tf_months:mths('Taux de Fréquence (TF)'),tg_months:mths('Taux de Gravité (TG)'),
     at_months:mths('Accident Travail (AT) (Total)'),atM_months:mths('Accident Travail (MAJEUR)'),
     atm_months:mths('Accident Travail (MINEUR)'),inc_months:mths('Accident Travail (SANS AT) - INCIDENT'),
     tags_months:mths('Situations dangereuses (TAGs)'),tvm_months:mths('TVM - Taux de visite médicale'),
