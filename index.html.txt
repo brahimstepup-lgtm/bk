@@ -1138,7 +1138,7 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
   <div class="hdr-right">
     <span class="badge b-r" id="h-at">AT: —</span>
-    <span class="badge b-a" id="h-tf">TF1: —</span>
+    <span class="badge b-a" id="h-tf">TF: —</span>
     <span class="badge b-b" id="h-tags">TAGs: —</span>
     <span class="badge b-g">2026</span>
     <!-- Cloche notifications -->
@@ -1203,7 +1203,7 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="card">
       <div class="ct"><span class="ct-dot"></span><span id="tC1">TG</span>
         <select class="kpi-sel" id="selC1" onchange="updateC1()" style="margin-left:auto">
-          <option value="at">Accidents AT</option><option value="tf1">TF1</option><option value="tg" selected>TG</option>
+          <option value="at">Accidents AT</option><option value="tf1">TF</option><option value="tg" selected>TG</option>
           <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
           <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
           <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
@@ -1212,9 +1212,9 @@ html.light .pests-search-input{background:#edf2f7}
       <div class="cw" style="height:185px"><canvas id="c1"></canvas></div>
     </div>
     <div class="card">
-      <div class="ct"><span class="ct-dot"></span><span id="tC2">TF1 mensuel</span>
+      <div class="ct"><span class="ct-dot"></span><span id="tC2">TF mensuel</span>
         <select class="kpi-sel" id="selC2" onchange="updateC2()" style="margin-left:auto">
-          <option value="tf1">TF1</option><option value="tg">TG</option><option value="at">Nombre d'accidents</option>
+          <option value="tf1">TF</option><option value="tg">TG</option><option value="at">Nombre d'accidents</option>
           <option value="tvm">TVM %</option><option value="inc">Incidents</option><option value="tags">TAGs</option>
           <option value="pres">Prestataires %</option><option value="relt">Ratio ELT</option>
           <option value="rgaz">Ratio GAZ</option><option value="reau">Ratio EAU</option>
@@ -1231,6 +1231,10 @@ html.light .pests-search-input{background:#edf2f7}
         <button class="modeBtn on" id="pyrYB" onclick="setPyrMode('ytd')" style="margin-left:auto;font-size:9px">YTD</button>
         <button class="modeBtn"    id="pyrMB" onclick="setPyrMode('mois')" style="font-size:9px">MOIS</button>
         <select id="pyrSel" style="display:none" class="kpi-sel" onchange="renderPyramid()"></select>
+      </div>
+      <div class="pyr-legend" style="font-size:10px;color:var(--text3);line-height:1.4;padding:2px 4px 6px;display:flex;flex-direction:column;gap:2px">
+        <span><b style="color:var(--text2)">Accident mineur</b> : ≤ 3 jours d'arrêt de travail</span>
+        <span><b style="color:var(--text2)">Accident majeur</b> : &gt; 3 jours d'arrêt de travail</span>
       </div>
       <div id="pyrBox"></div>
     </div>
@@ -1445,7 +1449,7 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="ai-row">
       <button class="btn btn-ai" onclick="autoAI()" id="btnAuto">🔍 Analyser</button>
       <button class="btn" onclick="askG('Top 3 risques HSE SOBCO 3 et actions urgentes')">🚨 Risques</button>
-      <button class="btn" onclick="askG('Analyse TF1 et TG tendances 2026 SOBCO 3')">📈 Tendances</button>
+      <button class="btn" onclick="askG('Analyse TF et TG tendances 2026 SOBCO 3')">📈 Tendances</button>
       <button class="btn" onclick="askG('Résumé exécutif HSE SOBCO 3 2026 pour la direction')">📋 Rapport</button>
     </div>
     <div class="ai-row">
@@ -3278,7 +3282,7 @@ function renderPyramid(){
 function getCD(sel,m,hdrs){
   var map={
     at:{t:'Accidents AT',sp:'at'},
-    tf1:{t:'TF1',c:C.amber,arr:m.tf1_months,ytd:m.tf1_ytd,obj:30,lower:true},
+    tf1:{t:'TF',c:C.amber,arr:m.tf1_months,ytd:m.tf1_ytd,obj:30,lower:true},
     tg: {t:'TG',c:C.red,  arr:m.tg_months, ytd:m.tg_ytd, obj:0.8,lower:true},
     tvm:{t:'TVM %',c:C.p3,arr:m.tvm_months,ytd:m.tvm,    obj:95, lower:false},
     inc:{t:'Incidents',c:C.purple,arr:m.inc_months,ytd:m.inc_ytd},
@@ -4593,11 +4597,11 @@ function render(data){
   document.getElementById('main').style.display='block';
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
   document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
-  document.getElementById('h-tf').textContent='TF1: '+fmtNum(m.tf1_ytd);
+  document.getElementById('h-tf').textContent='TF: '+fmtNum(m.tf1_ytd);
   document.getElementById('h-tags').textContent='TAGs: '+fmtNum(m.tags_ytd);
   document.getElementById('footer').textContent='SOBCO 3 – HSE Dashboard v9.2 · BK Design · '+new Date().toLocaleDateString('fr-FR')+' · BRAHIM KAOUACHI';
   document.getElementById('alertTxt').innerHTML=
-    '<strong>SOBCO 3 HSE 2026 :</strong> TF1=<strong>'+fmtNum(m.tf1_ytd)+'</strong>(obj≤30) · '
+    '<strong>SOBCO 3 HSE 2026 :</strong> TF=<strong>'+fmtNum(m.tf1_ytd)+'</strong>(obj≤30) · '
     +'TG=<strong>'+fmtNum(m.tg_ytd)+'</strong>(obj≤0.8) · TVM=<strong>'+fmtNum(m.tvm)+'%</strong>(obj95%) · '
     +'TAGs=<strong>'+fmtNum(m.taux_tags)+'%</strong>(obj≥20%) · Résol.=<strong>'+fmtNum(m.taux_res_tags)+'%</strong>(obj95%) · '
     +'<strong>'+fmtNum(m.at_total)+'</strong> AT YTD · NJP=<strong>'+fmtNum(m.jp_ytd)+'</strong>';
@@ -4649,7 +4653,7 @@ function render(data){
 
   document.getElementById('kpiGrid').innerHTML=[
     kpiCard("Nombre d'accidents", m.at_total, 'r','YTD·Obj.0',    'k-r',p(m.at_total,1,true),  C.red),
-    kpiCard('TF1',         m.tf1_ytd,        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
+    kpiCard('TF',         m.tf1_ytd,        'a','YTD·Obj.≤30',  'k-a',p(m.tf1_ytd,30,true),  bc(m.tf1_ytd,30,true)),
     kpiCard('TG',          m.tg_ytd,         'a','YTD·Obj.≤0.8', 'k-a',p(m.tg_ytd,0.8,true),  bc(m.tg_ytd,0.8,true)),
     kpiCard('Jours sans AT', noAtStats.hasData?noAtStats.days:'—', 'g',
             noAtStats.hasData?('Dernier AT : '+noAtStats.lastDateFmt):'aucun AT enregistré',
@@ -4688,7 +4692,7 @@ function render(data){
   updateC1(); updateC2();
 
   document.getElementById('progList').innerHTML=[
-    prog('TF1 (obj.≤30)',            m.tf1_ytd,       30,  true, false),
+    prog('TF (obj.≤30)',            m.tf1_ytd,       30,  true, false),
     prog('TG (obj.≤0.8)',            m.tg_ytd,        0.8, true, false),
     prog('Taux TAGs (obj.≥20%)',     m.taux_tags,     20,  false,true),
     prog('Résolution TAGs (obj.95%)',m.taux_res_tags, 95,  false,true),
@@ -6037,7 +6041,7 @@ function renderEPI(){
 var aiH=[];
 function buildCtx(){
   if(!D)return''; var m=D.metrics;
-  return'Expert HSE SOBCO 3. Réponds en français.\nYTD2026: AT='+m.at_total+' FATAL='+m.at_fatal+' MAJ='+m.at_majeur+' MIN='+m.at_mineur+' TF1='+m.tf1_ytd+'(obj≤30) TG='+m.tg_ytd+'(obj≤0.8) JP='+m.jp_ytd+' Inc='+m.inc_ytd+' TAGs='+m.tags_ytd+' TauxTAGs='+m.taux_tags+'%(obj≥20%) RésolTAGs='+m.taux_res_tags+'%(obj95%) TVM='+m.tvm+'%(obj95%) Prest='+m.prestataires+'% TAGsOuverts='+m.open_tags+'/'+m.total_tags+'\n\n';
+  return'Expert HSE SOBCO 3. Réponds en français.\nYTD2026: AT='+m.at_total+' FATAL='+m.at_fatal+' MAJ='+m.at_majeur+' MIN='+m.at_mineur+' TF='+m.tf1_ytd+'(obj≤30) TG='+m.tg_ytd+'(obj≤0.8) JP='+m.jp_ytd+' Inc='+m.inc_ytd+' TAGs='+m.tags_ytd+' TauxTAGs='+m.taux_tags+'%(obj≥20%) RésolTAGs='+m.taux_res_tags+'%(obj95%) TVM='+m.tvm+'%(obj95%) Prest='+m.prestataires+'% TAGsOuverts='+m.open_tags+'/'+m.total_tags+'\n\n';
 }
 function autoAI(){askG(buildCtx()+'Analyse HSE SOBCO 3: 1)Synthèse 2)Top3 risques 3)Actions urgentes 4)Points positifs 5)Prévisions','Auto-analyse');}
 function askG(prompt,display){
