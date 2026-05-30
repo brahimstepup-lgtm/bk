@@ -863,6 +863,113 @@ html.light .notif-full-filters .pf-sel{background:#fff}
 /* Sous-section Rongeurs (Voie ext. / Intérieur usine) */
 .pests-sub{background:var(--bg2);border:1px solid var(--border);border-radius:10px;
   padding:14px;margin-bottom:12px;transition:background .3s}
+
+/* ── Bandeau règle SOU ─────────────────────────────────── */
+.rodent-rule{display:flex;gap:10px;align-items:flex-start;
+  background:linear-gradient(135deg,rgba(232,68,90,.10),rgba(245,166,35,.06));
+  border:1px solid rgba(232,68,90,.28);border-radius:10px;
+  padding:11px 14px;margin-bottom:12px}
+.rodent-rule-ico{font-size:20px;line-height:1;flex-shrink:0;margin-top:1px}
+.rodent-rule-body{flex:1;min-width:0}
+.rodent-rule-title{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4}
+.rodent-rule-title strong{color:#e8445a;font-weight:800}
+.rodent-rule-sub{font-size:10px;color:var(--text2);line-height:1.55;margin-bottom:8px}
+.rodent-rule-sub code{background:var(--bg3);padding:1px 5px;border-radius:3px;
+  font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--text);
+  border:1px solid var(--border)}
+.rodent-rule-legends{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:8px}
+.rodent-rule-block{background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:8px;padding:7px 10px}
+html.light .rodent-rule-block{background:rgba(0,0,0,.025)}
+.rodent-rule-block-head{display:flex;align-items:center;gap:7px;margin-bottom:5px;flex-wrap:wrap}
+.rodent-rule-block-src{font-size:9.5px;color:var(--text3);font-style:italic;font-family:'JetBrains Mono',monospace}
+.rodent-area-tag{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+  font-family:'JetBrains Mono',monospace;letter-spacing:.3px;display:inline-flex;
+  align-items:center;gap:4px;border:1px solid transparent}
+.rodent-area-tag.indoor{background:rgba(13,168,210,.15);color:#0da8d2;border-color:rgba(13,168,210,.4)}
+.rodent-area-tag.outdoor{background:rgba(249,115,22,.15);color:#f97316;border-color:rgba(249,115,22,.4)}
+.rodent-rule-legend{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.rodent-leg{font-size:9.5px;padding:2px 7px;border-radius:10px;
+  font-family:'JetBrains Mono',monospace;background:var(--bg3);color:var(--text2);
+  border:1px solid var(--border);display:inline-flex;align-items:center;gap:4px}
+.rodent-leg b{font-weight:700;letter-spacing:.4px}
+.rodent-leg.sou{background:rgba(232,68,90,.15);color:#e8445a;border-color:rgba(232,68,90,.4)}
+.rodent-leg.act{background:rgba(139,92,246,.13);color:#a855f7;border-color:rgba(139,92,246,.38)}
+.rodent-leg.ras{background:rgba(16,201,133,.10);color:#10c985;border-color:rgba(16,201,133,.35)}
+.rodent-leg.q  {background:rgba(245,166,35,.10);color:#f5a623;border-color:rgba(245,166,35,.35)}
+
+/* ── Tableaux de bord détaillés (intérieur / extérieur) ── */
+.rodent-det{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border)}
+.rodent-det.rodent-det-in {border-top-color:rgba(13,168,210,.35)}
+.rodent-det.rodent-det-out{border-top-color:rgba(249,115,22,.35)}
+.rodent-det-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.rodent-det-ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;
+  justify-content:center;font-size:18px;background:var(--bg3);border:1px solid var(--border);flex-shrink:0}
+.rodent-det-titles{flex:1;min-width:200px}
+.rodent-det-title{font-size:13px;font-weight:700;color:var(--text);line-height:1.2}
+.rodent-det-sub{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  margin-top:3px;line-height:1.45}
+.rodent-det-sub code{background:var(--bg3);padding:1px 4px;border-radius:3px;
+  font-size:9px;color:var(--text2);border:1px solid var(--border)}
+.rodent-det-note{margin-top:10px;font-size:10px;color:var(--text3);font-style:italic;
+  line-height:1.5;padding:8px 12px;border-left:3px solid var(--p3);background:var(--bg2);
+  border-radius:6px}
+
+/* ── Alerte points "chauds" SOU ────────────────────────── */
+.rodent-alert{display:flex;gap:9px;align-items:flex-start;
+  background:rgba(232,68,90,.08);border:1px solid rgba(232,68,90,.35);
+  border-left-width:3px;border-radius:9px;padding:9px 12px;margin-bottom:10px}
+.rodent-alert.warn{background:rgba(245,166,35,.08);border-color:rgba(245,166,35,.35)}
+.rodent-alert.ok{background:rgba(16,201,133,.07);border-color:rgba(16,201,133,.30)}
+.rodent-alert-ico{font-size:16px;flex-shrink:0;line-height:1.2}
+.rodent-alert-body{flex:1;min-width:0}
+.rodent-alert-title{font-size:11px;font-weight:700;color:var(--text);margin-bottom:3px}
+.rodent-alert-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.rodent-alert-chip{font-size:10px;padding:2px 8px;border-radius:10px;
+  background:rgba(232,68,90,.18);color:#ffb1bd;border:1px solid rgba(232,68,90,.4);
+  font-family:'JetBrains Mono',monospace}
+html.light .rodent-alert-chip{color:#7a0015}
+.rodent-alert-chip b{color:#fff;font-weight:700;margin-right:4px}
+html.light .rodent-alert-chip b{color:#7a0015}
+
+/* ── Liste taux d'activité par zone ────────────────────── */
+.rodent-act-row{display:flex;flex-direction:column;gap:3px;padding:5px 0}
+.rodent-act-row + .rodent-act-row{border-top:1px solid rgba(26,64,85,.25)}
+.rodent-act-hdr{display:flex;justify-content:space-between;font-size:10.5px;align-items:baseline}
+.rodent-act-lbl{color:var(--text2);font-weight:500;flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:6px}
+.rodent-act-num{font-family:'JetBrains Mono',monospace;color:var(--text);font-weight:600;flex-shrink:0}
+.rodent-act-num .pct{color:#e8445a;margin-right:4px}
+.rodent-act-bg{height:4px;background:var(--bg4);border-radius:3px;overflow:hidden}
+.rodent-act-bar{height:4px;border-radius:3px;background:linear-gradient(90deg,#f5a623,#e8445a);transition:width .8s ease}
+.rodent-act-bar.low{background:linear-gradient(90deg,#10c985,#5dffc0)}
+.rodent-act-bar.mid{background:linear-gradient(90deg,#f5a623,#ffc85c)}
+.rodent-act-bar.hi {background:linear-gradient(90deg,#e8445a,#ff6b80)}
+
+/* ── Indicateur qualité du dispositif (NT/CAS/RT/INAC) ─── */
+.rodent-q-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px}
+.rodent-q-card{background:var(--bg3);border:1px solid var(--border);border-radius:9px;
+  padding:10px 12px;border-left:3px solid var(--amber);transition:background .3s}
+.rodent-q-card.nt  {border-left-color:#94a3b8}
+.rodent-q-card.cas {border-left-color:#e8445a}
+.rodent-q-card.rt  {border-left-color:#8b5cf6}
+.rodent-q-card.inac{border-left-color:#f5a623}
+.rodent-q-code{font-size:9.5px;font-family:'JetBrains Mono',monospace;font-weight:700;
+  letter-spacing:.5px;color:var(--text3);text-transform:uppercase;margin-bottom:3px;
+  display:flex;align-items:center;gap:5px}
+.rodent-q-code .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.rodent-q-card.nt   .rodent-q-code{color:#94a3b8}
+.rodent-q-card.cas  .rodent-q-code{color:#e8445a}
+.rodent-q-card.rt   .rodent-q-code{color:#a855f7}
+.rodent-q-card.inac .rodent-q-code{color:#f5a623}
+.rodent-q-val{font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;
+  color:var(--text);line-height:1;margin-bottom:2px}
+.rodent-q-lbl{font-size:9.5px;color:var(--text3);line-height:1.3}
+.rodent-q-pct{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:3px}
+
+/* Chip "captures SOU" injecté dans les KPI des sous-sections */
+.pests-kpi.k-sou{border-left:3px solid #e8445a}
+.pests-kpi.k-sou .pests-kpi-val{color:#e8445a}
 html.light .pests-sub{background:#e4ebf1}
 .pests-sub-head{display:flex;align-items:center;gap:9px;margin-bottom:12px;flex-wrap:wrap;
   padding-bottom:10px;border-bottom:1px solid var(--border)}
@@ -2277,6 +2384,102 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
     </div>
 
+    <!-- ── Bandeau "Deux systèmes séparés" ── -->
+    <div class="rodent-rule">
+      <div class="rodent-rule-ico">📏</div>
+      <div class="rodent-rule-body">
+        <div class="rodent-rule-title">
+          Deux systèmes <strong>totalement séparés</strong> — chacun avec sa propre légende
+        </div>
+        <div class="rodent-rule-sub">
+          Les indicateurs détaillés <em>intérieur usine</em> et <em>voie extérieure</em> ne sont jamais
+          fusionnés : ils utilisent des dispositifs différents et donc des codes État différents.
+          La comparaison n'est possible qu'au niveau global (totaux) ci-dessous.
+        </div>
+
+        <div class="rodent-rule-legends">
+          <div class="rodent-rule-block">
+            <div class="rodent-rule-block-head">
+              <span class="rodent-area-tag indoor">🏭 Intérieur usine</span>
+              <span class="rodent-rule-block-src">pièges mécaniques + boîtes à colles</span>
+            </div>
+            <div class="rodent-rule-legend">
+              <span class="rodent-leg sou"><b>SOU</b> Souris (capture)</span>
+              <span class="rodent-leg ras"><b>RAS</b> Rien à signaler</span>
+              <span class="rodent-leg q"><b>NT</b> Piège non trouvé</span>
+              <span class="rodent-leg q"><b>CAS</b> Piège cassé</span>
+              <span class="rodent-leg q"><b>RT</b> Piège retiré</span>
+              <span class="rodent-leg q"><b>INAC</b> Piège inaccessible</span>
+            </div>
+          </div>
+
+          <div class="rodent-rule-block">
+            <div class="rodent-rule-block-head">
+              <span class="rodent-area-tag outdoor">🌳 Voie extérieure</span>
+              <span class="rodent-rule-block-src">boîtes à raticide</span>
+            </div>
+            <div class="rodent-rule-legend">
+              <span class="rodent-leg sou"><b>SOU</b> Souris (capture)</span>
+              <span class="rodent-leg act"><b>EBR</b> Boîte ébréchée</span>
+              <span class="rodent-leg act"><b>CON</b> Appât consommé</span>
+              <span class="rodent-leg ras"><b>RAS</b> Rien à signaler</span>
+              <span class="rodent-leg q"><b>NT</b> Boîte non trouvée</span>
+              <span class="rodent-leg q"><b>CAS</b> Boîte cassée</span>
+              <span class="rodent-leg q"><b>RT</b> Boîte retirée</span>
+              <span class="rodent-leg q"><b>INAC</b> Boîte inaccessible</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tableau de bord GLOBAL (totaux uniquement) ── -->
+    <div class="pests-sub" id="pestsSouDashSub">
+      <div class="pests-sub-head">
+        <div class="pests-sub-icon" style="background:rgba(232,68,90,.15);border-color:rgba(232,68,90,.4);color:#e8445a">🐭</div>
+        <div>
+          <div class="pests-sub-title">Vue globale rongeurs — captures (SOU)</div>
+          <div class="pests-sub-sub" id="pestsSouMeta">Comparaison limitée aux totaux · indicateurs détaillés dans chaque sous-section</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <span class="pf-lbl">Période :</span>
+          <select class="pf-sel" id="pestsSouPeriodSel" onchange="renderRodentSouDashboard();renderIndoorRodentDetailed();renderOutdoorRodentDetailed()">
+            <option value="all">Toutes</option>
+            <option value="30" selected>30 derniers jours</option>
+            <option value="90">90 derniers jours</option>
+            <option value="180">6 derniers mois</option>
+            <option value="365">12 derniers mois</option>
+            <option value="ytd">Année en cours</option>
+          </select>
+          <span class="pests-stat-pill" id="pestsSouRange">—</span>
+        </div>
+      </div>
+
+      <!-- KPI globaux : totaux uniquement -->
+      <div class="pests-kpi-grid" id="pestsSouKpis"></div>
+
+      <!-- Comparaison globale uniquement -->
+      <div class="pests-cards">
+        <div class="pests-card">
+          <div class="pests-card-title"><span class="ct-dot" style="background:#e8445a"></span>
+            Évolution mensuelle (totaux SOU)
+          </div>
+          <div class="cw"><canvas id="pestsSouMonthlyChart"></canvas></div>
+        </div>
+        <div class="pests-card">
+          <div class="pests-card-title"><span class="ct-dot" style="background:#e8445a"></span>
+            Intérieur usine vs Voie extérieure
+          </div>
+          <div class="cw"><canvas id="pestsSouCompareChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="rodent-det-note">
+        ↓ Indicateurs détaillés (hotspots, zones critiques, alertes, qualité dispositif) dans
+        chaque sous-section ci-dessous, avec la légende propre à chaque dispositif.
+      </div>
+    </div>
+
     <!-- Sous-section : Voie extérieure -->
     <div class="pests-sub" id="pestsRatSub">
       <div class="pests-sub-head">
@@ -2288,6 +2491,59 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
 
       <div class="pests-kpi-grid" id="pestsRatKpis"></div>
+
+      <!-- ── Tableau de bord détaillé VOIE EXTÉRIEURE ── -->
+      <div class="rodent-det rodent-det-out" id="pestsOutdoorDetailed">
+        <div class="rodent-det-head">
+          <span class="rodent-det-ico" style="background:rgba(249,115,22,.18);border-color:rgba(249,115,22,.4);color:#f97316">🌳</span>
+          <div class="rodent-det-titles">
+            <div class="rodent-det-title">Tableau de bord — Voie extérieure (raticide)</div>
+            <div class="rodent-det-sub">Légende spécifique : <code>SOU</code> capture · <code>EBR</code>+<code>CON</code> activité rongeur · <code>NT</code>/<code>CAS</code>/<code>RT</code>/<code>INAC</code> qualité boîte</div>
+          </div>
+          <span class="pests-stat-pill" id="pestsOutdoorRange">—</span>
+        </div>
+
+        <div class="pests-kpi-grid" id="pestsOutdoorKpis"></div>
+
+        <div id="pestsOutdoorAlerts"></div>
+
+        <div class="pests-cards">
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#f97316"></span>
+              Évolution mensuelle — SOU + EBR + CON
+            </div>
+            <div class="cw"><canvas id="pestsOutdoorMonthlyChart"></canvas></div>
+          </div>
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#f97316"></span>
+              Répartition de l'activité raticide
+            </div>
+            <div class="cw"><canvas id="pestsOutdoorActivityChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="pests-cards">
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#f97316"></span>
+              Top emplacements extérieurs (activité totale)
+            </div>
+            <div class="pests-dist-list" id="pestsOutdoorTopPoints"></div>
+          </div>
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#e8445a"></span>
+              Zones critiques récurrentes
+            </div>
+            <div class="pests-dist-list" id="pestsOutdoorCritiques"></div>
+          </div>
+        </div>
+
+        <div class="pests-card" style="margin-top:12px">
+          <div class="pests-card-title"><span class="ct-dot" style="background:#f5a623"></span>
+            Qualité du dispositif extérieur <span style="font-weight:400;color:var(--text3)">— boîtes à raticide hors service</span>
+          </div>
+          <div class="rodent-q-grid" id="pestsOutdoorTrapQualityGrid"></div>
+        </div>
+      </div>
 
       <div class="pests-cards">
         <div class="pests-card">
@@ -2336,6 +2592,59 @@ html.light .pests-search-input{background:#edf2f7}
 
       <!-- KPI agrégés intérieur -->
       <div class="pests-kpi-grid" id="pestsIndoorKpis"></div>
+
+      <!-- ── Tableau de bord détaillé INTÉRIEUR USINE ── -->
+      <div class="rodent-det rodent-det-in" id="pestsIndoorDetailed">
+        <div class="rodent-det-head">
+          <span class="rodent-det-ico" style="background:rgba(13,168,210,.18);border-color:rgba(13,168,210,.4);color:#0da8d2">🏭</span>
+          <div class="rodent-det-titles">
+            <div class="rodent-det-title">Tableau de bord — Intérieur usine</div>
+            <div class="rodent-det-sub">Pièges mécaniques + boîtes à colles · légende interne : <code>SOU</code> capture · <code>NT</code>/<code>CAS</code>/<code>RT</code>/<code>INAC</code> qualité piège · <code>RAS</code> ok</div>
+          </div>
+          <span class="pests-stat-pill" id="pestsIndoorRange">—</span>
+        </div>
+
+        <div class="pests-kpi-grid" id="pestsIndoorDetKpis"></div>
+
+        <div id="pestsIndoorAlerts"></div>
+
+        <div class="pests-cards">
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#0da8d2"></span>
+              Évolution mensuelle — captures (SOU)
+            </div>
+            <div class="cw"><canvas id="pestsIndoorMonthlyChart"></canvas></div>
+          </div>
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#0da8d2"></span>
+              Pièges mécaniques vs Boîtes à colles
+            </div>
+            <div class="cw"><canvas id="pestsIndoorMechVsGlueChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="pests-cards">
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#0da8d2"></span>
+              Hotspots intérieur (top points)
+            </div>
+            <div class="pests-dist-list" id="pestsIndoorHotspots"></div>
+          </div>
+          <div class="pests-card">
+            <div class="pests-card-title"><span class="ct-dot" style="background:#e8445a"></span>
+              Pression rongeurs par zone interne
+            </div>
+            <div class="pests-dist-list" id="pestsIndoorPressure"></div>
+          </div>
+        </div>
+
+        <div class="pests-card" style="margin-top:12px">
+          <div class="pests-card-title"><span class="ct-dot" style="background:#f5a623"></span>
+            Qualité du dispositif intérieur <span style="font-weight:400;color:var(--text3)">— pièges hors service</span>
+          </div>
+          <div class="rodent-q-grid" id="pestsIndoorTrapQualityGrid"></div>
+        </div>
+      </div>
 
       <!-- Tabs internes : Pièges mécanique / Boîtes à colles -->
       <div class="pests-mini-tabs">
@@ -6822,12 +7131,888 @@ function renderPestFlyingFallback(){
   });
 }
 
+// ════════════════════════════════════════════════════════════
+// ── RONGEURS — Deux systèmes séparés ────────────────────────
+//
+// Règle structurelle (cf. .kiro/steering/rongeurs-sou-rule.md) :
+//
+//   • Intérieur usine : pièges mécaniques + boîtes à colles
+//     Légende : SOU | NT | CAS | RT | INAC | RAS
+//     → seul SOU = capture.
+//
+//   • Voie extérieure : boîtes à raticide
+//     Légende : SOU | EBR | CON | NT | CAS | RT | INAC | RAS
+//     → SOU = capture (souris), EBR/CON = activité rongeur
+//        (appât ébréché ou consommé), NT/CAS/RT/INAC = qualité
+//        boîte, RAS = rien.
+//
+// Les deux systèmes ne sont jamais fusionnés au niveau des
+// indicateurs détaillés. Comparaison possible uniquement au
+// niveau global (totaux SOU).
+// ════════════════════════════════════════════════════════════
+
+// Normalise n'importe quelle valeur d'État en chaîne canonique
+// (majuscules, sans accents, sans ponctuation parasite).
+function rodentNormalize(v){
+  if(v===undefined||v===null) return '';
+  var s=String(v).toUpperCase().trim()
+    .replace(/[ÉÈÊË]/g,'E').replace(/[ÀÂÄ]/g,'A')
+    .replace(/[ÙÛÜ]/g,'U').replace(/[Ç]/g,'C').replace(/[Î]/g,'I');
+  return s.replace(/[\s\.\-_/]+/g,' ').trim();
+}
+
+// Légende INTÉRIEUR USINE (pièges mécaniques + boîtes à colles)
+// Renvoie : 'SOU' | 'NT' | 'CAS' | 'RT' | 'INAC' | 'RAS' | ''
+function rodentCodeIndoor(v){
+  var s=rodentNormalize(v);
+  if(!s) return '';
+  if(s==='SOU')  return 'SOU';
+  if(s==='NT')   return 'NT';
+  if(s==='CAS')  return 'CAS';
+  if(s==='RT')   return 'RT';
+  if(s==='INAC') return 'INAC';
+  if(s==='RAS')  return 'RAS';
+  if(s.indexOf('SOURIS')>-1)        return 'SOU';
+  if(s.indexOf('NON TROUV')>-1 ||
+     s.indexOf('PAS TROUV')>-1 ||
+     s.indexOf('INTROUV')>-1)       return 'NT';
+  if(s.indexOf('CASS')>-1 ||
+     s.indexOf('DETERIO')>-1 ||
+     s.indexOf('ENDOMMAG')>-1)      return 'CAS';
+  if(s.indexOf('RETIR')>-1 ||
+     s.indexOf('ENLEV')>-1)         return 'RT';
+  if(s.indexOf('INACCESS')>-1 ||
+     s.indexOf('NON ACCESS')>-1)    return 'INAC';
+  if(s.indexOf('RIEN A SIGNAL')>-1 ||
+     s.indexOf('AUCUNE')>-1 ||
+     s.indexOf('R A S')>-1)         return 'RAS';
+  return '';
+}
+
+// Légende VOIE EXTÉRIEURE (boîtes à raticide)
+// Renvoie : 'SOU' | 'EBR' | 'CON' | 'NT' | 'CAS' | 'RT' | 'INAC' | 'RAS' | ''
+function rodentCodeOutdoor(v){
+  var s=rodentNormalize(v);
+  if(!s) return '';
+  if(s==='SOU')  return 'SOU';
+  if(s==='EBR')  return 'EBR';
+  if(s==='CON')  return 'CON';
+  if(s==='NT')   return 'NT';
+  if(s==='CAS')  return 'CAS';
+  if(s==='RT')   return 'RT';
+  if(s==='INAC') return 'INAC';
+  if(s==='RAS')  return 'RAS';
+  if(s.indexOf('SOURIS')>-1)        return 'SOU';
+  if(s.indexOf('EBRECH')>-1 ||
+     s.indexOf('GRIGNOT')>-1 ||
+     s.indexOf('ENTAM')>-1)         return 'EBR';
+  if(s.indexOf('CONSOM')>-1 ||
+     s.indexOf('MANGE')>-1)         return 'CON';
+  if(s.indexOf('NON TROUV')>-1 ||
+     s.indexOf('PAS TROUV')>-1 ||
+     s.indexOf('INTROUV')>-1)       return 'NT';
+  if(s.indexOf('CASS')>-1 ||
+     s.indexOf('DETERIO')>-1 ||
+     s.indexOf('ENDOMMAG')>-1)      return 'CAS';
+  if(s.indexOf('RETIR')>-1 ||
+     s.indexOf('ENLEV')>-1)         return 'RT';
+  if(s.indexOf('INACCESS')>-1 ||
+     s.indexOf('NON ACCESS')>-1)    return 'INAC';
+  if(s.indexOf('RIEN A SIGNAL')>-1 ||
+     s.indexOf('AUCUNE')>-1 ||
+     s.indexOf('R A S')>-1)         return 'RAS';
+  return '';
+}
+
+// Compatibilité ascendante pour le chip "Captures (SOU)" injecté
+// dans les KPI standards. Choisit la bonne légende selon l'origine
+// connue (rat = outdoor, sinon indoor).
+function rodentSouKpiChip(section, origin){
+  if(!section||!section.entries) return '';
+  var coder = (origin==='outdoor' || origin==='rat')
+    ? rodentCodeOutdoor : rodentCodeIndoor;
+  var n=0;
+  section.entries.forEach(function(e){
+    if(coder(e.statut)==='SOU') n++;
+  });
+  return '<div class="pests-kpi k-sou">'
+    +'<div class="pests-kpi-lbl">Captures (SOU)</div>'
+    +'<div class="pests-kpi-val">'+fmtNum(n)+'</div>'
+    +'<div class="pests-kpi-sub">règle d\'analyse rongeurs</div>'
+    +'</div>';
+}
+
+// Borne ISO de début pour la période sélectionnée (ou '' = pas de borne)
+function rodentPeriodStartIso(periodVal){
+  if(!periodVal||periodVal==='all') return '';
+  if(periodVal==='ytd') return TODAY_ISO.substring(0,4)+'-01-01';
+  var n=parseInt(periodVal,10);
+  if(!n||isNaN(n)) return '';
+  var p=TODAY_ISO.split('-');
+  var d=new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10));
+  d.setDate(d.getDate()-n+1);
+  var y=d.getFullYear();
+  var m=('0'+(d.getMonth()+1)).slice(-2);
+  var dd=('0'+d.getDate()).slice(-2);
+  return y+'-'+m+'-'+dd;
+}
+
+// Libellé période lisible
+function rodentPeriodLabel(periodVal){
+  if(!periodVal||periodVal==='all') return 'Toutes périodes';
+  if(periodVal==='ytd') return 'Année en cours';
+  return periodVal+' derniers jours';
+}
+
+// Filtre les entries d'une source par période (basé sur isoDate)
+function rodentFilterByPeriod(section, fromIso){
+  if(!section||!section.entries) return [];
+  if(!fromIso) return section.entries.slice();
+  return section.entries.filter(function(e){
+    return e.isoDate && e.isoDate>=fromIso;
+  });
+}
+
+// Détecte les "alertes" : points cumulant ≥ minHits captures sur 30 j glissants.
+// pointKeyFn(e) → identifiant du point (utilisé pour grouper).
+function rodentDetectAlerts(entries, isCapture, pointKeyFn, getZone, minHits){
+  var bucket={}; // key → [iso]
+  var pointInfo={}; // key → {zone, lastSeen}
+  entries.forEach(function(e){
+    if(!isCapture(e)) return;
+    var k=pointKeyFn(e);
+    if(!k) return;
+    if(!bucket[k]) bucket[k]=[];
+    if(e.isoDate) bucket[k].push(e.isoDate);
+    pointInfo[k]={zone:getZone(e), lastSeen:e.isoDate||''};
+  });
+  var alerts=[];
+  Object.keys(bucket).forEach(function(k){
+    var dates=bucket[k].slice().sort();
+    if(dates.length<minHits) return;
+    var maxInWin=0;
+    for(var i=0;i<dates.length;i++){
+      var di=new Date(dates[i]);
+      var cnt=0;
+      for(var j=0;j<=i;j++){
+        var dj=new Date(dates[j]);
+        var diff=Math.floor((di-dj)/86400000);
+        if(diff>=0 && diff<=29) cnt++;
+      }
+      if(cnt>maxInWin) maxInWin=cnt;
+    }
+    if(maxInWin>=minHits){
+      alerts.push({
+        zone:pointInfo[k].zone, count:maxInWin,
+        total:dates.length, lastIso:pointInfo[k].lastSeen
+      });
+    }
+  });
+  alerts.sort(function(a,b){
+    if(b.count!==a.count) return b.count-a.count;
+    return b.total-a.total;
+  });
+  return alerts;
+}
+
+// ───────────────────────────────────────────────────────────
+// VUE GLOBALE — totaux uniquement (comparaison de haut niveau)
+// ───────────────────────────────────────────────────────────
+
+function rodentGlobalAggregate(periodVal){
+  var fromIso=rodentPeriodStartIso(periodVal);
+  var rat =rodentFilterByPeriod(D.pests.rat , fromIso);
+  var mech=rodentFilterByPeriod(D.pests.mech, fromIso);
+  var glue=rodentFilterByPeriod(D.pests.glue, fromIso);
+
+  var nowYM=TODAY_ISO.substring(0,7);
+  var sou={total:0, outdoor:0, indoor:0, thisMonth:0};
+  var byMonth={}; // ym → {outdoor, indoor}
+
+  function pushSou(area, e){
+    sou.total++;
+    if(area==='outdoor') sou.outdoor++; else sou.indoor++;
+    if(e.isoDate){
+      var ym=e.isoDate.substring(0,7);
+      if(ym===nowYM) sou.thisMonth++;
+      if(!byMonth[ym]) byMonth[ym]={outdoor:0, indoor:0};
+      byMonth[ym][area]++;
+    }
+  }
+  rat.forEach (function(e){ if(rodentCodeOutdoor(e.statut)==='SOU') pushSou('outdoor',e); });
+  mech.forEach(function(e){ if(rodentCodeIndoor (e.statut)==='SOU') pushSou('indoor', e); });
+  glue.forEach(function(e){ if(rodentCodeIndoor (e.statut)==='SOU') pushSou('indoor', e); });
+
+  var ymKeys=Object.keys(byMonth).sort();
+  var byMonthArr=ymKeys.map(function(k){
+    return {ym:k, outdoor:byMonth[k].outdoor, indoor:byMonth[k].indoor};
+  });
+
+  return {
+    totalRecords: rat.length+mech.length+glue.length,
+    sou: sou,
+    byMonth: byMonthArr,
+    window: {fromIso:fromIso, label:rodentPeriodLabel(periodVal)}
+  };
+}
+
+function rodentGlobalKpisHtml(agg){
+  var sou=agg.sou;
+  var pctIndoor = sou.total>0 ? Math.round(sou.indoor/sou.total*100) : 0;
+  var pctOutdoor= sou.total>0 ? Math.round(sou.outdoor/sou.total*100) : 0;
+  function k(lbl,val,cls,sub){
+    return '<div class="pests-kpi '+cls+'">'
+      +'<div class="pests-kpi-lbl">'+esc(lbl)+'</div>'
+      +'<div class="pests-kpi-val">'+(typeof val==='number'?fmtNum(val):val)+'</div>'
+      +'<div class="pests-kpi-sub">'+esc(sub||'')+'</div>'
+      +'</div>';
+  }
+  var html='';
+  html+=k('Captures totales (SOU)', sou.total, 'k-r',
+    sou.total>0 ? 'sur '+fmtNum(agg.totalRecords)+' enregistrements' : 'aucune capture sur la période');
+  html+=k('Voie extérieure', sou.outdoor, 'k-o', 'raticide · '+pctOutdoor+'% du total');
+  html+=k('Intérieur usine', sou.indoor, 'k-b', 'mécanique + colles · '+pctIndoor+'% du total');
+  html+=k('Captures ce mois-ci', sou.thisMonth,
+    sou.thisMonth>0?'k-r':'k-g', TODAY_ISO.substring(0,7));
+  return html;
+}
+
+function rodentGlobalMonthlyChart(agg){
+  var canvas=document.getElementById('pestsSouMonthlyChart');
+  if(!canvas) return;
+  var labels=agg.byMonth.map(function(m){
+    var p=m.ym.split('-');
+    return (ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0].substring(2);
+  });
+  var dataOut=agg.byMonth.map(function(m){return m.outdoor;});
+  var dataIn =agg.byMonth.map(function(m){return m.indoor;});
+  if(charts['pestsSouMonthlyChart']) charts['pestsSouMonthlyChart'].destroy();
+  if(labels.length===0){
+    var ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+  charts['pestsSouMonthlyChart']=new Chart(canvas,{
+    type:'bar',
+    data:{labels:labels, datasets:[
+      {label:'Voie extérieure', data:dataOut,
+       backgroundColor:'#f97316', borderRadius:4, stack:'sou'},
+      {label:'Intérieur usine', data:dataIn,
+       backgroundColor:'#0da8d2', borderRadius:4, stack:'sou'}
+    ]},
+    options:Object.assign({}, BASE, {
+      plugins:{
+        legend:{display:true, labels:{color:C.txt, font:{size:10}}},
+        tooltip:{enabled:true}
+      },
+      scales:{
+        x:Object.assign({}, BASE.scales.x, {stacked:true}),
+        y:Object.assign({}, BASE.scales.y, {stacked:true, beginAtZero:true,
+          ticks:Object.assign({}, BASE.scales.y.ticks, {precision:0})})
+      }
+    })
+  });
+}
+
+function rodentGlobalCompareChart(agg){
+  var canvas=document.getElementById('pestsSouCompareChart');
+  if(!canvas) return;
+  if(charts['pestsSouCompareChart']) charts['pestsSouCompareChart'].destroy();
+  if(agg.sou.total===0){
+    var ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    return;
+  }
+  charts['pestsSouCompareChart']=new Chart(canvas,{
+    type:'doughnut',
+    data:{labels:['Voie extérieure (raticide)','Intérieur usine (mécanique + colles)'],
+          datasets:[{
+            data:[agg.sou.outdoor, agg.sou.indoor],
+            backgroundColor:['#f97316','#0da8d2'],
+            borderColor:'rgba(0,0,0,0)', borderWidth:2
+          }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'bottom',
+                labels:{color:C.txt, font:{size:10}, padding:8, boxWidth:10}},
+        tooltip:{enabled:true,
+                 callbacks:{label:function(ctx){
+                   var v=ctx.parsed||0;
+                   var t=ctx.dataset.data.reduce(function(a,b){return a+b;},0);
+                   var p=t? Math.round(v/t*100):0;
+                   return ctx.label+' : '+v+' SOU ('+p+'%)';
+                 }}}
+      },
+      cutout:'60%'
+    }
+  });
+}
+
+function renderRodentSouDashboard(){
+  if(!D||!D.pests) return;
+  var sel=document.getElementById('pestsSouPeriodSel');
+  var period=sel?sel.value:'30';
+  var agg=rodentGlobalAggregate(period);
+
+  var rangeEl=document.getElementById('pestsSouRange');
+  if(rangeEl) rangeEl.textContent=agg.window.label+' · '+fmtNum(agg.totalRecords)+' visite(s) analysée(s)';
+
+  document.getElementById('pestsSouKpis').innerHTML=rodentGlobalKpisHtml(agg);
+  rodentGlobalMonthlyChart(agg);
+  rodentGlobalCompareChart(agg);
+}
+
+// ───────────────────────────────────────────────────────────
+// INTÉRIEUR USINE — pièges mécaniques + boîtes à colles
+// Légende interne : SOU/NT/CAS/RT/INAC/RAS uniquement.
+// ───────────────────────────────────────────────────────────
+
+function rodentIndoorAggregate(periodVal){
+  var fromIso=rodentPeriodStartIso(periodVal);
+  var mech=rodentFilterByPeriod(D.pests.mech, fromIso).map(function(e){
+    return {raw:e.raw, date:e.date, isoDate:e.isoDate, zone:e.zone,
+            statut:e.statut, action:e.action,
+            code:rodentCodeIndoor(e.statut), origin:'mech'};
+  });
+  var glue=rodentFilterByPeriod(D.pests.glue, fromIso).map(function(e){
+    return {raw:e.raw, date:e.date, isoDate:e.isoDate, zone:e.zone,
+            statut:e.statut, action:e.action,
+            code:rodentCodeIndoor(e.statut), origin:'glue'};
+  });
+  var all=mech.concat(glue);
+
+  var nowYM=TODAY_ISO.substring(0,7);
+  var sou={total:0, mech:0, glue:0, thisMonth:0};
+  var quality={NT:0, CAS:0, RT:0, INAC:0, RAS:0, OTHER:0, total:all.length};
+  var byMonth={};        // ym → {mech, glue}
+  var hotspot={};        // 'origin|zone' → {zone, origin, count}
+  var pressureZ={};      // zone → {visits, sou}
+
+  all.forEach(function(e){
+    var z=String(e.zone||'').trim();
+    if(z){
+      if(!pressureZ[z]) pressureZ[z]={visits:0, sou:0};
+      pressureZ[z].visits++;
+    }
+    if(e.code==='SOU'){
+      sou.total++;
+      if(e.origin==='mech') sou.mech++; else sou.glue++;
+      if(e.isoDate){
+        var ym=e.isoDate.substring(0,7);
+        if(ym===nowYM) sou.thisMonth++;
+        if(!byMonth[ym]) byMonth[ym]={mech:0, glue:0};
+        byMonth[ym][e.origin]++;
+      }
+      var key=e.origin+'|'+(z||'(sans emplacement)');
+      if(!hotspot[key]) hotspot[key]={zone:z||'(sans emplacement)', origin:e.origin, count:0};
+      hotspot[key].count++;
+      if(z) pressureZ[z].sou++;
+    } else if(e.code==='NT'  ) quality.NT++;
+    else if(e.code==='CAS'   ) quality.CAS++;
+    else if(e.code==='RT'    ) quality.RT++;
+    else if(e.code==='INAC'  ) quality.INAC++;
+    else if(e.code==='RAS'   ) quality.RAS++;
+    else                       quality.OTHER++;
+  });
+
+  var ymKeys=Object.keys(byMonth).sort();
+  var byMonthArr=ymKeys.map(function(k){
+    return {ym:k, mech:byMonth[k].mech, glue:byMonth[k].glue,
+            total:byMonth[k].mech+byMonth[k].glue};
+  });
+
+  var hotspots=Object.keys(hotspot).map(function(k){return hotspot[k];});
+  hotspots.sort(function(a,b){return b.count-a.count;});
+  hotspots=hotspots.slice(0,8);
+
+  var pressure=Object.keys(pressureZ).map(function(z){
+    var s=pressureZ[z];
+    return {zone:z, visits:s.visits, sou:s.sou,
+            rate: s.visits>0 ? s.sou/s.visits : 0};
+  });
+  pressure=pressure.filter(function(p){return p.visits>0;});
+  pressure.sort(function(a,b){
+    if(b.rate!==a.rate) return b.rate-a.rate;
+    return b.sou-a.sou;
+  });
+  pressure=pressure.slice(0,8);
+
+  var alerts=rodentDetectAlerts(all,
+    function(e){return e.code==='SOU';},
+    function(e){return (String(e.zone||'').trim()||'(sans emplacement)');},
+    function(e){return String(e.zone||'').trim()||'(sans emplacement)';},
+    2);
+
+  return {
+    sou:sou, quality:quality, byMonth:byMonthArr,
+    hotspots:hotspots, pressure:pressure, alerts:alerts,
+    totalRecords:all.length,
+    window:{fromIso:fromIso, label:rodentPeriodLabel(periodVal)}
+  };
+}
+
+function rodentIndoorKpisHtml(agg){
+  var sou=agg.sou;
+  var qBad=agg.quality.NT+agg.quality.CAS+agg.quality.RT+agg.quality.INAC;
+  var qPct=agg.quality.total>0?Math.round(qBad/agg.quality.total*100):0;
+  function k(lbl,val,cls,sub){
+    return '<div class="pests-kpi '+cls+'"><div class="pests-kpi-lbl">'+esc(lbl)
+      +'</div><div class="pests-kpi-val">'+(typeof val==='number'?fmtNum(val):val)
+      +'</div><div class="pests-kpi-sub">'+esc(sub||'')+'</div></div>';
+  }
+  var html='';
+  html+=k('SOU intérieur', sou.total, 'k-r', 'mécanique + colles');
+  html+=k('Pièges mécaniques', sou.mech, 'k-b', sou.total>0?Math.round(sou.mech/sou.total*100)+'% du SOU intérieur':'aucune capture');
+  html+=k('Boîtes à colles',  sou.glue, 'k-b', sou.total>0?Math.round(sou.glue/sou.total*100)+'% du SOU intérieur':'aucune capture');
+  html+=k('Captures ce mois-ci', sou.thisMonth, sou.thisMonth>0?'k-r':'k-g', TODAY_ISO.substring(0,7));
+  html+=k('Postes "chauds"', agg.alerts.length, agg.alerts.length>0?'k-r':'k-g',
+    '≥ 2 SOU sur 30 j glissants');
+  html+=k('Qualité dispositif', qPct+'%', qPct>=20?'k-r':(qPct>=10?'k-a':'k-g'),
+    fmtNum(qBad)+' pièges NT/CAS/RT/INAC');
+  return html;
+}
+
+function rodentIndoorAlertsHtml(agg){
+  if(!agg.alerts.length){
+    return '<div class="rodent-alert ok">'
+      +'<div class="rodent-alert-ico">✅</div>'
+      +'<div class="rodent-alert-body">'
+      +'<div class="rodent-alert-title">Aucun point intérieur en alerte</div>'
+      +'<div style="font-size:10px;color:var(--text2);line-height:1.5">'
+      +'Aucun piège intérieur ne cumule ≥ 2 captures SOU sur 30 jours glissants.'
+      +'</div></div></div>';
+  }
+  var top=agg.alerts.slice(0,8);
+  var chips=top.map(function(a){
+    return '<span class="rodent-alert-chip" title="'+escAttr(a.zone)+' · '+a.count+' SOU sur 30 j">'
+      +'<b>'+a.count+'×</b>🏭 '+esc(a.zone)+'</span>';
+  }).join('');
+  if(agg.alerts.length>top.length){
+    chips+='<span class="rodent-alert-chip">+'+(agg.alerts.length-top.length)+' autre(s)</span>';
+  }
+  return '<div class="rodent-alert">'
+    +'<div class="rodent-alert-ico">🚨</div>'
+    +'<div class="rodent-alert-body">'
+    +'<div class="rodent-alert-title">'+agg.alerts.length+' piège(s) intérieur(s) en alerte — ≥ 2 SOU sur 30 j glissants</div>'
+    +'<div style="font-size:10px;color:var(--text2);line-height:1.5">'
+    +'Pression rongeur localisée : à inspecter en priorité.</div>'
+    +'<div class="rodent-alert-list">'+chips+'</div></div></div>';
+}
+
+function rodentIndoorHotspotsHtml(agg){
+  if(!agg.hotspots.length) return '<div class="pests-empty">Aucune capture intérieure sur la période sélectionnée</div>';
+  var maxV=agg.hotspots[0].count, totalSou=agg.sou.total;
+  return agg.hotspots.map(function(p){
+    var pct=maxV?Math.round(p.count/maxV*100):0;
+    var pctTot=totalSou?Math.round(p.count/totalSou*100):0;
+    var ico=p.origin==='mech'?'🪤':'🧪';
+    var col=p.origin==='mech'?'#0da8d2':'#8b5cf6';
+    return '<div class="pests-dist-row">'
+      +'<div class="pests-dist-hdr">'
+      +'<span class="pests-dist-lbl" title="'+escAttr(p.zone)+'">'+ico+' '+esc(p.zone)+'</span>'
+      +'<span class="pests-dist-num">'+fmtNum(p.count)+' · '+pctTot+'%</span>'
+      +'</div>'
+      +'<div class="pests-dist-bg"><div class="pests-dist-bar" '
+      +'style="width:'+pct+'%;background:linear-gradient(90deg,'+col+'cc,'+col+')"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function rodentIndoorPressureHtml(agg){
+  if(!agg.pressure.length) return '<div class="pests-empty">Aucune zone interne à comparer</div>';
+  return agg.pressure.map(function(z){
+    var pct=Math.round(z.rate*100);
+    var cls=z.rate>=0.4?'hi':(z.rate>=0.15?'mid':'low');
+    return '<div class="rodent-act-row">'
+      +'<div class="rodent-act-hdr">'
+      +'<span class="rodent-act-lbl" title="'+escAttr(z.zone)+'">🏭 '+esc(z.zone)+'</span>'
+      +'<span class="rodent-act-num"><span class="pct">'+pct+'%</span>'
+      +'<span style="color:var(--text3)">'+z.sou+'/'+z.visits+'</span></span>'
+      +'</div>'
+      +'<div class="rodent-act-bg"><div class="rodent-act-bar '+cls+'" style="width:'+Math.min(100,pct)+'%"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function rodentIndoorTrapQualityHtml(agg){
+  var q=agg.quality, totalQ=q.NT+q.CAS+q.RT+q.INAC;
+  function card(code,cls,lbl,val){
+    var pct=q.total>0?Math.round(val/q.total*100):0;
+    var pctOfQ=totalQ>0?Math.round(val/totalQ*100):0;
+    return '<div class="rodent-q-card '+cls+'">'
+      +'<div class="rodent-q-code"><span class="dot"></span>'+code+'</div>'
+      +'<div class="rodent-q-val">'+fmtNum(val)+'</div>'
+      +'<div class="rodent-q-lbl">'+esc(lbl)+'</div>'
+      +'<div class="rodent-q-pct">'+pct+'% du total · '+pctOfQ+'% des défauts</div>'
+      +'</div>';
+  }
+  return card('NT','nt','Pièges non trouvés', q.NT)
+       + card('CAS','cas','Pièges cassés', q.CAS)
+       + card('RT','rt','Pièges retirés', q.RT)
+       + card('INAC','inac','Pièges inaccessibles', q.INAC);
+}
+
+function rodentIndoorMonthlyChart(agg){
+  var canvas=document.getElementById('pestsIndoorMonthlyChart');
+  if(!canvas) return;
+  if(charts['pestsIndoorMonthlyChart']) charts['pestsIndoorMonthlyChart'].destroy();
+  var labels=agg.byMonth.map(function(m){
+    var p=m.ym.split('-');
+    return (ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0].substring(2);
+  });
+  if(!labels.length){
+    var ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); return;
+  }
+  charts['pestsIndoorMonthlyChart']=new Chart(canvas,{
+    type:'bar',
+    data:{labels:labels, datasets:[
+      {label:'Pièges mécaniques', data:agg.byMonth.map(function(m){return m.mech;}),
+       backgroundColor:'#0da8d2', borderRadius:4, stack:'in'},
+      {label:'Boîtes à colles',   data:agg.byMonth.map(function(m){return m.glue;}),
+       backgroundColor:'#8b5cf6', borderRadius:4, stack:'in'}
+    ]},
+    options:Object.assign({}, BASE, {
+      plugins:{legend:{display:true, labels:{color:C.txt, font:{size:10}}},
+               tooltip:{enabled:true}},
+      scales:{
+        x:Object.assign({}, BASE.scales.x, {stacked:true}),
+        y:Object.assign({}, BASE.scales.y, {stacked:true, beginAtZero:true,
+          ticks:Object.assign({}, BASE.scales.y.ticks, {precision:0})})
+      }
+    })
+  });
+}
+
+function rodentIndoorMechVsGlueChart(agg){
+  var canvas=document.getElementById('pestsIndoorMechVsGlueChart');
+  if(!canvas) return;
+  if(charts['pestsIndoorMechVsGlueChart']) charts['pestsIndoorMechVsGlueChart'].destroy();
+  if(agg.sou.total===0){
+    var ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); return;
+  }
+  charts['pestsIndoorMechVsGlueChart']=new Chart(canvas,{
+    type:'doughnut',
+    data:{labels:['Pièges mécaniques','Boîtes à colles'], datasets:[{
+      data:[agg.sou.mech, agg.sou.glue],
+      backgroundColor:['#0da8d2','#8b5cf6'],
+      borderColor:'rgba(0,0,0,0)', borderWidth:2
+    }]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true, position:'bottom',
+                       labels:{color:C.txt, font:{size:10}, padding:8, boxWidth:10}},
+               tooltip:{enabled:true, callbacks:{label:function(ctx){
+                 var v=ctx.parsed||0;
+                 var t=ctx.dataset.data.reduce(function(a,b){return a+b;},0);
+                 var p=t? Math.round(v/t*100):0;
+                 return ctx.label+' : '+v+' SOU ('+p+'%)';
+               }}}},
+      cutout:'60%'}
+  });
+}
+
+function renderIndoorRodentDetailed(){
+  if(!D||!D.pests) return;
+  var sel=document.getElementById('pestsSouPeriodSel');
+  var period=sel?sel.value:'30';
+  var agg=rodentIndoorAggregate(period);
+
+  var rangeEl=document.getElementById('pestsIndoorRange');
+  if(rangeEl) rangeEl.textContent=agg.window.label+' · '+fmtNum(agg.totalRecords)+' visite(s)';
+
+  document.getElementById('pestsIndoorDetKpis').innerHTML       = rodentIndoorKpisHtml(agg);
+  document.getElementById('pestsIndoorAlerts').innerHTML        = rodentIndoorAlertsHtml(agg);
+  document.getElementById('pestsIndoorHotspots').innerHTML      = rodentIndoorHotspotsHtml(agg);
+  document.getElementById('pestsIndoorPressure').innerHTML      = rodentIndoorPressureHtml(agg);
+  document.getElementById('pestsIndoorTrapQualityGrid').innerHTML = rodentIndoorTrapQualityHtml(agg);
+  rodentIndoorMonthlyChart(agg);
+  rodentIndoorMechVsGlueChart(agg);
+}
+
+// ───────────────────────────────────────────────────────────
+// VOIE EXTÉRIEURE — boîtes à raticide
+// Légende dédiée : SOU/EBR/CON + qualité (NT/CAS/RT/INAC) + RAS.
+// EBR/CON = activité rongeur (pas une capture).
+// ───────────────────────────────────────────────────────────
+
+function rodentOutdoorAggregate(periodVal){
+  var fromIso=rodentPeriodStartIso(periodVal);
+  var rat=rodentFilterByPeriod(D.pests.rat, fromIso).map(function(e){
+    return {raw:e.raw, date:e.date, isoDate:e.isoDate, zone:e.zone,
+            statut:e.statut, action:e.action, code:rodentCodeOutdoor(e.statut)};
+  });
+
+  var nowYM=TODAY_ISO.substring(0,7);
+  var sou={total:0, thisMonth:0};
+  var act={ebr:0, con:0};
+  var quality={NT:0, CAS:0, RT:0, INAC:0, RAS:0, OTHER:0, total:rat.length};
+  var byMonth={};      // ym → {sou, ebr, con}
+  var pointStats={};   // zone → {sou, ebr, con, total, lastIso}
+
+  rat.forEach(function(e){
+    var z=String(e.zone||'').trim()||'(sans emplacement)';
+    if(!pointStats[z]) pointStats[z]={zone:z, sou:0, ebr:0, con:0, total:0, lastIso:''};
+    pointStats[z].total++;
+    if(e.isoDate && e.isoDate>pointStats[z].lastIso) pointStats[z].lastIso=e.isoDate;
+
+    var ym=e.isoDate?e.isoDate.substring(0,7):'';
+
+    if(e.code==='SOU'){
+      sou.total++; if(ym===nowYM) sou.thisMonth++;
+      if(ym){ if(!byMonth[ym]) byMonth[ym]={sou:0,ebr:0,con:0}; byMonth[ym].sou++; }
+      pointStats[z].sou++;
+    } else if(e.code==='EBR'){
+      act.ebr++;
+      if(ym){ if(!byMonth[ym]) byMonth[ym]={sou:0,ebr:0,con:0}; byMonth[ym].ebr++; }
+      pointStats[z].ebr++;
+    } else if(e.code==='CON'){
+      act.con++;
+      if(ym){ if(!byMonth[ym]) byMonth[ym]={sou:0,ebr:0,con:0}; byMonth[ym].con++; }
+      pointStats[z].con++;
+    } else if(e.code==='NT')   quality.NT++;
+    else if(e.code==='CAS')    quality.CAS++;
+    else if(e.code==='RT')     quality.RT++;
+    else if(e.code==='INAC')   quality.INAC++;
+    else if(e.code==='RAS')    quality.RAS++;
+    else                       quality.OTHER++;
+  });
+
+  var ymKeys=Object.keys(byMonth).sort();
+  var byMonthArr=ymKeys.map(function(k){
+    var b=byMonth[k];
+    return {ym:k, sou:b.sou, ebr:b.ebr, con:b.con, total:b.sou+b.ebr+b.con};
+  });
+
+  // Top emplacements par activité totale (SOU + EBR + CON)
+  var topPoints=Object.keys(pointStats).map(function(z){
+    var p=pointStats[z];
+    return {zone:p.zone, sou:p.sou, ebr:p.ebr, con:p.con,
+            activity:p.sou+p.ebr+p.con, total:p.total};
+  }).filter(function(p){return p.activity>0;});
+  topPoints.sort(function(a,b){
+    if(b.activity!==a.activity) return b.activity-a.activity;
+    return b.sou-a.sou;
+  });
+  topPoints=topPoints.slice(0,8);
+
+  // Zones critiques récurrentes : ≥ 3 événements d'activité (SOU+EBR+CON)
+  // sur la période, OU ≥ 2 SOU sur 30 j glissants.
+  var alerts=rodentDetectAlerts(rat,
+    function(e){return e.code==='SOU';},
+    function(e){return String(e.zone||'').trim()||'(sans emplacement)';},
+    function(e){return String(e.zone||'').trim()||'(sans emplacement)';},
+    2);
+
+  var critiques=Object.keys(pointStats).map(function(z){
+    var p=pointStats[z];
+    var activity=p.sou+p.ebr+p.con;
+    var hot=alerts.some(function(a){return a.zone===z;});
+    return {zone:p.zone, sou:p.sou, ebr:p.ebr, con:p.con,
+            activity:activity, total:p.total,
+            critical:(activity>=3 || p.sou>=2 || hot),
+            hot:hot, lastIso:p.lastIso};
+  }).filter(function(p){return p.critical;});
+  critiques.sort(function(a,b){
+    if(b.activity!==a.activity) return b.activity-a.activity;
+    return b.sou-a.sou;
+  });
+  critiques=critiques.slice(0,8);
+
+  return {
+    sou:sou, act:act, quality:quality, byMonth:byMonthArr,
+    topPoints:topPoints, critiques:critiques, alerts:alerts,
+    totalRecords:rat.length,
+    window:{fromIso:fromIso, label:rodentPeriodLabel(periodVal)}
+  };
+}
+
+function rodentOutdoorKpisHtml(agg){
+  var qBad=agg.quality.NT+agg.quality.CAS+agg.quality.RT+agg.quality.INAC;
+  var qPct=agg.quality.total>0?Math.round(qBad/agg.quality.total*100):0;
+  var totalAct=agg.sou.total+agg.act.ebr+agg.act.con;
+  var actRate=agg.quality.total>0?Math.round(totalAct/agg.quality.total*100):0;
+  function k(lbl,val,cls,sub){
+    return '<div class="pests-kpi '+cls+'"><div class="pests-kpi-lbl">'+esc(lbl)
+      +'</div><div class="pests-kpi-val">'+(typeof val==='number'?fmtNum(val):val)
+      +'</div><div class="pests-kpi-sub">'+esc(sub||'')+'</div></div>';
+  }
+  var html='';
+  html+=k('Captures (SOU)', agg.sou.total, 'k-r', 'souris trouvées');
+  html+=k('Boîtes ébréchées (EBR)', agg.act.ebr, 'k-a', 'activité rongeur');
+  html+=k('Appâts consommés (CON)', agg.act.con, 'k-a', 'activité rongeur');
+  html+=k('Activité raticide globale', actRate+'%', actRate>=20?'k-r':(actRate>=10?'k-a':'k-g'),
+    fmtNum(totalAct)+' SOU+EBR+CON sur '+fmtNum(agg.quality.total));
+  html+=k('Captures ce mois-ci', agg.sou.thisMonth,
+    agg.sou.thisMonth>0?'k-r':'k-g', TODAY_ISO.substring(0,7));
+  html+=k('Qualité boîtes', qPct+'%', qPct>=20?'k-r':(qPct>=10?'k-a':'k-g'),
+    fmtNum(qBad)+' boîtes NT/CAS/RT/INAC');
+  return html;
+}
+
+function rodentOutdoorAlertsHtml(agg){
+  if(!agg.alerts.length){
+    return '<div class="rodent-alert ok">'
+      +'<div class="rodent-alert-ico">✅</div>'
+      +'<div class="rodent-alert-body">'
+      +'<div class="rodent-alert-title">Aucun emplacement extérieur en alerte</div>'
+      +'<div style="font-size:10px;color:var(--text2);line-height:1.5">'
+      +'Aucune boîte à raticide ne cumule ≥ 2 captures SOU sur 30 jours glissants.'
+      +'</div></div></div>';
+  }
+  var top=agg.alerts.slice(0,8);
+  var chips=top.map(function(a){
+    return '<span class="rodent-alert-chip" title="'+escAttr(a.zone)+' · '+a.count+' SOU sur 30 j">'
+      +'<b>'+a.count+'×</b>🌳 '+esc(a.zone)+'</span>';
+  }).join('');
+  if(agg.alerts.length>top.length){
+    chips+='<span class="rodent-alert-chip">+'+(agg.alerts.length-top.length)+' autre(s)</span>';
+  }
+  return '<div class="rodent-alert">'
+    +'<div class="rodent-alert-ico">🚨</div>'
+    +'<div class="rodent-alert-body">'
+    +'<div class="rodent-alert-title">'+agg.alerts.length+' emplacement(s) extérieur(s) en alerte — ≥ 2 SOU sur 30 j glissants</div>'
+    +'<div style="font-size:10px;color:var(--text2);line-height:1.5">'
+    +'Recrudescence rongeur extérieur : à inspecter en priorité.</div>'
+    +'<div class="rodent-alert-list">'+chips+'</div></div></div>';
+}
+
+function rodentOutdoorTopPointsHtml(agg){
+  if(!agg.topPoints.length) return '<div class="pests-empty">Aucune activité raticide sur la période sélectionnée</div>';
+  var maxV=agg.topPoints[0].activity;
+  return agg.topPoints.map(function(p){
+    var pct=maxV?Math.round(p.activity/maxV*100):0;
+    return '<div class="pests-dist-row">'
+      +'<div class="pests-dist-hdr">'
+      +'<span class="pests-dist-lbl" title="'+escAttr(p.zone)+'">🌳 '+esc(p.zone)+'</span>'
+      +'<span class="pests-dist-num">'+fmtNum(p.activity)+' <span style="color:var(--text3);font-weight:400">'
+      +'(SOU '+p.sou+' · EBR '+p.ebr+' · CON '+p.con+')</span></span>'
+      +'</div>'
+      +'<div class="pests-dist-bg"><div class="pests-dist-bar" '
+      +'style="width:'+pct+'%;background:linear-gradient(90deg,#f9731680,#f97316)"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function rodentOutdoorCritiquesHtml(agg){
+  if(!agg.critiques.length) return '<div class="pests-empty">Aucune zone extérieure critique sur la période sélectionnée</div>';
+  return agg.critiques.map(function(c){
+    var hotTag=c.hot?'<span class="rodent-alert-chip" style="margin-left:6px"><b>🚨</b>chaud</span>':'';
+    var pct=Math.round(c.activity/Math.max(1,agg.totalRecords)*100);
+    return '<div class="rodent-act-row">'
+      +'<div class="rodent-act-hdr">'
+      +'<span class="rodent-act-lbl" title="'+escAttr(c.zone)+'">🌳 '+esc(c.zone)+hotTag+'</span>'
+      +'<span class="rodent-act-num"><span class="pct">'+pct+'%</span>'
+      +'<span style="color:var(--text3)">'+c.activity+' évt / '+c.total+' visites</span></span>'
+      +'</div>'
+      +'<div class="rodent-act-bg"><div class="rodent-act-bar '
+      +(c.hot?'hi':(c.activity>=5?'mid':'low'))+'" style="width:'+Math.min(100,pct*5)+'%"></div></div>'
+      +'</div>';
+  }).join('');
+}
+
+function rodentOutdoorTrapQualityHtml(agg){
+  var q=agg.quality, totalQ=q.NT+q.CAS+q.RT+q.INAC;
+  function card(code,cls,lbl,val){
+    var pct=q.total>0?Math.round(val/q.total*100):0;
+    var pctOfQ=totalQ>0?Math.round(val/totalQ*100):0;
+    return '<div class="rodent-q-card '+cls+'">'
+      +'<div class="rodent-q-code"><span class="dot"></span>'+code+'</div>'
+      +'<div class="rodent-q-val">'+fmtNum(val)+'</div>'
+      +'<div class="rodent-q-lbl">'+esc(lbl)+'</div>'
+      +'<div class="rodent-q-pct">'+pct+'% du total · '+pctOfQ+'% des défauts</div>'
+      +'</div>';
+  }
+  return card('NT','nt','Boîtes non trouvées', q.NT)
+       + card('CAS','cas','Boîtes cassées', q.CAS)
+       + card('RT','rt','Boîtes retirées', q.RT)
+       + card('INAC','inac','Boîtes inaccessibles', q.INAC);
+}
+
+function rodentOutdoorMonthlyChart(agg){
+  var canvas=document.getElementById('pestsOutdoorMonthlyChart');
+  if(!canvas) return;
+  if(charts['pestsOutdoorMonthlyChart']) charts['pestsOutdoorMonthlyChart'].destroy();
+  var labels=agg.byMonth.map(function(m){
+    var p=m.ym.split('-');
+    return (ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0].substring(2);
+  });
+  if(!labels.length){
+    var ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); return;
+  }
+  charts['pestsOutdoorMonthlyChart']=new Chart(canvas,{
+    type:'bar',
+    data:{labels:labels, datasets:[
+      {label:'SOU (capture)', data:agg.byMonth.map(function(m){return m.sou;}),
+       backgroundColor:'#e8445a', borderRadius:4, stack:'out'},
+      {label:'EBR (ébréché)', data:agg.byMonth.map(function(m){return m.ebr;}),
+       backgroundColor:'#f5a623', borderRadius:4, stack:'out'},
+      {label:'CON (consommé)', data:agg.byMonth.map(function(m){return m.con;}),
+       backgroundColor:'#a855f7', borderRadius:4, stack:'out'}
+    ]},
+    options:Object.assign({}, BASE, {
+      plugins:{legend:{display:true, labels:{color:C.txt, font:{size:10}}},
+               tooltip:{enabled:true}},
+      scales:{
+        x:Object.assign({}, BASE.scales.x, {stacked:true}),
+        y:Object.assign({}, BASE.scales.y, {stacked:true, beginAtZero:true,
+          ticks:Object.assign({}, BASE.scales.y.ticks, {precision:0})})
+      }
+    })
+  });
+}
+
+function rodentOutdoorActivityChart(agg){
+  var canvas=document.getElementById('pestsOutdoorActivityChart');
+  if(!canvas) return;
+  if(charts['pestsOutdoorActivityChart']) charts['pestsOutdoorActivityChart'].destroy();
+  var totalAct=agg.sou.total+agg.act.ebr+agg.act.con;
+  if(totalAct===0){
+    var ctx=canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height); return;
+  }
+  charts['pestsOutdoorActivityChart']=new Chart(canvas,{
+    type:'doughnut',
+    data:{labels:['SOU (capture)','EBR (ébréché)','CON (consommé)'], datasets:[{
+      data:[agg.sou.total, agg.act.ebr, agg.act.con],
+      backgroundColor:['#e8445a','#f5a623','#a855f7'],
+      borderColor:'rgba(0,0,0,0)', borderWidth:2
+    }]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:true, position:'bottom',
+                       labels:{color:C.txt, font:{size:10}, padding:8, boxWidth:10}},
+               tooltip:{enabled:true, callbacks:{label:function(ctx){
+                 var v=ctx.parsed||0;
+                 var t=ctx.dataset.data.reduce(function(a,b){return a+b;},0);
+                 var p=t? Math.round(v/t*100):0;
+                 return ctx.label+' : '+v+' ('+p+'%)';
+               }}}},
+      cutout:'60%'}
+  });
+}
+
+function renderOutdoorRodentDetailed(){
+  if(!D||!D.pests) return;
+  var sel=document.getElementById('pestsSouPeriodSel');
+  var period=sel?sel.value:'30';
+  var agg=rodentOutdoorAggregate(period);
+
+  var rangeEl=document.getElementById('pestsOutdoorRange');
+  if(rangeEl) rangeEl.textContent=agg.window.label+' · '+fmtNum(agg.totalRecords)+' visite(s)';
+
+  document.getElementById('pestsOutdoorKpis').innerHTML            = rodentOutdoorKpisHtml(agg);
+  document.getElementById('pestsOutdoorAlerts').innerHTML          = rodentOutdoorAlertsHtml(agg);
+  document.getElementById('pestsOutdoorTopPoints').innerHTML       = rodentOutdoorTopPointsHtml(agg);
+  document.getElementById('pestsOutdoorCritiques').innerHTML       = rodentOutdoorCritiquesHtml(agg);
+  document.getElementById('pestsOutdoorTrapQualityGrid').innerHTML = rodentOutdoorTrapQualityHtml(agg);
+  rodentOutdoorMonthlyChart(agg);
+  rodentOutdoorActivityChart(agg);
+}
+
 function renderPestRat(){
   if(!D||!D.pests) return;
   var s=D.pests.rat;
   var meta=document.getElementById('pestsRatSheetMeta');
   if(meta) meta.textContent='Source : feuille « '+(s&&s.sheetName?s.sheetName:'boîtes à raticide')+' »';
-  document.getElementById('pestsRatKpis').innerHTML=pestKpisHtml(s,'rat');
+  document.getElementById('pestsRatKpis').innerHTML=pestKpisHtml(s,'rat')+rodentSouKpiChip(s,'outdoor');
   pestBuildMonthlyChart('pestsRatChart', s, '#f97316');
   var distEl=document.getElementById('pestsRatDist');
   if(distEl && s){
@@ -6914,7 +8099,7 @@ function renderPestIndoorKpis(){
     meta:{ numCols:[], dateCols:[], zoneCols:[], statutCols:[], actionCols:[],
            primaryDate:-1, primaryZone:-1, primaryStatut:-1, primaryAction:-1 }
   };
-  document.getElementById('pestsIndoorKpis').innerHTML=pestKpisHtml(combined,'indoor');
+  document.getElementById('pestsIndoorKpis').innerHTML=pestKpisHtml(combined,'indoor')+rodentSouKpiChip(combined,'indoor');
 }
 
 function renderPests(){
@@ -6936,6 +8121,9 @@ function renderPests(){
   renderPestIndoorKpis();
   renderPestMech();
   renderPestGlue();
+  renderRodentSouDashboard();
+  renderIndoorRodentDetailed();
+  renderOutdoorRodentDetailed();
 }
 
 window.onload=function(){
