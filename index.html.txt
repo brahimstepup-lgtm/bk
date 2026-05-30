@@ -2257,10 +2257,10 @@ html.light .pests-search-input{background:#edf2f7}
 <div id="pests" class="page">
   <!-- ─── BANNIÈRE D'EN-TÊTE ─── -->
   <div class="card pests-intro" style="padding:0;overflow:hidden;background:transparent;border:none">
-    <img src="https://drive.google.com/thumbnail?id=1R9D2s1Qpe8Y6LDyWByoMhopmsCtsx7fY&sz=w2000"
+    <img src="https://drive.google.com/thumbnail?id=1UWxJY2rrcVxn7cmLDIlx07AFAXaAryat&sz=w2000"
          alt="Suivi des Nuisibles — SOBCO 3"
          style="display:block;width:100%;height:auto;border-radius:var(--radius)"
-         onerror="this.onerror=null;this.src='https://lh3.googleusercontent.com/d/1R9D2s1Qpe8Y6LDyWByoMhopmsCtsx7fY=w2000';">
+         onerror="this.onerror=null;this.src='https://lh3.googleusercontent.com/d/1UWxJY2rrcVxn7cmLDIlx07AFAXaAryat=w2000';">
     <a id="pestsSourceLink" href="#" target="_blank" rel="noopener noreferrer" style="display:none"></a>
   </div>
 
