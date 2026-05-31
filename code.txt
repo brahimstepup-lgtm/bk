@@ -3319,6 +3319,53 @@ function crudAddCleaning(username, cleanData) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── NETTOYAGE EDIT ───────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+function crudEditCleaning(username, cleanId, cleanData) {
+  try {
+    var perm = checkWritePermission(username, 'nettoyage');
+    if (!perm.ok) return { success: false, error: perm.error };
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === CLEAN_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()).indexOf('nettoyage') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) return { success: false, error: 'Feuille Nettoyage non trouvée.' };
+    var data = sh.getDataRange().getValues();
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(cleanId).trim()) { targetRow = i + 1; break; }
+    }
+    if (targetRow < 0) return { success: false, error: 'Entrée non trouvée.' };
+    var hdr = data[0];
+    var cols = { zone:-1, emplacement:-1, description:-1, action:-1, responsable:-1, statut:-1 };
+    for (var c = 0; c < hdr.length; c++) {
+      var h = normalize(String(hdr[c]||''));
+      if (h.indexOf('zone')>-1 && cols.zone<0) cols.zone=c;
+      else if ((h.indexOf('emplace')>-1||h.indexOf('lieu')>-1) && cols.emplacement<0) cols.emplacement=c;
+      else if ((h.indexOf('description')>-1||h.indexOf('observation')>-1||h.indexOf('constat')>-1) && cols.description<0) cols.description=c;
+      else if ((h.indexOf('action')>-1||h.indexOf('mesure')>-1) && cols.action<0) cols.action=c;
+      else if ((h.indexOf('respons')>-1||h.indexOf('charg')>-1) && cols.responsable<0) cols.responsable=c;
+      else if ((h.indexOf('statut')>-1||h.indexOf('etat')>-1) && cols.statut<0) cols.statut=c;
+    }
+    if (cleanData.zone!==undefined && cols.zone>=0) sh.getRange(targetRow,cols.zone+1).setValue(cleanData.zone);
+    if (cleanData.emplacement!==undefined && cols.emplacement>=0) sh.getRange(targetRow,cols.emplacement+1).setValue(cleanData.emplacement);
+    if (cleanData.description!==undefined && cols.description>=0) sh.getRange(targetRow,cols.description+1).setValue(cleanData.description);
+    if (cleanData.action!==undefined && cols.action>=0) sh.getRange(targetRow,cols.action+1).setValue(cleanData.action);
+    if (cleanData.responsable!==undefined && cols.responsable>=0) sh.getRange(targetRow,cols.responsable+1).setValue(cleanData.responsable);
+    if (cleanData.statut!==undefined && cols.statut>=0) sh.getRange(targetRow,cols.statut+1).setValue(cleanData.statut);
+    Logger.log('Cleaning '+cleanId+' updated by '+username);
+    return { success: true, message: 'Entrée nettoyage mise à jour.' };
+  } catch(e) { return { success: false, error: e.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
 // ── GENERIC FILE UPLOAD (pour pièces jointes quelconques) ────
 // ════════════════════════════════════════════════════════════
 function crudUploadFile(username, section, fileName, base64Data, mimeType) {

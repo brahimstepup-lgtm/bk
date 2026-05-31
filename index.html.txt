@@ -4134,6 +4134,7 @@ function renderIncidents(incs){
       +(inc.description?'<div class="idesc">'+esc(inc.description.substring(0,90))+(inc.description.length>90?'…':'')+'</div>':'')
       +'<div class="itags">'+(inc.lieu?'<span class="itag">📍 '+esc(inc.lieu)+'</span>':'')+(inc.type?'<span class="itag">'+esc(inc.type)+'</span>':'')
       +'<span class="'+(stat==='Clôturé'?'s-close':'s-open')+'">'+stat+'</span>'
+      +(userCanEdit('incidents')?'<button class="crud-btn edit" style="padding:2px 7px;font-size:9px;margin-left:auto" onclick="event.stopPropagation();openEditIncident(\''+esc(inc.id)+'\',\''+(inc.isoDate||'')+'\',\''+esc(inc.heure||'')+'\',\''+esc((inc.lieu||'').replace(/'/g,"\\\'"))+'\',\''+esc(inc.type||'')+'\',\''+esc((inc.description||'').replace(/'/g,"\\\'").replace(/\n/g,' '))+'\',\''+esc((inc.victime||'').replace(/'/g,"\\\'"))+'\',\''+(inc.gravite||1)+'\',\''+esc((inc.causes||'').replace(/'/g,"\\\'"))+'\',\''+esc((inc.responsable||'').replace(/'/g,"\\\'"))+'\',\''+esc(inc.statut||'')+'\',\''+esc((inc.actions||'').replace(/'/g,"\\\'"))+'\')">✏️</button>':'')
       +'<span class="iclick-hint">🔍 Voir détails</span></div>';
     el.onclick=function(){openIncModal(inc);};
     el.onkeydown=function(e){if(e.key==='Enter'||e.key===' ')openIncModal(inc);};
@@ -4310,7 +4311,8 @@ function applyTagF(){
       +'<td style="font-size:10px">'+hl(t.type)+'</td>'
       +'<td style="white-space:nowrap;font-size:10px">'+esc(t.dateCible||'—')+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
-      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>';
+      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
+      +(userCanEdit('tags')?'<td style="text-align:center"><button class="crud-btn edit" style="padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openEditTag(\''+esc(t.id)+'\',\''+esc((t.description||'').replace(/'/g,"\\\'"))+'\',\''+esc((t.zone||'').replace(/'/g,"\\\'"))+'\',\''+esc((t.emplacement||'').replace(/'/g,"\\\'"))+'\',\''+esc(t.type||'')+'\',\''+esc(t.gravite||'')+'\',\''+esc((t.responsable||'').replace(/'/g,"\\\'"))+'\',\''+(t.isoDate||'')+'\',\''+esc((t.risque||'').replace(/'/g,"\\\'"))+'\',\''+esc(t.statut||'')+'\',\''+esc((t.action||'').replace(/'/g,"\\\'"))+'\')">✏️</button></td>':'');
     tr.addEventListener('click',function(){ openTagModal(t); });
     tb.appendChild(tr);
   });
@@ -4888,7 +4890,8 @@ function renderClnTable(items, searchVal){
       avantCellHtml + apresCellHtml +
       '<td><span class="rbadge">'+hl(emplTxt)+'</span></td>' +
       '<td>'+(c.zone ? '<span class="rbadge">'+hl(c.zone)+'</span>' : '<span style="color:var(--text3);font-size:9px">—</span>')+'</td>' +
-      '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>';
+      '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>' +
+      (userCanEdit('nettoyage')?'<td style="text-align:center"><button class="crud-btn edit" style="padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openEditCleaning(\''+esc(c.id||'')+'\',\''+esc((c.zone||'').replace(/'/g,"\\\'"))+'\',\''+esc((c.emplacement||'').replace(/'/g,"\\\'"))+'\',\''+esc((c.description||c.observation||'').replace(/'/g,"\\\'").replace(/\n/g,' '))+'\',\''+esc((c.action||'').replace(/'/g,"\\\'"))+'\',\''+esc((c.responsable||'').replace(/'/g,"\\\'"))+'\',\''+esc(c.statut||'')+'\')">✏️</button></td>':'');
 
     tr.addEventListener('click', function(){ openCleanModal(c); });
     tb.appendChild(tr);
@@ -8857,6 +8860,18 @@ function openAddCleaning(){
   document.getElementById('crudClnStatut').value='Ouvert';
   document.getElementById('crudClnFile').value='';
   document.getElementById('crudClnModal').classList.add('open');
+  window._crudClnEditId=null;
+}
+function openEditCleaning(id,zone,empl,desc,action,resp,statut){
+  document.getElementById('crudClnZone').value=zone||'';
+  document.getElementById('crudClnEmplacement').value=empl||'';
+  document.getElementById('crudClnDesc').value=desc||'';
+  document.getElementById('crudClnAction').value=action||'';
+  document.getElementById('crudClnResp').value=resp||'';
+  document.getElementById('crudClnStatut').value=statut||'Ouvert';
+  document.getElementById('crudClnFile').value='';
+  document.getElementById('crudClnModal').classList.add('open');
+  window._crudClnEditId=id;
 }
 function closeCrudCln(){document.getElementById('crudClnModal').classList.remove('open');}
 
@@ -8892,10 +8907,17 @@ function submitCleaning(){
   }
 }
 function doSubmitCleaning(data){
-  google.script.run.withSuccessHandler(function(r){
-    if(r.success){closeCrudCln();showToast(r.message,'success');refreshData();}
-    else showToast(r.error||'Erreur','error');
-  }).withFailureHandler(function(){showToast('Erreur réseau','error');}).crudAddCleaning(currentUser.username,data);
+  if(window._crudClnEditId){
+    google.script.run.withSuccessHandler(function(r){
+      if(r.success){closeCrudCln();showToast(r.message,'success');refreshData();}
+      else showToast(r.error||'Erreur','error');
+    }).withFailureHandler(function(){showToast('Erreur réseau','error');}).crudEditCleaning(currentUser.username,window._crudClnEditId,data);
+  }else{
+    google.script.run.withSuccessHandler(function(r){
+      if(r.success){closeCrudCln();showToast(r.message,'success');refreshData();}
+      else showToast(r.error||'Erreur','error');
+    }).withFailureHandler(function(){showToast('Erreur réseau','error');}).crudAddCleaning(currentUser.username,data);
+  }
 }
 
 // ── Hook into onLoginSuccess to show CRUD bars ──
