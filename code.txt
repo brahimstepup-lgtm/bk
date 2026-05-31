@@ -2756,17 +2756,8 @@ function callGemini(prompt) {
 }
 
 // ── Exposées au client ────────────────────────────────────────
-function getDataForClient()           { return getData(); }
-function askGeminiForClient(p)        { return callGemini(p); }
-// PHOTO PROXY — retourne base64 de l'image Drive
-function getTagPhotoForClient(fileId) { return getTagPhotoForClient_(fileId); }
-function getTagPhotoForClient_(fileId) {
-  if (!fileId) return '';
-  try {
-    var blob = DriveApp.getFileById(fileId).getBlob();
-    return 'data:' + (blob.getContentType()||'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
-  } catch(e) { Logger.log('photo error: '+e.message); return ''; }
-}
+function getDataForClient() { return getData(); }
+function askGeminiForClient(p) { return callGemini(p); }
 
 
 
