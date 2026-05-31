@@ -1117,10 +1117,466 @@ html.light .pests-search-input{background:#edf2f7}
   .pests-table th{font-size:8px}
 }
 
+/* ════════════════════════════════════════════════════════════
+   ══ CRUD — MODALS AJOUT/MODIFICATION ══
+   ════════════════════════════════════════════════════════════ */
+.crud-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.crud-btn{padding:6px 14px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:all .2s;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:5px}
+.crud-btn.add{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;border-color:var(--p2)}
+.crud-btn.add:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,99,126,.4)}
+.crud-btn.edit{background:var(--bg3);color:var(--amber);border-color:rgba(245,166,35,.3)}
+.crud-btn.edit:hover{background:rgba(245,166,35,.1);border-color:var(--amber)}
+.crud-btn.del{background:var(--bg3);color:var(--red);border-color:rgba(232,68,90,.3)}
+.crud-btn.del:hover{background:rgba(232,68,90,.1);border-color:var(--red)}
+.crud-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.crud-modal-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:10001;display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px)}
+.crud-modal-bg.open{display:flex;animation:fadeIn .15s ease}
+.crud-modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:min(680px,96%);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.7);animation:slideUp .2s ease}
+.crud-modal-top{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.crud-modal-title{font-size:14px;font-weight:700;color:var(--text);flex:1}
+.crud-modal-close{width:30px;height:30px;border-radius:8px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.crud-modal-close:hover{background:var(--bg5);color:var(--text);border-color:var(--red)}
+.crud-modal-body{overflow-y:auto;flex:1;padding:20px}
+.crud-modal-body::-webkit-scrollbar{width:4px}
+.crud-modal-body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.crud-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.crud-field{display:flex;flex-direction:column;gap:4px}
+.crud-field.full{grid-column:1/-1}
+.crud-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.crud-input,.crud-select,.crud-textarea{padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'Inter',sans-serif;transition:border-color .2s}
+.crud-input:focus,.crud-select:focus,.crud-textarea:focus{border-color:var(--p2)}
+.crud-textarea{min-height:80px;resize:vertical}
+.crud-file-area{border:2px dashed var(--border);border-radius:8px;padding:18px 14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.crud-file-area:hover{border-color:var(--p2);background:var(--bg4)}
+.crud-file-area.has-file{border-color:var(--green);background:rgba(16,201,133,.05)}
+.crud-file-icon{font-size:24px;margin-bottom:6px}
+.crud-file-text{font-size:11px;color:var(--text3)}
+.crud-file-name{font-size:10px;color:var(--green);font-weight:600;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.crud-preview{max-width:120px;max-height:80px;border-radius:6px;margin-top:8px;border:1px solid var(--border)}
+.crud-actions{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.crud-submit{padding:10px 22px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;transition:all .2s;font-family:'Inter',sans-serif}
+.crud-submit:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,99,126,.4)}
+.crud-submit:disabled{opacity:.5;cursor:wait;transform:none}
+.crud-cancel{padding:10px 22px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg4);color:var(--text2);transition:all .2s;font-family:'Inter',sans-serif}
+.crud-cancel:hover{background:var(--bg5);color:var(--text)}
+.crud-toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:12px;font-weight:600;z-index:10002;animation:slideUp .2s ease;display:none;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.crud-toast.show{display:flex}
+.crud-toast.success{background:rgba(16,201,133,.9);color:#fff}
+.crud-toast.error{background:rgba(232,68,90,.9);color:#fff}
+@media(max-width:600px){.crud-modal{width:100%;max-height:100vh;border-radius:0}.crud-row{grid-template-columns:1fr}}
+
+/* ════════════════════════════════════════════════════════════
+   ══ RBAC — LOGIN + ADMIN STYLES ══
+   ════════════════════════════════════════════════════════════ */
+.login-bg{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#050f16 0%,#071820 40%,#0d2530 100%)}
+.login-card{width:min(420px,92%);background:var(--card-bg);border:1px solid var(--border);
+  border-radius:16px;padding:36px 32px;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:slideUp .3s ease}
+.login-title{font-size:18px;font-weight:700;color:var(--text);text-align:center;margin-bottom:4px}
+.login-sub{font-size:11px;color:var(--text3);text-align:center;margin-bottom:24px;font-family:'JetBrains Mono',monospace}
+.login-field{margin-bottom:16px}
+.login-label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.login-input{width:100%;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:'Inter',sans-serif;transition:border-color .2s}
+.login-input:focus{border-color:var(--p2)}
+.login-input::placeholder{color:var(--text3)}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--p1),var(--p2));border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;margin-top:8px}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(9,99,126,.4)}
+.login-btn:disabled{opacity:.6;cursor:wait;transform:none}
+.login-error{background:rgba(232,68,90,.1);border:1px solid rgba(232,68,90,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--red);display:none;align-items:center;gap:8px}
+.login-error.show{display:flex}
+.login-footer{text-align:center;margin-top:20px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.user-badge{display:flex;align-items:center;gap:8px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:10px;cursor:pointer;transition:all .2s;position:relative}
+.user-badge:hover{background:var(--bg4);border-color:var(--p2)}
+.user-avatar-sm{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--p1),var(--p3));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+.user-role-tag{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;text-transform:uppercase}
+.role-admin{background:rgba(232,68,90,.15);color:var(--red);border:1px solid rgba(232,68,90,.3)}
+.role-editor{background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+.role-viewer{background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3)}
+.user-dropdown{position:absolute;top:38px;right:0;width:210px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:700;display:none;overflow:hidden}
+.user-dropdown.open{display:block;animation:slideDown .15s ease}
+.user-dd-item{padding:10px 14px;font-size:11px;color:var(--text2);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.user-dd-item:last-child{border-bottom:none}
+.user-dd-item:hover{background:var(--bg3);color:var(--text)}
+.user-dd-item.danger{color:var(--red)}
+.user-dd-item.danger:hover{background:rgba(232,68,90,.08)}
+.admin-panel-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:10000;display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px)}
+.admin-panel-bg.open{display:flex;animation:fadeIn .15s ease}
+.admin-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:min(900px,96%);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.7);animation:slideUp .2s ease}
+.admin-top{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.admin-title{font-size:15px;font-weight:700;color:var(--text);flex:1}
+.admin-close{width:30px;height:30px;border-radius:8px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.admin-close:hover{background:var(--bg5);color:var(--text);border-color:var(--red)}
+.admin-body{overflow-y:auto;flex:1;padding:20px}
+.admin-body::-webkit-scrollbar{width:4px}
+.admin-body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.admin-users-grid{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.admin-user-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:all .15s}
+.admin-user-card:hover{border-color:var(--p2);transform:translateX(2px)}
+.admin-user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--p1),var(--p3));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.admin-user-info{flex:1;min-width:0}
+.admin-user-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.admin-user-meta{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.admin-user-sections{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.admin-section-chip{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(9,99,126,.15);color:var(--p4);border:1px solid rgba(9,99,126,.3);font-family:'JetBrains Mono',monospace}
+.admin-user-actions{display:flex;gap:6px;flex-shrink:0}
+.admin-btn-sm{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s;background:var(--bg4);color:var(--text2)}
+.admin-btn-sm:hover{background:var(--p1);color:#fff;border-color:var(--p2)}
+.admin-btn-sm.del:hover{background:rgba(232,68,90,.15);color:var(--red);border-color:rgba(232,68,90,.4)}
+.admin-form{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.admin-form-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.admin-form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.admin-form-field{display:flex;flex-direction:column;gap:4px}
+.admin-form-field.full{grid-column:1/-1}
+.admin-form-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.admin-form-input{padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'Inter',sans-serif;transition:border-color .2s}
+.admin-form-input:focus{border-color:var(--p2)}
+.admin-form-select{padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;cursor:pointer}
+.admin-sections-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px}
+.admin-section-check{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;user-select:none}
+.admin-section-check:hover{border-color:var(--p2);background:var(--bg4)}
+.admin-section-check.checked{background:rgba(9,99,126,.12);border-color:var(--p3)}
+.admin-section-check input{display:none}
+.admin-section-check .checkmark{width:16px;height:16px;border-radius:4px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all .15s;flex-shrink:0}
+.admin-section-check.checked .checkmark{background:var(--p2);border-color:var(--p2);color:#fff}
+.admin-section-check .sec-name{font-size:11px;color:var(--text2);font-weight:500}
+.admin-form-actions{display:flex;gap:8px;margin-top:16px}
+.admin-form-btn{padding:9px 18px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:all .2s;font-family:'Inter',sans-serif}
+.admin-form-btn.primary{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;border-color:var(--p2)}
+.admin-form-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,99,126,.4)}
+.admin-form-btn.secondary{background:var(--bg4);color:var(--text2)}
+.admin-form-btn.secondary:hover{background:var(--bg5);color:var(--text)}
+.readonly-banner{background:rgba(16,201,133,.08);border:1px solid rgba(16,201,133,.3);border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--green)}
+.editor-banner{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--amber)}
+@media(max-width:600px){.login-card{padding:24px 18px}.admin-panel{width:100%;max-height:100vh;border-radius:0}.admin-form-row{grid-template-columns:1fr}.admin-sections-grid{grid-template-columns:1fr 1fr}}
+
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- ══ CRUD MODALS ══ -->
+
+<!-- TAG Add/Edit Modal -->
+<div id="crudTagModal" class="crud-modal-bg" onclick="if(event.target===this)closeCrudTag()">
+  <div class="crud-modal">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">🏷️</span>
+      <div class="crud-modal-title" id="crudTagTitle">Ajouter un TAG</div>
+      <button class="crud-modal-close" onclick="closeCrudTag()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <input type="hidden" id="crudTagId" value="">
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Description de la situation dangereuse *</label>
+          <textarea id="crudTagDesc" class="crud-textarea" placeholder="Décrivez la situation dangereuse observée..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Zone / Secteur *</label>
+          <input type="text" id="crudTagZone" class="crud-input" placeholder="ex: Zone A, Atelier 2...">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Emplacement</label>
+          <input type="text" id="crudTagEmplacement" class="crud-input" placeholder="Lieu précis">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Type de danger</label>
+          <select id="crudTagType" class="crud-select">
+            <option value="">— Sélectionner —</option>
+            <option value="Chute">Chute</option>
+            <option value="Électrique">Électrique</option>
+            <option value="Mécanique">Mécanique</option>
+            <option value="Chimique">Chimique</option>
+            <option value="Incendie">Incendie</option>
+            <option value="Ergonomique">Ergonomique</option>
+            <option value="Circulation">Circulation</option>
+            <option value="EPI manquant">EPI manquant</option>
+            <option value="Ordre/Rangement">Ordre/Rangement</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Gravité</label>
+          <select id="crudTagGravite" class="crud-select">
+            <option value="">— Sélectionner —</option>
+            <option value="1">1 — Faible</option>
+            <option value="2">2 — Modérée</option>
+            <option value="3">3 — Élevée</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Responsable</label>
+          <input type="text" id="crudTagResp" class="crud-input" placeholder="Nom du responsable">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Date cible de résolution</label>
+          <input type="date" id="crudTagDateCible" class="crud-input">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Risque principal</label>
+          <input type="text" id="crudTagRisque" class="crud-input" placeholder="Risque identifié">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Statut</label>
+          <select id="crudTagStatut" class="crud-select">
+            <option value="Ouvert">Ouvert</option>
+            <option value="En cours">En cours</option>
+            <option value="Fermé">Fermé</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Action urgente / Mesures correctives</label>
+          <textarea id="crudTagAction" class="crud-textarea" style="min-height:50px" placeholder="Actions à entreprendre..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">📷 Photo (avant intervention)</label>
+          <div class="crud-file-area" id="crudTagFileArea" onclick="document.getElementById('crudTagFile').click()">
+            <div class="crud-file-icon">📁</div>
+            <div class="crud-file-text">Cliquer ou glisser-déposer une image</div>
+            <div class="crud-file-name" id="crudTagFileName"></div>
+            <img id="crudTagPreview" class="crud-preview" style="display:none">
+          </div>
+          <input type="file" id="crudTagFile" accept="image/*" style="display:none" onchange="onTagFileSelected(this)">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">📷 Photo (après intervention) — optionnel</label>
+          <div class="crud-file-area" id="crudTagFileAreaApres" onclick="document.getElementById('crudTagFileApres').click()">
+            <div class="crud-file-icon">📁</div>
+            <div class="crud-file-text">Ajouter une photo après correction</div>
+            <div class="crud-file-name" id="crudTagFileNameApres"></div>
+            <img id="crudTagPreviewApres" class="crud-preview" style="display:none">
+          </div>
+          <input type="file" id="crudTagFileApres" accept="image/*" style="display:none" onchange="onTagFileApresSelected(this)">
+        </div>
+      </div>
+    </div>
+    <div class="crud-actions">
+      <button class="crud-submit" id="crudTagSubmit" onclick="submitTag()">Enregistrer</button>
+      <button class="crud-cancel" onclick="closeCrudTag()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- INCIDENT Add/Edit Modal -->
+<div id="crudIncModal" class="crud-modal-bg" onclick="if(event.target===this)closeCrudInc()">
+  <div class="crud-modal">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">⚠️</span>
+      <div class="crud-modal-title" id="crudIncTitle">Déclarer un Incident</div>
+      <button class="crud-modal-close" onclick="closeCrudInc()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <input type="hidden" id="crudIncId" value="">
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Date *</label>
+          <input type="date" id="crudIncDate" class="crud-input">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Heure</label>
+          <input type="time" id="crudIncHeure" class="crud-input">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Lieu / Zone *</label>
+          <input type="text" id="crudIncLieu" class="crud-input" placeholder="Lieu de l'incident">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Type</label>
+          <select id="crudIncType" class="crud-select">
+            <option value="">— Sélectionner —</option>
+            <option value="Presqu'accident">Presqu'accident</option>
+            <option value="Incident">Incident</option>
+            <option value="Accident bénin">Accident bénin</option>
+            <option value="Accident avec arrêt">Accident avec arrêt</option>
+            <option value="Dommage matériel">Dommage matériel</option>
+            <option value="Environnemental">Environnemental</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Description *</label>
+          <textarea id="crudIncDesc" class="crud-textarea" placeholder="Décrivez l'incident en détail..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Victime(s)</label>
+          <input type="text" id="crudIncVictime" class="crud-input" placeholder="Nom(s) si applicable">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Gravité</label>
+          <select id="crudIncGravite" class="crud-select">
+            <option value="1">1 — Mineur</option>
+            <option value="2">2 — Modéré</option>
+            <option value="3">3 — Grave</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Causes</label>
+          <input type="text" id="crudIncCauses" class="crud-input" placeholder="Causes identifiées">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Responsable suivi</label>
+          <input type="text" id="crudIncResp" class="crud-input" placeholder="Responsable">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Statut</label>
+          <select id="crudIncStatut" class="crud-select">
+            <option value="Ouvert">Ouvert</option>
+            <option value="En cours">En cours</option>
+            <option value="Fermé">Fermé</option>
+          </select>
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Actions correctives</label>
+          <input type="text" id="crudIncActions" class="crud-input" placeholder="Actions prises/prévues">
+        </div>
+      </div>
+    </div>
+    <div class="crud-actions">
+      <button class="crud-submit" id="crudIncSubmit" onclick="submitIncident()">Enregistrer</button>
+      <button class="crud-cancel" onclick="closeCrudInc()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- NETTOYAGE Add Modal -->
+<div id="crudClnModal" class="crud-modal-bg" onclick="if(event.target===this)closeCrudCln()">
+  <div class="crud-modal">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">🧹</span>
+      <div class="crud-modal-title">Ajouter une entrée Nettoyage</div>
+      <button class="crud-modal-close" onclick="closeCrudCln()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Zone *</label>
+          <input type="text" id="crudClnZone" class="crud-input" placeholder="Zone / secteur">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Emplacement</label>
+          <input type="text" id="crudClnEmplacement" class="crud-input" placeholder="Lieu précis">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Description / Observation *</label>
+          <textarea id="crudClnDesc" class="crud-textarea" placeholder="Décrivez le constat ou l'observation..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Action corrective</label>
+          <input type="text" id="crudClnAction" class="crud-input" placeholder="Action prévue">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Responsable</label>
+          <input type="text" id="crudClnResp" class="crud-input" placeholder="Responsable">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Statut</label>
+          <select id="crudClnStatut" class="crud-select">
+            <option value="Ouvert">Ouvert</option>
+            <option value="En cours">En cours</option>
+            <option value="Fermé">Fermé</option>
+          </select>
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">📷 Photo</label>
+          <input type="file" id="crudClnFile" accept="image/*" class="crud-input" style="padding:6px">
+        </div>
+      </div>
+    </div>
+    <div class="crud-actions">
+      <button class="crud-submit" onclick="submitCleaning()">Enregistrer</button>
+      <button class="crud-cancel" onclick="closeCrudCln()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="crudToast" class="crud-toast"></div>
+
+<!-- ══ RBAC LOGIN PAGE ══ -->
+<div id="loginPage" class="login-bg">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="logo-fb" style="width:60px;height:60px;font-size:22px;margin:0 auto 10px">S3</div>
+      <div class="login-title">SOBCO 3 — HSE Dashboard</div>
+      <div class="login-sub">Connexion sécurisée</div>
+    </div>
+    <div id="loginError" class="login-error"><span>⚠</span><span id="loginErrorMsg"></span></div>
+    <div class="login-field">
+      <label class="login-label">Nom d'utilisateur</label>
+      <input type="text" id="loginUsername" class="login-input" placeholder="Entrez votre nom d'utilisateur" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Mot de passe</label>
+      <input type="password" id="loginPassword" class="login-input" placeholder="Entrez votre mot de passe" autocomplete="current-password">
+    </div>
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">Se connecter</button>
+    <div class="login-footer">SOBCO 3 — Système HSE v9.2<br>Accès réservé au personnel autorisé</div>
+  </div>
+</div>
+
+<!-- ══ RBAC ADMIN PANEL ══ -->
+<div id="adminPanelBg" class="admin-panel-bg" onclick="if(event.target===this)closeAdminPanel()">
+  <div class="admin-panel">
+    <div class="admin-top">
+      <span style="font-size:20px">👥</span>
+      <div class="admin-title">Gestion des Utilisateurs</div>
+      <button class="admin-close" onclick="closeAdminPanel()">✕</button>
+    </div>
+    <div class="admin-body">
+      <div id="adminCreateForm" class="admin-form">
+        <div class="admin-form-title"><span>➕</span><span id="adminFormTitleText">Créer un nouveau compte</span></div>
+        <div class="admin-form-row">
+          <div class="admin-form-field"><label class="admin-form-label">Nom d'utilisateur</label><input type="text" id="adminNewUsername" class="admin-form-input" placeholder="ex: superviseur1"></div>
+          <div class="admin-form-field"><label class="admin-form-label">Nom complet</label><input type="text" id="adminNewDisplayName" class="admin-form-input" placeholder="ex: Ahmed Benali"></div>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-form-field"><label class="admin-form-label">Mot de passe</label><input type="password" id="adminNewPassword" class="admin-form-input" placeholder="Min. 6 caractères"></div>
+          <div class="admin-form-field"><label class="admin-form-label">Rôle</label><select id="adminNewRole" class="admin-form-select" onchange="onRoleChange()"><option value="editor">Éditeur (Superviseur)</option><option value="viewer">Observateur (Lecture seule)</option></select></div>
+        </div>
+        <div id="adminSectionsWrap" class="admin-form-field full">
+          <label class="admin-form-label">Sections autorisées (Éditeur uniquement)</label>
+          <div class="admin-sections-grid" id="adminSectionsGrid"></div>
+        </div>
+        <div class="admin-form-actions">
+          <button class="admin-form-btn primary" id="adminSaveBtn" onclick="saveUser()">Créer le compte</button>
+          <button class="admin-form-btn secondary" id="adminCancelBtn" onclick="cancelEditUser()" style="display:none">Annuler</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:14px">📋</span><span style="font-size:12px;font-weight:700;color:var(--text)">Comptes existants</span><span id="adminUserCount" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-left:auto"></span></div>
+      <div id="adminUsersGrid" class="admin-users-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app" style="display:none">
 
 <!-- ══ HEADER ══ -->
 <div class="hdr">
@@ -1260,6 +1716,10 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ INCIDENTS ═══ -->
 <div id="inc" class="page">
+  <!-- CRUD Action Bar -->
+  <div class="crud-bar" id="incCrudBar" style="display:none">
+    <button class="crud-btn add" onclick="openAddIncident()">➕ Déclarer un Incident</button>
+  </div>
   <div class="pf-bar">
     <span class="pf-lbl">Période :</span>
     <select class="pf-sel" id="incPer" onchange="onIncPer()">
@@ -1294,6 +1754,12 @@ html.light .pests-search-input{background:#edf2f7}
 <!-- ═══ TAGS ═══ -->
 <div id="tags" class="page">
   <div class="tsum" id="tagSum"></div>
+
+  <!-- CRUD Action Bar -->
+  <div class="crud-bar" id="tagCrudBar" style="display:none">
+    <button class="crud-btn add" onclick="openAddTag()">➕ Nouveau TAG</button>
+    <button class="crud-btn del" id="tagDelBtn" style="display:none" onclick="deleteSelectedTag()">🗑️ Supprimer</button>
+  </div>
 
   <!-- Barre recherche + tri -->
   <div class="tag-search-bar">
@@ -1371,7 +1837,7 @@ html.light .pests-search-input{background:#edf2f7}
         <thead>
           <tr>
             <th>ID</th><th>Date ↓</th><th>Avant</th><th>Après</th>
-            <th>Description</th><th>Zone</th><th>Type</th><th>Date cible</th><th>Responsable</th><th>Statut</th>
+            <th>Description</th><th>Zone</th><th>Type</th><th>Date cible</th><th>Responsable</th><th>Statut</th><th id="tagActionsCol" style="display:none">Actions</th>
           </tr>
         </thead>
         <tbody id="tagBody"></tbody>
@@ -1852,6 +2318,10 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ NETTOYAGE ═══ -->
 <div id="cln" class="page">
+  <!-- CRUD Action Bar -->
+  <div class="crud-bar" id="clnCrudBar" style="display:none">
+    <button class="crud-btn add" onclick="openAddCleaning()">➕ Nouvelle entrée</button>
+  </div>
   <div class="card" style="margin-bottom:14px">
     <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Suivi de Nettoyage — SOBCO 3</div>
     <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
@@ -3623,10 +4093,20 @@ function renderIncidents(incs){
       +(inc.description?'<div class="idesc">'+esc(inc.description.substring(0,90))+(inc.description.length>90?'…':'')+'</div>':'')
       +'<div class="itags">'+(inc.lieu?'<span class="itag">📍 '+esc(inc.lieu)+'</span>':'')+(inc.type?'<span class="itag">'+esc(inc.type)+'</span>':'')
       +'<span class="'+(stat==='Clôturé'?'s-close':'s-open')+'">'+stat+'</span>'
+      +(userCanEdit('incidents')?'<button class="crud-btn edit crud-edit-inc" data-idx="'+incs.indexOf(inc)+'" style="padding:2px 7px;font-size:9px;margin-left:auto">✏️</button>':'')
       +'<span class="iclick-hint">🔍 Voir détails</span></div>';
     el.onclick=function(){openIncModal(inc);};
     el.onkeydown=function(e){if(e.key==='Enter'||e.key===' ')openIncModal(inc);};
     il.appendChild(el);
+  });
+  // Attach edit handlers for incidents (avoids inline escaping issues)
+  document.querySelectorAll('.crud-edit-inc').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var i=parseInt(btn.dataset.idx,10);
+      var inc=incs[i];if(!inc)return;
+      openEditIncFromData(inc);
+    });
   });
 }
 
@@ -3799,9 +4279,19 @@ function applyTagF(){
       +'<td style="font-size:10px">'+hl(t.type)+'</td>'
       +'<td style="white-space:nowrap;font-size:10px">'+esc(t.dateCible||'—')+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
-      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>';
+      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
+      +(userCanEdit('tags')?'<td style="text-align:center"><button class="crud-btn edit crud-edit-tag" data-idx="'+idx+'" style="padding:3px 8px;font-size:10px">✏️</button></td>':'');
     tr.addEventListener('click',function(){ openTagModal(t); });
     tb.appendChild(tr);
+  });
+  // Attach edit handlers via delegation (avoids inline escaping issues)
+  document.querySelectorAll('.crud-edit-tag').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var i=parseInt(btn.dataset.idx,10);
+      var t=filtered[i];if(!t)return;
+      openEditTagFromData(t);
+    });
   });
 
   // ── Chargement asynchrone des vignettes (avec cache partagé) ──
@@ -4377,10 +4867,21 @@ function renderClnTable(items, searchVal){
       avantCellHtml + apresCellHtml +
       '<td><span class="rbadge">'+hl(emplTxt)+'</span></td>' +
       '<td>'+(c.zone ? '<span class="rbadge">'+hl(c.zone)+'</span>' : '<span style="color:var(--text3);font-size:9px">—</span>')+'</td>' +
-      '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>';
+      '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>' +
+      (userCanEdit('nettoyage')?'<td style="text-align:center"><button class="crud-btn edit crud-edit-cln" data-idx="'+idx+'" style="padding:3px 8px;font-size:10px">✏️</button></td>':'');
 
     tr.addEventListener('click', function(){ openCleanModal(c); });
     tb.appendChild(tr);
+  });
+  // Attach edit handlers for cleaning (avoids inline escaping issues)
+  document.querySelectorAll('.crud-edit-cln').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var i=parseInt(btn.dataset.idx,10);
+      var c=items[i];if(!c)return;
+      openEditCleaning(c.id||'',c.zone||'',c.emplacement||'',c.description||c.observation||'',c.action||'',c.responsable||'',c.statut||'');
+    });
+  });
   });
 
   // ── Chargement asynchrone des vignettes (avec cache) ───────────
@@ -8075,6 +8576,9 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
+
+  // Show CRUD buttons if user is logged in with write permissions
+  if(typeof showCrudBars==='function') showCrudBars();
 }
 
 window.onload=function(){
@@ -8126,6 +8630,493 @@ function refreshData(){
     })
     .getDataForClient();
 }
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════
+     CRUD JAVASCRIPT — Add/Edit/Delete for Tags, Incidents, Nettoyage
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+// ── CRUD: Show/hide action bars based on role ──
+function showCrudBars(){
+  if(!currentUser)return;
+  var canTags=userCanEdit('tags'),canInc=userCanEdit('incidents'),canCln=userCanEdit('nettoyage');
+  var tb=document.getElementById('tagCrudBar');if(tb)tb.style.display=canTags?'flex':'none';
+  var ib=document.getElementById('incCrudBar');if(ib)ib.style.display=canInc?'flex':'none';
+  var cb=document.getElementById('clnCrudBar');if(cb)cb.style.display=canCln?'flex':'none';
+  // Show actions column in tags table
+  var ac=document.getElementById('tagActionsCol');if(ac)ac.style.display=canTags?'':'none';
+  // Show delete button only for admin
+  var db=document.getElementById('tagDelBtn');if(db)db.style.display=userCanDelete()?'':'none';
+}
+
+// ── Toast ──
+function showToast(msg,type){
+  var t=document.getElementById('crudToast');
+  t.textContent=msg;t.className='crud-toast show '+(type||'success');
+  setTimeout(function(){t.classList.remove('show');},4000);
+}
+
+// ════════════════════════════════════════════════════════════
+// ── TAG CRUD ─────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+var tagFileData=null;
+var tagFileApresData=null;
+
+function openAddTag(){
+  document.getElementById('crudTagId').value='';
+  document.getElementById('crudTagTitle').textContent='Ajouter un TAG';
+  document.getElementById('crudTagDesc').value='';
+  document.getElementById('crudTagZone').value='';
+  document.getElementById('crudTagEmplacement').value='';
+  document.getElementById('crudTagType').value='';
+  document.getElementById('crudTagGravite').value='';
+  document.getElementById('crudTagResp').value='';
+  document.getElementById('crudTagDateCible').value='';
+  document.getElementById('crudTagRisque').value='';
+  document.getElementById('crudTagStatut').value='Ouvert';
+  document.getElementById('crudTagAction').value='';
+  document.getElementById('crudTagFileName').textContent='';
+  document.getElementById('crudTagFileName').style.color='';
+  document.getElementById('crudTagPreview').style.display='none';
+  document.getElementById('crudTagFileArea').classList.remove('has-file');
+  document.getElementById('crudTagFileNameApres').textContent='';
+  document.getElementById('crudTagPreviewApres').style.display='none';
+  document.getElementById('crudTagFileAreaApres').classList.remove('has-file');
+  tagFileData=null;
+  tagFileApresData=null;
+  document.getElementById('crudTagModal').classList.add('open');
+}
+
+function openEditTag(tagId,desc,zone,empl,type,grav,resp,dateCible,risque,statut,action){
+  document.getElementById('crudTagId').value=tagId;
+  document.getElementById('crudTagTitle').textContent='Modifier TAG #'+tagId;
+  document.getElementById('crudTagDesc').value=desc||'';
+  document.getElementById('crudTagZone').value=zone||'';
+  document.getElementById('crudTagEmplacement').value=empl||'';
+  document.getElementById('crudTagType').value=type||'';
+  document.getElementById('crudTagGravite').value=grav||'';
+  document.getElementById('crudTagResp').value=resp||'';
+  document.getElementById('crudTagDateCible').value=dateCible||'';
+  document.getElementById('crudTagRisque').value=risque||'';
+  document.getElementById('crudTagStatut').value=statut||'Ouvert';
+  document.getElementById('crudTagAction').value=action||'';
+  document.getElementById('crudTagFileName').textContent='';
+  document.getElementById('crudTagPreview').style.display='none';
+  document.getElementById('crudTagFileArea').classList.remove('has-file');
+  tagFileData=null;
+  document.getElementById('crudTagModal').classList.add('open');
+}
+
+function closeCrudTag(){document.getElementById('crudTagModal').classList.remove('open');}
+
+// ── Helper: open edit tag from data object (no escaping needed) ──
+function openEditTagFromData(t){
+  openEditTag(t.id, t.description, t.zone, t.emplacement, t.type, t.gravite, t.responsable, t.isoDate||'', t.risque, t.statut, t.action);
+  // Show existing photo reference if available
+  if(t.photoRef||t.photoClean){
+    var fn=document.getElementById('crudTagFileName');
+    fn.textContent='Photo existante : '+(t.photoClean||t.photoRef);
+    fn.style.color='var(--p4)';
+    document.getElementById('crudTagFileArea').classList.add('has-file');
+  }
+}
+
+function onTagFileSelected(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var base64=e.target.result.split(',')[1];
+    tagFileData={name:file.name,base64:base64,mime:file.type};
+    document.getElementById('crudTagFileName').textContent=file.name;
+    document.getElementById('crudTagFileName').style.color='';
+    document.getElementById('crudTagPreview').src=e.target.result;
+    document.getElementById('crudTagPreview').style.display='block';
+    document.getElementById('crudTagFileArea').classList.add('has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+function onTagFileApresSelected(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var base64=e.target.result.split(',')[1];
+    tagFileApresData={name:'apres_'+file.name,base64:base64,mime:file.type};
+    document.getElementById('crudTagFileNameApres').textContent=file.name;
+    document.getElementById('crudTagPreviewApres').src=e.target.result;
+    document.getElementById('crudTagPreviewApres').style.display='block';
+    document.getElementById('crudTagFileAreaApres').classList.add('has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitTag(){
+  var id=document.getElementById('crudTagId').value;
+  var desc=document.getElementById('crudTagDesc').value.trim();
+  var zone=document.getElementById('crudTagZone').value.trim();
+  if(!desc){alert('La description est obligatoire.');return;}
+  if(!zone){alert('La zone est obligatoire.');return;}
+
+  var btn=document.getElementById('crudTagSubmit');btn.disabled=true;btn.textContent='Enregistrement...';
+
+  var data={
+    description:desc,
+    zone:zone,
+    emplacement:document.getElementById('crudTagEmplacement').value.trim(),
+    type:document.getElementById('crudTagType').value,
+    gravite:document.getElementById('crudTagGravite').value,
+    responsable:document.getElementById('crudTagResp').value.trim(),
+    dateCible:document.getElementById('crudTagDateCible').value,
+    risque:document.getElementById('crudTagRisque').value.trim(),
+    statut:document.getElementById('crudTagStatut').value,
+    action:document.getElementById('crudTagAction').value.trim()
+  };
+  if(tagFileData){data.photoBase64=tagFileData.base64;data.photoName=tagFileData.name;data.photoMime=tagFileData.mime;}
+  if(tagFileApresData){data.photoApresBase64=tagFileApresData.base64;data.photoApresName=tagFileApresData.name;data.photoApresMime=tagFileApresData.mime;}
+
+  var callback=function(r){
+    btn.disabled=false;btn.textContent='Enregistrer';
+    if(r.success){closeCrudTag();showToast(r.message,'success');refreshData();}
+    else{showToast(r.error||'Erreur','error');}
+  };
+  var fail=function(){btn.disabled=false;btn.textContent='Enregistrer';showToast('Erreur réseau','error');};
+
+  if(id){
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudEditTag(currentUser.username,id,data);
+  }else{
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudAddTag(currentUser.username,data);
+  }
+}
+
+function deleteSelectedTag(){
+  var id=prompt('Entrez l\'ID du TAG à supprimer :');
+  if(!id)return;
+  if(!confirm('Supprimer définitivement le TAG #'+id+' ?\nCette action est irréversible.'))return;
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){showToast(r.message,'success');refreshData();}else showToast(r.error,'error');
+  }).crudDeleteTag(currentUser.username,id);
+}
+
+// ════════════════════════════════════════════════════════════
+// ── INCIDENT CRUD ────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+function openAddIncident(){
+  document.getElementById('crudIncId').value='';
+  document.getElementById('crudIncTitle').textContent='Déclarer un Incident';
+  document.getElementById('crudIncDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('crudIncHeure').value='';
+  document.getElementById('crudIncLieu').value='';
+  document.getElementById('crudIncType').value='';
+  document.getElementById('crudIncDesc').value='';
+  document.getElementById('crudIncVictime').value='';
+  document.getElementById('crudIncGravite').value='1';
+  document.getElementById('crudIncCauses').value='';
+  document.getElementById('crudIncResp').value='';
+  document.getElementById('crudIncStatut').value='Ouvert';
+  document.getElementById('crudIncActions').value='';
+  document.getElementById('crudIncModal').classList.add('open');
+}
+
+function openEditIncident(id,date,heure,lieu,type,desc,victime,grav,causes,resp,statut,actions){
+  document.getElementById('crudIncId').value=id;
+  document.getElementById('crudIncTitle').textContent='Modifier Incident '+id;
+  document.getElementById('crudIncDate').value=date||'';
+  document.getElementById('crudIncHeure').value=heure||'';
+  document.getElementById('crudIncLieu').value=lieu||'';
+  document.getElementById('crudIncType').value=type||'';
+  document.getElementById('crudIncDesc').value=desc||'';
+  document.getElementById('crudIncVictime').value=victime||'';
+  document.getElementById('crudIncGravite').value=grav||'1';
+  document.getElementById('crudIncCauses').value=causes||'';
+  document.getElementById('crudIncResp').value=resp||'';
+  document.getElementById('crudIncStatut').value=statut||'Ouvert';
+  document.getElementById('crudIncActions').value=actions||'';
+  document.getElementById('crudIncModal').classList.add('open');
+}
+
+function closeCrudInc(){document.getElementById('crudIncModal').classList.remove('open');}
+
+// ── Helper: open edit incident from data object (no escaping needed) ──
+function openEditIncFromData(inc){
+  openEditIncident(inc.id, inc.isoDate||'', inc.heure||'', inc.lieu||'', inc.type||'', inc.description||'', inc.victime||'', inc.gravite||'1', inc.causes||'', inc.responsable||'', inc.statut||'', inc.actions||'');
+}
+
+function submitIncident(){
+  var id=document.getElementById('crudIncId').value;
+  var desc=document.getElementById('crudIncDesc').value.trim();
+  var lieu=document.getElementById('crudIncLieu').value.trim();
+  if(!desc){alert('La description est obligatoire.');return;}
+  if(!lieu){alert('Le lieu est obligatoire.');return;}
+
+  var btn=document.getElementById('crudIncSubmit');btn.disabled=true;btn.textContent='Enregistrement...';
+  var data={
+    date:document.getElementById('crudIncDate').value,
+    heure:document.getElementById('crudIncHeure').value,
+    lieu:lieu,
+    type:document.getElementById('crudIncType').value,
+    description:desc,
+    victime:document.getElementById('crudIncVictime').value.trim(),
+    gravite:document.getElementById('crudIncGravite').value,
+    causes:document.getElementById('crudIncCauses').value.trim(),
+    responsable:document.getElementById('crudIncResp').value.trim(),
+    statut:document.getElementById('crudIncStatut').value,
+    actions:document.getElementById('crudIncActions').value.trim()
+  };
+
+  var callback=function(r){
+    btn.disabled=false;btn.textContent='Enregistrer';
+    if(r.success){closeCrudInc();showToast(r.message,'success');refreshData();}
+    else showToast(r.error||'Erreur','error');
+  };
+  var fail=function(){btn.disabled=false;btn.textContent='Enregistrer';showToast('Erreur réseau','error');};
+
+  if(id){
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudEditIncident(currentUser.username,id,data);
+  }else{
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudAddIncident(currentUser.username,data);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── NETTOYAGE CRUD ───────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+function openAddCleaning(){
+  document.getElementById('crudClnZone').value='';
+  document.getElementById('crudClnEmplacement').value='';
+  document.getElementById('crudClnDesc').value='';
+  document.getElementById('crudClnAction').value='';
+  document.getElementById('crudClnResp').value='';
+  document.getElementById('crudClnStatut').value='Ouvert';
+  document.getElementById('crudClnFile').value='';
+  document.getElementById('crudClnModal').classList.add('open');
+  window._crudClnEditId=null;
+}
+function openEditCleaning(id,zone,empl,desc,action,resp,statut){
+  document.getElementById('crudClnZone').value=zone||'';
+  document.getElementById('crudClnEmplacement').value=empl||'';
+  document.getElementById('crudClnDesc').value=desc||'';
+  document.getElementById('crudClnAction').value=action||'';
+  document.getElementById('crudClnResp').value=resp||'';
+  document.getElementById('crudClnStatut').value=statut||'Ouvert';
+  document.getElementById('crudClnFile').value='';
+  document.getElementById('crudClnModal').classList.add('open');
+  window._crudClnEditId=id;
+}
+function closeCrudCln(){document.getElementById('crudClnModal').classList.remove('open');}
+
+function submitCleaning(){
+  var zone=document.getElementById('crudClnZone').value.trim();
+  var desc=document.getElementById('crudClnDesc').value.trim();
+  if(!zone){alert('La zone est obligatoire.');return;}
+  if(!desc){alert('La description est obligatoire.');return;}
+
+  var data={
+    zone:zone,
+    emplacement:document.getElementById('crudClnEmplacement').value.trim(),
+    description:desc,
+    action:document.getElementById('crudClnAction').value.trim(),
+    responsable:document.getElementById('crudClnResp').value.trim(),
+    statut:document.getElementById('crudClnStatut').value
+  };
+
+  // Handle file
+  var fileInput=document.getElementById('crudClnFile');
+  if(fileInput.files.length>0){
+    var file=fileInput.files[0];
+    var reader=new FileReader();
+    reader.onload=function(e){
+      data.photoBase64=e.target.result.split(',')[1];
+      data.photoName=file.name;
+      data.photoMime=file.type;
+      doSubmitCleaning(data);
+    };
+    reader.readAsDataURL(file);
+  }else{
+    doSubmitCleaning(data);
+  }
+}
+function doSubmitCleaning(data){
+  if(window._crudClnEditId){
+    google.script.run.withSuccessHandler(function(r){
+      if(r.success){closeCrudCln();showToast(r.message,'success');refreshData();}
+      else showToast(r.error||'Erreur','error');
+    }).withFailureHandler(function(){showToast('Erreur réseau','error');}).crudEditCleaning(currentUser.username,window._crudClnEditId,data);
+  }else{
+    google.script.run.withSuccessHandler(function(r){
+      if(r.success){closeCrudCln();showToast(r.message,'success');refreshData();}
+      else showToast(r.error||'Erreur','error');
+    }).withFailureHandler(function(){showToast('Erreur réseau','error');}).crudAddCleaning(currentUser.username,data);
+  }
+}
+
+// ── showCrudBars is called from onLoginSuccess in the RBAC script below ──
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════
+     RBAC JAVASCRIPT — Login, Roles, Admin Panel
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+var RBAC_SECTIONS=[
+  {id:'tags',label:'Tags / Observations',icon:'🏷️'},
+  {id:'nettoyage',label:'Nettoyage',icon:'🧹'},
+  {id:'incidents',label:'Incidents / Accidents',icon:'⚠️'},
+  {id:'planning',label:'Planning',icon:'📅'},
+  {id:'procedures',label:'Procédures HSE',icon:'📋'},
+  {id:'permis',label:'Permis de Travail',icon:'📝'},
+  {id:'contrats',label:'Contrats',icon:'📄'},
+  {id:'epi',label:'EPI (Équipements)',icon:'🦺'},
+  {id:'energie',label:'Énergie',icon:'⚡'},
+  {id:'nuisibles',label:'Nuisibles',icon:'🐀'},
+  {id:'ia',label:'IA / Gemini',icon:'🤖'}
+];
+var currentUser=null, editingUsername=null;
+
+function doLogin(){
+  var u=document.getElementById('loginUsername').value.trim();
+  var p=document.getElementById('loginPassword').value;
+  var btn=document.getElementById('loginBtn');
+  var err=document.getElementById('loginError');
+  var msg=document.getElementById('loginErrorMsg');
+  if(!u||!p){err.classList.add('show');msg.textContent='Veuillez remplir tous les champs.';return;}
+  btn.disabled=true;btn.textContent='Connexion...';err.classList.remove('show');
+  google.script.run.withSuccessHandler(function(r){
+    btn.disabled=false;btn.textContent='Se connecter';
+    if(r.success){currentUser=r.user;sessionStorage.setItem('rbac_user',JSON.stringify(currentUser));onLoginSuccess();}
+    else{err.classList.add('show');msg.textContent=r.error||'Échec.';}
+  }).withFailureHandler(function(){
+    btn.disabled=false;btn.textContent='Se connecter';err.classList.add('show');msg.textContent='Erreur réseau.';
+  }).rbacLogin(u,p);
+}
+document.getElementById('loginPassword').addEventListener('keypress',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('loginUsername').addEventListener('keypress',function(e){if(e.key==='Enter')document.getElementById('loginPassword').focus();});
+
+function onLoginSuccess(){
+  document.getElementById('loginPage').style.display='none';
+  document.querySelector('.app').style.display='block';
+  injectUserBadge();
+  applyRoleRestrictions();
+  if(currentUser.role==='admin')injectAdminTab();
+  if(typeof showCrudBars==='function')showCrudBars();
+  // Re-render data if already loaded (to inject edit buttons in table rows)
+  if(typeof D!=='undefined'&&D&&typeof render==='function'){try{render(D);}catch(e){}}
+}
+function injectUserBadge(){
+  var hdr=document.querySelector('.hdr-right');if(!hdr)return;
+  if(document.querySelector('.user-badge'))return;
+  var ini=currentUser.displayName.split(' ').map(function(w){return w[0];}).join('').toUpperCase().substring(0,2);
+  var rc='role-'+currentUser.role;
+  var rl=currentUser.role==='admin'?'Admin':currentUser.role==='editor'?'Éditeur':'Observateur';
+  var h='<div class="user-badge" onclick="toggleUserDD()"><div class="user-avatar-sm">'+ini+'</div><span style="color:var(--text2);font-weight:500">'+currentUser.displayName+'</span><span class="user-role-tag '+rc+'">'+rl+'</span>';
+  h+='<div id="userDD" class="user-dropdown"><div class="user-dd-item" onclick="event.stopPropagation()">👤 '+currentUser.displayName+'</div>';
+  if(currentUser.role==='admin')h+='<div class="user-dd-item" onclick="event.stopPropagation();openAdminPanel()">⚙️ Gérer les utilisateurs</div>';
+  h+='<div class="user-dd-item danger" onclick="event.stopPropagation();doLogout()">🚪 Se déconnecter</div></div></div>';
+  hdr.insertAdjacentHTML('beforeend',h);
+}
+function toggleUserDD(){var d=document.getElementById('userDD');d.classList.toggle('open');setTimeout(function(){document.addEventListener('click',function cl(e){if(!e.target.closest('.user-badge')){d.classList.remove('open');document.removeEventListener('click',cl);}});},10);}
+function doLogout(){currentUser=null;sessionStorage.removeItem('rbac_user');document.getElementById('loginPage').style.display='flex';document.querySelector('.app').style.display='none';document.getElementById('loginUsername').value='';document.getElementById('loginPassword').value='';document.getElementById('loginError').classList.remove('show');var b=document.querySelector('.user-badge');if(b)b.remove();}
+
+function userCanEdit(sec){if(!currentUser)return false;if(currentUser.role==='admin')return true;if(currentUser.role==='viewer')return false;if(currentUser.allowedSections.indexOf('ALL')>-1)return true;return currentUser.allowedSections.indexOf(sec)>-1;}
+function userCanDelete(){return currentUser&&currentUser.role==='admin';}
+function userCanView(sec){if(!currentUser)return false;if(currentUser.role==='admin'||currentUser.role==='viewer')return true;if(currentUser.allowedSections.indexOf('ALL')>-1)return true;return currentUser.allowedSections.indexOf(sec)>-1;}
+
+function applyRoleRestrictions(){
+  if(currentUser.role==='viewer'){
+    document.querySelectorAll('.btn-add,.btn-edit,.btn-delete,.btn-save,[data-action="add"],[data-action="edit"],[data-action="delete"]').forEach(function(el){el.style.display='none';});
+  }
+  if(currentUser.role==='editor'){
+    document.querySelectorAll('.btn-delete,[data-action="delete"]').forEach(function(el){el.style.display='none';});
+    if(currentUser.allowedSections.indexOf('ALL')<0){
+      var tabs=document.querySelectorAll('.tabs .tab');
+      var map={'incidents':'incidents','tags':'tags','bilan':'incidents','nergie':'energie','veille':'procedures','proc':'procedures','nettoyage':'nettoyage','contrats':'contrats','permis':'permis','epi':'epi','nuisibles':'nuisibles'};
+      tabs.forEach(function(tab){
+        var txt=tab.textContent.toLowerCase();var secId='';
+        Object.keys(map).forEach(function(k){if(txt.indexOf(k)>-1)secId=map[k];});
+        if(secId&&currentUser.allowedSections.indexOf(secId)<0)tab.style.display='none';
+      });
+    }
+  }
+}
+
+function injectAdminTab(){
+  var tabs=document.querySelector('.tabs');if(!tabs)return;
+  var t=document.createElement('button');t.className='tab';t.style.cssText='background:rgba(232,68,90,.08);border:1px solid rgba(232,68,90,.2);color:var(--red)';
+  t.innerHTML='👥 Admin';t.onclick=function(){openAdminPanel();};tabs.appendChild(t);
+}
+function openAdminPanel(){document.getElementById('adminPanelBg').classList.add('open');loadAdminUsers();renderSectionsCheckboxes();}
+function closeAdminPanel(){document.getElementById('adminPanelBg').classList.remove('open');cancelEditUser();}
+function onRoleChange(){var w=document.getElementById('adminSectionsWrap');if(w)w.style.display=(document.getElementById('adminNewRole').value==='editor')?'block':'none';}
+function renderSectionsCheckboxes(){
+  var g=document.getElementById('adminSectionsGrid');g.innerHTML='';
+  RBAC_SECTIONS.forEach(function(sec){
+    var d=document.createElement('div');d.className='admin-section-check';d.dataset.section=sec.id;
+    d.onclick=function(){var cb=d.querySelector('input');cb.checked=!cb.checked;d.classList.toggle('checked',cb.checked);};
+    d.innerHTML='<input type="checkbox" value="'+sec.id+'"><span class="checkmark">✓</span><span class="sec-name">'+sec.icon+' '+sec.label+'</span>';
+    g.appendChild(d);
+  });
+}
+function loadAdminUsers(){
+  var g=document.getElementById('adminUsersGrid');g.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  google.script.run.withSuccessHandler(function(r){if(r.success)renderAdminUsers(r.users);else g.innerHTML='<div style="color:var(--red)">'+r.error+'</div>';}).rbacListUsers(currentUser.username);
+}
+function renderAdminUsers(users){
+  var g=document.getElementById('adminUsersGrid');document.getElementById('adminUserCount').textContent=users.length+' compte(s)';g.innerHTML='';
+  users.forEach(function(user){
+    var ini=user.displayName.split(' ').map(function(w){return w[0];}).join('').toUpperCase().substring(0,2);
+    var rc='role-'+user.role;var rl=user.role==='admin'?'Admin':user.role==='editor'?'Éditeur':'Observateur';
+    var secH='';
+    if(user.role==='editor'&&user.allowedSections[0]!=='ALL'){secH='<div class="admin-user-sections">'+user.allowedSections.map(function(s){var sc=RBAC_SECTIONS.find(function(x){return x.id===s;});return '<span class="admin-section-chip">'+(sc?sc.icon+' '+sc.label:s)+'</span>';}).join('')+'</div>';}
+    else{secH='<div class="admin-user-sections"><span class="admin-section-chip" style="background:rgba(16,201,133,.12);color:var(--green);border-color:rgba(16,201,133,.3)">✓ Toutes sections</span></div>';}
+    var isCur=user.username===currentUser.username;
+    var c=document.createElement('div');c.className='admin-user-card';
+    c.innerHTML='<div class="admin-user-avatar">'+ini+'</div><div class="admin-user-info"><div class="admin-user-name">'+(user.active?'<span style="color:var(--green)">●</span>':'<span style="color:var(--red)">●</span>')+' '+user.displayName+' <span class="user-role-tag '+rc+'" style="margin-left:6px">'+rl+'</span>'+(isCur?' <span style="font-size:9px;color:var(--text3)">(vous)</span>':'')+'</div><div class="admin-user-meta">@'+user.username+'</div>'+secH+'</div><div class="admin-user-actions">'+(isCur?'':'<button class="admin-btn-sm" title="Modifier" onclick="editUser(\''+user.username+'\')">✏️</button><button class="admin-btn-sm del" title="Supprimer" onclick="confirmDeleteUser(\''+user.username+'\',\''+user.displayName+'\')">🗑️</button>')+'</div>';
+    g.appendChild(c);
+  });
+}
+function saveUser(){
+  var un=document.getElementById('adminNewUsername').value.trim();
+  var dn=document.getElementById('adminNewDisplayName').value.trim();
+  var pw=document.getElementById('adminNewPassword').value;
+  var rl=document.getElementById('adminNewRole').value;
+  var btn=document.getElementById('adminSaveBtn');
+  var secs=[];document.querySelectorAll('#adminSectionsGrid .admin-section-check.checked input').forEach(function(cb){secs.push(cb.value);});
+  if(!un){alert("Nom d'utilisateur obligatoire.");return;}
+  if(!editingUsername&&!pw){alert("Mot de passe obligatoire.");return;}
+  if(!editingUsername&&pw.length<6){alert("Mot de passe min. 6 caractères.");return;}
+  if(rl==='editor'&&secs.length===0){alert("Sélectionnez au moins une section pour l'éditeur.");return;}
+  btn.disabled=true;
+  if(editingUsername){
+    var upd={displayName:dn,role:rl,allowedSections:rl==='editor'?secs:['ALL']};if(pw)upd.password=pw;
+    google.script.run.withSuccessHandler(function(r){btn.disabled=false;if(r.success){cancelEditUser();loadAdminUsers();}else alert(r.error);}).rbacUpdateUser(currentUser.username,editingUsername,upd);
+  }else{
+    var nu={username:un,displayName:dn||un,password:pw,role:rl,allowedSections:rl==='editor'?secs:['ALL']};
+    google.script.run.withSuccessHandler(function(r){btn.disabled=false;if(r.success){clearAdminForm();loadAdminUsers();alert(r.message);}else alert(r.error);}).rbacCreateUser(currentUser.username,nu);
+  }
+}
+function editUser(username){
+  editingUsername=username;
+  google.script.run.withSuccessHandler(function(r){
+    if(!r.success)return;var user=r.users.find(function(u){return u.username===username;});if(!user)return;
+    document.getElementById('adminNewUsername').value=user.username;document.getElementById('adminNewUsername').disabled=true;
+    document.getElementById('adminNewDisplayName').value=user.displayName;
+    document.getElementById('adminNewPassword').value='';document.getElementById('adminNewPassword').placeholder='Laisser vide = inchangé';
+    document.getElementById('adminNewRole').value=user.role;document.getElementById('adminFormTitleText').textContent='Modifier : '+user.displayName;
+    document.getElementById('adminSaveBtn').textContent='Modifier';document.getElementById('adminCancelBtn').style.display='inline-flex';
+    onRoleChange();
+    if(user.role==='editor'&&user.allowedSections[0]!=='ALL'){
+      document.querySelectorAll('#adminSectionsGrid .admin-section-check').forEach(function(el){var cb=el.querySelector('input');if(user.allowedSections.indexOf(el.dataset.section)>-1){cb.checked=true;el.classList.add('checked');}else{cb.checked=false;el.classList.remove('checked');}});
+    }
+  }).rbacListUsers(currentUser.username);
+}
+function cancelEditUser(){editingUsername=null;clearAdminForm();document.getElementById('adminNewUsername').disabled=false;document.getElementById('adminNewPassword').placeholder='Min. 6 caractères';document.getElementById('adminFormTitleText').textContent='Créer un nouveau compte';document.getElementById('adminSaveBtn').textContent='Créer le compte';document.getElementById('adminCancelBtn').style.display='none';}
+function clearAdminForm(){document.getElementById('adminNewUsername').value='';document.getElementById('adminNewDisplayName').value='';document.getElementById('adminNewPassword').value='';document.getElementById('adminNewRole').value='editor';onRoleChange();document.querySelectorAll('#adminSectionsGrid .admin-section-check').forEach(function(el){el.classList.remove('checked');el.querySelector('input').checked=false;});}
+function confirmDeleteUser(un,dn){if(!confirm('Supprimer "'+dn+'" (@'+un+') ?\nAction irréversible.'))return;google.script.run.withSuccessHandler(function(r){if(r.success)loadAdminUsers();else alert(r.error);}).rbacDeleteUser(currentUser.username,un);}
+
+(function(){
+  onRoleChange();
+  var s=sessionStorage.getItem('rbac_user');
+  if(s){try{currentUser=JSON.parse(s);onLoginSuccess();return;}catch(e){sessionStorage.removeItem('rbac_user');}}
+  document.getElementById('loginPage').style.display='flex';
+})();
 </script>
 </body>
 </html>

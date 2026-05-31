@@ -1,0 +1,303 @@
+// ════════════════════════════════════════════════════════════
+// ── RBAC SYSTEM — Gestion des Rôles et Permissions ──────────
+// Rôles : Admin, Editor, Viewer
+// Stockage : feuille "RBAC_Users" dans le même spreadsheet
+// ════════════════════════════════════════════════════════════
+
+var RBAC_SHEET_NAME = 'RBAC_Users';
+
+// ── Initialisation : créer la feuille RBAC si elle n'existe pas ──
+function initRBACSheet() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sh = ss.getSheetByName(RBAC_SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(RBAC_SHEET_NAME);
+    // Entêtes
+    sh.getRange(1, 1, 1, 7).setValues([[
+      'Username', 'PasswordHash', 'Role', 'DisplayName', 'AllowedSections', 'CreatedAt', 'Active'
+    ]]);
+    // Créer le compte Admin par défaut
+    var now = new Date().toISOString();
+    var adminHash = hashPassword('Admin@HSE2024');
+    sh.getRange(2, 1, 1, 7).setValues([[
+      'admin', adminHash, 'admin', 'Responsable HSE', 'ALL', now, 'TRUE'
+    ]]);
+    sh.setFrozenRows(1);
+    Logger.log('RBAC sheet created with default admin');
+  }
+  return sh;
+}
+
+// ── Hash simple pour les mots de passe (SHA-256) ──
+function hashPassword(password) {
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+  var hash = '';
+  for (var i = 0; i < raw.length; i++) {
+    var byte = raw[i];
+    if (byte < 0) byte += 256;
+    var hex = byte.toString(16);
+    if (hex.length === 1) hex = '0' + hex;
+    hash += hex;
+  }
+  return hash;
+}
+
+// ── Authentification ──
+function authenticateUser(username, password) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    var passHash = hashPassword(password);
+    
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[0]).trim().toLowerCase() === username.trim().toLowerCase() &&
+          String(row[1]).trim() === passHash &&
+          String(row[6]).trim().toUpperCase() === 'TRUE') {
+        
+        var sections = String(row[4]).trim();
+        var allowedSections = [];
+        if (sections === 'ALL') {
+          allowedSections = ['ALL'];
+        } else {
+          allowedSections = sections.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+        }
+        
+        return {
+          success: true,
+          user: {
+            username: String(row[0]).trim(),
+            role: String(row[2]).trim().toLowerCase(),
+            displayName: String(row[3]).trim(),
+            allowedSections: allowedSections
+          }
+        };
+      }
+    }
+    return { success: false, error: 'Nom d\'utilisateur ou mot de passe incorrect.' };
+  } catch(e) {
+    Logger.log('authenticateUser error: ' + e.message);
+    return { success: false, error: 'Erreur serveur. Veuillez réessayer.' };
+  }
+}
+
+// ── Gestion des utilisateurs (Admin only) ──
+
+// Lister tous les utilisateurs
+function listUsers() {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    var users = [];
+    
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0] || String(row[0]).trim() === '') continue;
+      
+      var sections = String(row[4]).trim();
+      var allowedSections = [];
+      if (sections === 'ALL') {
+        allowedSections = ['ALL'];
+      } else {
+        allowedSections = sections.split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s !== ''; });
+      }
+      
+      users.push({
+        username: String(row[0]).trim(),
+        role: String(row[2]).trim().toLowerCase(),
+        displayName: String(row[3]).trim(),
+        allowedSections: allowedSections,
+        createdAt: String(row[5]).trim(),
+        active: String(row[6]).trim().toUpperCase() === 'TRUE'
+      });
+    }
+    return { success: true, users: users };
+  } catch(e) {
+    Logger.log('listUsers error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Créer un nouvel utilisateur
+function createUser(adminUsername, newUser) {
+  try {
+    // Vérifier que c'est bien un admin qui fait la requête
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    
+    var isAdmin = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === adminUsername.trim().toLowerCase() &&
+          String(data[i][2]).trim().toLowerCase() === 'admin') {
+        isAdmin = true;
+        break;
+      }
+    }
+    if (!isAdmin) return { success: false, error: 'Permission refusée. Seul un Admin peut créer des utilisateurs.' };
+    
+    // Vérifier que le username n'existe pas déjà
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === newUser.username.trim().toLowerCase()) {
+        return { success: false, error: 'Ce nom d\'utilisateur existe déjà.' };
+      }
+    }
+    
+    // Valider le rôle
+    var role = newUser.role.toLowerCase();
+    if (role !== 'editor' && role !== 'viewer') {
+      return { success: false, error: 'Rôle invalide. Choisissez "editor" ou "viewer".' };
+    }
+    
+    // Préparer les sections autorisées
+    var sections = 'ALL';
+    if (role === 'editor' && newUser.allowedSections && newUser.allowedSections.length > 0) {
+      sections = newUser.allowedSections.join(',');
+    } else if (role === 'viewer') {
+      sections = 'ALL'; // Viewer peut tout voir en lecture seule
+    }
+    
+    var now = new Date().toISOString();
+    var passHash = hashPassword(newUser.password);
+    
+    var newRow = [
+      newUser.username.trim(),
+      passHash,
+      role,
+      newUser.displayName || newUser.username,
+      sections,
+      now,
+      'TRUE'
+    ];
+    
+    sh.appendRow(newRow);
+    Logger.log('User created: ' + newUser.username + ' (' + role + ')');
+    
+    return { success: true, message: 'Utilisateur "' + newUser.username + '" créé avec succès.' };
+  } catch(e) {
+    Logger.log('createUser error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Modifier un utilisateur existant
+function updateUser(adminUsername, targetUsername, updates) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    
+    // Vérifier que c'est un admin
+    var isAdmin = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === adminUsername.trim().toLowerCase() &&
+          String(data[i][2]).trim().toLowerCase() === 'admin') {
+        isAdmin = true;
+        break;
+      }
+    }
+    if (!isAdmin) return { success: false, error: 'Permission refusée.' };
+    
+    // Trouver l'utilisateur cible
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === targetUsername.trim().toLowerCase()) {
+        targetRow = i + 1; // +1 pour l'index de feuille (1-based)
+        break;
+      }
+    }
+    if (targetRow < 0) return { success: false, error: 'Utilisateur non trouvé.' };
+    
+    // Appliquer les modifications
+    if (updates.displayName) {
+      sh.getRange(targetRow, 4).setValue(updates.displayName);
+    }
+    if (updates.role) {
+      var role = updates.role.toLowerCase();
+      if (role !== 'admin' && role !== 'editor' && role !== 'viewer') {
+        return { success: false, error: 'Rôle invalide.' };
+      }
+      sh.getRange(targetRow, 3).setValue(role);
+    }
+    if (updates.allowedSections !== undefined) {
+      var sections = (updates.allowedSections && updates.allowedSections.length > 0)
+        ? updates.allowedSections.join(',')
+        : 'ALL';
+      sh.getRange(targetRow, 5).setValue(sections);
+    }
+    if (updates.password) {
+      sh.getRange(targetRow, 2).setValue(hashPassword(updates.password));
+    }
+    if (updates.active !== undefined) {
+      sh.getRange(targetRow, 7).setValue(updates.active ? 'TRUE' : 'FALSE');
+    }
+    
+    Logger.log('User updated: ' + targetUsername);
+    return { success: true, message: 'Utilisateur mis à jour.' };
+  } catch(e) {
+    Logger.log('updateUser error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Supprimer un utilisateur (Admin only)
+function deleteUser(adminUsername, targetUsername) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    
+    // Vérifier que c'est un admin
+    var isAdmin = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === adminUsername.trim().toLowerCase() &&
+          String(data[i][2]).trim().toLowerCase() === 'admin') {
+        isAdmin = true;
+        break;
+      }
+    }
+    if (!isAdmin) return { success: false, error: 'Permission refusée.' };
+    
+    // Ne pas supprimer soi-même
+    if (adminUsername.trim().toLowerCase() === targetUsername.trim().toLowerCase()) {
+      return { success: false, error: 'Vous ne pouvez pas supprimer votre propre compte.' };
+    }
+    
+    // Trouver et supprimer
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === targetUsername.trim().toLowerCase()) {
+        targetRow = i + 1;
+        break;
+      }
+    }
+    if (targetRow < 0) return { success: false, error: 'Utilisateur non trouvé.' };
+    
+    sh.deleteRow(targetRow);
+    Logger.log('User deleted: ' + targetUsername);
+    return { success: true, message: 'Utilisateur supprimé.' };
+  } catch(e) {
+    Logger.log('deleteUser error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// ── Point d'entrée pour les appels côté client ──
+// Ces fonctions sont appelées via google.script.run depuis le HTML
+
+function rbacLogin(username, password) {
+  return authenticateUser(username, password);
+}
+
+function rbacListUsers(adminUsername) {
+  return listUsers();
+}
+
+function rbacCreateUser(adminUsername, newUser) {
+  return createUser(adminUsername, newUser);
+}
+
+function rbacUpdateUser(adminUsername, targetUsername, updates) {
+  return updateUser(adminUsername, targetUsername, updates);
+}
+
+function rbacDeleteUser(adminUsername, targetUsername) {
+  return deleteUser(adminUsername, targetUsername);
+}
