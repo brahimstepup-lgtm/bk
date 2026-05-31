@@ -1,0 +1,997 @@
+<!-- ════════════════════════════════════════════════════════════
+     RBAC FRONTEND — Système d'Authentification & Gestion des Rôles
+     À intégrer dans le fichier Index.html du projet Apps Script
+     ════════════════════════════════════════════════════════════ -->
+
+<!-- ══ CSS RBAC ══ -->
+<style>
+/* ── LOGIN PAGE ── */
+.login-bg{position:fixed;inset:0;background:var(--bg);z-index:99999;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#050f16 0%,#071820 40%,#0d2530 100%)}
+.login-card{width:min(420px,92%);background:var(--card-bg);border:1px solid var(--border);
+  border-radius:16px;padding:36px 32px;box-shadow:0 20px 60px rgba(0,0,0,.6);
+  animation:slideUp .3s ease}
+.login-logo{text-align:center;margin-bottom:24px}
+.login-logo-img{height:60px;border-radius:8px;margin-bottom:10px}
+.login-title{font-size:18px;font-weight:700;color:var(--text);text-align:center;margin-bottom:4px}
+.login-sub{font-size:11px;color:var(--text3);text-align:center;margin-bottom:24px;
+  font-family:'JetBrains Mono',monospace}
+</style>
+
+<style>
+.login-field{margin-bottom:16px}
+.login-label{display:block;font-size:10px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.login-input{width:100%;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-size:13px;outline:none;
+  font-family:'Inter',sans-serif;transition:border-color .2s}
+.login-input:focus{border-color:var(--p2)}
+.login-input::placeholder{color:var(--text3)}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--p1),var(--p2));
+  border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;margin-top:8px}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(9,99,126,.4)}
+.login-btn:disabled{opacity:.6;cursor:wait;transform:none}
+.login-error{background:rgba(232,68,90,.1);border:1px solid rgba(232,68,90,.3);
+  border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;
+  color:var(--red);display:none;align-items:center;gap:8px}
+.login-error.show{display:flex}
+.login-footer{text-align:center;margin-top:20px;font-size:10px;color:var(--text3);
+  font-family:'JetBrains Mono',monospace}
+
+
+/* ── USER BADGE (Header) ── */
+.user-badge{display:flex;align-items:center;gap:8px;padding:4px 10px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  font-size:10px;cursor:pointer;transition:all .2s}
+.user-badge:hover{background:var(--bg4);border-color:var(--p2)}
+.user-avatar{width:24px;height:24px;border-radius:50%;
+  background:linear-gradient(135deg,var(--p1),var(--p3));
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;color:#fff}
+.user-name{color:var(--text2);font-weight:500}
+.user-role-tag{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;text-transform:uppercase}
+.role-admin{background:rgba(232,68,90,.15);color:var(--red);border:1px solid rgba(232,68,90,.3)}
+.role-editor{background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+.role-viewer{background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3)}
+.user-dropdown{position:absolute;top:42px;right:0;width:200px;background:var(--bg2);
+  border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);
+  z-index:700;display:none;overflow:hidden}
+.user-dropdown.open{display:block;animation:slideDown .15s ease}
+.user-dd-item{padding:10px 14px;font-size:11px;color:var(--text2);cursor:pointer;
+  transition:background .15s;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.user-dd-item:last-child{border-bottom:none}
+.user-dd-item:hover{background:var(--bg3);color:var(--text)}
+.user-dd-item.danger{color:var(--red)}
+.user-dd-item.danger:hover{background:rgba(232,68,90,.08)}
+</style>
+
+<style>
+/* ── ADMIN PANEL ── */
+.admin-panel-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:10000;
+  display:none;align-items:center;justify-content:center;padding:16px;
+  backdrop-filter:blur(6px)}
+.admin-panel-bg.open{display:flex;animation:fadeIn .15s ease}
+.admin-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;
+  width:min(900px,96%);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 24px 80px rgba(0,0,0,.7);animation:slideUp .2s ease}
+.admin-top{display:flex;align-items:center;gap:12px;padding:16px 20px;
+  border-bottom:1px solid var(--border);background:var(--bg3)}
+.admin-title{font-size:15px;font-weight:700;color:var(--text);flex:1}
+.admin-close{width:30px;height:30px;border-radius:8px;background:var(--bg4);
+  border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;transition:all .2s}
+.admin-close:hover{background:var(--bg5);color:var(--text);border-color:var(--red)}
+.admin-body{overflow-y:auto;flex:1;padding:20px}
+.admin-body::-webkit-scrollbar{width:4px}
+.admin-body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+
+/* User list in admin */
+.admin-users-grid{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.admin-user-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:14px 16px;display:flex;align-items:center;gap:12px;transition:all .15s}
+.admin-user-card:hover{border-color:var(--p2);transform:translateX(2px)}
+.admin-user-avatar{width:36px;height:36px;border-radius:50%;
+  background:linear-gradient(135deg,var(--p1),var(--p3));
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.admin-user-info{flex:1;min-width:0}
+.admin-user-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.admin-user-meta{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.admin-user-sections{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.admin-section-chip{font-size:9px;padding:2px 6px;border-radius:4px;
+  background:rgba(9,99,126,.15);color:var(--p4);border:1px solid rgba(9,99,126,.3);
+  font-family:'JetBrains Mono',monospace}
+.admin-user-actions{display:flex;gap:6px;flex-shrink:0}
+.admin-btn-edit,.admin-btn-del{width:28px;height:28px;border-radius:6px;
+  border:1px solid var(--border);cursor:pointer;display:flex;
+  align-items:center;justify-content:center;font-size:13px;transition:all .2s}
+.admin-btn-edit{background:var(--bg4);color:var(--text2)}
+.admin-btn-edit:hover{background:var(--p1);color:#fff;border-color:var(--p2)}
+.admin-btn-del{background:var(--bg4);color:var(--text3)}
+.admin-btn-del:hover{background:rgba(232,68,90,.15);color:var(--red);border-color:rgba(232,68,90,.4)}
+</style>
+
+<style>
+/* ── CREATE/EDIT USER FORM ── */
+.admin-form{background:var(--bg3);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;margin-bottom:16px}
+.admin-form-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px}
+.admin-form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.admin-form-field{display:flex;flex-direction:column;gap:4px}
+.admin-form-field.full{grid-column:1/-1}
+.admin-form-label{font-size:10px;font-weight:600;color:var(--text3);
+  text-transform:uppercase;letter-spacing:.4px}
+.admin-form-input{padding:9px 12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:12px;outline:none;
+  font-family:'Inter',sans-serif;transition:border-color .2s}
+.admin-form-input:focus{border-color:var(--p2)}
+.admin-form-select{padding:9px 12px;background:var(--bg2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);font-size:12px;outline:none;cursor:pointer}
+
+/* Sections checkboxes */
+.admin-sections-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;
+  margin-top:6px}
+.admin-section-check{display:flex;align-items:center;gap:8px;padding:8px 10px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+  cursor:pointer;transition:all .15s;user-select:none}
+.admin-section-check:hover{border-color:var(--p2);background:var(--bg4)}
+.admin-section-check.checked{background:rgba(9,99,126,.12);border-color:var(--p3)}
+.admin-section-check input{display:none}
+.admin-section-check .checkmark{width:16px;height:16px;border-radius:4px;
+  border:2px solid var(--border);display:flex;align-items:center;justify-content:center;
+  font-size:10px;color:transparent;transition:all .15s;flex-shrink:0}
+.admin-section-check.checked .checkmark{background:var(--p2);border-color:var(--p2);color:#fff}
+.admin-section-check .sec-name{font-size:11px;color:var(--text2);font-weight:500}
+
+.admin-form-actions{display:flex;gap:8px;margin-top:16px}
+.admin-form-btn{padding:9px 18px;border-radius:7px;font-size:11px;font-weight:600;
+  cursor:pointer;border:1px solid var(--border);transition:all .2s;
+  font-family:'Inter',sans-serif}
+.admin-form-btn.primary{background:linear-gradient(135deg,var(--p1),var(--p2));
+  color:#fff;border-color:var(--p2)}
+.admin-form-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,99,126,.4)}
+.admin-form-btn.secondary{background:var(--bg4);color:var(--text2)}
+.admin-form-btn.secondary:hover{background:var(--bg5);color:var(--text)}
+
+/* Permission denied overlay */
+.perm-denied{display:flex;align-items:center;justify-content:center;padding:40px 20px;
+  flex-direction:column;gap:12px;text-align:center}
+.perm-denied-icon{font-size:40px;opacity:.5}
+.perm-denied-text{font-size:13px;color:var(--text3);max-width:300px;line-height:1.6}
+
+/* Read-only indicator */
+.readonly-banner{background:rgba(16,201,133,.08);border:1px solid rgba(16,201,133,.3);
+  border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;
+  align-items:center;gap:8px;font-size:11px;color:var(--green)}
+.readonly-banner .ico{font-size:14px}
+
+/* Editor limited banner */
+.editor-banner{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);
+  border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;
+  align-items:center;gap:8px;font-size:11px;color:var(--amber)}
+.editor-banner .ico{font-size:14px}
+
+@media(max-width:600px){
+  .login-card{padding:24px 18px}
+  .admin-panel{width:100%;max-height:100vh;border-radius:0}
+  .admin-form-row{grid-template-columns:1fr}
+  .admin-sections-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+
+
+<!-- ══ LOGIN PAGE HTML ══ -->
+<div id="loginPage" class="login-bg">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-fb" style="width:60px;height:60px;font-size:22px;margin:0 auto 10px">S3</div>
+      <div class="login-title">SOBCO 3 — HSE Dashboard</div>
+      <div class="login-sub">Connexion sécurisée</div>
+    </div>
+    <div id="loginError" class="login-error">
+      <span>⚠</span>
+      <span id="loginErrorMsg">Erreur</span>
+    </div>
+    <div class="login-field">
+      <label class="login-label">Nom d'utilisateur</label>
+      <input type="text" id="loginUsername" class="login-input" 
+             placeholder="Entrez votre nom d'utilisateur" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Mot de passe</label>
+      <input type="password" id="loginPassword" class="login-input" 
+             placeholder="Entrez votre mot de passe" autocomplete="current-password">
+    </div>
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">
+      Se connecter
+    </button>
+    <div class="login-footer">
+      SOBCO 3 — Système de gestion HSE v9.2<br>
+      Accès réservé au personnel autorisé
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ ADMIN PANEL HTML ══ -->
+<div id="adminPanelBg" class="admin-panel-bg" onclick="if(event.target===this)closeAdminPanel()">
+  <div class="admin-panel">
+    <div class="admin-top">
+      <span style="font-size:20px">👥</span>
+      <div class="admin-title">Gestion des Utilisateurs</div>
+      <button class="admin-close" onclick="closeAdminPanel()">✕</button>
+    </div>
+    <div class="admin-body">
+      <!-- Create User Form -->
+      <div id="adminCreateForm" class="admin-form">
+        <div class="admin-form-title">
+          <span>➕</span>
+          <span id="adminFormTitleText">Créer un nouveau compte</span>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-form-field">
+            <label class="admin-form-label">Nom d'utilisateur</label>
+            <input type="text" id="adminNewUsername" class="admin-form-input" 
+                   placeholder="ex: superviseur1">
+          </div>
+          <div class="admin-form-field">
+            <label class="admin-form-label">Nom complet</label>
+            <input type="text" id="adminNewDisplayName" class="admin-form-input" 
+                   placeholder="ex: Ahmed Benali">
+          </div>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-form-field">
+            <label class="admin-form-label">Mot de passe</label>
+            <input type="password" id="adminNewPassword" class="admin-form-input" 
+                   placeholder="Min. 6 caractères">
+          </div>
+          <div class="admin-form-field">
+            <label class="admin-form-label">Rôle</label>
+            <select id="adminNewRole" class="admin-form-select" onchange="onRoleChange()">
+              <option value="editor">Éditeur (Superviseur)</option>
+              <option value="viewer">Observateur (Lecture seule)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Sections Permission (visible only for Editor) -->
+        <div id="adminSectionsWrap" class="admin-form-field full">
+          <label class="admin-form-label">
+            Sections autorisées (Éditeur uniquement)
+          </label>
+          <div class="admin-sections-grid" id="adminSectionsGrid">
+            <!-- Generated by JS -->
+          </div>
+        </div>
+        <div class="admin-form-actions">
+          <button class="admin-form-btn primary" id="adminSaveBtn" onclick="saveUser()">
+            Créer le compte
+          </button>
+          <button class="admin-form-btn secondary" id="adminCancelBtn" 
+                  onclick="cancelEditUser()" style="display:none">
+            Annuler
+          </button>
+        </div>
+      </div>
+
+      <!-- Users List -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:14px">📋</span>
+        <span style="font-size:12px;font-weight:700;color:var(--text)">
+          Comptes existants
+        </span>
+        <span id="adminUserCount" style="font-size:10px;color:var(--text3);
+          font-family:'JetBrains Mono',monospace;margin-left:auto"></span>
+      </div>
+      <div id="adminUsersGrid" class="admin-users-grid">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══ RBAC JAVASCRIPT ══ -->
+<script>
+// ════════════════════════════════════════════════════════════
+// ── RBAC CLIENT-SIDE LOGIC ──────────────────────────────────
+// ════════════════════════════════════════════════════════════
+
+// Sections disponibles dans le dashboard
+const RBAC_SECTIONS = [
+  { id: 'tags',       label: 'Tags / Observations',    icon: '🏷️' },
+  { id: 'nettoyage',  label: 'Nettoyage',              icon: '🧹' },
+  { id: 'incidents',  label: 'Incidents / Accidents',  icon: '⚠️' },
+  { id: 'planning',   label: 'Planning',               icon: '📅' },
+  { id: 'procedures', label: 'Procédures HSE',         icon: '📋' },
+  { id: 'permis',     label: 'Permis de Travail',      icon: '📝' },
+  { id: 'contrats',   label: 'Contrats',               icon: '📄' },
+  { id: 'epi',        label: 'EPI (Équipements)',       icon: '🦺' },
+  { id: 'energie',    label: 'Énergie',                icon: '⚡' },
+  { id: 'nuisibles',  label: 'Nuisibles',              icon: '🐀' },
+  { id: 'ia',         label: 'IA / Gemini',            icon: '🤖' }
+];
+
+// Current session
+let currentUser = null;
+let editingUsername = null; // for edit mode in admin panel
+</script>
+
+<script>
+// ── LOGIN ──────────────────────────────────────────────────
+function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('loginBtn');
+  const errDiv = document.getElementById('loginError');
+  const errMsg = document.getElementById('loginErrorMsg');
+
+  if (!username || !password) {
+    errDiv.classList.add('show');
+    errMsg.textContent = 'Veuillez remplir tous les champs.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Connexion...';
+  errDiv.classList.remove('show');
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      btn.disabled = false;
+      btn.textContent = 'Se connecter';
+      if (result.success) {
+        currentUser = result.user;
+        sessionStorage.setItem('rbac_user', JSON.stringify(currentUser));
+        onLoginSuccess();
+      } else {
+        errDiv.classList.add('show');
+        errMsg.textContent = result.error || 'Échec de la connexion.';
+      }
+    })
+    .withFailureHandler(function(err) {
+      btn.disabled = false;
+      btn.textContent = 'Se connecter';
+      errDiv.classList.add('show');
+      errMsg.textContent = 'Erreur de communication. Réessayez.';
+    })
+    .rbacLogin(username, password);
+}
+
+// Enter key to login
+document.getElementById('loginPassword').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('loginUsername').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') document.getElementById('loginPassword').focus();
+});
+</script>
+
+<script>
+// ── POST-LOGIN : Configure UI based on role ─────────────────
+function onLoginSuccess() {
+  // Hide login page
+  document.getElementById('loginPage').style.display = 'none';
+  
+  // Show main app
+  document.querySelector('.app').style.display = 'block';
+  
+  // Inject user badge in header
+  injectUserBadge();
+  
+  // Apply role-based restrictions
+  applyRoleRestrictions();
+  
+  // If admin, show admin tab
+  if (currentUser.role === 'admin') {
+    injectAdminTab();
+  }
+}
+
+function injectUserBadge() {
+  const hdrRight = document.querySelector('.hdr-right');
+  if (!hdrRight) return;
+  
+  const initials = currentUser.displayName
+    .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+  
+  const roleClass = 'role-' + currentUser.role;
+  const roleLabel = currentUser.role === 'admin' ? 'Admin' :
+                    currentUser.role === 'editor' ? 'Éditeur' : 'Observateur';
+  
+  const badgeHTML = `
+    <div class="user-badge" style="position:relative" onclick="toggleUserDropdown()">
+      <div class="user-avatar">${initials}</div>
+      <span class="user-name">${currentUser.displayName}</span>
+      <span class="user-role-tag ${roleClass}">${roleLabel}</span>
+      <div id="userDropdown" class="user-dropdown">
+        <div class="user-dd-item" onclick="event.stopPropagation()">
+          <span>👤</span> ${currentUser.displayName}
+        </div>
+        ${currentUser.role === 'admin' ? 
+          '<div class="user-dd-item" onclick="event.stopPropagation();openAdminPanel()"><span>⚙️</span> Gérer les utilisateurs</div>' : ''}
+        <div class="user-dd-item danger" onclick="event.stopPropagation();doLogout()">
+          <span>🚪</span> Se déconnecter
+        </div>
+      </div>
+    </div>
+  `;
+  
+  hdrRight.insertAdjacentHTML('beforeend', badgeHTML);
+}
+
+function toggleUserDropdown() {
+  const dd = document.getElementById('userDropdown');
+  dd.classList.toggle('open');
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function closeDD(e) {
+      if (!e.target.closest('.user-badge')) {
+        dd.classList.remove('open');
+        document.removeEventListener('click', closeDD);
+      }
+    });
+  }, 10);
+}
+</script>
+
+<script>
+// ── ROLE RESTRICTIONS ───────────────────────────────────────
+function applyRoleRestrictions() {
+  const role = currentUser.role;
+  const allowed = currentUser.allowedSections;
+  const hasAllAccess = allowed.includes('ALL');
+  
+  // For Viewer: show readonly banner and hide all action buttons
+  if (role === 'viewer') {
+    hideAllActionButtons();
+    showReadonlyBanner();
+  }
+  
+  // For Editor: hide delete buttons, restrict sections
+  if (role === 'editor') {
+    hideDeleteButtons();
+    if (!hasAllAccess) {
+      restrictSections(allowed);
+      showEditorBanner(allowed);
+    }
+  }
+  
+  // Hide tabs for sections the user cannot access (Editor with limited access)
+  if (role === 'editor' && !hasAllAccess) {
+    hideForbiddenTabs(allowed);
+  }
+}
+
+function hideAllActionButtons() {
+  // Hide all add/edit/delete buttons for viewers
+  const selectors = [
+    '.btn-add', '.btn-edit', '.btn-delete', '.btn-save',
+    '[data-action="add"]', '[data-action="edit"]', '[data-action="delete"]',
+    '.action-add', '.action-edit', '.action-delete'
+  ];
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => el.style.display = 'none');
+  });
+}
+
+function hideDeleteButtons() {
+  // Editors cannot delete
+  const selectors = [
+    '.btn-delete', '[data-action="delete"]', '.action-delete'
+  ];
+  selectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => el.style.display = 'none');
+  });
+}
+
+function hideForbiddenTabs(allowedSections) {
+  // Map section IDs to tab indices (0-based, adjust to your tab order)
+  const tabs = document.querySelectorAll('.tab');
+  const tabSectionMap = {};
+  
+  tabs.forEach((tab, idx) => {
+    const text = tab.textContent.toLowerCase().trim();
+    RBAC_SECTIONS.forEach(sec => {
+      if (text.includes(sec.id) || 
+          text.includes(sec.label.toLowerCase().split('/')[0].trim().split('(')[0].trim())) {
+        tabSectionMap[idx] = sec.id;
+      }
+    });
+  });
+  
+  // Hide tabs for non-allowed sections
+  Object.keys(tabSectionMap).forEach(idx => {
+    const secId = tabSectionMap[idx];
+    if (!allowedSections.includes(secId)) {
+      if (tabs[idx]) tabs[idx].style.display = 'none';
+    }
+  });
+}
+
+function restrictSections(allowedSections) {
+  // Override tab click handler to check permissions
+  const originalTabClick = window.switchTab;
+  window.switchTab = function(idx) {
+    // Allow the click but show permission denied if not allowed
+    if (typeof originalTabClick === 'function') {
+      originalTabClick(idx);
+    }
+  };
+}
+
+function showReadonlyBanner() {
+  const firstPage = document.querySelector('.page.on');
+  if (firstPage) {
+    const banner = document.createElement('div');
+    banner.className = 'readonly-banner';
+    banner.id = 'readonlyBanner';
+    banner.innerHTML = '<span class="ico">👁️</span> Mode lecture seule — Vous pouvez consulter les données mais pas les modifier.';
+    firstPage.insertBefore(banner, firstPage.firstChild);
+  }
+}
+
+function showEditorBanner(allowedSections) {
+  const sectionNames = allowedSections.map(id => {
+    const sec = RBAC_SECTIONS.find(s => s.id === id);
+    return sec ? sec.label : id;
+  }).join(', ');
+  
+  const firstPage = document.querySelector('.page.on');
+  if (firstPage) {
+    const banner = document.createElement('div');
+    banner.className = 'editor-banner';
+    banner.id = 'editorBanner';
+    banner.innerHTML = `<span class="ico">✏️</span> Accès éditeur limité aux sections : ${sectionNames}`;
+    firstPage.insertBefore(banner, firstPage.firstChild);
+  }
+}
+</script>
+
+<script>
+// ── ADMIN TAB & PANEL ───────────────────────────────────────
+function injectAdminTab() {
+  const tabs = document.querySelector('.tabs');
+  if (!tabs) return;
+  
+  const adminTab = document.createElement('div');
+  adminTab.className = 'tab';
+  adminTab.style.cssText = 'background:rgba(232,68,90,.08);border:1px solid rgba(232,68,90,.2);color:var(--red)';
+  adminTab.innerHTML = '👥 Admin';
+  adminTab.onclick = function() { openAdminPanel(); };
+  tabs.appendChild(adminTab);
+}
+
+function openAdminPanel() {
+  document.getElementById('adminPanelBg').classList.add('open');
+  loadAdminUsers();
+  renderSectionsCheckboxes();
+}
+
+function closeAdminPanel() {
+  document.getElementById('adminPanelBg').classList.remove('open');
+  cancelEditUser();
+}
+
+function renderSectionsCheckboxes() {
+  const grid = document.getElementById('adminSectionsGrid');
+  grid.innerHTML = '';
+  
+  RBAC_SECTIONS.forEach(sec => {
+    const div = document.createElement('div');
+    div.className = 'admin-section-check';
+    div.dataset.section = sec.id;
+    div.onclick = function() { toggleSectionCheck(this); };
+    div.innerHTML = `
+      <input type="checkbox" value="${sec.id}">
+      <span class="checkmark">✓</span>
+      <span class="sec-name">${sec.icon} ${sec.label}</span>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function toggleSectionCheck(el) {
+  const cb = el.querySelector('input');
+  cb.checked = !cb.checked;
+  el.classList.toggle('checked', cb.checked);
+}
+
+function onRoleChange() {
+  const role = document.getElementById('adminNewRole').value;
+  const sectionsWrap = document.getElementById('adminSectionsWrap');
+  // Show sections only for editor
+  sectionsWrap.style.display = (role === 'editor') ? 'block' : 'none';
+}
+// Initial call
+document.addEventListener('DOMContentLoaded', function() {
+  onRoleChange();
+});
+</script>
+
+<script>
+// ── ADMIN: Load & Display Users ─────────────────────────────
+function loadAdminUsers() {
+  const grid = document.getElementById('adminUsersGrid');
+  grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        renderAdminUsers(result.users);
+      } else {
+        grid.innerHTML = '<div style="color:var(--red);padding:12px">Erreur: ' + result.error + '</div>';
+      }
+    })
+    .withFailureHandler(function(err) {
+      grid.innerHTML = '<div style="color:var(--red);padding:12px">Erreur de communication</div>';
+    })
+    .rbacListUsers(currentUser.username);
+}
+
+function renderAdminUsers(users) {
+  const grid = document.getElementById('adminUsersGrid');
+  document.getElementById('adminUserCount').textContent = users.length + ' compte(s)';
+  
+  if (!users.length) {
+    grid.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3)">Aucun utilisateur</div>';
+    return;
+  }
+  
+  grid.innerHTML = '';
+  users.forEach(function(user) {
+    const initials = user.displayName
+      .split(' ').map(w => w[0]).join('').toUpperCase().substring(0, 2);
+    const roleClass = 'role-' + user.role;
+    const roleLabel = user.role === 'admin' ? 'Admin' :
+                      user.role === 'editor' ? 'Éditeur' : 'Observateur';
+    
+    let sectionsHTML = '';
+    if (user.role === 'editor' && user.allowedSections[0] !== 'ALL') {
+      sectionsHTML = '<div class="admin-user-sections">' +
+        user.allowedSections.map(s => {
+          const sec = RBAC_SECTIONS.find(x => x.id === s);
+          return '<span class="admin-section-chip">' + (sec ? sec.icon + ' ' + sec.label : s) + '</span>';
+        }).join('') + '</div>';
+    } else if (user.allowedSections[0] === 'ALL') {
+      sectionsHTML = '<div class="admin-user-sections"><span class="admin-section-chip" style="background:rgba(16,201,133,.12);color:var(--green);border-color:rgba(16,201,133,.3)">✓ Toutes les sections</span></div>';
+    }
+    
+    const isCurrentUser = user.username === currentUser.username;
+    const statusDot = user.active ? 
+      '<span style="color:var(--green)">●</span>' : 
+      '<span style="color:var(--red)">●</span>';
+    
+    const card = document.createElement('div');
+    card.className = 'admin-user-card';
+    card.innerHTML = `
+      <div class="admin-user-avatar">${initials}</div>
+      <div class="admin-user-info">
+        <div class="admin-user-name">
+          ${statusDot} ${user.displayName} 
+          <span class="user-role-tag ${roleClass}" style="margin-left:6px">${roleLabel}</span>
+          ${isCurrentUser ? '<span style="font-size:9px;color:var(--text3);margin-left:4px">(vous)</span>' : ''}
+        </div>
+        <div class="admin-user-meta">@${user.username} · Créé le ${formatDate(user.createdAt)}</div>
+        ${sectionsHTML}
+      </div>
+      <div class="admin-user-actions">
+        ${!isCurrentUser ? `
+          <button class="admin-btn-edit" title="Modifier" onclick="editUser('${user.username}')">✏️</button>
+          <button class="admin-btn-del" title="Supprimer" onclick="confirmDeleteUser('${user.username}','${user.displayName}')">🗑️</button>
+        ` : ''}
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function formatDate(isoStr) {
+  if (!isoStr) return '—';
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  } catch(e) { return isoStr; }
+}
+</script>
+
+<script>
+// ── ADMIN: Create / Edit User ───────────────────────────────
+function saveUser() {
+  const username = document.getElementById('adminNewUsername').value.trim();
+  const displayName = document.getElementById('adminNewDisplayName').value.trim();
+  const password = document.getElementById('adminNewPassword').value;
+  const role = document.getElementById('adminNewRole').value;
+  const btn = document.getElementById('adminSaveBtn');
+  
+  // Get selected sections
+  const checks = document.querySelectorAll('#adminSectionsGrid .admin-section-check.checked input');
+  const sections = [];
+  checks.forEach(cb => sections.push(cb.value));
+  
+  // Validation
+  if (!username) { alert('Le nom d\'utilisateur est obligatoire.'); return; }
+  if (!editingUsername && !password) { alert('Le mot de passe est obligatoire.'); return; }
+  if (!editingUsername && password.length < 6) { alert('Le mot de passe doit contenir au moins 6 caractères.'); return; }
+  if (role === 'editor' && sections.length === 0) {
+    alert('Veuillez sélectionner au moins une section pour l\'éditeur.');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = 'Enregistrement...';
+  
+  if (editingUsername) {
+    // Update existing user
+    const updates = {
+      displayName: displayName,
+      role: role,
+      allowedSections: role === 'editor' ? sections : ['ALL']
+    };
+    if (password) updates.password = password;
+    
+    google.script.run
+      .withSuccessHandler(function(result) {
+        btn.disabled = false;
+        btn.textContent = 'Modifier';
+        if (result.success) {
+          cancelEditUser();
+          loadAdminUsers();
+        } else {
+          alert(result.error);
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'Modifier';
+        alert('Erreur de communication.');
+      })
+      .rbacUpdateUser(currentUser.username, editingUsername, updates);
+  } else {
+    // Create new user
+    const newUser = {
+      username: username,
+      displayName: displayName || username,
+      password: password,
+      role: role,
+      allowedSections: role === 'editor' ? sections : ['ALL']
+    };
+    
+    google.script.run
+      .withSuccessHandler(function(result) {
+        btn.disabled = false;
+        btn.textContent = 'Créer le compte';
+        if (result.success) {
+          clearCreateForm();
+          loadAdminUsers();
+          alert(result.message);
+        } else {
+          alert(result.error);
+        }
+      })
+      .withFailureHandler(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'Créer le compte';
+        alert('Erreur de communication.');
+      })
+      .rbacCreateUser(currentUser.username, newUser);
+  }
+}
+
+function editUser(username) {
+  editingUsername = username;
+  
+  // Load user data
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (!result.success) return;
+      const user = result.users.find(u => u.username === username);
+      if (!user) return;
+      
+      document.getElementById('adminNewUsername').value = user.username;
+      document.getElementById('adminNewUsername').disabled = true;
+      document.getElementById('adminNewDisplayName').value = user.displayName;
+      document.getElementById('adminNewPassword').value = '';
+      document.getElementById('adminNewPassword').placeholder = 'Laisser vide pour ne pas changer';
+      document.getElementById('adminNewRole').value = user.role;
+      document.getElementById('adminFormTitleText').textContent = 'Modifier le compte : ' + user.displayName;
+      document.getElementById('adminSaveBtn').textContent = 'Modifier';
+      document.getElementById('adminCancelBtn').style.display = 'inline-flex';
+      
+      onRoleChange();
+      
+      // Check the allowed sections
+      if (user.role === 'editor' && user.allowedSections[0] !== 'ALL') {
+        document.querySelectorAll('#adminSectionsGrid .admin-section-check').forEach(el => {
+          const secId = el.dataset.section;
+          const cb = el.querySelector('input');
+          if (user.allowedSections.includes(secId)) {
+            cb.checked = true;
+            el.classList.add('checked');
+          } else {
+            cb.checked = false;
+            el.classList.remove('checked');
+          }
+        });
+      }
+      
+      // Scroll to form
+      document.getElementById('adminCreateForm').scrollIntoView({ behavior: 'smooth' });
+    })
+    .rbacListUsers(currentUser.username);
+}
+
+function cancelEditUser() {
+  editingUsername = null;
+  clearCreateForm();
+  document.getElementById('adminNewUsername').disabled = false;
+  document.getElementById('adminNewPassword').placeholder = 'Min. 6 caractères';
+  document.getElementById('adminFormTitleText').textContent = 'Créer un nouveau compte';
+  document.getElementById('adminSaveBtn').textContent = 'Créer le compte';
+  document.getElementById('adminCancelBtn').style.display = 'none';
+}
+
+function clearCreateForm() {
+  document.getElementById('adminNewUsername').value = '';
+  document.getElementById('adminNewDisplayName').value = '';
+  document.getElementById('adminNewPassword').value = '';
+  document.getElementById('adminNewRole').value = 'editor';
+  onRoleChange();
+  document.querySelectorAll('#adminSectionsGrid .admin-section-check').forEach(el => {
+    el.classList.remove('checked');
+    el.querySelector('input').checked = false;
+  });
+}
+</script>
+
+<script>
+// ── ADMIN: Delete User ──────────────────────────────────────
+function confirmDeleteUser(username, displayName) {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer le compte de "' + displayName + '" (@' + username + ') ?\n\nCette action est irréversible.')) {
+    return;
+  }
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        loadAdminUsers();
+      } else {
+        alert(result.error);
+      }
+    })
+    .withFailureHandler(function(err) {
+      alert('Erreur de communication.');
+    })
+    .rbacDeleteUser(currentUser.username, username);
+}
+
+// ── LOGOUT ──────────────────────────────────────────────────
+function doLogout() {
+  currentUser = null;
+  sessionStorage.removeItem('rbac_user');
+  
+  // Show login page, hide app
+  document.getElementById('loginPage').style.display = 'flex';
+  document.querySelector('.app').style.display = 'none';
+  
+  // Clear login fields
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').classList.remove('show');
+  
+  // Remove dynamic elements
+  const badge = document.querySelector('.user-badge');
+  if (badge) badge.remove();
+  const rb = document.getElementById('readonlyBanner');
+  if (rb) rb.remove();
+  const eb = document.getElementById('editorBanner');
+  if (eb) eb.remove();
+}
+
+// ── SESSION RESTORE (optional) ──────────────────────────────
+function checkExistingSession() {
+  const stored = sessionStorage.getItem('rbac_user');
+  if (stored) {
+    try {
+      currentUser = JSON.parse(stored);
+      onLoginSuccess();
+      return true;
+    } catch(e) {
+      sessionStorage.removeItem('rbac_user');
+    }
+  }
+  return false;
+}
+
+// ── PERMISSION HELPER (called from other parts of the app) ──
+function userCanEdit(sectionId) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'admin') return true;
+  if (currentUser.role === 'viewer') return false;
+  if (currentUser.role === 'editor') {
+    if (currentUser.allowedSections.includes('ALL')) return true;
+    return currentUser.allowedSections.includes(sectionId);
+  }
+  return false;
+}
+
+function userCanDelete(sectionId) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'admin') return true;
+  return false; // Only admin can delete
+}
+
+function userCanView(sectionId) {
+  if (!currentUser) return false;
+  if (currentUser.role === 'admin' || currentUser.role === 'viewer') return true;
+  if (currentUser.role === 'editor') {
+    if (currentUser.allowedSections.includes('ALL')) return true;
+    return currentUser.allowedSections.includes(sectionId);
+  }
+  return false;
+}
+
+// ── INITIALIZATION ──────────────────────────────────────────
+// On page load: hide app, show login (unless session exists)
+(function() {
+  // The .app container should be hidden initially
+  const app = document.querySelector('.app');
+  if (app) app.style.display = 'none';
+  
+  // Check for existing session
+  if (!checkExistingSession()) {
+    // Show login page
+    document.getElementById('loginPage').style.display = 'flex';
+  }
+})();
+</script>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// ── RBAC INTEGRATION NOTES ──────────────────────────────────
+// ════════════════════════════════════════════════════════════
+//
+// INSTRUCTIONS D'INTÉGRATION DANS LE PROJET EXISTANT :
+//
+// 1. BACKEND (Code.gs / code.txt) :
+//    - Copier tout le contenu de rbac-backend.txt à la FIN du fichier Code.gs
+//    - Les fonctions rbacLogin, rbacListUsers, rbacCreateUser, 
+//      rbacUpdateUser, rbacDeleteUser seront exposées au client
+//
+// 2. FRONTEND (Index.html / index.html.txt) :
+//    - Ajouter les styles CSS de ce fichier dans la section <style> existante
+//    - Ajouter le HTML (loginPage, adminPanelBg) AVANT la div .app
+//    - Ajouter les scripts APRÈS les scripts existants (avant </body>)
+//    - IMPORTANT : Ajouter style="display:none" à la div .app principale
+//
+// 3. COMPTE ADMIN PAR DÉFAUT :
+//    - Username : admin
+//    - Password : Admin@HSE2024
+//    - (Changez ce mot de passe après la première connexion)
+//
+// 4. FEUILLE RBAC_Users :
+//    - Créée automatiquement dans le même spreadsheet
+//    - Colonnes : Username, PasswordHash, Role, DisplayName, 
+//                 AllowedSections, CreatedAt, Active
+//    - Ne pas modifier manuellement sauf si nécessaire
+//
+// 5. PERMISSIONS PAR SECTION :
+//    - tags, nettoyage, incidents, planning, procedures,
+//      permis, contrats, epi, energie, nuisibles, ia
+//    - Admin : ALL (toutes sections, lecture/écriture/suppression)
+//    - Editor : sections spécifiques (lecture/écriture, PAS suppression)
+//    - Viewer : ALL en lecture seule
+//
+// 6. FONCTIONS HELPERS À UTILISER DANS LE CODE EXISTANT :
+//    - userCanEdit('sectionId')  → true/false
+//    - userCanDelete('sectionId') → true/false  
+//    - userCanView('sectionId')   → true/false
+//    - currentUser.role → 'admin' | 'editor' | 'viewer'
+//
+// ════════════════════════════════════════════════════════════
+</script>
