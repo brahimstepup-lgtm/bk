@@ -1117,10 +1117,151 @@ html.light .pests-search-input{background:#edf2f7}
   .pests-table th{font-size:8px}
 }
 
+/* ════════════════════════════════════════════════════════════
+   ══ RBAC — LOGIN + ADMIN STYLES ══
+   ════════════════════════════════════════════════════════════ */
+.login-bg{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#050f16 0%,#071820 40%,#0d2530 100%)}
+.login-card{width:min(420px,92%);background:var(--card-bg);border:1px solid var(--border);
+  border-radius:16px;padding:36px 32px;box-shadow:0 20px 60px rgba(0,0,0,.6);animation:slideUp .3s ease}
+.login-title{font-size:18px;font-weight:700;color:var(--text);text-align:center;margin-bottom:4px}
+.login-sub{font-size:11px;color:var(--text3);text-align:center;margin-bottom:24px;font-family:'JetBrains Mono',monospace}
+.login-field{margin-bottom:16px}
+.login-label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.login-input{width:100%;padding:11px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none;font-family:'Inter',sans-serif;transition:border-color .2s}
+.login-input:focus{border-color:var(--p2)}
+.login-input::placeholder{color:var(--text3)}
+.login-btn{width:100%;padding:12px;background:linear-gradient(135deg,var(--p1),var(--p2));border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;margin-top:8px}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(9,99,126,.4)}
+.login-btn:disabled{opacity:.6;cursor:wait;transform:none}
+.login-error{background:rgba(232,68,90,.1);border:1px solid rgba(232,68,90,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--red);display:none;align-items:center;gap:8px}
+.login-error.show{display:flex}
+.login-footer{text-align:center;margin-top:20px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.user-badge{display:flex;align-items:center;gap:8px;padding:4px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;font-size:10px;cursor:pointer;transition:all .2s;position:relative}
+.user-badge:hover{background:var(--bg4);border-color:var(--p2)}
+.user-avatar-sm{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,var(--p1),var(--p3));display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+.user-role-tag{padding:2px 6px;border-radius:4px;font-size:9px;font-weight:700;font-family:'JetBrains Mono',monospace;text-transform:uppercase}
+.role-admin{background:rgba(232,68,90,.15);color:var(--red);border:1px solid rgba(232,68,90,.3)}
+.role-editor{background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)}
+.role-viewer{background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3)}
+.user-dropdown{position:absolute;top:38px;right:0;width:210px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:700;display:none;overflow:hidden}
+.user-dropdown.open{display:block;animation:slideDown .15s ease}
+.user-dd-item{padding:10px 14px;font-size:11px;color:var(--text2);cursor:pointer;transition:background .15s;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.user-dd-item:last-child{border-bottom:none}
+.user-dd-item:hover{background:var(--bg3);color:var(--text)}
+.user-dd-item.danger{color:var(--red)}
+.user-dd-item.danger:hover{background:rgba(232,68,90,.08)}
+.admin-panel-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:10000;display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px)}
+.admin-panel-bg.open{display:flex;animation:fadeIn .15s ease}
+.admin-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:min(900px,96%);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.7);animation:slideUp .2s ease}
+.admin-top{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg3)}
+.admin-title{font-size:15px;font-weight:700;color:var(--text);flex:1}
+.admin-close{width:30px;height:30px;border-radius:8px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.admin-close:hover{background:var(--bg5);color:var(--text);border-color:var(--red)}
+.admin-body{overflow-y:auto;flex:1;padding:20px}
+.admin-body::-webkit-scrollbar{width:4px}
+.admin-body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.admin-users-grid{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.admin-user-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:all .15s}
+.admin-user-card:hover{border-color:var(--p2);transform:translateX(2px)}
+.admin-user-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--p1),var(--p3));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0}
+.admin-user-info{flex:1;min-width:0}
+.admin-user-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:2px}
+.admin-user-meta{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.admin-user-sections{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px}
+.admin-section-chip{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(9,99,126,.15);color:var(--p4);border:1px solid rgba(9,99,126,.3);font-family:'JetBrains Mono',monospace}
+.admin-user-actions{display:flex;gap:6px;flex-shrink:0}
+.admin-btn-sm{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .2s;background:var(--bg4);color:var(--text2)}
+.admin-btn-sm:hover{background:var(--p1);color:#fff;border-color:var(--p2)}
+.admin-btn-sm.del:hover{background:rgba(232,68,90,.15);color:var(--red);border-color:rgba(232,68,90,.4)}
+.admin-form{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.admin-form-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.admin-form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.admin-form-field{display:flex;flex-direction:column;gap:4px}
+.admin-form-field.full{grid-column:1/-1}
+.admin-form-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.admin-form-input{padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'Inter',sans-serif;transition:border-color .2s}
+.admin-form-input:focus{border-color:var(--p2)}
+.admin-form-select{padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;cursor:pointer}
+.admin-sections-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:6px}
+.admin-section-check{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:all .15s;user-select:none}
+.admin-section-check:hover{border-color:var(--p2);background:var(--bg4)}
+.admin-section-check.checked{background:rgba(9,99,126,.12);border-color:var(--p3)}
+.admin-section-check input{display:none}
+.admin-section-check .checkmark{width:16px;height:16px;border-radius:4px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;transition:all .15s;flex-shrink:0}
+.admin-section-check.checked .checkmark{background:var(--p2);border-color:var(--p2);color:#fff}
+.admin-section-check .sec-name{font-size:11px;color:var(--text2);font-weight:500}
+.admin-form-actions{display:flex;gap:8px;margin-top:16px}
+.admin-form-btn{padding:9px 18px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:all .2s;font-family:'Inter',sans-serif}
+.admin-form-btn.primary{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;border-color:var(--p2)}
+.admin-form-btn.primary:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,99,126,.4)}
+.admin-form-btn.secondary{background:var(--bg4);color:var(--text2)}
+.admin-form-btn.secondary:hover{background:var(--bg5);color:var(--text)}
+.readonly-banner{background:rgba(16,201,133,.08);border:1px solid rgba(16,201,133,.3);border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--green)}
+.editor-banner{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:8px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-size:11px;color:var(--amber)}
+@media(max-width:600px){.login-card{padding:24px 18px}.admin-panel{width:100%;max-height:100vh;border-radius:0}.admin-form-row{grid-template-columns:1fr}.admin-sections-grid{grid-template-columns:1fr 1fr}}
+
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- ══ RBAC LOGIN PAGE ══ -->
+<div id="loginPage" class="login-bg">
+  <div class="login-card">
+    <div style="text-align:center;margin-bottom:24px">
+      <div class="logo-fb" style="width:60px;height:60px;font-size:22px;margin:0 auto 10px">S3</div>
+      <div class="login-title">SOBCO 3 — HSE Dashboard</div>
+      <div class="login-sub">Connexion sécurisée</div>
+    </div>
+    <div id="loginError" class="login-error"><span>⚠</span><span id="loginErrorMsg"></span></div>
+    <div class="login-field">
+      <label class="login-label">Nom d'utilisateur</label>
+      <input type="text" id="loginUsername" class="login-input" placeholder="Entrez votre nom d'utilisateur" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label class="login-label">Mot de passe</label>
+      <input type="password" id="loginPassword" class="login-input" placeholder="Entrez votre mot de passe" autocomplete="current-password">
+    </div>
+    <button id="loginBtn" class="login-btn" onclick="doLogin()">Se connecter</button>
+    <div class="login-footer">SOBCO 3 — Système HSE v9.2<br>Accès réservé au personnel autorisé</div>
+  </div>
+</div>
+
+<!-- ══ RBAC ADMIN PANEL ══ -->
+<div id="adminPanelBg" class="admin-panel-bg" onclick="if(event.target===this)closeAdminPanel()">
+  <div class="admin-panel">
+    <div class="admin-top">
+      <span style="font-size:20px">👥</span>
+      <div class="admin-title">Gestion des Utilisateurs</div>
+      <button class="admin-close" onclick="closeAdminPanel()">✕</button>
+    </div>
+    <div class="admin-body">
+      <div id="adminCreateForm" class="admin-form">
+        <div class="admin-form-title"><span>➕</span><span id="adminFormTitleText">Créer un nouveau compte</span></div>
+        <div class="admin-form-row">
+          <div class="admin-form-field"><label class="admin-form-label">Nom d'utilisateur</label><input type="text" id="adminNewUsername" class="admin-form-input" placeholder="ex: superviseur1"></div>
+          <div class="admin-form-field"><label class="admin-form-label">Nom complet</label><input type="text" id="adminNewDisplayName" class="admin-form-input" placeholder="ex: Ahmed Benali"></div>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-form-field"><label class="admin-form-label">Mot de passe</label><input type="password" id="adminNewPassword" class="admin-form-input" placeholder="Min. 6 caractères"></div>
+          <div class="admin-form-field"><label class="admin-form-label">Rôle</label><select id="adminNewRole" class="admin-form-select" onchange="onRoleChange()"><option value="editor">Éditeur (Superviseur)</option><option value="viewer">Observateur (Lecture seule)</option></select></div>
+        </div>
+        <div id="adminSectionsWrap" class="admin-form-field full">
+          <label class="admin-form-label">Sections autorisées (Éditeur uniquement)</label>
+          <div class="admin-sections-grid" id="adminSectionsGrid"></div>
+        </div>
+        <div class="admin-form-actions">
+          <button class="admin-form-btn primary" id="adminSaveBtn" onclick="saveUser()">Créer le compte</button>
+          <button class="admin-form-btn secondary" id="adminCancelBtn" onclick="cancelEditUser()" style="display:none">Annuler</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:14px">📋</span><span style="font-size:12px;font-weight:700;color:var(--text)">Comptes existants</span><span id="adminUserCount" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-left:auto"></span></div>
+      <div id="adminUsersGrid" class="admin-users-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app" style="display:none">
 
 <!-- ══ HEADER ══ -->
 <div class="hdr">
@@ -8179,6 +8320,170 @@ function refreshData(){
     })
     .getDataForClient();
 }
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════
+     RBAC JAVASCRIPT — Login, Roles, Admin Panel
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+var RBAC_SECTIONS=[
+  {id:'tags',label:'Tags / Observations',icon:'🏷️'},
+  {id:'nettoyage',label:'Nettoyage',icon:'🧹'},
+  {id:'incidents',label:'Incidents / Accidents',icon:'⚠️'},
+  {id:'planning',label:'Planning',icon:'📅'},
+  {id:'procedures',label:'Procédures HSE',icon:'📋'},
+  {id:'permis',label:'Permis de Travail',icon:'📝'},
+  {id:'contrats',label:'Contrats',icon:'📄'},
+  {id:'epi',label:'EPI (Équipements)',icon:'🦺'},
+  {id:'energie',label:'Énergie',icon:'⚡'},
+  {id:'nuisibles',label:'Nuisibles',icon:'🐀'},
+  {id:'ia',label:'IA / Gemini',icon:'🤖'}
+];
+var currentUser=null, editingUsername=null;
+
+function doLogin(){
+  var u=document.getElementById('loginUsername').value.trim();
+  var p=document.getElementById('loginPassword').value;
+  var btn=document.getElementById('loginBtn');
+  var err=document.getElementById('loginError');
+  var msg=document.getElementById('loginErrorMsg');
+  if(!u||!p){err.classList.add('show');msg.textContent='Veuillez remplir tous les champs.';return;}
+  btn.disabled=true;btn.textContent='Connexion...';err.classList.remove('show');
+  google.script.run.withSuccessHandler(function(r){
+    btn.disabled=false;btn.textContent='Se connecter';
+    if(r.success){currentUser=r.user;sessionStorage.setItem('rbac_user',JSON.stringify(currentUser));onLoginSuccess();}
+    else{err.classList.add('show');msg.textContent=r.error||'Échec.';}
+  }).withFailureHandler(function(){
+    btn.disabled=false;btn.textContent='Se connecter';err.classList.add('show');msg.textContent='Erreur réseau.';
+  }).rbacLogin(u,p);
+}
+document.getElementById('loginPassword').addEventListener('keypress',function(e){if(e.key==='Enter')doLogin();});
+document.getElementById('loginUsername').addEventListener('keypress',function(e){if(e.key==='Enter')document.getElementById('loginPassword').focus();});
+
+function onLoginSuccess(){
+  document.getElementById('loginPage').style.display='none';
+  document.querySelector('.app').style.display='block';
+  injectUserBadge();
+  applyRoleRestrictions();
+  if(currentUser.role==='admin')injectAdminTab();
+}
+function injectUserBadge(){
+  var hdr=document.querySelector('.hdr-right');if(!hdr)return;
+  if(document.querySelector('.user-badge'))return;
+  var ini=currentUser.displayName.split(' ').map(function(w){return w[0];}).join('').toUpperCase().substring(0,2);
+  var rc='role-'+currentUser.role;
+  var rl=currentUser.role==='admin'?'Admin':currentUser.role==='editor'?'Éditeur':'Observateur';
+  var h='<div class="user-badge" onclick="toggleUserDD()"><div class="user-avatar-sm">'+ini+'</div><span style="color:var(--text2);font-weight:500">'+currentUser.displayName+'</span><span class="user-role-tag '+rc+'">'+rl+'</span>';
+  h+='<div id="userDD" class="user-dropdown"><div class="user-dd-item" onclick="event.stopPropagation()">👤 '+currentUser.displayName+'</div>';
+  if(currentUser.role==='admin')h+='<div class="user-dd-item" onclick="event.stopPropagation();openAdminPanel()">⚙️ Gérer les utilisateurs</div>';
+  h+='<div class="user-dd-item danger" onclick="event.stopPropagation();doLogout()">🚪 Se déconnecter</div></div></div>';
+  hdr.insertAdjacentHTML('beforeend',h);
+}
+function toggleUserDD(){var d=document.getElementById('userDD');d.classList.toggle('open');setTimeout(function(){document.addEventListener('click',function cl(e){if(!e.target.closest('.user-badge')){d.classList.remove('open');document.removeEventListener('click',cl);}});},10);}
+function doLogout(){currentUser=null;sessionStorage.removeItem('rbac_user');document.getElementById('loginPage').style.display='flex';document.querySelector('.app').style.display='none';document.getElementById('loginUsername').value='';document.getElementById('loginPassword').value='';document.getElementById('loginError').classList.remove('show');var b=document.querySelector('.user-badge');if(b)b.remove();}
+
+function userCanEdit(sec){if(!currentUser)return false;if(currentUser.role==='admin')return true;if(currentUser.role==='viewer')return false;if(currentUser.allowedSections.indexOf('ALL')>-1)return true;return currentUser.allowedSections.indexOf(sec)>-1;}
+function userCanDelete(){return currentUser&&currentUser.role==='admin';}
+function userCanView(sec){if(!currentUser)return false;if(currentUser.role==='admin'||currentUser.role==='viewer')return true;if(currentUser.allowedSections.indexOf('ALL')>-1)return true;return currentUser.allowedSections.indexOf(sec)>-1;}
+
+function applyRoleRestrictions(){
+  if(currentUser.role==='viewer'){
+    document.querySelectorAll('.btn-add,.btn-edit,.btn-delete,.btn-save,[data-action="add"],[data-action="edit"],[data-action="delete"]').forEach(function(el){el.style.display='none';});
+  }
+  if(currentUser.role==='editor'){
+    document.querySelectorAll('.btn-delete,[data-action="delete"]').forEach(function(el){el.style.display='none';});
+    if(currentUser.allowedSections.indexOf('ALL')<0){
+      var tabs=document.querySelectorAll('.tabs .tab');
+      var map={'incidents':'incidents','tags':'tags','bilan':'incidents','nergie':'energie','veille':'procedures','proc':'procedures','nettoyage':'nettoyage','contrats':'contrats','permis':'permis','epi':'epi','nuisibles':'nuisibles'};
+      tabs.forEach(function(tab){
+        var txt=tab.textContent.toLowerCase();var secId='';
+        Object.keys(map).forEach(function(k){if(txt.indexOf(k)>-1)secId=map[k];});
+        if(secId&&currentUser.allowedSections.indexOf(secId)<0)tab.style.display='none';
+      });
+    }
+  }
+}
+
+function injectAdminTab(){
+  var tabs=document.querySelector('.tabs');if(!tabs)return;
+  var t=document.createElement('button');t.className='tab';t.style.cssText='background:rgba(232,68,90,.08);border:1px solid rgba(232,68,90,.2);color:var(--red)';
+  t.innerHTML='👥 Admin';t.onclick=function(){openAdminPanel();};tabs.appendChild(t);
+}
+function openAdminPanel(){document.getElementById('adminPanelBg').classList.add('open');loadAdminUsers();renderSectionsCheckboxes();}
+function closeAdminPanel(){document.getElementById('adminPanelBg').classList.remove('open');cancelEditUser();}
+function onRoleChange(){var w=document.getElementById('adminSectionsWrap');if(w)w.style.display=(document.getElementById('adminNewRole').value==='editor')?'block':'none';}
+function renderSectionsCheckboxes(){
+  var g=document.getElementById('adminSectionsGrid');g.innerHTML='';
+  RBAC_SECTIONS.forEach(function(sec){
+    var d=document.createElement('div');d.className='admin-section-check';d.dataset.section=sec.id;
+    d.onclick=function(){var cb=d.querySelector('input');cb.checked=!cb.checked;d.classList.toggle('checked',cb.checked);};
+    d.innerHTML='<input type="checkbox" value="'+sec.id+'"><span class="checkmark">✓</span><span class="sec-name">'+sec.icon+' '+sec.label+'</span>';
+    g.appendChild(d);
+  });
+}
+function loadAdminUsers(){
+  var g=document.getElementById('adminUsersGrid');g.innerHTML='<div style="text-align:center;padding:20px;color:var(--text3)">Chargement...</div>';
+  google.script.run.withSuccessHandler(function(r){if(r.success)renderAdminUsers(r.users);else g.innerHTML='<div style="color:var(--red)">'+r.error+'</div>';}).rbacListUsers(currentUser.username);
+}
+function renderAdminUsers(users){
+  var g=document.getElementById('adminUsersGrid');document.getElementById('adminUserCount').textContent=users.length+' compte(s)';g.innerHTML='';
+  users.forEach(function(user){
+    var ini=user.displayName.split(' ').map(function(w){return w[0];}).join('').toUpperCase().substring(0,2);
+    var rc='role-'+user.role;var rl=user.role==='admin'?'Admin':user.role==='editor'?'Éditeur':'Observateur';
+    var secH='';
+    if(user.role==='editor'&&user.allowedSections[0]!=='ALL'){secH='<div class="admin-user-sections">'+user.allowedSections.map(function(s){var sc=RBAC_SECTIONS.find(function(x){return x.id===s;});return '<span class="admin-section-chip">'+(sc?sc.icon+' '+sc.label:s)+'</span>';}).join('')+'</div>';}
+    else{secH='<div class="admin-user-sections"><span class="admin-section-chip" style="background:rgba(16,201,133,.12);color:var(--green);border-color:rgba(16,201,133,.3)">✓ Toutes sections</span></div>';}
+    var isCur=user.username===currentUser.username;
+    var c=document.createElement('div');c.className='admin-user-card';
+    c.innerHTML='<div class="admin-user-avatar">'+ini+'</div><div class="admin-user-info"><div class="admin-user-name">'+(user.active?'<span style="color:var(--green)">●</span>':'<span style="color:var(--red)">●</span>')+' '+user.displayName+' <span class="user-role-tag '+rc+'" style="margin-left:6px">'+rl+'</span>'+(isCur?' <span style="font-size:9px;color:var(--text3)">(vous)</span>':'')+'</div><div class="admin-user-meta">@'+user.username+'</div>'+secH+'</div><div class="admin-user-actions">'+(isCur?'':'<button class="admin-btn-sm" title="Modifier" onclick="editUser(\''+user.username+'\')">✏️</button><button class="admin-btn-sm del" title="Supprimer" onclick="confirmDeleteUser(\''+user.username+'\',\''+user.displayName+'\')">🗑️</button>')+'</div>';
+    g.appendChild(c);
+  });
+}
+function saveUser(){
+  var un=document.getElementById('adminNewUsername').value.trim();
+  var dn=document.getElementById('adminNewDisplayName').value.trim();
+  var pw=document.getElementById('adminNewPassword').value;
+  var rl=document.getElementById('adminNewRole').value;
+  var btn=document.getElementById('adminSaveBtn');
+  var secs=[];document.querySelectorAll('#adminSectionsGrid .admin-section-check.checked input').forEach(function(cb){secs.push(cb.value);});
+  if(!un){alert("Nom d'utilisateur obligatoire.");return;}
+  if(!editingUsername&&!pw){alert("Mot de passe obligatoire.");return;}
+  if(!editingUsername&&pw.length<6){alert("Mot de passe min. 6 caractères.");return;}
+  if(rl==='editor'&&secs.length===0){alert("Sélectionnez au moins une section pour l'éditeur.");return;}
+  btn.disabled=true;
+  if(editingUsername){
+    var upd={displayName:dn,role:rl,allowedSections:rl==='editor'?secs:['ALL']};if(pw)upd.password=pw;
+    google.script.run.withSuccessHandler(function(r){btn.disabled=false;if(r.success){cancelEditUser();loadAdminUsers();}else alert(r.error);}).rbacUpdateUser(currentUser.username,editingUsername,upd);
+  }else{
+    var nu={username:un,displayName:dn||un,password:pw,role:rl,allowedSections:rl==='editor'?secs:['ALL']};
+    google.script.run.withSuccessHandler(function(r){btn.disabled=false;if(r.success){clearAdminForm();loadAdminUsers();alert(r.message);}else alert(r.error);}).rbacCreateUser(currentUser.username,nu);
+  }
+}
+function editUser(username){
+  editingUsername=username;
+  google.script.run.withSuccessHandler(function(r){
+    if(!r.success)return;var user=r.users.find(function(u){return u.username===username;});if(!user)return;
+    document.getElementById('adminNewUsername').value=user.username;document.getElementById('adminNewUsername').disabled=true;
+    document.getElementById('adminNewDisplayName').value=user.displayName;
+    document.getElementById('adminNewPassword').value='';document.getElementById('adminNewPassword').placeholder='Laisser vide = inchangé';
+    document.getElementById('adminNewRole').value=user.role;document.getElementById('adminFormTitleText').textContent='Modifier : '+user.displayName;
+    document.getElementById('adminSaveBtn').textContent='Modifier';document.getElementById('adminCancelBtn').style.display='inline-flex';
+    onRoleChange();
+    if(user.role==='editor'&&user.allowedSections[0]!=='ALL'){
+      document.querySelectorAll('#adminSectionsGrid .admin-section-check').forEach(function(el){var cb=el.querySelector('input');if(user.allowedSections.indexOf(el.dataset.section)>-1){cb.checked=true;el.classList.add('checked');}else{cb.checked=false;el.classList.remove('checked');}});
+    }
+  }).rbacListUsers(currentUser.username);
+}
+function cancelEditUser(){editingUsername=null;clearAdminForm();document.getElementById('adminNewUsername').disabled=false;document.getElementById('adminNewPassword').placeholder='Min. 6 caractères';document.getElementById('adminFormTitleText').textContent='Créer un nouveau compte';document.getElementById('adminSaveBtn').textContent='Créer le compte';document.getElementById('adminCancelBtn').style.display='none';}
+function clearAdminForm(){document.getElementById('adminNewUsername').value='';document.getElementById('adminNewDisplayName').value='';document.getElementById('adminNewPassword').value='';document.getElementById('adminNewRole').value='editor';onRoleChange();document.querySelectorAll('#adminSectionsGrid .admin-section-check').forEach(function(el){el.classList.remove('checked');el.querySelector('input').checked=false;});}
+function confirmDeleteUser(un,dn){if(!confirm('Supprimer "'+dn+'" (@'+un+') ?\nAction irréversible.'))return;google.script.run.withSuccessHandler(function(r){if(r.success)loadAdminUsers();else alert(r.error);}).rbacDeleteUser(currentUser.username,un);}
+
+(function(){
+  onRoleChange();
+  var s=sessionStorage.getItem('rbac_user');
+  if(s){try{currentUser=JSON.parse(s);onLoginSuccess();return;}catch(e){sessionStorage.removeItem('rbac_user');}}
+  document.getElementById('loginPage').style.display='flex';
+})();
 </script>
 </body>
 </html>

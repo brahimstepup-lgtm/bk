@@ -2767,3 +2767,186 @@ function getTagPhotoForClient_(fileId) {
     return 'data:' + (blob.getContentType()||'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
   } catch(e) { Logger.log('photo error: '+e.message); return ''; }
 }
+
+
+
+// ════════════════════════════════════════════════════════════
+// ══════════════ RBAC — AUTHENTIFICATION & PERMISSIONS ═══════
+// ════════════════════════════════════════════════════════════
+// Rôles : admin, editor, viewer
+// Stockage : feuille "RBAC_Users" dans le même spreadsheet
+// ════════════════════════════════════════════════════════════
+
+var RBAC_SHEET_NAME = 'RBAC_Users';
+
+function initRBACSheet() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sh = ss.getSheetByName(RBAC_SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(RBAC_SHEET_NAME);
+    sh.getRange(1, 1, 1, 7).setValues([[
+      'Username', 'PasswordHash', 'Role', 'DisplayName', 'AllowedSections', 'CreatedAt', 'Active'
+    ]]);
+    var now = new Date().toISOString();
+    var adminHash = hashPassword('Admin@HSE2024');
+    sh.getRange(2, 1, 1, 7).setValues([[
+      'admin', adminHash, 'admin', 'Responsable HSE', 'ALL', now, 'TRUE'
+    ]]);
+    sh.setFrozenRows(1);
+    Logger.log('RBAC sheet created with default admin');
+  }
+  return sh;
+}
+
+function hashPassword(password) {
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password);
+  var hash = '';
+  for (var i = 0; i < raw.length; i++) {
+    var byte = raw[i];
+    if (byte < 0) byte += 256;
+    var hex = byte.toString(16);
+    if (hex.length === 1) hex = '0' + hex;
+    hash += hex;
+  }
+  return hash;
+}
+
+function rbacLogin(username, password) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    var passHash = hashPassword(password);
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (String(row[0]).trim().toLowerCase() === username.trim().toLowerCase() &&
+          String(row[1]).trim() === passHash &&
+          String(row[6]).trim().toUpperCase() === 'TRUE') {
+        var sections = String(row[4]).trim();
+        var allowedSections = (sections === 'ALL') ? ['ALL'] :
+          sections.split(',').map(function(s){return s.trim();}).filter(function(s){return s!=='';});
+        return {
+          success: true,
+          user: {
+            username: String(row[0]).trim(),
+            role: String(row[2]).trim().toLowerCase(),
+            displayName: String(row[3]).trim(),
+            allowedSections: allowedSections
+          }
+        };
+      }
+    }
+    return { success: false, error: "Nom d'utilisateur ou mot de passe incorrect." };
+  } catch(e) {
+    Logger.log('rbacLogin error: ' + e.message);
+    return { success: false, error: 'Erreur serveur.' };
+  }
+}
+
+function rbacListUsers(adminUsername) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    var users = [];
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      if (!row[0] || String(row[0]).trim() === '') continue;
+      var sections = String(row[4]).trim();
+      var allowedSections = (sections === 'ALL') ? ['ALL'] :
+        sections.split(',').map(function(s){return s.trim();}).filter(function(s){return s!=='';});
+      users.push({
+        username: String(row[0]).trim(),
+        role: String(row[2]).trim().toLowerCase(),
+        displayName: String(row[3]).trim(),
+        allowedSections: allowedSections,
+        createdAt: String(row[5]).trim(),
+        active: String(row[6]).trim().toUpperCase() === 'TRUE'
+      });
+    }
+    return { success: true, users: users };
+  } catch(e) {
+    return { success: false, error: e.message };
+  }
+}
+
+function rbacCreateUser(adminUsername, newUser) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    var isAdmin = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === adminUsername.trim().toLowerCase() &&
+          String(data[i][2]).trim().toLowerCase() === 'admin') { isAdmin = true; break; }
+    }
+    if (!isAdmin) return { success: false, error: 'Permission refusée.' };
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === newUser.username.trim().toLowerCase())
+        return { success: false, error: "Ce nom d'utilisateur existe déjà." };
+    }
+    var role = newUser.role.toLowerCase();
+    if (role !== 'editor' && role !== 'viewer') return { success: false, error: 'Rôle invalide.' };
+    var sections = 'ALL';
+    if (role === 'editor' && newUser.allowedSections && newUser.allowedSections.length > 0)
+      sections = newUser.allowedSections.join(',');
+    sh.appendRow([
+      newUser.username.trim(), hashPassword(newUser.password), role,
+      newUser.displayName || newUser.username, sections, new Date().toISOString(), 'TRUE'
+    ]);
+    return { success: true, message: 'Utilisateur "' + newUser.username + '" créé.' };
+  } catch(e) { return { success: false, error: e.message }; }
+}
+
+function rbacUpdateUser(adminUsername, targetUsername, updates) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    var isAdmin = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === adminUsername.trim().toLowerCase() &&
+          String(data[i][2]).trim().toLowerCase() === 'admin') { isAdmin = true; break; }
+    }
+    if (!isAdmin) return { success: false, error: 'Permission refusée.' };
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === targetUsername.trim().toLowerCase())
+        { targetRow = i + 1; break; }
+    }
+    if (targetRow < 0) return { success: false, error: 'Utilisateur non trouvé.' };
+    if (updates.displayName) sh.getRange(targetRow, 4).setValue(updates.displayName);
+    if (updates.role) {
+      var r = updates.role.toLowerCase();
+      if (r!=='admin'&&r!=='editor'&&r!=='viewer') return {success:false,error:'Rôle invalide.'};
+      sh.getRange(targetRow, 3).setValue(r);
+    }
+    if (updates.allowedSections !== undefined) {
+      var sec = (updates.allowedSections && updates.allowedSections.length > 0)
+        ? updates.allowedSections.join(',') : 'ALL';
+      sh.getRange(targetRow, 5).setValue(sec);
+    }
+    if (updates.password) sh.getRange(targetRow, 2).setValue(hashPassword(updates.password));
+    if (updates.active !== undefined) sh.getRange(targetRow, 7).setValue(updates.active ? 'TRUE' : 'FALSE');
+    return { success: true, message: 'Utilisateur mis à jour.' };
+  } catch(e) { return { success: false, error: e.message }; }
+}
+
+function rbacDeleteUser(adminUsername, targetUsername) {
+  try {
+    var sh = initRBACSheet();
+    var data = sh.getDataRange().getValues();
+    var isAdmin = false;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === adminUsername.trim().toLowerCase() &&
+          String(data[i][2]).trim().toLowerCase() === 'admin') { isAdmin = true; break; }
+    }
+    if (!isAdmin) return { success: false, error: 'Permission refusée.' };
+    if (adminUsername.trim().toLowerCase() === targetUsername.trim().toLowerCase())
+      return { success: false, error: 'Vous ne pouvez pas supprimer votre propre compte.' };
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === targetUsername.trim().toLowerCase())
+        { targetRow = i + 1; break; }
+    }
+    if (targetRow < 0) return { success: false, error: 'Utilisateur non trouvé.' };
+    sh.deleteRow(targetRow);
+    return { success: true, message: 'Utilisateur supprimé.' };
+  } catch(e) { return { success: false, error: e.message }; }
+}
