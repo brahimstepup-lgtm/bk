@@ -3111,10 +3111,17 @@ function crudEditTag(username, tagId, tagData) {
     if (tagData.statut !== undefined) sh.getRange(targetRow, 13).setValue(tagData.statut);
     if (tagData.responsable !== undefined) sh.getRange(targetRow, 14).setValue(tagData.responsable);
 
-    // Upload nouvelle photo si fournie
+    // Upload nouvelle photo AVANT si fournie
     if (tagData.photoBase64 && tagData.photoName) {
       var upload = uploadFileToDrive(TAGS_FOLDER_ID, tagId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
       if (upload.success) sh.getRange(targetRow, 12).setValue(tagId + '.' + tagData.photoName);
+    }
+
+    // Upload nouvelle photo APRÈS si fournie
+    if (tagData.photoApresBase64 && tagData.photoApresName) {
+      var uploadApres = uploadFileToDrive(TAGS_FOLDER_ID, tagId + '_apres_' + tagData.photoApresName, tagData.photoApresBase64, tagData.photoApresMime || 'image/jpeg');
+      // If there's a dedicated "après" column (COL.photoRefApres), update it
+      // Otherwise store with "apres" in the filename for the Drive cache to pick up
     }
 
     Logger.log('TAG #' + tagId + ' updated by ' + username);

@@ -1350,6 +1350,18 @@ html.light .pests-search-input{background:#edf2f7}
           <input type="file" id="crudTagFile" accept="image/*" style="display:none" onchange="onTagFileSelected(this)">
         </div>
       </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">📷 Photo (après intervention) — optionnel</label>
+          <div class="crud-file-area" id="crudTagFileAreaApres" onclick="document.getElementById('crudTagFileApres').click()">
+            <div class="crud-file-icon">📁</div>
+            <div class="crud-file-text">Ajouter une photo après correction</div>
+            <div class="crud-file-name" id="crudTagFileNameApres"></div>
+            <img id="crudTagPreviewApres" class="crud-preview" style="display:none">
+          </div>
+          <input type="file" id="crudTagFileApres" accept="image/*" style="display:none" onchange="onTagFileApresSelected(this)">
+        </div>
+      </div>
     </div>
     <div class="crud-actions">
       <button class="crud-submit" id="crudTagSubmit" onclick="submitTag()">Enregistrer</button>
@@ -4134,11 +4146,20 @@ function renderIncidents(incs){
       +(inc.description?'<div class="idesc">'+esc(inc.description.substring(0,90))+(inc.description.length>90?'…':'')+'</div>':'')
       +'<div class="itags">'+(inc.lieu?'<span class="itag">📍 '+esc(inc.lieu)+'</span>':'')+(inc.type?'<span class="itag">'+esc(inc.type)+'</span>':'')
       +'<span class="'+(stat==='Clôturé'?'s-close':'s-open')+'">'+stat+'</span>'
-      +(userCanEdit('incidents')?'<button class="crud-btn edit" style="padding:2px 7px;font-size:9px;margin-left:auto" onclick="event.stopPropagation();openEditIncident(\''+esc(inc.id)+'\',\''+(inc.isoDate||'')+'\',\''+esc(inc.heure||'')+'\',\''+esc((inc.lieu||'').replace(/'/g,"\\\'"))+'\',\''+esc(inc.type||'')+'\',\''+esc((inc.description||'').replace(/'/g,"\\\'").replace(/\n/g,' '))+'\',\''+esc((inc.victime||'').replace(/'/g,"\\\'"))+'\',\''+(inc.gravite||1)+'\',\''+esc((inc.causes||'').replace(/'/g,"\\\'"))+'\',\''+esc((inc.responsable||'').replace(/'/g,"\\\'"))+'\',\''+esc(inc.statut||'')+'\',\''+esc((inc.actions||'').replace(/'/g,"\\\'"))+'\')">✏️</button>':'')
+      +(userCanEdit('incidents')?'<button class="crud-btn edit crud-edit-inc" data-idx="'+incs.indexOf(inc)+'" style="padding:2px 7px;font-size:9px;margin-left:auto">✏️</button>':'')
       +'<span class="iclick-hint">🔍 Voir détails</span></div>';
     el.onclick=function(){openIncModal(inc);};
     el.onkeydown=function(e){if(e.key==='Enter'||e.key===' ')openIncModal(inc);};
     il.appendChild(el);
+  });
+  // Attach edit handlers for incidents (avoids inline escaping issues)
+  document.querySelectorAll('.crud-edit-inc').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var i=parseInt(btn.dataset.idx,10);
+      var inc=incs[i];if(!inc)return;
+      openEditIncFromData(inc);
+    });
   });
 }
 
@@ -4312,9 +4333,18 @@ function applyTagF(){
       +'<td style="white-space:nowrap;font-size:10px">'+esc(t.dateCible||'—')+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
       +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
-      +(userCanEdit('tags')?'<td style="text-align:center"><button class="crud-btn edit" style="padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openEditTag(\''+esc(t.id)+'\',\''+esc((t.description||'').replace(/'/g,"\\\'"))+'\',\''+esc((t.zone||'').replace(/'/g,"\\\'"))+'\',\''+esc((t.emplacement||'').replace(/'/g,"\\\'"))+'\',\''+esc(t.type||'')+'\',\''+esc(t.gravite||'')+'\',\''+esc((t.responsable||'').replace(/'/g,"\\\'"))+'\',\''+(t.isoDate||'')+'\',\''+esc((t.risque||'').replace(/'/g,"\\\'"))+'\',\''+esc(t.statut||'')+'\',\''+esc((t.action||'').replace(/'/g,"\\\'"))+'\')">✏️</button></td>':'');
+      +(userCanEdit('tags')?'<td style="text-align:center"><button class="crud-btn edit crud-edit-tag" data-idx="'+idx+'" style="padding:3px 8px;font-size:10px">✏️</button></td>':'');
     tr.addEventListener('click',function(){ openTagModal(t); });
     tb.appendChild(tr);
+  });
+  // Attach edit handlers via delegation (avoids inline escaping issues)
+  document.querySelectorAll('.crud-edit-tag').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var i=parseInt(btn.dataset.idx,10);
+      var t=filtered[i];if(!t)return;
+      openEditTagFromData(t);
+    });
   });
 
   // ── Chargement asynchrone des vignettes (avec cache partagé) ──
@@ -4891,10 +4921,20 @@ function renderClnTable(items, searchVal){
       '<td><span class="rbadge">'+hl(emplTxt)+'</span></td>' +
       '<td>'+(c.zone ? '<span class="rbadge">'+hl(c.zone)+'</span>' : '<span style="color:var(--text3);font-size:9px">—</span>')+'</td>' +
       '<td>' + (statTxt === '—' ? '<span style="color:var(--text3);font-size:9px">—</span>' : '<span class="'+statClass+'">'+esc(statTxt)+'</span>') + '</td>' +
-      (userCanEdit('nettoyage')?'<td style="text-align:center"><button class="crud-btn edit" style="padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openEditCleaning(\''+esc(c.id||'')+'\',\''+esc((c.zone||'').replace(/'/g,"\\\'"))+'\',\''+esc((c.emplacement||'').replace(/'/g,"\\\'"))+'\',\''+esc((c.description||c.observation||'').replace(/'/g,"\\\'").replace(/\n/g,' '))+'\',\''+esc((c.action||'').replace(/'/g,"\\\'"))+'\',\''+esc((c.responsable||'').replace(/'/g,"\\\'"))+'\',\''+esc(c.statut||'')+'\')">✏️</button></td>':'');
+      (userCanEdit('nettoyage')?'<td style="text-align:center"><button class="crud-btn edit crud-edit-cln" data-idx="'+idx+'" style="padding:3px 8px;font-size:10px">✏️</button></td>':'');
 
     tr.addEventListener('click', function(){ openCleanModal(c); });
     tb.appendChild(tr);
+  });
+  // Attach edit handlers for cleaning (avoids inline escaping issues)
+  document.querySelectorAll('.crud-edit-cln').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var i=parseInt(btn.dataset.idx,10);
+      var c=items[i];if(!c)return;
+      openEditCleaning(c.id||'',c.zone||'',c.emplacement||'',c.description||c.observation||'',c.action||'',c.responsable||'',c.statut||'');
+    });
+  });
   });
 
   // ── Chargement asynchrone des vignettes (avec cache) ───────────
@@ -8670,6 +8710,7 @@ function showToast(msg,type){
 // ── TAG CRUD ─────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 var tagFileData=null;
+var tagFileApresData=null;
 
 function openAddTag(){
   document.getElementById('crudTagId').value='';
@@ -8685,9 +8726,14 @@ function openAddTag(){
   document.getElementById('crudTagStatut').value='Ouvert';
   document.getElementById('crudTagAction').value='';
   document.getElementById('crudTagFileName').textContent='';
+  document.getElementById('crudTagFileName').style.color='';
   document.getElementById('crudTagPreview').style.display='none';
   document.getElementById('crudTagFileArea').classList.remove('has-file');
+  document.getElementById('crudTagFileNameApres').textContent='';
+  document.getElementById('crudTagPreviewApres').style.display='none';
+  document.getElementById('crudTagFileAreaApres').classList.remove('has-file');
   tagFileData=null;
+  tagFileApresData=null;
   document.getElementById('crudTagModal').classList.add('open');
 }
 
@@ -8713,6 +8759,18 @@ function openEditTag(tagId,desc,zone,empl,type,grav,resp,dateCible,risque,statut
 
 function closeCrudTag(){document.getElementById('crudTagModal').classList.remove('open');}
 
+// ── Helper: open edit tag from data object (no escaping needed) ──
+function openEditTagFromData(t){
+  openEditTag(t.id, t.description, t.zone, t.emplacement, t.type, t.gravite, t.responsable, t.isoDate||'', t.risque, t.statut, t.action);
+  // Show existing photo reference if available
+  if(t.photoRef||t.photoClean){
+    var fn=document.getElementById('crudTagFileName');
+    fn.textContent='Photo existante : '+(t.photoClean||t.photoRef);
+    fn.style.color='var(--p4)';
+    document.getElementById('crudTagFileArea').classList.add('has-file');
+  }
+}
+
 function onTagFileSelected(input){
   var file=input.files[0];if(!file)return;
   var reader=new FileReader();
@@ -8720,9 +8778,24 @@ function onTagFileSelected(input){
     var base64=e.target.result.split(',')[1];
     tagFileData={name:file.name,base64:base64,mime:file.type};
     document.getElementById('crudTagFileName').textContent=file.name;
+    document.getElementById('crudTagFileName').style.color='';
     document.getElementById('crudTagPreview').src=e.target.result;
     document.getElementById('crudTagPreview').style.display='block';
     document.getElementById('crudTagFileArea').classList.add('has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+function onTagFileApresSelected(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var base64=e.target.result.split(',')[1];
+    tagFileApresData={name:'apres_'+file.name,base64:base64,mime:file.type};
+    document.getElementById('crudTagFileNameApres').textContent=file.name;
+    document.getElementById('crudTagPreviewApres').src=e.target.result;
+    document.getElementById('crudTagPreviewApres').style.display='block';
+    document.getElementById('crudTagFileAreaApres').classList.add('has-file');
   };
   reader.readAsDataURL(file);
 }
@@ -8749,6 +8822,7 @@ function submitTag(){
     action:document.getElementById('crudTagAction').value.trim()
   };
   if(tagFileData){data.photoBase64=tagFileData.base64;data.photoName=tagFileData.name;data.photoMime=tagFileData.mime;}
+  if(tagFileApresData){data.photoApresBase64=tagFileApresData.base64;data.photoApresName=tagFileApresData.name;data.photoApresMime=tagFileApresData.mime;}
 
   var callback=function(r){
     btn.disabled=false;btn.textContent='Enregistrer';
@@ -8811,6 +8885,11 @@ function openEditIncident(id,date,heure,lieu,type,desc,victime,grav,causes,resp,
 }
 
 function closeCrudInc(){document.getElementById('crudIncModal').classList.remove('open');}
+
+// ── Helper: open edit incident from data object (no escaping needed) ──
+function openEditIncFromData(inc){
+  openEditIncident(inc.id, inc.isoDate||'', inc.heure||'', inc.lieu||'', inc.type||'', inc.description||'', inc.victime||'', inc.gravite||'1', inc.causes||'', inc.responsable||'', inc.statut||'', inc.actions||'');
+}
 
 function submitIncident(){
   var id=document.getElementById('crudIncId').value;
