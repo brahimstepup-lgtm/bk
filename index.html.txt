@@ -8629,6 +8629,9 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
+
+  // Show CRUD buttons if user is logged in with write permissions
+  if(typeof showCrudBars==='function') showCrudBars();
 }
 
 window.onload=function(){
@@ -8999,14 +9002,7 @@ function doSubmitCleaning(data){
   }
 }
 
-// ── Hook into onLoginSuccess to show CRUD bars ──
-var _origOnLoginSuccess=onLoginSuccess;
-onLoginSuccess=function(){_origOnLoginSuccess();showCrudBars();};
-// Also show after data refresh
-var _origRefresh=window.refreshData;
-if(typeof _origRefresh==='function'){
-  window.refreshData=function(){_origRefresh.apply(this,arguments);setTimeout(showCrudBars,500);};
-}
+// ── showCrudBars is called from onLoginSuccess in the RBAC script below ──
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════
@@ -9054,6 +9050,8 @@ function onLoginSuccess(){
   applyRoleRestrictions();
   if(currentUser.role==='admin')injectAdminTab();
   if(typeof showCrudBars==='function')showCrudBars();
+  // Re-render data if already loaded (to inject edit buttons in table rows)
+  if(typeof D!=='undefined'&&D&&typeof render==='function'){try{render(D);}catch(e){}}
 }
 function injectUserBadge(){
   var hdr=document.querySelector('.hdr-right');if(!hdr)return;

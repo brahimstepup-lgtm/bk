@@ -3390,7 +3390,4 @@ function crudUploadFile(username, section, fileName, base64Data, mimeType) {
   }
 }
 
-// ── Wrapper exposé au client (getData renommé pour éviter conflit) ──
-function getDataForClient() {
-  return getData();
-}
+// (getDataForClient already defined above — no duplicate needed)
