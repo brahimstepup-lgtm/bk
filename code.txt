@@ -2950,3 +2950,393 @@ function rbacDeleteUser(adminUsername, targetUsername) {
     return { success: true, message: 'Utilisateur supprimé.' };
   } catch(e) { return { success: false, error: e.message }; }
 }
+
+
+// ════════════════════════════════════════════════════════════
+// ══════════════ CRUD — AJOUT / MODIFICATION / SUPPRESSION ═══
+// ════════════════════════════════════════════════════════════
+// Fonctions appelées depuis le client via google.script.run
+// Chaque fonction vérifie le rôle RBAC avant d'écrire.
+// ════════════════════════════════════════════════════════════
+
+// ── Helper : vérifier permission d'écriture ──
+function checkWritePermission(username, sectionId) {
+  var sh = initRBACSheet();
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === username.trim().toLowerCase()) {
+      var role = String(data[i][2]).trim().toLowerCase();
+      if (role === 'viewer') return { ok: false, error: 'Accès refusé : compte en lecture seule.' };
+      if (role === 'admin') return { ok: true, role: 'admin' };
+      if (role === 'editor') {
+        var sections = String(data[i][4]).trim();
+        if (sections === 'ALL') return { ok: true, role: 'editor' };
+        var arr = sections.split(',').map(function(s){return s.trim();});
+        if (arr.indexOf(sectionId) > -1) return { ok: true, role: 'editor' };
+        return { ok: false, error: 'Accès refusé : cette section ne vous est pas attribuée.' };
+      }
+    }
+  }
+  return { ok: false, error: 'Utilisateur non trouvé.' };
+}
+
+// ── Helper : vérifier permission de suppression (admin only) ──
+function checkDeletePermission(username) {
+  var sh = initRBACSheet();
+  var data = sh.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === username.trim().toLowerCase()) {
+      var role = String(data[i][2]).trim().toLowerCase();
+      if (role === 'admin') return { ok: true };
+      return { ok: false, error: 'Seul un administrateur peut supprimer des données.' };
+    }
+  }
+  return { ok: false, error: 'Utilisateur non trouvé.' };
+}
+
+// ── Helper : trouver une feuille par mots-clés ──
+function findSheetByKeywords(ss, kwds) {
+  var sheets = ss.getSheets();
+  for (var k = 0; k < kwds.length; k++) {
+    for (var i = 0; i < sheets.length; i++) {
+      if (normalize(sheets[i].getName()).indexOf(kwds[k]) > -1) return sheets[i];
+    }
+  }
+  return null;
+}
+
+// ── Helper : upload fichier (base64) vers Drive et retourner l'ID ──
+function uploadFileToDrive(folderId, fileName, base64Data, mimeType) {
+  try {
+    var folder = DriveApp.getFolderById(folderId);
+    var decoded = Utilities.base64Decode(base64Data);
+    var blob = Utilities.newBlob(decoded, mimeType || 'image/jpeg', fileName);
+    var file = folder.createFile(blob);
+    return { success: true, fileId: file.getId(), url: file.getUrl() };
+  } catch(e) {
+    Logger.log('uploadFileToDrive error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── TAGS CRUD ────────────────────────────────────────────────
+// Structure feuille TAGs (0-based) :
+//   0:N°Cas 1:DateCréation 2:DateCible 3:TypeDanger
+//   4:Gravité 5:Emplacement 6:Zone 7:Description
+//   8:RisquePrincipal 9:ActionUrgente 10:Propositions
+//   11:RéférencePhoto 12:Statut 13:Responsable
+// ════════════════════════════════════════════════════════════
+
+function crudAddTag(username, tagData) {
+  try {
+    var perm = checkWritePermission(username, 'tags');
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+
+    // Générer un nouvel ID
+    var data = sh.getDataRange().getValues();
+    var maxId = 0;
+    for (var i = 1; i < data.length; i++) {
+      var num = parseInt(String(data[i][0]).match(/\d+/), 10);
+      if (!isNaN(num) && num > maxId) maxId = num;
+    }
+    var newId = String(maxId + 1);
+
+    // Upload photo si fournie (base64)
+    var photoRef = '';
+    if (tagData.photoBase64 && tagData.photoName) {
+      var upload = uploadFileToDrive(TAGS_FOLDER_ID, newId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
+      if (upload.success) photoRef = newId + '.' + tagData.photoName;
+    }
+
+    // Date de création = aujourd'hui
+    var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
+
+    var newRow = [
+      newId,
+      today,
+      tagData.dateCible || '',
+      tagData.type || '',
+      tagData.gravite || '',
+      tagData.emplacement || '',
+      tagData.zone || '',
+      tagData.description || '',
+      tagData.risque || '',
+      tagData.action || '',
+      tagData.propositions || '',
+      photoRef,
+      tagData.statut || 'Ouvert',
+      tagData.responsable || ''
+    ];
+
+    sh.appendRow(newRow);
+    Logger.log('TAG added: #' + newId + ' by ' + username);
+    return { success: true, message: 'TAG #' + newId + ' créé avec succès.', id: newId };
+  } catch(e) {
+    Logger.log('crudAddTag error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function crudEditTag(username, tagId, tagData) {
+  try {
+    var perm = checkWritePermission(username, 'tags');
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+
+    var data = sh.getDataRange().getValues();
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
+    }
+    if (targetRow < 0) return { success: false, error: 'TAG #' + tagId + ' non trouvé.' };
+
+    // Mettre à jour les champs fournis
+    if (tagData.dateCible !== undefined) sh.getRange(targetRow, 3).setValue(tagData.dateCible);
+    if (tagData.type !== undefined) sh.getRange(targetRow, 4).setValue(tagData.type);
+    if (tagData.gravite !== undefined) sh.getRange(targetRow, 5).setValue(tagData.gravite);
+    if (tagData.emplacement !== undefined) sh.getRange(targetRow, 6).setValue(tagData.emplacement);
+    if (tagData.zone !== undefined) sh.getRange(targetRow, 7).setValue(tagData.zone);
+    if (tagData.description !== undefined) sh.getRange(targetRow, 8).setValue(tagData.description);
+    if (tagData.risque !== undefined) sh.getRange(targetRow, 9).setValue(tagData.risque);
+    if (tagData.action !== undefined) sh.getRange(targetRow, 10).setValue(tagData.action);
+    if (tagData.propositions !== undefined) sh.getRange(targetRow, 11).setValue(tagData.propositions);
+    if (tagData.statut !== undefined) sh.getRange(targetRow, 13).setValue(tagData.statut);
+    if (tagData.responsable !== undefined) sh.getRange(targetRow, 14).setValue(tagData.responsable);
+
+    // Upload nouvelle photo si fournie
+    if (tagData.photoBase64 && tagData.photoName) {
+      var upload = uploadFileToDrive(TAGS_FOLDER_ID, tagId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
+      if (upload.success) sh.getRange(targetRow, 12).setValue(tagId + '.' + tagData.photoName);
+    }
+
+    Logger.log('TAG #' + tagId + ' updated by ' + username);
+    return { success: true, message: 'TAG #' + tagId + ' mis à jour.' };
+  } catch(e) {
+    Logger.log('crudEditTag error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function crudDeleteTag(username, tagId) {
+  try {
+    var perm = checkDeletePermission(username);
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+
+    var data = sh.getDataRange().getValues();
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
+    }
+    if (targetRow < 0) return { success: false, error: 'TAG #' + tagId + ' non trouvé.' };
+
+    sh.deleteRow(targetRow);
+    Logger.log('TAG #' + tagId + ' deleted by ' + username);
+    return { success: true, message: 'TAG #' + tagId + ' supprimé.' };
+  } catch(e) {
+    Logger.log('crudDeleteTag error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── INCIDENTS CRUD ───────────────────────────────────────────
+// Structure feuille Incidents (0-based) :
+//   0:ID 1:Date 2:Heure 3:Lieu 4:Type 5:Gravité
+//   6:Description 7:Victime 8:Causes 9:Responsable
+//   10:Délai 11:Statut 12:(vide) 13:Analyse5M 14:Actions
+// ════════════════════════════════════════════════════════════
+
+function crudAddIncident(username, incData) {
+  try {
+    var perm = checkWritePermission(username, 'incidents');
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sh = findSheetByKeywords(ss, ['incident']);
+    if (!sh) return { success: false, error: 'Feuille Incidents non trouvée.' };
+
+    // Générer un ID
+    var data = sh.getDataRange().getValues();
+    var maxId = 0;
+    for (var i = 1; i < data.length; i++) {
+      var num = parseInt(String(data[i][0]).match(/\d+/), 10);
+      if (!isNaN(num) && num > maxId) maxId = num;
+    }
+    var newId = 'INC-' + String(maxId + 1).padStart(3, '0');
+
+    var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
+
+    var newRow = [
+      newId,
+      incData.date || today,
+      incData.heure || '',
+      incData.lieu || '',
+      incData.type || '',
+      incData.gravite || 1,
+      incData.description || '',
+      incData.victime || '',
+      incData.causes || '',
+      incData.responsable || '',
+      incData.delai || '',
+      incData.statut || 'Ouvert',
+      '',
+      incData.analyse5m || '',
+      incData.actions || ''
+    ];
+
+    sh.appendRow(newRow);
+    Logger.log('Incident added: ' + newId + ' by ' + username);
+    return { success: true, message: 'Incident ' + newId + ' créé.', id: newId };
+  } catch(e) {
+    Logger.log('crudAddIncident error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function crudEditIncident(username, incId, incData) {
+  try {
+    var perm = checkWritePermission(username, 'incidents');
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sh = findSheetByKeywords(ss, ['incident']);
+    if (!sh) return { success: false, error: 'Feuille Incidents non trouvée.' };
+
+    var data = sh.getDataRange().getValues();
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(incId).trim()) { targetRow = i + 1; break; }
+    }
+    if (targetRow < 0) return { success: false, error: 'Incident ' + incId + ' non trouvé.' };
+
+    if (incData.date !== undefined) sh.getRange(targetRow, 2).setValue(incData.date);
+    if (incData.heure !== undefined) sh.getRange(targetRow, 3).setValue(incData.heure);
+    if (incData.lieu !== undefined) sh.getRange(targetRow, 4).setValue(incData.lieu);
+    if (incData.type !== undefined) sh.getRange(targetRow, 5).setValue(incData.type);
+    if (incData.gravite !== undefined) sh.getRange(targetRow, 6).setValue(incData.gravite);
+    if (incData.description !== undefined) sh.getRange(targetRow, 7).setValue(incData.description);
+    if (incData.victime !== undefined) sh.getRange(targetRow, 8).setValue(incData.victime);
+    if (incData.causes !== undefined) sh.getRange(targetRow, 9).setValue(incData.causes);
+    if (incData.responsable !== undefined) sh.getRange(targetRow, 10).setValue(incData.responsable);
+    if (incData.statut !== undefined) sh.getRange(targetRow, 12).setValue(incData.statut);
+    if (incData.actions !== undefined) sh.getRange(targetRow, 15).setValue(incData.actions);
+
+    Logger.log('Incident ' + incId + ' updated by ' + username);
+    return { success: true, message: 'Incident mis à jour.' };
+  } catch(e) {
+    Logger.log('crudEditIncident error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function crudDeleteIncident(username, incId) {
+  try {
+    var perm = checkDeletePermission(username);
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sh = findSheetByKeywords(ss, ['incident']);
+    if (!sh) return { success: false, error: 'Feuille Incidents non trouvée.' };
+
+    var data = sh.getDataRange().getValues();
+    var targetRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(incId).trim()) { targetRow = i + 1; break; }
+    }
+    if (targetRow < 0) return { success: false, error: 'Incident non trouvé.' };
+
+    sh.deleteRow(targetRow);
+    Logger.log('Incident ' + incId + ' deleted by ' + username);
+    return { success: true, message: 'Incident supprimé.' };
+  } catch(e) { return { success: false, error: e.message }; }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── NETTOYAGE CRUD ───────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+
+function crudAddCleaning(username, cleanData) {
+  try {
+    var perm = checkWritePermission(username, 'nettoyage');
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === CLEAN_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()).indexOf('nettoyage') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) return { success: false, error: 'Feuille Nettoyage non trouvée.' };
+
+    var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
+    var data = sh.getDataRange().getValues();
+    var newId = 'NET-' + (data.length);
+
+    // Photo upload
+    var photoRef = '';
+    if (cleanData.photoBase64 && cleanData.photoName) {
+      var upload = uploadFileToDrive(CLEAN_PARENT_FOLDER_ID, newId + '_' + cleanData.photoName, cleanData.photoBase64, cleanData.photoMime || 'image/jpeg');
+      if (upload.success) photoRef = newId + '_' + cleanData.photoName;
+    }
+
+    var newRow = [
+      newId,
+      cleanData.date || today,
+      cleanData.zone || '',
+      cleanData.emplacement || '',
+      cleanData.description || '',
+      cleanData.observation || '',
+      cleanData.action || '',
+      cleanData.responsable || '',
+      cleanData.statut || 'Ouvert',
+      photoRef
+    ];
+
+    sh.appendRow(newRow);
+    Logger.log('Cleaning entry added: ' + newId + ' by ' + username);
+    return { success: true, message: 'Entrée nettoyage ' + newId + ' créée.', id: newId };
+  } catch(e) {
+    Logger.log('crudAddCleaning error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── GENERIC FILE UPLOAD (pour pièces jointes quelconques) ────
+// ════════════════════════════════════════════════════════════
+function crudUploadFile(username, section, fileName, base64Data, mimeType) {
+  try {
+    var perm = checkWritePermission(username, section);
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    var folderId = TAGS_FOLDER_ID; // default
+    if (section === 'nettoyage') folderId = CLEAN_PARENT_FOLDER_ID;
+
+    var result = uploadFileToDrive(folderId, fileName, base64Data, mimeType);
+    return result;
+  } catch(e) {
+    return { success: false, error: e.message };
+  }
+}
+
+// ── Wrapper exposé au client (getData renommé pour éviter conflit) ──
+function getDataForClient() {
+  return getData();
+}

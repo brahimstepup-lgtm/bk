@@ -1118,6 +1118,54 @@ html.light .pests-search-input{background:#edf2f7}
 }
 
 /* ════════════════════════════════════════════════════════════
+   ══ CRUD — MODALS AJOUT/MODIFICATION ══
+   ════════════════════════════════════════════════════════════ */
+.crud-bar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.crud-btn{padding:6px 14px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:all .2s;font-family:'Inter',sans-serif;display:inline-flex;align-items:center;gap:5px}
+.crud-btn.add{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;border-color:var(--p2)}
+.crud-btn.add:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,99,126,.4)}
+.crud-btn.edit{background:var(--bg3);color:var(--amber);border-color:rgba(245,166,35,.3)}
+.crud-btn.edit:hover{background:rgba(245,166,35,.1);border-color:var(--amber)}
+.crud-btn.del{background:var(--bg3);color:var(--red);border-color:rgba(232,68,90,.3)}
+.crud-btn.del:hover{background:rgba(232,68,90,.1);border-color:var(--red)}
+.crud-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.crud-modal-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:10001;display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px)}
+.crud-modal-bg.open{display:flex;animation:fadeIn .15s ease}
+.crud-modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:min(680px,96%);max-height:88vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.7);animation:slideUp .2s ease}
+.crud-modal-top{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.crud-modal-title{font-size:14px;font-weight:700;color:var(--text);flex:1}
+.crud-modal-close{width:30px;height:30px;border-radius:8px;background:var(--bg4);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.crud-modal-close:hover{background:var(--bg5);color:var(--text);border-color:var(--red)}
+.crud-modal-body{overflow-y:auto;flex:1;padding:20px}
+.crud-modal-body::-webkit-scrollbar{width:4px}
+.crud-modal-body::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px}
+.crud-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.crud-field{display:flex;flex-direction:column;gap:4px}
+.crud-field.full{grid-column:1/-1}
+.crud-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px}
+.crud-input,.crud-select,.crud-textarea{padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;outline:none;font-family:'Inter',sans-serif;transition:border-color .2s}
+.crud-input:focus,.crud-select:focus,.crud-textarea:focus{border-color:var(--p2)}
+.crud-textarea{min-height:80px;resize:vertical}
+.crud-file-area{border:2px dashed var(--border);border-radius:8px;padding:18px 14px;text-align:center;cursor:pointer;transition:all .2s;background:var(--bg3)}
+.crud-file-area:hover{border-color:var(--p2);background:var(--bg4)}
+.crud-file-area.has-file{border-color:var(--green);background:rgba(16,201,133,.05)}
+.crud-file-icon{font-size:24px;margin-bottom:6px}
+.crud-file-text{font-size:11px;color:var(--text3)}
+.crud-file-name{font-size:10px;color:var(--green);font-weight:600;margin-top:4px;font-family:'JetBrains Mono',monospace}
+.crud-preview{max-width:120px;max-height:80px;border-radius:6px;margin-top:8px;border:1px solid var(--border)}
+.crud-actions{display:flex;gap:8px;padding:14px 20px;border-top:1px solid var(--border);background:var(--bg3);flex-shrink:0}
+.crud-submit{padding:10px 22px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;transition:all .2s;font-family:'Inter',sans-serif}
+.crud-submit:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(9,99,126,.4)}
+.crud-submit:disabled{opacity:.5;cursor:wait;transform:none}
+.crud-cancel{padding:10px 22px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--bg4);color:var(--text2);transition:all .2s;font-family:'Inter',sans-serif}
+.crud-cancel:hover{background:var(--bg5);color:var(--text)}
+.crud-toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:12px;font-weight:600;z-index:10002;animation:slideUp .2s ease;display:none;align-items:center;gap:8px;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.crud-toast.show{display:flex}
+.crud-toast.success{background:rgba(16,201,133,.9);color:#fff}
+.crud-toast.error{background:rgba(232,68,90,.9);color:#fff}
+@media(max-width:600px){.crud-modal{width:100%;max-height:100vh;border-radius:0}.crud-row{grid-template-columns:1fr}}
+
+/* ════════════════════════════════════════════════════════════
    ══ RBAC — LOGIN + ADMIN STYLES ══
    ════════════════════════════════════════════════════════════ */
 .login-bg{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
@@ -1204,6 +1252,261 @@ html.light .pests-search-input{background:#edf2f7}
 </style>
 </head>
 <body>
+
+<!-- ══ CRUD MODALS ══ -->
+
+<!-- TAG Add/Edit Modal -->
+<div id="crudTagModal" class="crud-modal-bg" onclick="if(event.target===this)closeCrudTag()">
+  <div class="crud-modal">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">🏷️</span>
+      <div class="crud-modal-title" id="crudTagTitle">Ajouter un TAG</div>
+      <button class="crud-modal-close" onclick="closeCrudTag()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <input type="hidden" id="crudTagId" value="">
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Description de la situation dangereuse *</label>
+          <textarea id="crudTagDesc" class="crud-textarea" placeholder="Décrivez la situation dangereuse observée..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Zone / Secteur *</label>
+          <input type="text" id="crudTagZone" class="crud-input" placeholder="ex: Zone A, Atelier 2...">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Emplacement</label>
+          <input type="text" id="crudTagEmplacement" class="crud-input" placeholder="Lieu précis">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Type de danger</label>
+          <select id="crudTagType" class="crud-select">
+            <option value="">— Sélectionner —</option>
+            <option value="Chute">Chute</option>
+            <option value="Électrique">Électrique</option>
+            <option value="Mécanique">Mécanique</option>
+            <option value="Chimique">Chimique</option>
+            <option value="Incendie">Incendie</option>
+            <option value="Ergonomique">Ergonomique</option>
+            <option value="Circulation">Circulation</option>
+            <option value="EPI manquant">EPI manquant</option>
+            <option value="Ordre/Rangement">Ordre/Rangement</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Gravité</label>
+          <select id="crudTagGravite" class="crud-select">
+            <option value="">— Sélectionner —</option>
+            <option value="1">1 — Faible</option>
+            <option value="2">2 — Modérée</option>
+            <option value="3">3 — Élevée</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Responsable</label>
+          <input type="text" id="crudTagResp" class="crud-input" placeholder="Nom du responsable">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Date cible de résolution</label>
+          <input type="date" id="crudTagDateCible" class="crud-input">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Risque principal</label>
+          <input type="text" id="crudTagRisque" class="crud-input" placeholder="Risque identifié">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Statut</label>
+          <select id="crudTagStatut" class="crud-select">
+            <option value="Ouvert">Ouvert</option>
+            <option value="En cours">En cours</option>
+            <option value="Fermé">Fermé</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Action urgente / Mesures correctives</label>
+          <textarea id="crudTagAction" class="crud-textarea" style="min-height:50px" placeholder="Actions à entreprendre..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">📷 Photo (avant intervention)</label>
+          <div class="crud-file-area" id="crudTagFileArea" onclick="document.getElementById('crudTagFile').click()">
+            <div class="crud-file-icon">📁</div>
+            <div class="crud-file-text">Cliquer ou glisser-déposer une image</div>
+            <div class="crud-file-name" id="crudTagFileName"></div>
+            <img id="crudTagPreview" class="crud-preview" style="display:none">
+          </div>
+          <input type="file" id="crudTagFile" accept="image/*" style="display:none" onchange="onTagFileSelected(this)">
+        </div>
+      </div>
+    </div>
+    <div class="crud-actions">
+      <button class="crud-submit" id="crudTagSubmit" onclick="submitTag()">Enregistrer</button>
+      <button class="crud-cancel" onclick="closeCrudTag()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- INCIDENT Add/Edit Modal -->
+<div id="crudIncModal" class="crud-modal-bg" onclick="if(event.target===this)closeCrudInc()">
+  <div class="crud-modal">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">⚠️</span>
+      <div class="crud-modal-title" id="crudIncTitle">Déclarer un Incident</div>
+      <button class="crud-modal-close" onclick="closeCrudInc()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <input type="hidden" id="crudIncId" value="">
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Date *</label>
+          <input type="date" id="crudIncDate" class="crud-input">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Heure</label>
+          <input type="time" id="crudIncHeure" class="crud-input">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Lieu / Zone *</label>
+          <input type="text" id="crudIncLieu" class="crud-input" placeholder="Lieu de l'incident">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Type</label>
+          <select id="crudIncType" class="crud-select">
+            <option value="">— Sélectionner —</option>
+            <option value="Presqu'accident">Presqu'accident</option>
+            <option value="Incident">Incident</option>
+            <option value="Accident bénin">Accident bénin</option>
+            <option value="Accident avec arrêt">Accident avec arrêt</option>
+            <option value="Dommage matériel">Dommage matériel</option>
+            <option value="Environnemental">Environnemental</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Description *</label>
+          <textarea id="crudIncDesc" class="crud-textarea" placeholder="Décrivez l'incident en détail..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Victime(s)</label>
+          <input type="text" id="crudIncVictime" class="crud-input" placeholder="Nom(s) si applicable">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Gravité</label>
+          <select id="crudIncGravite" class="crud-select">
+            <option value="1">1 — Mineur</option>
+            <option value="2">2 — Modéré</option>
+            <option value="3">3 — Grave</option>
+          </select>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Causes</label>
+          <input type="text" id="crudIncCauses" class="crud-input" placeholder="Causes identifiées">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Responsable suivi</label>
+          <input type="text" id="crudIncResp" class="crud-input" placeholder="Responsable">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Statut</label>
+          <select id="crudIncStatut" class="crud-select">
+            <option value="Ouvert">Ouvert</option>
+            <option value="En cours">En cours</option>
+            <option value="Fermé">Fermé</option>
+          </select>
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Actions correctives</label>
+          <input type="text" id="crudIncActions" class="crud-input" placeholder="Actions prises/prévues">
+        </div>
+      </div>
+    </div>
+    <div class="crud-actions">
+      <button class="crud-submit" id="crudIncSubmit" onclick="submitIncident()">Enregistrer</button>
+      <button class="crud-cancel" onclick="closeCrudInc()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- NETTOYAGE Add Modal -->
+<div id="crudClnModal" class="crud-modal-bg" onclick="if(event.target===this)closeCrudCln()">
+  <div class="crud-modal">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">🧹</span>
+      <div class="crud-modal-title">Ajouter une entrée Nettoyage</div>
+      <button class="crud-modal-close" onclick="closeCrudCln()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Zone *</label>
+          <input type="text" id="crudClnZone" class="crud-input" placeholder="Zone / secteur">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Emplacement</label>
+          <input type="text" id="crudClnEmplacement" class="crud-input" placeholder="Lieu précis">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">Description / Observation *</label>
+          <textarea id="crudClnDesc" class="crud-textarea" placeholder="Décrivez le constat ou l'observation..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Action corrective</label>
+          <input type="text" id="crudClnAction" class="crud-input" placeholder="Action prévue">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">Responsable</label>
+          <input type="text" id="crudClnResp" class="crud-input" placeholder="Responsable">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field">
+          <label class="crud-label">Statut</label>
+          <select id="crudClnStatut" class="crud-select">
+            <option value="Ouvert">Ouvert</option>
+            <option value="En cours">En cours</option>
+            <option value="Fermé">Fermé</option>
+          </select>
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">📷 Photo</label>
+          <input type="file" id="crudClnFile" accept="image/*" class="crud-input" style="padding:6px">
+        </div>
+      </div>
+    </div>
+    <div class="crud-actions">
+      <button class="crud-submit" onclick="submitCleaning()">Enregistrer</button>
+      <button class="crud-cancel" onclick="closeCrudCln()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="crudToast" class="crud-toast"></div>
 
 <!-- ══ RBAC LOGIN PAGE ══ -->
 <div id="loginPage" class="login-bg">
@@ -1401,6 +1704,10 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ INCIDENTS ═══ -->
 <div id="inc" class="page">
+  <!-- CRUD Action Bar -->
+  <div class="crud-bar" id="incCrudBar" style="display:none">
+    <button class="crud-btn add" onclick="openAddIncident()">➕ Déclarer un Incident</button>
+  </div>
   <div class="pf-bar">
     <span class="pf-lbl">Période :</span>
     <select class="pf-sel" id="incPer" onchange="onIncPer()">
@@ -1435,6 +1742,12 @@ html.light .pests-search-input{background:#edf2f7}
 <!-- ═══ TAGS ═══ -->
 <div id="tags" class="page">
   <div class="tsum" id="tagSum"></div>
+
+  <!-- CRUD Action Bar -->
+  <div class="crud-bar" id="tagCrudBar" style="display:none">
+    <button class="crud-btn add" onclick="openAddTag()">➕ Nouveau TAG</button>
+    <button class="crud-btn del" id="tagDelBtn" style="display:none" onclick="deleteSelectedTag()">🗑️ Supprimer</button>
+  </div>
 
   <!-- Barre recherche + tri -->
   <div class="tag-search-bar">
@@ -1512,7 +1825,7 @@ html.light .pests-search-input{background:#edf2f7}
         <thead>
           <tr>
             <th>ID</th><th>Date ↓</th><th>Avant</th><th>Après</th>
-            <th>Description</th><th>Zone</th><th>Type</th><th>Date cible</th><th>Responsable</th><th>Statut</th>
+            <th>Description</th><th>Zone</th><th>Type</th><th>Date cible</th><th>Responsable</th><th>Statut</th><th id="tagActionsCol" style="display:none">Actions</th>
           </tr>
         </thead>
         <tbody id="tagBody"></tbody>
@@ -1993,6 +2306,10 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ NETTOYAGE ═══ -->
 <div id="cln" class="page">
+  <!-- CRUD Action Bar -->
+  <div class="crud-bar" id="clnCrudBar" style="display:none">
+    <button class="crud-btn add" onclick="openAddCleaning()">➕ Nouvelle entrée</button>
+  </div>
   <div class="card" style="margin-bottom:14px">
     <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Suivi de Nettoyage — SOBCO 3</div>
     <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
@@ -8323,6 +8640,275 @@ function refreshData(){
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════
+     CRUD JAVASCRIPT — Add/Edit/Delete for Tags, Incidents, Nettoyage
+     ══════════════════════════════════════════════════════════════ -->
+<script>
+// ── CRUD: Show/hide action bars based on role ──
+function showCrudBars(){
+  if(!currentUser)return;
+  var canTags=userCanEdit('tags'),canInc=userCanEdit('incidents'),canCln=userCanEdit('nettoyage');
+  var tb=document.getElementById('tagCrudBar');if(tb)tb.style.display=canTags?'flex':'none';
+  var ib=document.getElementById('incCrudBar');if(ib)ib.style.display=canInc?'flex':'none';
+  var cb=document.getElementById('clnCrudBar');if(cb)cb.style.display=canCln?'flex':'none';
+  // Show actions column in tags table
+  var ac=document.getElementById('tagActionsCol');if(ac)ac.style.display=canTags?'':'none';
+  // Show delete button only for admin
+  var db=document.getElementById('tagDelBtn');if(db)db.style.display=userCanDelete()?'':'none';
+}
+
+// ── Toast ──
+function showToast(msg,type){
+  var t=document.getElementById('crudToast');
+  t.textContent=msg;t.className='crud-toast show '+(type||'success');
+  setTimeout(function(){t.classList.remove('show');},4000);
+}
+
+// ════════════════════════════════════════════════════════════
+// ── TAG CRUD ─────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+var tagFileData=null;
+
+function openAddTag(){
+  document.getElementById('crudTagId').value='';
+  document.getElementById('crudTagTitle').textContent='Ajouter un TAG';
+  document.getElementById('crudTagDesc').value='';
+  document.getElementById('crudTagZone').value='';
+  document.getElementById('crudTagEmplacement').value='';
+  document.getElementById('crudTagType').value='';
+  document.getElementById('crudTagGravite').value='';
+  document.getElementById('crudTagResp').value='';
+  document.getElementById('crudTagDateCible').value='';
+  document.getElementById('crudTagRisque').value='';
+  document.getElementById('crudTagStatut').value='Ouvert';
+  document.getElementById('crudTagAction').value='';
+  document.getElementById('crudTagFileName').textContent='';
+  document.getElementById('crudTagPreview').style.display='none';
+  document.getElementById('crudTagFileArea').classList.remove('has-file');
+  tagFileData=null;
+  document.getElementById('crudTagModal').classList.add('open');
+}
+
+function openEditTag(tagId,desc,zone,empl,type,grav,resp,dateCible,risque,statut,action){
+  document.getElementById('crudTagId').value=tagId;
+  document.getElementById('crudTagTitle').textContent='Modifier TAG #'+tagId;
+  document.getElementById('crudTagDesc').value=desc||'';
+  document.getElementById('crudTagZone').value=zone||'';
+  document.getElementById('crudTagEmplacement').value=empl||'';
+  document.getElementById('crudTagType').value=type||'';
+  document.getElementById('crudTagGravite').value=grav||'';
+  document.getElementById('crudTagResp').value=resp||'';
+  document.getElementById('crudTagDateCible').value=dateCible||'';
+  document.getElementById('crudTagRisque').value=risque||'';
+  document.getElementById('crudTagStatut').value=statut||'Ouvert';
+  document.getElementById('crudTagAction').value=action||'';
+  document.getElementById('crudTagFileName').textContent='';
+  document.getElementById('crudTagPreview').style.display='none';
+  document.getElementById('crudTagFileArea').classList.remove('has-file');
+  tagFileData=null;
+  document.getElementById('crudTagModal').classList.add('open');
+}
+
+function closeCrudTag(){document.getElementById('crudTagModal').classList.remove('open');}
+
+function onTagFileSelected(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var base64=e.target.result.split(',')[1];
+    tagFileData={name:file.name,base64:base64,mime:file.type};
+    document.getElementById('crudTagFileName').textContent=file.name;
+    document.getElementById('crudTagPreview').src=e.target.result;
+    document.getElementById('crudTagPreview').style.display='block';
+    document.getElementById('crudTagFileArea').classList.add('has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitTag(){
+  var id=document.getElementById('crudTagId').value;
+  var desc=document.getElementById('crudTagDesc').value.trim();
+  var zone=document.getElementById('crudTagZone').value.trim();
+  if(!desc){alert('La description est obligatoire.');return;}
+  if(!zone){alert('La zone est obligatoire.');return;}
+
+  var btn=document.getElementById('crudTagSubmit');btn.disabled=true;btn.textContent='Enregistrement...';
+
+  var data={
+    description:desc,
+    zone:zone,
+    emplacement:document.getElementById('crudTagEmplacement').value.trim(),
+    type:document.getElementById('crudTagType').value,
+    gravite:document.getElementById('crudTagGravite').value,
+    responsable:document.getElementById('crudTagResp').value.trim(),
+    dateCible:document.getElementById('crudTagDateCible').value,
+    risque:document.getElementById('crudTagRisque').value.trim(),
+    statut:document.getElementById('crudTagStatut').value,
+    action:document.getElementById('crudTagAction').value.trim()
+  };
+  if(tagFileData){data.photoBase64=tagFileData.base64;data.photoName=tagFileData.name;data.photoMime=tagFileData.mime;}
+
+  var callback=function(r){
+    btn.disabled=false;btn.textContent='Enregistrer';
+    if(r.success){closeCrudTag();showToast(r.message,'success');refreshData();}
+    else{showToast(r.error||'Erreur','error');}
+  };
+  var fail=function(){btn.disabled=false;btn.textContent='Enregistrer';showToast('Erreur réseau','error');};
+
+  if(id){
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudEditTag(currentUser.username,id,data);
+  }else{
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudAddTag(currentUser.username,data);
+  }
+}
+
+function deleteSelectedTag(){
+  var id=prompt('Entrez l\'ID du TAG à supprimer :');
+  if(!id)return;
+  if(!confirm('Supprimer définitivement le TAG #'+id+' ?\nCette action est irréversible.'))return;
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){showToast(r.message,'success');refreshData();}else showToast(r.error,'error');
+  }).crudDeleteTag(currentUser.username,id);
+}
+
+// ════════════════════════════════════════════════════════════
+// ── INCIDENT CRUD ────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+function openAddIncident(){
+  document.getElementById('crudIncId').value='';
+  document.getElementById('crudIncTitle').textContent='Déclarer un Incident';
+  document.getElementById('crudIncDate').value=new Date().toISOString().split('T')[0];
+  document.getElementById('crudIncHeure').value='';
+  document.getElementById('crudIncLieu').value='';
+  document.getElementById('crudIncType').value='';
+  document.getElementById('crudIncDesc').value='';
+  document.getElementById('crudIncVictime').value='';
+  document.getElementById('crudIncGravite').value='1';
+  document.getElementById('crudIncCauses').value='';
+  document.getElementById('crudIncResp').value='';
+  document.getElementById('crudIncStatut').value='Ouvert';
+  document.getElementById('crudIncActions').value='';
+  document.getElementById('crudIncModal').classList.add('open');
+}
+
+function openEditIncident(id,date,heure,lieu,type,desc,victime,grav,causes,resp,statut,actions){
+  document.getElementById('crudIncId').value=id;
+  document.getElementById('crudIncTitle').textContent='Modifier Incident '+id;
+  document.getElementById('crudIncDate').value=date||'';
+  document.getElementById('crudIncHeure').value=heure||'';
+  document.getElementById('crudIncLieu').value=lieu||'';
+  document.getElementById('crudIncType').value=type||'';
+  document.getElementById('crudIncDesc').value=desc||'';
+  document.getElementById('crudIncVictime').value=victime||'';
+  document.getElementById('crudIncGravite').value=grav||'1';
+  document.getElementById('crudIncCauses').value=causes||'';
+  document.getElementById('crudIncResp').value=resp||'';
+  document.getElementById('crudIncStatut').value=statut||'Ouvert';
+  document.getElementById('crudIncActions').value=actions||'';
+  document.getElementById('crudIncModal').classList.add('open');
+}
+
+function closeCrudInc(){document.getElementById('crudIncModal').classList.remove('open');}
+
+function submitIncident(){
+  var id=document.getElementById('crudIncId').value;
+  var desc=document.getElementById('crudIncDesc').value.trim();
+  var lieu=document.getElementById('crudIncLieu').value.trim();
+  if(!desc){alert('La description est obligatoire.');return;}
+  if(!lieu){alert('Le lieu est obligatoire.');return;}
+
+  var btn=document.getElementById('crudIncSubmit');btn.disabled=true;btn.textContent='Enregistrement...';
+  var data={
+    date:document.getElementById('crudIncDate').value,
+    heure:document.getElementById('crudIncHeure').value,
+    lieu:lieu,
+    type:document.getElementById('crudIncType').value,
+    description:desc,
+    victime:document.getElementById('crudIncVictime').value.trim(),
+    gravite:document.getElementById('crudIncGravite').value,
+    causes:document.getElementById('crudIncCauses').value.trim(),
+    responsable:document.getElementById('crudIncResp').value.trim(),
+    statut:document.getElementById('crudIncStatut').value,
+    actions:document.getElementById('crudIncActions').value.trim()
+  };
+
+  var callback=function(r){
+    btn.disabled=false;btn.textContent='Enregistrer';
+    if(r.success){closeCrudInc();showToast(r.message,'success');refreshData();}
+    else showToast(r.error||'Erreur','error');
+  };
+  var fail=function(){btn.disabled=false;btn.textContent='Enregistrer';showToast('Erreur réseau','error');};
+
+  if(id){
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudEditIncident(currentUser.username,id,data);
+  }else{
+    google.script.run.withSuccessHandler(callback).withFailureHandler(fail).crudAddIncident(currentUser.username,data);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── NETTOYAGE CRUD ───────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+function openAddCleaning(){
+  document.getElementById('crudClnZone').value='';
+  document.getElementById('crudClnEmplacement').value='';
+  document.getElementById('crudClnDesc').value='';
+  document.getElementById('crudClnAction').value='';
+  document.getElementById('crudClnResp').value='';
+  document.getElementById('crudClnStatut').value='Ouvert';
+  document.getElementById('crudClnFile').value='';
+  document.getElementById('crudClnModal').classList.add('open');
+}
+function closeCrudCln(){document.getElementById('crudClnModal').classList.remove('open');}
+
+function submitCleaning(){
+  var zone=document.getElementById('crudClnZone').value.trim();
+  var desc=document.getElementById('crudClnDesc').value.trim();
+  if(!zone){alert('La zone est obligatoire.');return;}
+  if(!desc){alert('La description est obligatoire.');return;}
+
+  var data={
+    zone:zone,
+    emplacement:document.getElementById('crudClnEmplacement').value.trim(),
+    description:desc,
+    action:document.getElementById('crudClnAction').value.trim(),
+    responsable:document.getElementById('crudClnResp').value.trim(),
+    statut:document.getElementById('crudClnStatut').value
+  };
+
+  // Handle file
+  var fileInput=document.getElementById('crudClnFile');
+  if(fileInput.files.length>0){
+    var file=fileInput.files[0];
+    var reader=new FileReader();
+    reader.onload=function(e){
+      data.photoBase64=e.target.result.split(',')[1];
+      data.photoName=file.name;
+      data.photoMime=file.type;
+      doSubmitCleaning(data);
+    };
+    reader.readAsDataURL(file);
+  }else{
+    doSubmitCleaning(data);
+  }
+}
+function doSubmitCleaning(data){
+  google.script.run.withSuccessHandler(function(r){
+    if(r.success){closeCrudCln();showToast(r.message,'success');refreshData();}
+    else showToast(r.error||'Erreur','error');
+  }).withFailureHandler(function(){showToast('Erreur réseau','error');}).crudAddCleaning(currentUser.username,data);
+}
+
+// ── Hook into onLoginSuccess to show CRUD bars ──
+var _origOnLoginSuccess=onLoginSuccess;
+onLoginSuccess=function(){_origOnLoginSuccess();showCrudBars();};
+// Also show after data refresh
+var _origRefresh=window.refreshData;
+if(typeof _origRefresh==='function'){
+  window.refreshData=function(){_origRefresh.apply(this,arguments);setTimeout(showCrudBars,500);};
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════
      RBAC JAVASCRIPT — Login, Roles, Admin Panel
      ══════════════════════════════════════════════════════════════ -->
 <script>
@@ -8366,6 +8952,7 @@ function onLoginSuccess(){
   injectUserBadge();
   applyRoleRestrictions();
   if(currentUser.role==='admin')injectAdminTab();
+  if(typeof showCrudBars==='function')showCrudBars();
 }
 function injectUserBadge(){
   var hdr=document.querySelector('.hdr-right');if(!hdr)return;
