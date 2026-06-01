@@ -1339,7 +1339,7 @@ html.light .pests-search-input{background:#edf2f7}
         </div>
       </div>
       <div class="crud-row">
-        <div class="crud-field full">
+        <div class="crud-field">
           <label class="crud-label">📷 Photo (avant intervention)</label>
           <div class="crud-file-area" id="crudTagFileArea" onclick="document.getElementById('crudTagFile').click()">
             <div class="crud-file-icon">📁</div>
@@ -1348,6 +1348,16 @@ html.light .pests-search-input{background:#edf2f7}
             <img id="crudTagPreview" class="crud-preview" style="display:none">
           </div>
           <input type="file" id="crudTagFile" accept="image/*" style="display:none" onchange="onTagFileSelected(this)">
+        </div>
+        <div class="crud-field">
+          <label class="crud-label">📸 Photo (après intervention)</label>
+          <div class="crud-file-area" id="crudTagFileAreaApres" onclick="document.getElementById('crudTagFileApres').click()">
+            <div class="crud-file-icon">📁</div>
+            <div class="crud-file-text">Cliquer ou glisser-déposer une image</div>
+            <div class="crud-file-name" id="crudTagFileNameApres"></div>
+            <img id="crudTagPreviewApres" class="crud-preview" style="display:none">
+          </div>
+          <input type="file" id="crudTagFileApres" accept="image/*" style="display:none" onchange="onTagFileSelectedApres(this)">
         </div>
       </div>
     </div>
@@ -1493,8 +1503,14 @@ html.light .pests-search-input{background:#edf2f7}
           </select>
         </div>
         <div class="crud-field">
-          <label class="crud-label">📷 Photo</label>
+          <label class="crud-label">📷 Photo (avant)</label>
           <input type="file" id="crudClnFile" accept="image/*" class="crud-input" style="padding:6px">
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
+          <label class="crud-label">📸 Photo (après intervention)</label>
+          <input type="file" id="crudClnFileApres" accept="image/*" class="crud-input" style="padding:6px">
         </div>
       </div>
     </div>
@@ -8609,6 +8625,7 @@ function showToast(msg,type){
 // ── TAG CRUD ─────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
 var tagFileData=null;
+var tagFileDataApres=null;
 
 function openAddTag(){
   document.getElementById('crudTagId').value='';
@@ -8627,6 +8644,10 @@ function openAddTag(){
   document.getElementById('crudTagPreview').style.display='none';
   document.getElementById('crudTagFileArea').classList.remove('has-file');
   tagFileData=null;
+  document.getElementById('crudTagFileNameApres').textContent='';
+  document.getElementById('crudTagPreviewApres').style.display='none';
+  document.getElementById('crudTagFileAreaApres').classList.remove('has-file');
+  tagFileDataApres=null;
   document.getElementById('crudTagModal').classList.add('open');
 }
 
@@ -8647,6 +8668,10 @@ function openEditTag(tagId,desc,zone,empl,type,grav,resp,dateCible,risque,statut
   document.getElementById('crudTagPreview').style.display='none';
   document.getElementById('crudTagFileArea').classList.remove('has-file');
   tagFileData=null;
+  document.getElementById('crudTagFileNameApres').textContent='';
+  document.getElementById('crudTagPreviewApres').style.display='none';
+  document.getElementById('crudTagFileAreaApres').classList.remove('has-file');
+  tagFileDataApres=null;
   document.getElementById('crudTagModal').classList.add('open');
 }
 
@@ -8662,6 +8687,20 @@ function onTagFileSelected(input){
     document.getElementById('crudTagPreview').src=e.target.result;
     document.getElementById('crudTagPreview').style.display='block';
     document.getElementById('crudTagFileArea').classList.add('has-file');
+  };
+  reader.readAsDataURL(file);
+}
+
+function onTagFileSelectedApres(input){
+  var file=input.files[0];if(!file)return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var base64=e.target.result.split(',')[1];
+    tagFileDataApres={name:file.name,base64:base64,mime:file.type};
+    document.getElementById('crudTagFileNameApres').textContent=file.name;
+    document.getElementById('crudTagPreviewApres').src=e.target.result;
+    document.getElementById('crudTagPreviewApres').style.display='block';
+    document.getElementById('crudTagFileAreaApres').classList.add('has-file');
   };
   reader.readAsDataURL(file);
 }
@@ -8688,6 +8727,7 @@ function submitTag(){
     action:document.getElementById('crudTagAction').value.trim()
   };
   if(tagFileData){data.photoBase64=tagFileData.base64;data.photoName=tagFileData.name;data.photoMime=tagFileData.mime;}
+  if(tagFileDataApres){data.photoApresBase64=tagFileDataApres.base64;data.photoApresName=tagFileDataApres.name;data.photoApresMime=tagFileDataApres.mime;}
 
   var callback=function(r){
     btn.disabled=false;btn.textContent='Enregistrer';
@@ -8798,6 +8838,7 @@ function openAddCleaning(){
   document.getElementById('crudClnResp').value='';
   document.getElementById('crudClnStatut').value='Ouvert';
   document.getElementById('crudClnFile').value='';
+  document.getElementById('crudClnFileApres').value='';
   document.getElementById('crudClnModal').classList.add('open');
   window._crudClnEditId=null;
 }
@@ -8809,6 +8850,7 @@ function openEditCleaning(id,zone,empl,desc,action,resp,statut){
   document.getElementById('crudClnResp').value=resp||'';
   document.getElementById('crudClnStatut').value=statut||'Ouvert';
   document.getElementById('crudClnFile').value='';
+  document.getElementById('crudClnFileApres').value='';
   document.getElementById('crudClnModal').classList.add('open');
   window._crudClnEditId=id;
 }
@@ -8829,21 +8871,28 @@ function submitCleaning(){
     statut:document.getElementById('crudClnStatut').value
   };
 
-  // Handle file
-  var fileInput=document.getElementById('crudClnFile');
-  if(fileInput.files.length>0){
-    var file=fileInput.files[0];
-    var reader=new FileReader();
-    reader.onload=function(e){
-      data.photoBase64=e.target.result.split(',')[1];
-      data.photoName=file.name;
-      data.photoMime=file.type;
-      doSubmitCleaning(data);
-    };
-    reader.readAsDataURL(file);
-  }else{
+  // Lecture asynchrone des deux fichiers (avant + après) avant l'envoi
+  var fileAvant=document.getElementById('crudClnFile').files[0]||null;
+  var fileApres=document.getElementById('crudClnFileApres').files[0]||null;
+
+  var readFile=function(file){
+    return new Promise(function(resolve){
+      if(!file){resolve(null);return;}
+      var reader=new FileReader();
+      reader.onload=function(e){
+        resolve({base64:e.target.result.split(',')[1],name:file.name,mime:file.type});
+      };
+      reader.onerror=function(){resolve(null);};
+      reader.readAsDataURL(file);
+    });
+  };
+
+  Promise.all([readFile(fileAvant),readFile(fileApres)]).then(function(results){
+    var avant=results[0],apres=results[1];
+    if(avant){data.photoBase64=avant.base64;data.photoName=avant.name;data.photoMime=avant.mime;}
+    if(apres){data.photoApresBase64=apres.base64;data.photoApresName=apres.name;data.photoApresMime=apres.mime;}
     doSubmitCleaning(data);
-  }
+  });
 }
 function doSubmitCleaning(data){
   if(window._crudClnEditId){
