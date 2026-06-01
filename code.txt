@@ -3052,6 +3052,10 @@ function crudAddTag(username, tagData) {
       var upload = uploadFileToDrive(TAGS_FOLDER_ID, newId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
       if (upload.success) photoRef = newId + '.' + tagData.photoName;
     }
+    // Upload photo APRÈS si fournie (le cache Drive classera par mot-clé "APRES" dans le nom)
+    if (tagData.photoApresBase64 && tagData.photoApresName) {
+      uploadFileToDrive(TAGS_FOLDER_ID, newId + '_APRES_' + tagData.photoApresName, tagData.photoApresBase64, tagData.photoApresMime || 'image/jpeg');
+    }
 
     // Date de création = aujourd'hui
     var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
@@ -3115,6 +3119,10 @@ function crudEditTag(username, tagId, tagData) {
     if (tagData.photoBase64 && tagData.photoName) {
       var upload = uploadFileToDrive(TAGS_FOLDER_ID, tagId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
       if (upload.success) sh.getRange(targetRow, 12).setValue(tagId + '.' + tagData.photoName);
+    }
+    // Upload photo APRÈS si fournie
+    if (tagData.photoApresBase64 && tagData.photoApresName) {
+      uploadFileToDrive(TAGS_FOLDER_ID, tagId + '_APRES_' + tagData.photoApresName, tagData.photoApresBase64, tagData.photoApresMime || 'image/jpeg');
     }
 
     Logger.log('TAG #' + tagId + ' updated by ' + username);
@@ -3295,6 +3303,10 @@ function crudAddCleaning(username, cleanData) {
       var upload = uploadFileToDrive(CLEAN_PARENT_FOLDER_ID, newId + '_' + cleanData.photoName, cleanData.photoBase64, cleanData.photoMime || 'image/jpeg');
       if (upload.success) photoRef = newId + '_' + cleanData.photoName;
     }
+    // Photo APRÈS upload (le cache Drive classera par mot-clé "APRES" dans le nom)
+    if (cleanData.photoApresBase64 && cleanData.photoApresName) {
+      uploadFileToDrive(CLEAN_PARENT_FOLDER_ID, newId + '_APRES_' + cleanData.photoApresName, cleanData.photoApresBase64, cleanData.photoApresMime || 'image/jpeg');
+    }
 
     var newRow = [
       newId,
@@ -3360,6 +3372,16 @@ function crudEditCleaning(username, cleanId, cleanData) {
     if (cleanData.action!==undefined && cols.action>=0) sh.getRange(targetRow,cols.action+1).setValue(cleanData.action);
     if (cleanData.responsable!==undefined && cols.responsable>=0) sh.getRange(targetRow,cols.responsable+1).setValue(cleanData.responsable);
     if (cleanData.statut!==undefined && cols.statut>=0) sh.getRange(targetRow,cols.statut+1).setValue(cleanData.statut);
+
+    // Upload photo AVANT si fournie
+    if (cleanData.photoBase64 && cleanData.photoName) {
+      uploadFileToDrive(CLEAN_PARENT_FOLDER_ID, cleanId + '_' + cleanData.photoName, cleanData.photoBase64, cleanData.photoMime || 'image/jpeg');
+    }
+    // Upload photo APRÈS si fournie
+    if (cleanData.photoApresBase64 && cleanData.photoApresName) {
+      uploadFileToDrive(CLEAN_PARENT_FOLDER_ID, cleanId + '_APRES_' + cleanData.photoApresName, cleanData.photoApresBase64, cleanData.photoApresMime || 'image/jpeg');
+    }
+
     Logger.log('Cleaning '+cleanId+' updated by '+username);
     return { success: true, message: 'Entrée nettoyage mise à jour.' };
   } catch(e) { return { success: false, error: e.message }; }
