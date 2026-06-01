@@ -2713,20 +2713,14 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ NUISIBLES ═══ -->
 <div id="pests" class="page">
-  <div class="card pests-intro">
-    <div class="ct"><span class="ct-dot" style="background:#f97316"></span>Suivi des Nuisibles — SOBCO 3</div>
-    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
-      Suivi des opérations de lutte contre les nuisibles, structuré en
-      <strong style="color:#14b8a6">Insectes volants</strong> (FK) et
-      <strong style="color:#f97316">Rongeurs</strong>
-      (Voie extérieure : <em>boîtes à raticide</em> · Intérieur usine :
-      <em>pièges mécanique</em> + <em>boîtes à colles</em>).
-      Indicateurs et graphiques sont construits dynamiquement à partir
-      des feuilles sources — la structure des colonnes est détectée
-      automatiquement.
-      <a id="pestsSourceLink" class="pests-source-link" href="#" target="_blank" rel="noopener noreferrer"
-         style="margin-left:8px;display:inline-block">↗ Feuille source</a>
-    </p>
+  <div class="card pests-intro" style="padding:0;overflow:hidden">
+    <a id="pestsSourceLink" href="#" target="_blank" rel="noopener noreferrer"
+       style="display:block;line-height:0">
+      <img src="https://drive.google.com/thumbnail?id=1UWxJY2rrcVxn7cmLDIlx07AFAXaAryat&sz=w2000"
+           alt="Suivi des Nuisibles — SOBCO 3"
+           style="width:100%;height:auto;display:block"
+           onerror="this.onerror=null;this.src='https://lh3.googleusercontent.com/d/1UWxJY2rrcVxn7cmLDIlx07AFAXaAryat=w2000';">
+    </a>
   </div>
 
   <!-- ─── SECTION 1 : INSECTES VOLANTS (FK) ─── -->
@@ -2846,54 +2840,7 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
     </div>
 
-    <!-- ── Bandeau "Deux systèmes séparés" ── -->
-    <div class="rodent-rule">
-      <div class="rodent-rule-ico">📏</div>
-      <div class="rodent-rule-body">
-        <div class="rodent-rule-title">
-          Deux systèmes <strong>totalement séparés</strong> — chacun avec sa propre légende
-        </div>
-        <div class="rodent-rule-sub">
-          Les indicateurs détaillés <em>intérieur usine</em> et <em>voie extérieure</em> ne sont jamais
-          fusionnés : ils utilisent des dispositifs différents et donc des codes État différents.
-          La comparaison n'est possible qu'au niveau global (totaux) ci-dessous.
-        </div>
-
-        <div class="rodent-rule-legends">
-          <div class="rodent-rule-block">
-            <div class="rodent-rule-block-head">
-              <span class="rodent-area-tag indoor">🏭 Intérieur usine</span>
-              <span class="rodent-rule-block-src">pièges mécaniques + boîtes à colles</span>
-            </div>
-            <div class="rodent-rule-legend">
-              <span class="rodent-leg sou"><b>SOU</b> Souris (capture)</span>
-              <span class="rodent-leg ras"><b>RAS</b> Rien à signaler</span>
-              <span class="rodent-leg q"><b>NT</b> Piège non trouvé</span>
-              <span class="rodent-leg q"><b>CAS</b> Piège cassé</span>
-              <span class="rodent-leg q"><b>RT</b> Piège retiré</span>
-              <span class="rodent-leg q"><b>INAC</b> Piège inaccessible</span>
-            </div>
-          </div>
-
-          <div class="rodent-rule-block">
-            <div class="rodent-rule-block-head">
-              <span class="rodent-area-tag outdoor">🌳 Voie extérieure</span>
-              <span class="rodent-rule-block-src">boîtes à raticide</span>
-            </div>
-            <div class="rodent-rule-legend">
-              <span class="rodent-leg sou"><b>SOU</b> Souris (capture)</span>
-              <span class="rodent-leg act"><b>EBR</b> Boîte ébréchée</span>
-              <span class="rodent-leg act"><b>CON</b> Appât consommé</span>
-              <span class="rodent-leg ras"><b>RAS</b> Rien à signaler</span>
-              <span class="rodent-leg q"><b>NT</b> Boîte non trouvée</span>
-              <span class="rodent-leg q"><b>CAS</b> Boîte cassée</span>
-              <span class="rodent-leg q"><b>RT</b> Boîte retirée</span>
-              <span class="rodent-leg q"><b>INAC</b> Boîte inaccessible</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- ── Bandeau "Deux systèmes séparés" supprimé ── -->
 
     <!-- ── Tableau de bord GLOBAL (totaux uniquement) ── -->
     <div class="pests-sub" id="pestsSouDashSub">
@@ -2944,15 +2891,7 @@ html.light .pests-search-input{background:#edf2f7}
 
     <!-- Sous-section : Voie extérieure -->
     <div class="pests-sub" id="pestsRatSub">
-      <div class="pests-sub-head">
-        <div class="pests-sub-icon outdoor">🌳</div>
-        <div>
-          <div class="pests-sub-title">Voie extérieure</div>
-          <div class="pests-sub-sub" id="pestsRatSheetMeta">Source : feuille « boîtes à raticide »</div>
-        </div>
-      </div>
-
-      <div class="pests-kpi-grid" id="pestsRatKpis"></div>
+      <!-- En-tête + KPI globaux supprimés (redondants avec le tableau de bord détaillé ci-dessous) -->
 
       <!-- ── Tableau de bord détaillé VOIE EXTÉRIEURE ── -->
       <div class="rodent-det rodent-det-out" id="pestsOutdoorDetailed">
