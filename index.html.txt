@@ -1625,6 +1625,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('permits',this)">📜 Permis de travail</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
   <button class="tab"    onclick="goTab('pests',this)">🐀 Nuisibles</button>
+  <button class="tab"    onclick="goTab('sensib',this)">🎓 Sensibilisation</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->

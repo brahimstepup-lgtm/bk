@@ -69,6 +69,10 @@ var EPI_SHEET_NAME = 'Gestion du Stock des EPI (Équipements de Protection Indiv
 var EPI_SLIDES_ID    = '1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk';
 var EPI_SLIDES_SLIDE = 'id.p4';
 
+// ── SENSIBILISATION HSE (spreadsheet dédié, gid=359820712) ──────
+var SENSIB_SHEET_ID  = '1jhoxtRXYpotPToGmAlpaG-nBBzfwynplWyNk0xLckGo';
+var SENSIB_SHEET_GID = 359820712;
+
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
   var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
@@ -2412,6 +2416,12 @@ function getData() {
   out.pestsSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
                        '/edit?gid=1333145847#gid=1333145847';
 
+  // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
+  var sensib = readSensibilisation();
+  out.sensibilisation = sensib.entries || [];
+  out.sensibilisationSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SENSIB_SHEET_ID +
+                                 '/edit?gid=' + SENSIB_SHEET_GID + '#gid=' + SENSIB_SHEET_GID;
+
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
   var kpiData  = kpiSheet.getDataRange().getValues();
@@ -3380,6 +3390,73 @@ function crudUploadFile(username, section, fileName, base64Data, mimeType) {
     return result;
   } catch(e) {
     return { success: false, error: e.message };
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// ── SENSIBILISATION HSE ─────────────────────────────────────────
+// Spreadsheet : SENSIB_SHEET_ID  gid=359820712
+// Colonnes : Timestamp | Matricule | Employee Name | Department
+//            Hazard Type | HSE Trainer | Attendance Sheet Link
+// ════════════════════════════════════════════════════════════════
+function readSensibilisation() {
+  try {
+    var ss = SpreadsheetApp.openById(SENSIB_SHEET_ID);
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    if (!sh) sh = sheets[0];
+    var raw = sh.getDataRange().getValues();
+    if (!raw || raw.length < 2) return { entries: [] };
+    var hdr = raw[0].map(function(h) { return String(h).trim().toLowerCase(); });
+    function ci(kwds) {
+      for (var k = 0; k < kwds.length; k++)
+        for (var c = 0; c < hdr.length; c++)
+          if (hdr[c].indexOf(kwds[k]) > -1) return c;
+      return -1;
+    }
+    var iTs   = ci(['timestamp','date','time']);
+    var iMat  = ci(['matricule','matric']);
+    var iName = ci(['employee name','name','nom']);
+    var iDept = ci(['department','dept','departement','département']);
+    var iHaz  = ci(['hazard','risque','type']);
+    var iTrn  = ci(['trainer','formateur','hse trainer']);
+    var iLink = ci(['attendance','lien','link','sheet']);
+    var entries = [];
+    for (var r = 1; r < raw.length; r++) {
+      var row = raw[r];
+      var ts = iTs > -1 ? row[iTs] : '';
+      var mat = iMat > -1 ? row[iMat] : '';
+      if (!mat && !ts) continue;
+      var dateStr = '';
+      if (ts instanceof Date) {
+        dateStr = Utilities.formatDate(ts, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+      } else {
+        dateStr = String(ts || '').trim();
+      }
+      var linkVal = iLink > -1 ? row[iLink] : '';
+      var linkUrl = '';
+      try {
+        var cell = sh.getRange(r + 1, iLink + 1);
+        var rv = cell.getRichTextValue();
+        if (rv) { var runs = rv.getRuns(); if (runs.length > 0 && runs[0].getLinkUrl()) linkUrl = runs[0].getLinkUrl(); }
+      } catch(e2) {}
+      if (!linkUrl && String(linkVal).indexOf('http') === 0) linkUrl = String(linkVal);
+      entries.push({
+        timestamp: dateStr,
+        matricule: String(mat || '').trim(),
+        name: iName > -1 ? String(row[iName] || '').trim() : '',
+        department: iDept > -1 ? String(row[iDept] || '').trim() : '',
+        hazard: iHaz > -1 ? String(row[iHaz] || '').trim() : '',
+        trainer: iTrn > -1 ? String(row[iTrn] || '').trim() : '',
+        attendanceUrl: linkUrl
+      });
+    }
+    return { entries: entries };
+  } catch(e) {
+    return { entries: [], error: e.toString() };
   }
 }
 
