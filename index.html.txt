@@ -2634,6 +2634,8 @@ html.light .pests-search-input{background:#edf2f7}
       <span class="ct-dot" style="background:var(--green)"></span>
       Sensibilisation HSE — SOBCO 3
       <span id="sensibSourceMeta" style="color:var(--text3);font-size:9px;margin-left:6px;font-family:'JetBrains Mono',monospace"></span>
+      <button id="sensibReloadBtn" onclick="sensibForceReload()" class="btn"
+              style="font-size:9px;padding:2px 8px;margin-left:8px;display:none">↺ Recharger</button>
     </div>
     <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
       Suivi complet des séances de sensibilisation HSE — KPIs, couverture des employés, performance des formateurs et archivage des feuilles d'émargement.
@@ -3701,11 +3703,18 @@ document.addEventListener('click',function(e){
 
 // Charge employés + sessions via appels dédiés (indépendant de getData)
 var _sensibLoaded=false;
+function _sensibSetMeta(txt,color){
+  var el=document.getElementById('sensibSourceMeta');
+  if(el){el.textContent=txt;if(color)el.style.color=color;}
+}
+function sensibForceReload(){ _sensibLoaded=false; sensibLoadOnDemand(); }
 function sensibLoadOnDemand(){
   renderSensib();
   if(_sensibLoaded) return;
   _sensibLoaded=true;
-  // Charge la liste des employés pour l'autocomplete
+  var reloadBtn=document.getElementById('sensibReloadBtn');
+  _sensibSetMeta('⏳ Chargement…','var(--amber)');
+  // Charge employés (autocomplete) — appel dédié
   google.script.run
     .withSuccessHandler(function(r){
       if(r&&r.employees&&r.employees.length){
@@ -3716,26 +3725,63 @@ function sensibLoadOnDemand(){
     })
     .withFailureHandler(function(){})
     .getSensibEmployeesForClient();
-  // Charge les sessions si le tableau est vide
+  // Charge sessions si vide — essaie d'abord la fonction dédiée
   if(!_sensibData.length){
     google.script.run
       .withSuccessHandler(function(r){
+        if(r&&r.error&&!r.entries){
+          // Fonction absente du script déployé → essai via getDataForClient
+          _sensibSetMeta('⚠ Script à redéployer — tentative via getData…','var(--amber)');
+          _sensibLoaded=false;
+          google.script.run
+            .withSuccessHandler(function(d){
+              if(d&&d.sensibilisation&&d.sensibilisation.length){
+                _sensibData=d.sensibilisation;
+                _sensibEmployees=d.sensibilisationEmployees||_sensibEmployees;
+                _sensibRedraw();
+              } else {
+                _sensibSetMeta('⚠ Aucune donnée — vérifiez le script','var(--red)');
+                if(reloadBtn)reloadBtn.style.display='';
+              }
+            })
+            .withFailureHandler(function(e){
+              _sensibSetMeta('✕ Erreur : '+String(e),'var(--red)');
+              _sensibLoaded=false;
+              if(reloadBtn)reloadBtn.style.display='';
+            })
+            .getDataForClient();
+          return;
+        }
         if(r&&r.entries&&r.entries.length){
           _sensibData=r.entries;
-          if(r.employees&&r.employees.length){
-            _sensibEmployees=r.employees;
-          }
-          buildSensibFilters();
-          buildSensibKpis();
-          buildSensibProgressBars();
-          buildSensibCharts();
-          buildSensibLeaderboard();
-          renderSensib();
+          if(r.employees&&r.employees.length) _sensibEmployees=r.employees;
+          _sensibRedraw();
+        } else {
+          _sensibSetMeta('0 session enregistrée','var(--text3)');
+          if(reloadBtn)reloadBtn.style.display='';
         }
       })
-      .withFailureHandler(function(){})
+      .withFailureHandler(function(e){
+        // La fonction n'existe pas encore dans le script déployé
+        _sensibSetMeta('⚠ Redéployez le script Apps Script','var(--red)');
+        _sensibLoaded=false;
+        if(reloadBtn)reloadBtn.style.display='';
+      })
       .getSensibSessionsForClient();
+  } else {
+    _sensibRedraw();
   }
+}
+function _sensibRedraw(){
+  buildSensibFilters();
+  buildSensibKpis();
+  buildSensibProgressBars();
+  buildSensibCharts();
+  buildSensibLeaderboard();
+  renderSensib();
+  _sensibSetMeta(_sensibData.length+' session(s)','var(--text3)');
+  var reloadBtn=document.getElementById('sensibReloadBtn');
+  if(reloadBtn)reloadBtn.style.display='none';
 }
 
 function initSensib(d){
