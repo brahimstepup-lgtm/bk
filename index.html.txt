@@ -2627,6 +2627,8 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ SENSIBILISATION HSE ═══ -->
 <div id="sensib" class="page">
+
+  <!-- ── En-tête ── -->
   <div class="card" style="margin-bottom:14px">
     <div class="ct">
       <span class="ct-dot" style="background:var(--green)"></span>
@@ -2634,33 +2636,157 @@ html.light .pests-search-input{background:#edf2f7}
       <span id="sensibSourceMeta" style="color:var(--text3);font-size:9px;margin-left:6px;font-family:'JetBrains Mono',monospace"></span>
     </div>
     <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
-      Suivi des séances de sensibilisation HSE par employé — type de risque abordé, formateur HSE,
-      et lien vers la feuille de présence associée.
+      Suivi complet des séances de sensibilisation HSE — KPIs, couverture des employés, performance des formateurs et archivage des feuilles d'émargement.
       <a id="sensibSourceLink" href="#" rel="noopener" target="_blank"
-         style="margin-left:8px;display:inline-block;color:var(--p4);font-size:10px;text-decoration:underline;cursor:pointer">↗ Feuille source</a>
+         style="margin-left:8px;color:var(--p4);font-size:10px;text-decoration:underline">↗ Feuille source</a>
     </p>
   </div>
 
-  <!-- KPI Cards -->
+  <!-- ══ BRIQUE 1 : KPIs ══ -->
   <div id="sensibKpiRow" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
 
-  <!-- Graphiques -->
+  <!-- Progress bar Actual vs Target -->
+  <div class="card" style="margin-bottom:14px" id="sensibProgressCard">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Progression vs Objectifs planifiés</div>
+    <div id="sensibProgressBars" style="display:flex;flex-direction:column;gap:10px;padding:4px 0"></div>
+  </div>
+
+  <!-- Graphiques KPI -->
   <div class="row2" style="margin-bottom:14px">
     <div class="card">
-      <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Séances par type de risque</div>
-      <div class="cw" style="height:185px"><canvas id="sensibHazardC"></canvas></div>
+      <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Répartition par type de risque</div>
+      <div class="cw" style="height:200px"><canvas id="sensibHazardC"></canvas></div>
     </div>
     <div class="card">
       <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>Séances par département</div>
-      <div class="cw" style="height:185px"><canvas id="sensibDeptC"></canvas></div>
+      <div class="cw" style="height:200px"><canvas id="sensibDeptC"></canvas></div>
     </div>
   </div>
 
-  <!-- Barre recherche + tri -->
+  <!-- ══ BRIQUE 2 : Recherche individuelle ══ -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>🔍 Suivi individuel par employé</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input type="text" class="tag-search-input" id="sensibEmpSearch"
+             placeholder="Rechercher par Nom ou Matricule…"
+             oninput="sensibSearchEmployee()"
+             style="flex:1;min-width:200px">
+      <button class="btn" onclick="sensibClearEmployee()" style="font-size:10px;padding:4px 10px">✕ Effacer</button>
+    </div>
+    <!-- Dropdown résultats de recherche -->
+    <div id="sensibEmpResults" style="display:none;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px"></div>
+    <!-- Fiche profil employé -->
+    <div id="sensibEmpProfile" style="display:none">
+      <div id="sensibEmpProfileCard" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)"></div>
+      <!-- Alerte GAP -->
+      <div id="sensibGapAlert" style="display:none;margin-bottom:10px;padding:10px 14px;border-radius:8px;background:rgba(232,68,90,.12);border:1px solid rgba(232,68,90,.4);color:var(--red);font-size:11px;font-weight:500"></div>
+      <!-- Historique employé -->
+      <div class="ct" style="margin-bottom:6px"><span class="ct-dot" style="background:var(--p3)"></span>Historique des sensibilisations</div>
+      <div class="tblw">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Thème</th><th>Type de risque</th><th>Formateur HSE</th><th>Statut</th><th style="text-align:center">Émargement</th>
+            </tr>
+          </thead>
+          <tbody id="sensibEmpHistoryBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="sensibEmpEmpty" style="color:var(--text3);font-size:11px;padding:8px 0">Saisissez un nom ou matricule pour afficher le profil de l'employé.</div>
+  </div>
+
+  <!-- ══ BRIQUE 3 : Leaderboard formateurs ══ -->
+  <div class="row2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>🏆 Classement des formateurs HSE</div>
+      <div id="sensibLeaderboard" style="display:flex;flex-direction:column;gap:6px;padding:4px 0;max-height:240px;overflow-y:auto"></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Performance comparée de l'équipe HSE</div>
+      <div class="cw" style="height:220px"><canvas id="sensibTeamC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ BRIQUE 4 : Formulaire saisie + upload ══ -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>📝 Enregistrer une nouvelle session</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px">
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Date de la session *</div>
+        <input type="date" id="sensibFormDate" class="tag-search-input" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Matricule *</div>
+        <input type="text" id="sensibFormMat" class="tag-search-input" placeholder="Ex: 1001" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Nom de l'employé *</div>
+        <input type="text" id="sensibFormName" class="tag-search-input" placeholder="Nom Prénom" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Département</div>
+        <input type="text" id="sensibFormDept" class="tag-search-input" placeholder="Ex: Production - Cuisson" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Type de risque *</div>
+        <select id="sensibFormHazard" class="tag-dropdown" style="width:100%">
+          <option value="">— Sélectionner —</option>
+          <option>Glissade / Chute</option>
+          <option>Brûlure</option>
+          <option>Risque mécanique</option>
+          <option>Hygiène / Sécurité alimentaire</option>
+          <option>Incendie / Explosion</option>
+          <option>Risque électrique</option>
+          <option>Risque chimique</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Thème / Sujet</div>
+        <input type="text" id="sensibFormTheme" class="tag-search-input" placeholder="Ex: Utilisation EPI" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Formateur HSE *</div>
+        <input type="text" id="sensibFormTrainer" class="tag-search-input" placeholder="Nom du formateur" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Durée (heures)</div>
+        <input type="number" id="sensibFormDur" class="tag-search-input" placeholder="Ex: 1.5" step="0.5" min="0" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Statut présence</div>
+        <select id="sensibFormStatus" class="tag-dropdown" style="width:100%">
+          <option value="Présent">Présent</option>
+          <option value="Absent">Absent</option>
+        </select>
+      </div>
+    </div>
+    <!-- Zone upload émargement -->
+    <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;margin-bottom:12px;cursor:pointer;transition:border-color .2s"
+         id="sensibDropZone"
+         onclick="document.getElementById('sensibFileInput').click()"
+         ondragover="event.preventDefault();this.style.borderColor='var(--p4)'"
+         ondragleave="this.style.borderColor='var(--border)'"
+         ondrop="sensibHandleDrop(event)">
+      <div style="font-size:22px;margin-bottom:4px">📎</div>
+      <div style="font-size:11px;color:var(--text2);font-weight:500">Téléverser la feuille d'émargement</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">JPG, PNG ou PDF — cliquez ou glissez ici</div>
+      <input type="file" id="sensibFileInput" accept="image/jpeg,image/png,application/pdf" style="display:none" onchange="sensibHandleFile(this)">
+    </div>
+    <div id="sensibFilePreview" style="display:none;margin-bottom:10px;font-size:10px;color:var(--green);padding:6px 10px;background:rgba(16,201,133,.1);border-radius:6px;border:1px solid rgba(16,201,133,.3)"></div>
+    <div id="sensibFormMsg" style="display:none;margin-bottom:8px;font-size:11px;padding:6px 10px;border-radius:6px"></div>
+    <button class="btn" onclick="sensibSubmitForm()" id="sensibSubmitBtn"
+            style="background:linear-gradient(135deg,rgba(16,201,133,.2),rgba(16,201,133,.1));color:var(--green);border-color:rgba(16,201,133,.4);font-weight:600;padding:6px 18px">
+      ✅ Enregistrer la session
+    </button>
+  </div>
+
+  <!-- ══ Registre général (filtre + tableau) ══ -->
   <div class="tag-search-bar">
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
     <input type="text" class="tag-search-input" id="sensibSearch"
-           placeholder="Rechercher employé, département, type de risque, formateur…"
+           placeholder="Rechercher employé, département, risque, formateur…"
            oninput="renderSensib()">
     <select class="tag-sort-sel" id="sensibSort" onchange="renderSensib()">
       <option value="date_desc">Date ↓ récent</option>
@@ -2671,8 +2797,6 @@ html.light .pests-search-input{background:#edf2f7}
     </select>
     <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearSensibFilters()">↺ Reset</button>
   </div>
-
-  <!-- Filtres chips -->
   <div class="tag-filter-row" style="margin-bottom:10px">
     <div class="tag-filter-group">
       <span class="tag-filter-lbl">⚠ Risque :</span>
@@ -2693,25 +2817,18 @@ html.light .pests-search-input{background:#edf2f7}
       </select>
     </div>
   </div>
-
-  <!-- Table -->
   <div class="card">
     <div class="ct">
-      <span class="ct-dot" style="background:var(--green)"></span>
-      Registre des sensibilisations
+      <span class="ct-dot" style="background:var(--green)"></span>Registre complet des sensibilisations
       <span id="sensibListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
     </div>
     <div class="tblw">
       <table>
         <thead>
           <tr>
-            <th>Date / Heure</th>
-            <th>Matricule</th>
-            <th>Employé</th>
-            <th>Département</th>
-            <th>Type de risque</th>
-            <th>Formateur HSE</th>
-            <th style="text-align:center">Feuille présence</th>
+            <th>Date</th><th>Matricule</th><th>Employé</th><th>Département</th>
+            <th>Risque</th><th>Thème</th><th>Formateur</th><th>Durée</th><th>Statut</th>
+            <th style="text-align:center">Émargement</th>
           </tr>
         </thead>
         <tbody id="sensibBody"></tbody>
@@ -3544,77 +3661,254 @@ function toggleTheme(){
 }
 (function(){ try{ if(localStorage.getItem('hse_theme')==='light'){isLight=false;toggleTheme();} }catch(e){} })();
 
-// ══ SENSIBILISATION ══════════════════════════════════════════
-var _sensibData=[], _sensibCharts={};
+// ══ SENSIBILISATION HSE — MODULE COMPLET ═════════════════════
+var _sensibData=[], _sensibEmployees=[], _sensibTargets=[], _sensibCharts={};
+var _sensibFile=null, _sensibSelectedMat=null;
+
 function initSensib(d){
-  _sensibData=d.sensibilisation||[];
+  _sensibData      = d.sensibilisation || [];
+  _sensibEmployees = d.sensibilisationEmployees || [];
+  _sensibTargets   = d.sensibilisationTargets || [];
   var srcLink=document.getElementById('sensibSourceLink');
-  if(srcLink&&d.sensibilisationSourceUrl){srcLink.href=d.sensibilisationSourceUrl;}
+  if(srcLink&&d.sensibilisationSourceUrl) srcLink.href=d.sensibilisationSourceUrl;
   var meta=document.getElementById('sensibSourceMeta');
-  if(meta)meta.textContent=_sensibData.length+' enregistrement(s)';
+  if(meta) meta.textContent=_sensibData.length+' session(s)';
   buildSensibFilters();
   buildSensibKpis();
+  buildSensibProgressBars();
   buildSensibCharts();
+  buildSensibLeaderboard();
   renderSensib();
 }
+
+// ── Brique 1 : KPIs ──────────────────────────────────────────
+function buildSensibKpis(){
+  var row=document.getElementById('sensibKpiRow'); if(!row) return;
+  var total=_sensibData.length;
+  var mats={};
+  _sensibData.forEach(function(r){ if(r.matricule) mats[r.matricule]=1; });
+  var covered=Object.keys(mats).length;
+  var totalStaff=_sensibEmployees.length || covered;
+  var coveragePct=totalStaff>0?Math.round(covered/totalStaff*100):0;
+  var totalHours=0;
+  _sensibData.forEach(function(r){ totalHours+=r.duration||0; });
+  var hazards={};
+  _sensibData.forEach(function(r){ if(r.hazard) hazards[r.hazard]=(hazards[r.hazard]||0)+1; });
+  var kpis=[
+    {label:'Sessions totales',    val:total,                      color:'var(--p4)',  icon:'🎓'},
+    {label:'Employés touchés',    val:covered+'/'+totalStaff,      color:'var(--green)',icon:'👷'},
+    {label:'Taux de couverture',  val:coveragePct+'%',            color:coveragePct>=80?'var(--green)':coveragePct>=50?'var(--amber)':'var(--red)', icon:'📊'},
+    {label:'Heures investies',    val:totalHours.toFixed(1)+'h',  color:'var(--amber)',icon:'⏱'},
+    {label:'Types de risque',     val:Object.keys(hazards).length, color:'var(--p3)',  icon:'⚠️'},
+  ];
+  row.innerHTML=kpis.map(function(k){
+    return '<div class="kpi" style="flex:1;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:2px">'
+      +'<div style="font-size:18px">'+k.icon+'</div>'
+      +'<div class="kpi-val" style="color:'+k.color+';font-size:22px">'+k.val+'</div>'
+      +'<div class="kpi-lbl" style="text-align:center">'+k.label+'</div></div>';
+  }).join('');
+}
+
+// ── Brique 1 : Progress bars Actual vs Target ──────────────────
+function buildSensibProgressBars(){
+  var cont=document.getElementById('sensibProgressBars'); if(!cont) return;
+  var card=document.getElementById('sensibProgressCard');
+  var hazards={};
+  _sensibData.forEach(function(r){ if(r.hazard) hazards[r.hazard]=(hazards[r.hazard]||0)+1; });
+  if(!_sensibTargets.length){
+    if(card) card.style.display='none';
+    return;
+  }
+  if(card) card.style.display='';
+  cont.innerHTML=_sensibTargets.map(function(t){
+    var actual=hazards[t.hazard]||0;
+    var pct=t.target>0?Math.min(100,Math.round(actual/t.target*100)):0;
+    var col=pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+    return '<div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px">'
+      +'<span>'+escH(t.hazard)+'</span><span style="color:'+col+'">'+actual+' / '+t.target+' ('+pct+'%)</span></div>'
+      +'<div style="background:var(--bg4);border-radius:4px;height:8px;overflow:hidden">'
+      +'<div style="height:100%;border-radius:4px;background:'+col+';width:'+pct+'%;transition:width .6s ease"></div></div></div>';
+  }).join('');
+}
+
+// ── Brique 1 : Graphiques ──────────────────────────────────────
+var _SCOLS=['#0da8d2','#f5a623','#10c985','#e8445a','#7b5ea7','#4ab8c1','#d4a843','#6ec97b','#e88a5a'];
+function buildSensibCharts(){
+  function kill(k){ if(_sensibCharts[k]){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } }
+  kill('hazard'); kill('dept'); kill('team');
+  var hazards={}, depts={};
+  _sensibData.forEach(function(r){
+    if(r.hazard) hazards[r.hazard]=(hazards[r.hazard]||0)+1;
+    if(r.department) depts[r.department]=(depts[r.department]||0)+1;
+  });
+  function mkBar(cid,labels,vals,key){
+    var el=document.getElementById(cid); if(!el) return;
+    _sensibCharts[key]=new Chart(el,{type:'bar',data:{labels:labels,datasets:[{data:vals,backgroundColor:_SCOLS.slice(0,vals.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'var(--text2)',font:{size:9}},grid:{display:false}},y:{ticks:{color:'var(--text3)',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}}}}});
+  }
+  var hK=Object.keys(hazards).sort(function(a,b){return hazards[b]-hazards[a];}).slice(0,8);
+  mkBar('sensibHazardC',hK,hK.map(function(k){return hazards[k];}),'hazard');
+  var dK=Object.keys(depts).sort(function(a,b){return depts[b]-depts[a];}).slice(0,8);
+  mkBar('sensibDeptC',dK,dK.map(function(k){return depts[k];}),'dept');
+}
+
+// ── Brique 3 : Leaderboard formateurs ─────────────────────────
+function buildSensibLeaderboard(){
+  var lb=document.getElementById('sensibLeaderboard'); if(!lb) return;
+  var trainers={};
+  _sensibData.forEach(function(r){
+    if(!r.trainer) return;
+    if(!trainers[r.trainer]) trainers[r.trainer]={sessions:0,employees:{},hours:0};
+    trainers[r.trainer].sessions++;
+    if(r.matricule) trainers[r.trainer].employees[r.matricule]=1;
+    trainers[r.trainer].hours+=r.duration||0;
+  });
+  var sorted=Object.keys(trainers).sort(function(a,b){return trainers[b].sessions-trainers[a].sessions;});
+  if(!sorted.length){ lb.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucun formateur enregistré.</div>'; return; }
+  var medals=['🥇','🥈','🥉'];
+  lb.innerHTML=sorted.map(function(t,i){
+    var tr=trainers[t];
+    var empCount=Object.keys(tr.employees).length;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">'
+      +'<div style="font-size:18px;flex-shrink:0">'+(medals[i]||'#'+(i+1))+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(t)+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">'+tr.sessions+' sessions · '+empCount+' employés · '+tr.hours.toFixed(1)+'h</div></div>'
+      +'<div style="font-size:12px;font-weight:700;color:var(--amber)">'+tr.sessions+'</div></div>';
+  }).join('');
+
+  // Team comparison chart
+  function kill(k){ if(_sensibCharts[k]){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } }
+  kill('team');
+  var el=document.getElementById('sensibTeamC'); if(!el) return;
+  var labels=sorted.slice(0,6).map(function(t){return t.split(' ')[0];});
+  var ds1=sorted.slice(0,6).map(function(t){return trainers[t].sessions;});
+  var ds2=sorted.slice(0,6).map(function(t){return Object.keys(trainers[t].employees).length;});
+  var ds3=sorted.slice(0,6).map(function(t){return +trainers[t].hours.toFixed(1);});
+  _sensibCharts['team']=new Chart(el,{type:'bar',data:{labels:labels,datasets:[
+    {label:'Sessions',data:ds1,backgroundColor:'rgba(13,168,210,.7)',borderRadius:3},
+    {label:'Employés',data:ds2,backgroundColor:'rgba(245,166,35,.7)',borderRadius:3},
+    {label:'Heures',data:ds3,backgroundColor:'rgba(16,201,133,.7)',borderRadius:3}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'var(--text2)',font:{size:9}}}},scales:{x:{ticks:{color:'var(--text2)',font:{size:9}},grid:{display:false}},y:{ticks:{color:'var(--text3)',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+
+// ── Brique 2 : Recherche individuelle ─────────────────────────
+function sensibSearchEmployee(){
+  var q=document.getElementById('sensibEmpSearch').value.trim().toLowerCase();
+  var res=document.getElementById('sensibEmpResults');
+  var profile=document.getElementById('sensibEmpProfile');
+  var empty=document.getElementById('sensibEmpEmpty');
+  if(!q){ res.style.display='none'; profile.style.display='none'; empty.style.display=''; _sensibSelectedMat=null; return; }
+  // Search in employees list + session data
+  var found={};
+  _sensibEmployees.forEach(function(e){
+    if((e.name||'').toLowerCase().indexOf(q)>-1||(e.matricule||'').indexOf(q)>-1) found[e.matricule]=e;
+  });
+  _sensibData.forEach(function(r){
+    if(!found[r.matricule]&&((r.name||'').toLowerCase().indexOf(q)>-1||(r.matricule||'').indexOf(q)>-1)){
+      found[r.matricule]={matricule:r.matricule,name:r.name,department:r.department};
+    }
+  });
+  var list=Object.values(found).slice(0,10);
+  if(!list.length){ res.innerHTML='<div style="padding:8px 12px;font-size:11px;color:var(--text3)">Aucun employé trouvé</div>'; res.style.display='block'; profile.style.display='none'; empty.style.display='none'; return; }
+  res.innerHTML=list.map(function(e){
+    return '<div style="padding:8px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background .15s" '
+      +'onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'\'" '
+      +'onclick="sensibSelectEmployee(\''+escH(e.matricule)+'\')">'
+      +'<strong>'+escH(e.name||e.matricule)+'</strong> <span style="color:var(--text3)">— '+escH(e.matricule)+(e.department?' · '+escH(e.department):'')+'</span></div>';
+  }).join('');
+  res.style.display='block'; profile.style.display='none'; empty.style.display='none';
+}
+
+function sensibSelectEmployee(mat){
+  _sensibSelectedMat=mat;
+  document.getElementById('sensibEmpResults').style.display='none';
+  // Find employee info
+  var emp=_sensibEmployees.find(function(e){return e.matricule===mat;});
+  if(!emp) {
+    var firstSess=_sensibData.find(function(r){return r.matricule===mat;});
+    if(firstSess) emp={matricule:mat,name:firstSess.name,department:firstSess.department};
+    else emp={matricule:mat,name:'—',department:'—'};
+  }
+  // Filter sessions for this employee
+  var history=_sensibData.filter(function(r){return r.matricule===mat;}).sort(function(a,b){return (b.dateMs||0)-(a.dateMs||0);});
+  var lastSession=history.length?history[0].timestamp:'—';
+  // Profile card
+  var card=document.getElementById('sensibEmpProfileCard');
+  card.innerHTML=[
+    {label:'Nom',val:emp.name||mat},
+    {label:'Matricule',val:mat},
+    {label:'Département',val:emp.department||'—'},
+    {label:'Sessions assistées',val:history.length},
+    {label:'Dernière sensibilisation',val:lastSession}
+  ].map(function(f){
+    return '<div style="min-width:130px"><div style="font-size:9px;color:var(--text3);margin-bottom:2px">'+f.label+'</div>'
+      +'<div style="font-size:12px;font-weight:600;color:var(--text)">'+escH(String(f.val))+'</div></div>';
+  }).join('');
+  // Gap Alert: check if any session in last 6 months for mandatory hazards by dept
+  var gapDiv=document.getElementById('sensibGapAlert');
+  var sixMonthsAgo=Date.now()-6*30*24*3600*1000;
+  var dept=(emp.department||'').toLowerCase();
+  var mandatoryHazards=[];
+  if(dept.indexOf('cuisson')>-1||dept.indexOf('baking')>-1) mandatoryHazards=['Brûlure','Risque mécanique','Incendie / Explosion'];
+  else if(dept.indexOf('emballage')>-1||dept.indexOf('packaging')>-1) mandatoryHazards=['Risque mécanique','Hygiène / Sécurité alimentaire'];
+  else if(dept.indexOf('production')>-1) mandatoryHazards=['Glissade / Chute','Risque mécanique'];
+  var gaps=mandatoryHazards.filter(function(h){
+    return !history.some(function(s){ return s.hazard===h && (s.dateMs||0)>sixMonthsAgo; });
+  });
+  if(gaps.length){
+    gapDiv.innerHTML='⚠️ <strong>GAP ALERT</strong> — Sensibilisation(s) obligatoire(s) manquante(s) ces 6 derniers mois pour ce poste : <strong>'+gaps.map(escH).join(', ')+'</strong>';
+    gapDiv.style.display='block';
+  } else { gapDiv.style.display='none'; }
+  // History table
+  var tb=document.getElementById('sensibEmpHistoryBody');
+  if(!history.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">Aucune session enregistrée</td></tr>';
+  } else {
+    tb.innerHTML=history.map(function(r){
+      var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
+      var linkCell=r.attendanceUrl?'<a href="'+r.attendanceUrl+'" target="_blank" rel="noopener" style="color:var(--p4);font-size:11px;text-decoration:underline" title="Voir la feuille d\'émargement">📋 Voir</a>':'<span style="color:var(--text3)">—</span>';
+      return '<tr>'
+        +'<td style="font-size:10px;font-family:JetBrains Mono,monospace;color:var(--text3)">'+escH(r.timestamp)+'</td>'
+        +'<td style="font-size:11px">'+escH(r.theme||'—')+'</td>'
+        +'<td><span class="rbadge" style="background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)">'+escH(r.hazard||'—')+'</span></td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+escH(r.trainer||'—')+'</td>'
+        +'<td style="color:'+statusCol+';font-size:10px;font-weight:600">'+escH(r.status||'Présent')+'</td>'
+        +'<td style="text-align:center">'+linkCell+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+  document.getElementById('sensibEmpProfile').style.display='block';
+  document.getElementById('sensibEmpEmpty').style.display='none';
+}
+
+function sensibClearEmployee(){
+  _sensibSelectedMat=null;
+  document.getElementById('sensibEmpSearch').value='';
+  document.getElementById('sensibEmpResults').style.display='none';
+  document.getElementById('sensibEmpProfile').style.display='none';
+  document.getElementById('sensibEmpEmpty').style.display='';
+}
+
+// ── Filtres registre général ───────────────────────────────────
 function buildSensibFilters(){
   var hazards={},depts={},trainers={};
   _sensibData.forEach(function(r){
-    if(r.hazard)hazards[r.hazard]=1;
-    if(r.department)depts[r.department]=1;
-    if(r.trainer)trainers[r.trainer]=1;
+    if(r.hazard) hazards[r.hazard]=1;
+    if(r.department) depts[r.department]=1;
+    if(r.trainer) trainers[r.trainer]=1;
   });
   function fillSel(id,obj){
-    var sel=document.getElementById(id);if(!sel)return;
+    var sel=document.getElementById(id); if(!sel) return;
     var cur=sel.value;
     sel.innerHTML='<option value="all">Tous</option>';
-    Object.keys(obj).sort().forEach(function(k){
-      var o=document.createElement('option');o.value=k;o.textContent=k;sel.appendChild(o);
-    });
-    if(cur&&obj[cur])sel.value=cur;
+    Object.keys(obj).sort().forEach(function(k){ var o=document.createElement('option'); o.value=k; o.textContent=k; sel.appendChild(o); });
+    if(cur&&obj[cur]) sel.value=cur;
   }
   fillSel('sensibFilterHazard',hazards);
   fillSel('sensibFilterDept',depts);
   fillSel('sensibFilterTrainer',trainers);
 }
-function buildSensibKpis(){
-  var row=document.getElementById('sensibKpiRow');if(!row)return;
-  var total=_sensibData.length;
-  var hazards={},depts={},trainers={};
-  _sensibData.forEach(function(r){
-    if(r.hazard)hazards[r.hazard]=(hazards[r.hazard]||0)+1;
-    if(r.department)depts[r.department]=(depts[r.department]||0)+1;
-    if(r.trainer)trainers[r.trainer]=(trainers[r.trainer]||0)+1;
-  });
-  var topHazard=Object.keys(hazards).sort(function(a,b){return hazards[b]-hazards[a];})[0]||'—';
-  var topDept=Object.keys(depts).sort(function(a,b){return depts[b]-depts[a];})[0]||'—';
-  row.innerHTML=[
-    {label:'Séances totales',val:total,color:'var(--p4)'},
-    {label:'Types de risque',val:Object.keys(hazards).length,color:'var(--amber)'},
-    {label:'Départements',val:Object.keys(depts).length,color:'var(--green)'},
-    {label:'Formateurs actifs',val:Object.keys(trainers).length,color:'var(--p3)'},
-  ].map(function(k){
-    return '<div class="kpi" style="flex:1;min-width:140px"><div class="kpi-val" style="color:'+k.color+'">'+k.val+'</div><div class="kpi-lbl">'+k.label+'</div></div>';
-  }).join('');
-}
-function buildSensibCharts(){
-  function destroyChart(key){if(_sensibCharts[key]){_sensibCharts[key].destroy();delete _sensibCharts[key];}}
-  destroyChart('hazard');destroyChart('dept');
-  var hazards={},depts={};
-  _sensibData.forEach(function(r){
-    if(r.hazard)hazards[r.hazard]=(hazards[r.hazard]||0)+1;
-    if(r.department)depts[r.department]=(depts[r.department]||0)+1;
-  });
-  var COLORS=['#0da8d2','#f5a623','#10c985','#e8445a','#7b5ea7','#4ab8c1','#d4a843','#6ec97b','#e88a5a','#5ab8d4'];
-  function mkChart(canvasId,labels,vals,key){
-    var el=document.getElementById(canvasId);if(!el)return;
-    _sensibCharts[key]=new Chart(el,{type:'bar',data:{labels:labels,datasets:[{data:vals,backgroundColor:COLORS.slice(0,vals.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'var(--text2)',font:{size:9}},grid:{display:false}},y:{ticks:{color:'var(--text3)',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}}}}});
-  }
-  var hKeys=Object.keys(hazards).sort(function(a,b){return hazards[b]-hazards[a];}).slice(0,8);
-  mkChart('sensibHazardC',hKeys,hKeys.map(function(k){return hazards[k];}),'hazard');
-  var dKeys=Object.keys(depts).sort(function(a,b){return depts[b]-depts[a];}).slice(0,8);
-  mkChart('sensibDeptC',dKeys,dKeys.map(function(k){return depts[k];}),'dept');
-}
+
 function renderSensib(){
   var q=(document.getElementById('sensibSearch')||{}).value||'';
   var fh=(document.getElementById('sensibFilterHazard')||{}).value||'all';
@@ -3622,45 +3916,134 @@ function renderSensib(){
   var ft=(document.getElementById('sensibFilterTrainer')||{}).value||'all';
   var sort=(document.getElementById('sensibSort')||{}).value||'date_desc';
   var rows=_sensibData.filter(function(r){
-    if(fh!=='all'&&r.hazard!==fh)return false;
-    if(fd!=='all'&&r.department!==fd)return false;
-    if(ft!=='all'&&r.trainer!==ft)return false;
-    if(q){var lq=q.toLowerCase();var s=(r.name+' '+r.department+' '+r.hazard+' '+r.trainer+' '+r.matricule).toLowerCase();if(s.indexOf(lq)<0)return false;}
+    if(fh!=='all'&&r.hazard!==fh) return false;
+    if(fd!=='all'&&r.department!==fd) return false;
+    if(ft!=='all'&&r.trainer!==ft) return false;
+    if(q){ var lq=q.toLowerCase(); var s=(r.name+' '+r.department+' '+r.hazard+' '+r.trainer+' '+r.matricule+' '+r.theme).toLowerCase(); if(s.indexOf(lq)<0) return false; }
     return true;
   });
   rows.sort(function(a,b){
-    if(sort==='date_desc')return (b.timestamp||'').localeCompare(a.timestamp||'');
-    if(sort==='date_asc')return (a.timestamp||'').localeCompare(b.timestamp||'');
-    if(sort==='name_az')return (a.name||'').localeCompare(b.name||'');
-    if(sort==='dept_az')return (a.department||'').localeCompare(b.department||'');
-    if(sort==='hazard_az')return (a.hazard||'').localeCompare(b.hazard||'');
+    if(sort==='date_desc') return (b.dateMs||0)-(a.dateMs||0);
+    if(sort==='date_asc')  return (a.dateMs||0)-(b.dateMs||0);
+    if(sort==='name_az')   return (a.name||'').localeCompare(b.name||'');
+    if(sort==='dept_az')   return (a.department||'').localeCompare(b.department||'');
+    if(sort==='hazard_az') return (a.hazard||'').localeCompare(b.hazard||'');
     return 0;
   });
-  var cnt=document.getElementById('sensibListCount');if(cnt)cnt.textContent=rows.length+' / '+_sensibData.length;
-  var tb=document.getElementById('sensibBody');if(!tb)return;
-  if(!rows.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">Aucune séance trouvée</td></tr>';return;}
+  var cnt=document.getElementById('sensibListCount'); if(cnt) cnt.textContent=rows.length+' / '+_sensibData.length;
+  var tb=document.getElementById('sensibBody'); if(!tb) return;
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Aucune session trouvée</td></tr>'; return; }
   tb.innerHTML=rows.map(function(r){
-    var linkCell=r.attendanceUrl
-      ?'<a href="'+r.attendanceUrl+'" target="_blank" rel="noopener" style="color:var(--p4);font-size:11px;text-decoration:underline">📋 Ouvrir</a>'
-      :'<span style="color:var(--text3);font-size:10px">—</span>';
-    var hazBadge=r.hazard?'<span class="rbadge" style="background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)">'+escH(r.hazard)+'</span>':'—';
+    var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
+    var linkCell=r.attendanceUrl?'<a href="'+r.attendanceUrl+'" target="_blank" rel="noopener" style="color:var(--p4);font-size:11px;text-decoration:underline">📋 Voir</a>':'<span style="color:var(--text3);font-size:10px">—</span>';
     return '<tr>'
       +'<td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3)">'+escH(r.timestamp)+'</td>'
       +'<td style="font-family:JetBrains Mono,monospace;font-size:11px">'+escH(r.matricule)+'</td>'
       +'<td style="font-weight:500">'+escH(r.name)+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+escH(r.department)+'</td>'
-      +'<td>'+hazBadge+'</td>'
+      +'<td><span class="rbadge" style="background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)">'+escH(r.hazard||'—')+'</span></td>'
+      +'<td style="font-size:10px;color:var(--text2)">'+escH(r.theme||'—')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+escH(r.trainer)+'</td>'
+      +'<td style="font-size:11px;text-align:center">'+((r.duration||0)>0?r.duration+'h':'—')+'</td>'
+      +'<td style="color:'+statusCol+';font-size:10px;font-weight:600">'+escH(r.status||'Présent')+'</td>'
       +'<td style="text-align:center">'+linkCell+'</td>'
       +'</tr>';
   }).join('');
 }
+
 function clearSensibFilters(){
-  var els=['sensibSearch','sensibFilterHazard','sensibFilterDept','sensibFilterTrainer','sensibSort'];
-  els.forEach(function(id){var el=document.getElementById(id);if(el){if(el.tagName==='INPUT')el.value='';else el.value=el.options[0].value;}});
+  ['sensibSearch','sensibFilterHazard','sensibFilterDept','sensibFilterTrainer'].forEach(function(id){
+    var el=document.getElementById(id); if(el){if(el.tagName==='INPUT')el.value='';else el.value=el.options[0].value;}
+  });
   renderSensib();
 }
-function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Brique 4 : Upload & formulaire ────────────────────────────
+function sensibHandleFile(input){
+  var file=input.files[0]; if(!file) return;
+  _sensibFile=file;
+  var prev=document.getElementById('sensibFilePreview');
+  prev.innerHTML='📎 '+escH(file.name)+' ('+Math.round(file.size/1024)+' Ko)';
+  prev.style.display='block';
+  document.getElementById('sensibDropZone').style.borderColor='var(--green)';
+}
+function sensibHandleDrop(e){
+  e.preventDefault();
+  document.getElementById('sensibDropZone').style.borderColor='var(--border)';
+  var file=e.dataTransfer.files[0]; if(!file) return;
+  _sensibFile=file;
+  var prev=document.getElementById('sensibFilePreview');
+  prev.innerHTML='📎 '+escH(file.name)+' ('+Math.round(file.size/1024)+' Ko)';
+  prev.style.display='block';
+}
+function sensibShowMsg(txt,type){
+  var el=document.getElementById('sensibFormMsg');
+  if(!el) return;
+  el.textContent=txt;
+  el.style.background=type==='ok'?'rgba(16,201,133,.1)':'rgba(232,68,90,.1)';
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.style.border='1px solid '+(type==='ok'?'rgba(16,201,133,.3)':'rgba(232,68,90,.3)');
+  el.style.display='block';
+  setTimeout(function(){ el.style.display='none'; }, 5000);
+}
+function sensibSubmitForm(){
+  var mat=document.getElementById('sensibFormMat').value.trim();
+  var name=document.getElementById('sensibFormName').value.trim();
+  var hazard=document.getElementById('sensibFormHazard').value;
+  var trainer=document.getElementById('sensibFormTrainer').value.trim();
+  var dateVal=document.getElementById('sensibFormDate').value;
+  if(!mat||!name||!hazard||!trainer||!dateVal){ sensibShowMsg('Veuillez remplir les champs obligatoires (*)','err'); return; }
+  var btn=document.getElementById('sensibSubmitBtn');
+  btn.disabled=true; btn.textContent='Enregistrement…';
+  function doSave(attendanceUrl){
+    var data={
+      matricule:mat, name:name,
+      department:document.getElementById('sensibFormDept').value.trim(),
+      hazard:hazard,
+      trainer:trainer,
+      theme:document.getElementById('sensibFormTheme').value.trim(),
+      duration:parseFloat(document.getElementById('sensibFormDur').value||'0')||0,
+      status:document.getElementById('sensibFormStatus').value,
+      attendanceUrl:attendanceUrl||''
+    };
+    google.script.run.withSuccessHandler(function(r){
+      btn.disabled=false; btn.textContent='✅ Enregistrer la session';
+      if(r&&r.success){ sensibShowMsg('Session enregistrée avec succès !','ok'); sensibResetForm(); }
+      else sensibShowMsg('Erreur lors de l\'enregistrement : '+(r&&r.error||'inconnue'),'err');
+    }).withFailureHandler(function(e){
+      btn.disabled=false; btn.textContent='✅ Enregistrer la session';
+      sensibShowMsg('Erreur réseau : '+e,'err');
+    }).addSensibilisationRecord(data);
+  }
+  if(_sensibFile){
+    var reader=new FileReader();
+    reader.onload=function(ev){
+      var b64=ev.target.result.split(',')[1];
+      var sessionDate=dateVal;
+      var riskType=(hazard||'risque').replace(/[^a-zA-Z0-9]/g,'_');
+      google.script.run.withSuccessHandler(function(r){
+        doSave(r&&r.url?r.url:'');
+      }).withFailureHandler(function(){
+        doSave('');
+      }).uploadAttendanceToSensibDrive(b64,_sensibFile.type,sessionDate,riskType);
+    };
+    reader.readAsDataURL(_sensibFile);
+  } else {
+    doSave('');
+  }
+}
+function sensibResetForm(){
+  ['sensibFormMat','sensibFormName','sensibFormDept','sensibFormTheme','sensibFormTrainer','sensibFormDur','sensibFormDate'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var hz=document.getElementById('sensibFormHazard'); if(hz) hz.value='';
+  var st=document.getElementById('sensibFormStatus'); if(st) st.value='Présent';
+  _sensibFile=null;
+  var prev=document.getElementById('sensibFilePreview'); if(prev) prev.style.display='none';
+  var dz=document.getElementById('sensibDropZone'); if(dz) dz.style.borderColor='var(--border)';
+  var fi=document.getElementById('sensibFileInput'); if(fi) fi.value='';
+}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 // ══ NAVIGATION ════════════════════════════════════════════════
 function goTab(id,el){

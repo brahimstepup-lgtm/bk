@@ -2419,6 +2419,8 @@ function getData() {
   // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
   var sensib = readSensibilisation();
   out.sensibilisation = sensib.entries || [];
+  out.sensibilisationEmployees = sensib.employees || [];
+  out.sensibilisationTargets = sensib.targets || [];
   out.sensibilisationSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SENSIB_SHEET_ID +
                                  '/edit?gid=' + SENSIB_SHEET_GID + '#gid=' + SENSIB_SHEET_GID;
 
@@ -3398,43 +3400,57 @@ function crudUploadFile(username, section, fileName, base64Data, mimeType) {
 // Spreadsheet : SENSIB_SHEET_ID  gid=359820712
 // Colonnes : Timestamp | Matricule | Employee Name | Department
 //            Hazard Type | HSE Trainer | Attendance Sheet Link
+//            Theme | Duration (h) | Statut
 // ════════════════════════════════════════════════════════════════
+function sensibColIdx(hdr, kwds) {
+  for (var k = 0; k < kwds.length; k++)
+    for (var c = 0; c < hdr.length; c++)
+      if (hdr[c].indexOf(kwds[k]) > -1) return c;
+  return -1;
+}
+
 function readSensibilisation() {
   try {
     var ss = SpreadsheetApp.openById(SENSIB_SHEET_ID);
     var sheets = ss.getSheets();
-    var sh = null;
+    var sh = null, empSh = null;
     for (var i = 0; i < sheets.length; i++) {
-      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
+      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) sh = sheets[i];
+      else {
+        var sn = sheets[i].getName().toLowerCase();
+        if (sn.indexOf('employ') > -1 || sn.indexOf('effectif') > -1 || sn.indexOf('list') > -1) empSh = sheets[i];
+      }
     }
     if (!sh) sh = sheets[0];
+
     var raw = sh.getDataRange().getValues();
-    if (!raw || raw.length < 2) return { entries: [] };
+    if (!raw || raw.length < 2) return { entries: [], employees: [], targets: [] };
     var hdr = raw[0].map(function(h) { return String(h).trim().toLowerCase(); });
-    function ci(kwds) {
-      for (var k = 0; k < kwds.length; k++)
-        for (var c = 0; c < hdr.length; c++)
-          if (hdr[c].indexOf(kwds[k]) > -1) return c;
-      return -1;
-    }
-    var iTs   = ci(['timestamp','date','time']);
-    var iMat  = ci(['matricule','matric']);
-    var iName = ci(['employee name','name','nom']);
-    var iDept = ci(['department','dept','departement','département']);
-    var iHaz  = ci(['hazard','risque','type']);
-    var iTrn  = ci(['trainer','formateur','hse trainer']);
-    var iLink = ci(['attendance','lien','link','sheet']);
+
+    var iTs     = sensibColIdx(hdr, ['timestamp','date','time']);
+    var iMat    = sensibColIdx(hdr, ['matricule','matric']);
+    var iName   = sensibColIdx(hdr, ['employee name','name','nom']);
+    var iDept   = sensibColIdx(hdr, ['department','dept','departement','département']);
+    var iHaz    = sensibColIdx(hdr, ['hazard','risque','type']);
+    var iTrn    = sensibColIdx(hdr, ['trainer','formateur','hse trainer']);
+    var iLink   = sensibColIdx(hdr, ['attendance','lien','link','sheet']);
+    var iTheme  = sensibColIdx(hdr, ['theme','thème','sujet','topic']);
+    var iDur    = sensibColIdx(hdr, ['duration','duree','durée','heures','hours']);
+    var iStatus = sensibColIdx(hdr, ['status','statut','presence','présence']);
+
     var entries = [];
     for (var r = 1; r < raw.length; r++) {
       var row = raw[r];
-      var ts = iTs > -1 ? row[iTs] : '';
+      var ts  = iTs > -1 ? row[iTs] : '';
       var mat = iMat > -1 ? row[iMat] : '';
       if (!mat && !ts) continue;
-      var dateStr = '';
+      var dateStr = '', dateMs = 0;
       if (ts instanceof Date) {
         dateStr = Utilities.formatDate(ts, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+        dateMs  = ts.getTime();
       } else {
         dateStr = String(ts || '').trim();
+        try { if (dateStr) dateMs = new Date(dateStr).getTime(); } catch(ex) {}
       }
       var linkVal = iLink > -1 ? row[iLink] : '';
       var linkUrl = '';
@@ -3444,20 +3460,122 @@ function readSensibilisation() {
         if (rv) { var runs = rv.getRuns(); if (runs.length > 0 && runs[0].getLinkUrl()) linkUrl = runs[0].getLinkUrl(); }
       } catch(e2) {}
       if (!linkUrl && String(linkVal).indexOf('http') === 0) linkUrl = String(linkVal);
+      var dur = 0;
+      if (iDur > -1) { dur = parseFloat(String(row[iDur] || '0').replace(',','.')); if (isNaN(dur)) dur = 0; }
       entries.push({
-        timestamp: dateStr,
-        matricule: String(mat || '').trim(),
-        name: iName > -1 ? String(row[iName] || '').trim() : '',
-        department: iDept > -1 ? String(row[iDept] || '').trim() : '',
-        hazard: iHaz > -1 ? String(row[iHaz] || '').trim() : '',
-        trainer: iTrn > -1 ? String(row[iTrn] || '').trim() : '',
+        timestamp: dateStr, dateMs: dateMs,
+        matricule:  String(mat || '').trim(),
+        name:       iName   > -1 ? String(row[iName]   || '').trim() : '',
+        department: iDept   > -1 ? String(row[iDept]   || '').trim() : '',
+        hazard:     iHaz    > -1 ? String(row[iHaz]    || '').trim() : '',
+        trainer:    iTrn    > -1 ? String(row[iTrn]    || '').trim() : '',
+        theme:      iTheme  > -1 ? String(row[iTheme]  || '').trim() : '',
+        duration:   dur,
+        status:     iStatus > -1 ? String(row[iStatus] || 'Présent').trim() : 'Présent',
         attendanceUrl: linkUrl
       });
     }
-    return { entries: entries };
+
+    // Read employee list
+    var employees = [];
+    // Try to find employees in a separate sheet first
+    if (empSh) {
+      var empRaw = empSh.getDataRange().getValues();
+      if (empRaw && empRaw.length > 1) {
+        var eHdr = empRaw[0].map(function(h){return String(h).trim().toLowerCase();});
+        var eMat  = sensibColIdx(eHdr, ['matricule','matric']);
+        var eName = sensibColIdx(eHdr, ['name','nom','employee']);
+        var eDept = sensibColIdx(eHdr, ['department','dept','departement']);
+        for (var e = 1; e < empRaw.length; e++) {
+          var er = empRaw[e];
+          var em = eMat > -1 ? String(er[eMat]||'').trim() : '';
+          if (!em) continue;
+          employees.push({ matricule: em, name: eName > -1 ? String(er[eName]||'').trim() : '', department: eDept > -1 ? String(er[eDept]||'').trim() : '' });
+        }
+      }
+    }
+    // Fallback: also look for a second table in the same sheet (common pattern)
+    if (!employees.length) {
+      // Scan for a second header row
+      var empStartRow = -1;
+      for (var row2 = 2; row2 < raw.length; row2++) {
+        var rowStr = raw[row2].map(function(c){return String(c).trim().toLowerCase();}).join('|');
+        if (rowStr.indexOf('matricule') > -1 || rowStr.indexOf('employee') > -1) { empStartRow = row2; break; }
+      }
+      if (empStartRow > -1 && empStartRow + 1 < raw.length) {
+        var eHdr2 = raw[empStartRow].map(function(h){return String(h).trim().toLowerCase();});
+        var eMat2  = sensibColIdx(eHdr2, ['matricule','matric']);
+        var eName2 = sensibColIdx(eHdr2, ['name','nom','employee']);
+        var eDept2 = sensibColIdx(eHdr2, ['department','dept']);
+        for (var e2 = empStartRow + 1; e2 < raw.length; e2++) {
+          var er2 = raw[e2];
+          var em2 = eMat2 > -1 ? String(er2[eMat2]||'').trim() : '';
+          if (!em2) continue;
+          employees.push({ matricule: em2, name: eName2 > -1 ? String(er2[eName2]||'').trim() : '', department: eDept2 > -1 ? String(er2[eDept2]||'').trim() : '' });
+        }
+      }
+    }
+
+    // Read targets from any sheet named "objectifs" or "targets"
+    var targets = [];
+    for (var si = 0; si < sheets.length; si++) {
+      var sn2 = sheets[si].getName().toLowerCase();
+      if (sn2.indexOf('objectif') > -1 || sn2.indexOf('target') > -1 || sn2.indexOf('planif') > -1) {
+        var tRaw = sheets[si].getDataRange().getValues();
+        if (tRaw && tRaw.length > 1) {
+          var tHdr = tRaw[0].map(function(h){return String(h).trim().toLowerCase();});
+          var tHaz = sensibColIdx(tHdr, ['hazard','risque','type']);
+          var tVal = sensibColIdx(tHdr, ['target','objectif','cible','planned']);
+          for (var t = 1; t < tRaw.length; t++) {
+            var tr = tRaw[t];
+            var th = tHaz > -1 ? String(tr[tHaz]||'').trim() : '';
+            var tv = tVal > -1 ? parseInt(String(tr[tVal]||'0')) : 0;
+            if (th && !isNaN(tv) && tv > 0) targets.push({ hazard: th, target: tv });
+          }
+        }
+      }
+    }
+    return { entries: entries, employees: employees, targets: targets };
   } catch(e) {
-    return { entries: [], error: e.toString() };
+    return { entries: [], employees: [], targets: [], error: e.toString() };
   }
+}
+
+// ── Upload feuille d'émargement vers Google Drive ─────────────
+function uploadAttendanceToSensibDrive(base64Data, mimeType, sessionDate, riskType) {
+  try {
+    var folderName = 'Sensibilisation_HSE_Emargements';
+    var folders = DriveApp.getFoldersByName(folderName);
+    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    var safeName = (sessionDate || 'date') + '_' + (riskType || 'risque');
+    safeName = safeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
+    var ext = mimeType === 'application/pdf' ? '.pdf' : mimeType.indexOf('png') > -1 ? '.png' : '.jpg';
+    var bytes = Utilities.base64Decode(base64Data);
+    var blob = Utilities.newBlob(bytes, mimeType, safeName + ext);
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return { success: true, fileId: file.getId(), url: file.getUrl(), filename: safeName + ext };
+  } catch(e) { return { success: false, error: e.toString() }; }
+}
+
+// ── Enregistrer une nouvelle session dans Google Sheets ───────
+function addSensibilisationRecord(data) {
+  try {
+    var ss = SpreadsheetApp.openById(SENSIB_SHEET_ID);
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    if (!sh) sh = sheets[0];
+    sh.appendRow([
+      new Date(),
+      data.matricule || '', data.name || '', data.department || '',
+      data.hazard || '', data.trainer || '', data.attendanceUrl || '',
+      data.theme || '', data.duration || 0, data.status || 'Présent'
+    ]);
+    return { success: true };
+  } catch(e) { return { success: false, error: e.toString() }; }
 }
 
 // ── Wrapper exposé au client (getData renommé pour éviter conflit) ──
