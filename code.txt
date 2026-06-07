@@ -3760,3 +3760,62 @@ function readChimiquesData() {
 }
 
 function getChimiquesForClient() { return readChimiquesData(); }
+
+// ── Dotations EPI ─────────────────────────────────────────────
+var EPI_DOT_SHEET_NAME = 'EPI_Dotations';
+
+// Retourne ou crée la feuille EPI_Dotations dans le classeur principal.
+function getOrCreateEpiDotSheet() {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sh = ss.getSheetByName(EPI_DOT_SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(EPI_DOT_SHEET_NAME);
+    sh.appendRow(['Date','Matricule','Nom','Département','EPI','Taille','Quantité','Commentaire']);
+    sh.getRange(1, 1, 1, 8).setFontWeight('bold');
+  }
+  return sh;
+}
+
+function readEpiDotations() {
+  try {
+    var sh  = getOrCreateEpiDotSheet();
+    var raw = sh.getDataRange().getValues();
+    if (!raw || raw.length < 2) return { dotations: [] };
+    var hdr = raw[0].map(function(h){ return String(h).trim().toLowerCase(); });
+    var iDate = 0, iMat = 1, iName = 2, iDept = 3, iEpi = 4, iSize = 5, iQty = 6, iCmt = 7;
+    var dotations = [];
+    for (var r = 1; r < raw.length; r++) {
+      var row = raw[r];
+      dotations.push({
+        date:       row[iDate] ? Utilities.formatDate(new Date(row[iDate]), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') : '',
+        matricule:  String(row[iMat]  || '').trim(),
+        name:       String(row[iName] || '').trim(),
+        department: String(row[iDept] || '').trim(),
+        epi:        String(row[iEpi]  || '').trim(),
+        taille:     String(row[iSize] || '').trim(),
+        quantite:   row[iQty] || 0,
+        commentaire:String(row[iCmt]  || '').trim()
+      });
+    }
+    return { dotations: dotations };
+  } catch(e) { return { dotations: [], error: e.toString() }; }
+}
+
+function addEpiDotation(data) {
+  try {
+    var sh = getOrCreateEpiDotSheet();
+    sh.appendRow([
+      new Date(),
+      data.matricule   || '',
+      data.name        || '',
+      data.department  || '',
+      data.epi         || '',
+      data.taille      || '',
+      parseInt(data.quantite) || 1,
+      data.commentaire || ''
+    ]);
+    return { success: true };
+  } catch(e) { return { success: false, error: e.toString() }; }
+}
+
+function getEpiDotationsForClient() { return readEpiDotations(); }

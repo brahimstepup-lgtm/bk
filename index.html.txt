@@ -3105,6 +3105,114 @@ html.light .pests-search-input{background:#edf2f7}
       </table>
     </div>
   </div>
+
+  <!-- ══ Recherche dotation employé ══ -->
+  <div class="card" style="margin-top:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>🔍 Rechercher la dotation d'un employé</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px">
+      <div style="flex:1;min-width:220px;position:relative">
+        <input id="epiDotSearch" type="text" placeholder="Matricule ou nom de l'employé…"
+               oninput="epiDotSearchInput()"
+               autocomplete="off"
+               style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+        <div id="epiDotSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;
+             background:var(--bg2);border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <button class="btn" style="font-size:11px;padding:7px 16px;flex-shrink:0" onclick="epiDotClearSearch()">↺ Effacer</button>
+    </div>
+    <div id="epiDotProfile" style="display:none">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <div><span style="font-size:10px;color:var(--text3)">Matricule</span><br><strong id="epiDotProfMat" style="color:var(--p4);font-family:'JetBrains Mono',monospace"></strong></div>
+        <div><span style="font-size:10px;color:var(--text3)">Nom</span><br><strong id="epiDotProfName"></strong></div>
+        <div><span style="font-size:10px;color:var(--text3)">Département</span><br><strong id="epiDotProfDept" style="color:var(--text2)"></strong></div>
+        <div style="margin-left:auto"><span style="font-size:10px;color:var(--text3)">Dotations enregistrées</span><br>
+          <span id="epiDotProfCount" style="font-size:18px;font-weight:700;color:var(--green)">0</span>
+        </div>
+      </div>
+      <div class="tblw">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>EPI</th><th>Taille</th><th style="text-align:center">Qté</th><th>Commentaire</th>
+          </tr></thead>
+          <tbody id="epiDotProfBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="epiDotEmpty" style="text-align:center;color:var(--text3);font-size:12px;padding:20px 0">
+      Saisissez un matricule ou un nom pour afficher les dotations de l'employé.
+    </div>
+  </div>
+
+  <!-- ══ Enregistrer une dotation ══ -->
+  <div class="card" style="margin-top:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>➕ Attribuer une dotation EPI</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:12px">
+      <!-- Matricule + autocomplete -->
+      <div style="position:relative">
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Matricule <span style="color:var(--red)">*</span></label>
+        <input id="epiFormMat" type="text" placeholder="Ex: 1001" autocomplete="off"
+               oninput="epiFormMatInput()"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+        <div id="epiFormMatSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;
+             background:var(--bg2);border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:180px;overflow-y:auto"></div>
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Nom employé</label>
+        <input id="epiFormName" type="text" readonly placeholder="Auto-rempli"
+               style="width:100%;padding:7px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Département</label>
+        <input id="epiFormDept" type="text" readonly placeholder="Auto-rempli"
+               style="width:100%;padding:7px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">EPI attribué <span style="color:var(--red)">*</span></label>
+        <input id="epiFormEpi" type="text" placeholder="Ex: Casque, Gants, Lunettes…"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Taille / Référence</label>
+        <input id="epiFormTaille" type="text" placeholder="Ex: M, L, XL, 42…"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Quantité <span style="color:var(--red)">*</span></label>
+        <input id="epiFormQty" type="number" min="1" value="1"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Commentaire</label>
+        <input id="epiFormCmt" type="text" placeholder="Remarques, motif de remplacement…"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+    </div>
+    <div id="epiFormMsg" style="display:none;margin-bottom:10px;font-size:11px;padding:7px 12px;border-radius:7px"></div>
+    <button id="epiFormSubmitBtn" class="btn" onclick="epiFormSubmit()"
+            style="background:var(--green);color:#fff;border:none;padding:9px 24px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer">
+      ✅ Enregistrer la dotation
+    </button>
+  </div>
+
+  <!-- ══ Registre des dotations ══ -->
+  <div class="card" style="margin-top:14px">
+    <div class="ct" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span><span class="ct-dot" style="background:var(--amber)"></span>📋 Registre des dotations EPI</span>
+      <button class="btn" style="font-size:10px;padding:4px 10px" onclick="epiDotReload()">⟳ Actualiser</button>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Matricule</th><th>Employé</th><th>Département</th>
+          <th>EPI</th><th>Taille</th><th style="text-align:center">Qté</th><th>Commentaire</th>
+        </tr></thead>
+        <tbody id="epiDotRegBody">
+          <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:16px">Cliquez sur « Actualiser » pour charger le registre.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══ NUISIBLES ═══ -->
@@ -7773,6 +7881,212 @@ function populateEpiDropdowns(list){
 
 // Initialise l'iframe de la slide une seule fois (au premier render).
 // Ensuite la slide reste affichée sans rechargement.
+// ══ DOTATIONS EPI ════════════════════════════════════════════════
+var _epiEmployees  = [];  // liste depuis Employees_DB
+var _epiDotations  = [];  // registre EPI_Dotations
+var _epiDotSelMat  = null;
+
+// Charge les employés (réutilise getSensibEmployeesForClient)
+function epiEnsureEmployees(cb) {
+  if (_epiEmployees.length) { if (cb) cb(); return; }
+  google.script.run
+    .withSuccessHandler(function(r) {
+      _epiEmployees = r && r.employees ? r.employees : [];
+      if (cb) cb();
+    })
+    .withFailureHandler(function() { if (cb) cb(); })
+    .getSensibEmployeesForClient();
+}
+
+// ── Recherche dotation ──────────────────────────────────────────
+function epiDotSearchInput() {
+  var q = (document.getElementById('epiDotSearch').value || '').trim().toLowerCase();
+  var sug = document.getElementById('epiDotSuggest');
+  if (!q) { sug.style.display = 'none'; epiDotClearSearch(); return; }
+  epiEnsureEmployees(function() {
+    var hits = _epiEmployees.filter(function(e) {
+      return (e.matricule + ' ' + e.name).toLowerCase().indexOf(q) > -1;
+    }).slice(0, 8);
+    if (!hits.length) { sug.style.display = 'none'; return; }
+    sug.innerHTML = hits.map(function(e) {
+      return '<div onclick="epiDotPickEmployee(\'' + escH(e.matricule) + '\',\'' + escH(e.name) + '\',\'' + escH(e.department) + '\')" '
+        + 'style="padding:7px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid rgba(255,255,255,.05)" '
+        + 'onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'
+        + '<strong style="color:var(--p4)">' + escH(e.matricule) + '</strong> — ' + escH(e.name)
+        + (e.department ? ' <span style="color:var(--text3);font-size:10px">(' + escH(e.department) + ')</span>' : '')
+        + '</div>';
+    }).join('');
+    sug.style.display = 'block';
+  });
+}
+
+function epiDotPickEmployee(mat, name, dept) {
+  document.getElementById('epiDotSearch').value = mat + ' — ' + name;
+  document.getElementById('epiDotSuggest').style.display = 'none';
+  _epiDotSelMat = mat;
+  epiDotShowProfile(mat, name, dept);
+}
+
+function epiDotShowProfile(mat, name, dept) {
+  document.getElementById('epiDotProfMat').textContent  = mat;
+  document.getElementById('epiDotProfName').textContent = name;
+  document.getElementById('epiDotProfDept').textContent = dept || '—';
+  var rows = _epiDotations.filter(function(d) { return d.matricule === mat; });
+  document.getElementById('epiDotProfCount').textContent = rows.length;
+  var tb = document.getElementById('epiDotProfBody');
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Aucune dotation enregistrée pour cet employé.</td></tr>';
+  } else {
+    tb.innerHTML = rows.map(function(d) {
+      return '<tr>'
+        + '<td style="font-size:10px;font-family:\'JetBrains Mono\',monospace;color:var(--text3)">' + escH(d.date) + '</td>'
+        + '<td style="font-weight:500">' + escH(d.epi) + '</td>'
+        + '<td style="font-size:11px">' + escH(d.taille || '—') + '</td>'
+        + '<td style="text-align:center;font-weight:700;color:var(--p4)">' + escH(String(d.quantite)) + '</td>'
+        + '<td style="font-size:11px;color:var(--text2)">' + escH(d.commentaire || '—') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+  document.getElementById('epiDotProfile').style.display = 'block';
+  document.getElementById('epiDotEmpty').style.display   = 'none';
+}
+
+function epiDotClearSearch() {
+  _epiDotSelMat = null;
+  document.getElementById('epiDotSearch').value = '';
+  document.getElementById('epiDotSuggest').style.display = 'none';
+  document.getElementById('epiDotProfile').style.display = 'none';
+  document.getElementById('epiDotEmpty').style.display   = '';
+}
+
+// ── Formulaire dotation ─────────────────────────────────────────
+function epiFormMatInput() {
+  var q = (document.getElementById('epiFormMat').value || '').trim().toLowerCase();
+  var sug = document.getElementById('epiFormMatSuggest');
+  if (!q) { sug.style.display = 'none'; return; }
+  epiEnsureEmployees(function() {
+    var hits = _epiEmployees.filter(function(e) {
+      return (e.matricule + ' ' + e.name).toLowerCase().indexOf(q) > -1;
+    }).slice(0, 8);
+    if (!hits.length) { sug.style.display = 'none'; return; }
+    sug.innerHTML = hits.map(function(e) {
+      return '<div onclick="epiFormPickEmployee(\'' + escH(e.matricule) + '\',\'' + escH(e.name) + '\',\'' + escH(e.department) + '\')" '
+        + 'style="padding:7px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid rgba(255,255,255,.05)" '
+        + 'onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'
+        + '<strong style="color:var(--p4)">' + escH(e.matricule) + '</strong> — ' + escH(e.name)
+        + (e.department ? ' <span style="color:var(--text3);font-size:10px">(' + escH(e.department) + ')</span>' : '')
+        + '</div>';
+    }).join('');
+    sug.style.display = 'block';
+  });
+}
+
+function epiFormPickEmployee(mat, name, dept) {
+  document.getElementById('epiFormMat').value  = mat;
+  document.getElementById('epiFormName').value = name;
+  document.getElementById('epiFormDept').value = dept || '';
+  document.getElementById('epiFormMatSuggest').style.display = 'none';
+}
+
+function epiFormShowMsg(txt, type) {
+  var el = document.getElementById('epiFormMsg');
+  if (!el) return;
+  el.textContent = txt;
+  el.style.background = type === 'ok' ? 'rgba(16,201,133,.1)' : 'rgba(232,68,90,.1)';
+  el.style.color  = type === 'ok' ? 'var(--green)' : 'var(--red)';
+  el.style.border = '1px solid ' + (type === 'ok' ? 'rgba(16,201,133,.3)' : 'rgba(232,68,90,.3)');
+  el.style.display = 'block';
+  setTimeout(function() { el.style.display = 'none'; }, 5000);
+}
+
+function epiFormSubmit() {
+  var mat  = (document.getElementById('epiFormMat').value  || '').trim();
+  var name = (document.getElementById('epiFormName').value || '').trim();
+  var epi  = (document.getElementById('epiFormEpi').value  || '').trim();
+  var qty  = parseInt(document.getElementById('epiFormQty').value) || 0;
+  if (!mat)  { epiFormShowMsg('Le matricule est obligatoire.', 'err'); return; }
+  if (!epi)  { epiFormShowMsg("Le nom de l'EPI est obligatoire.", 'err'); return; }
+  if (qty < 1) { epiFormShowMsg('La quantité doit être ≥ 1.', 'err'); return; }
+  var btn = document.getElementById('epiFormSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var data = {
+    matricule:   mat,
+    name:        name,
+    department:  (document.getElementById('epiFormDept').value  || '').trim(),
+    epi:         epi,
+    taille:      (document.getElementById('epiFormTaille').value || '').trim(),
+    quantite:    qty,
+    commentaire: (document.getElementById('epiFormCmt').value   || '').trim()
+  };
+  google.script.run
+    .withSuccessHandler(function(r) {
+      btn.disabled = false; btn.textContent = '✅ Enregistrer la dotation';
+      if (r && r.success) {
+        epiFormShowMsg('Dotation enregistrée avec succès !', 'ok');
+        epiFormReset();
+        epiDotReload(); // rafraîchit le registre
+      } else {
+        epiFormShowMsg('Erreur : ' + (r && r.error ? r.error : 'inconnue'), 'err');
+      }
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false; btn.textContent = '✅ Enregistrer la dotation';
+      epiFormShowMsg('Erreur réseau : ' + (e && e.message ? e.message : e), 'err');
+    })
+    .addEpiDotation(data);
+}
+
+function epiFormReset() {
+  ['epiFormMat','epiFormName','epiFormDept','epiFormEpi','epiFormTaille','epiFormCmt'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var qty = document.getElementById('epiFormQty'); if (qty) qty.value = 1;
+}
+
+// ── Registre dotations ──────────────────────────────────────────
+function epiDotReload() {
+  var tb = document.getElementById('epiDotRegBody');
+  if (tb) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:16px">⏳ Chargement…</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      _epiDotations = r && r.dotations ? r.dotations : [];
+      epiDotRenderRegister();
+      // Si un employé est sélectionné, rafraîchir son profil
+      if (_epiDotSelMat) {
+        var emp = _epiEmployees.filter(function(e){ return e.matricule === _epiDotSelMat; })[0];
+        if (emp) epiDotShowProfile(emp.matricule, emp.name, emp.department);
+      }
+    })
+    .withFailureHandler(function(e) {
+      var tb2 = document.getElementById('epiDotRegBody');
+      if (tb2) tb2.innerHTML = '<tr><td colspan="8" style="color:var(--red);padding:12px">❌ Erreur : ' + escH(e && e.message ? e.message : String(e)) + '</td></tr>';
+    })
+    .getEpiDotationsForClient();
+}
+
+function epiDotRenderRegister() {
+  var tb = document.getElementById('epiDotRegBody');
+  if (!tb) return;
+  if (!_epiDotations.length) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:16px">Aucune dotation enregistrée.</td></tr>';
+    return;
+  }
+  // Du plus récent au plus ancien
+  var sorted = _epiDotations.slice().reverse();
+  tb.innerHTML = sorted.map(function(d) {
+    return '<tr>'
+      + '<td style="font-size:10px;font-family:\'JetBrains Mono\',monospace;color:var(--text3)">' + escH(d.date) + '</td>'
+      + '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--p4)">' + escH(d.matricule) + '</td>'
+      + '<td style="font-weight:500">' + escH(d.name) + '</td>'
+      + '<td style="font-size:11px;color:var(--text2)">' + escH(d.department || '—') + '</td>'
+      + '<td style="font-weight:500">' + escH(d.epi) + '</td>'
+      + '<td style="font-size:11px">' + escH(d.taille || '—') + '</td>'
+      + '<td style="text-align:center;font-weight:700;color:var(--p4)">' + escH(String(d.quantite)) + '</td>'
+      + '<td style="font-size:11px;color:var(--text2)">' + escH(d.commentaire || '—') + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
 function ensureEpiSlideLoaded(){
   var f = document.getElementById('epiSlideFrame');
   if (!f || !D) return;
