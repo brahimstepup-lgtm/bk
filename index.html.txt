@@ -1625,6 +1625,8 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('permits',this)">📜 Permis de travail</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
   <button class="tab"    onclick="goTab('pests',this)">🐀 Nuisibles</button>
+  <button class="tab"    onclick="goTab('sensib',this);sensibLoadOnDemand();">🎓 Sensibilisation</button>
+  <button class="tab"    onclick="goTab('chimiques',this);chimiquesLoadOnDemand();">⚗️ Produits Chimiques</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -2624,6 +2626,400 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 
+<!-- ═══ SENSIBILISATION HSE ═══ -->
+<div id="sensib" class="page">
+
+  <!-- ── En-tête ── -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct">
+      <span class="ct-dot" style="background:var(--green)"></span>
+      Sensibilisation HSE — SOBCO 3
+      <span id="sensibSourceMeta" style="color:var(--text3);font-size:9px;margin-left:6px;font-family:'JetBrains Mono',monospace"></span>
+      <button id="sensibReloadBtn" onclick="sensibForceReload()" class="btn"
+              style="font-size:9px;padding:2px 8px;margin-left:8px;display:none">↺ Recharger</button>
+    </div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Suivi complet des séances de sensibilisation HSE — KPIs, couverture des employés, performance des formateurs et archivage des feuilles d'émargement.
+      <a id="sensibSourceLink" href="#" rel="noopener" target="_blank"
+         style="margin-left:8px;color:var(--p4);font-size:10px;text-decoration:underline">↗ Feuille source</a>
+    </p>
+  </div>
+
+  <!-- ══ BRIQUE 1 : KPIs ══ -->
+  <div id="sensibKpiRow" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px"></div>
+
+  <!-- Progress bar Actual vs Target -->
+  <div class="card" style="margin-bottom:14px" id="sensibProgressCard">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Progression vs Objectifs planifiés</div>
+    <div id="sensibProgressBars" style="display:flex;flex-direction:column;gap:10px;padding:4px 0"></div>
+  </div>
+
+  <!-- Graphiques KPI -->
+  <div class="row2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Répartition par type de risque</div>
+      <div class="cw" style="height:200px"><canvas id="sensibHazardC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>Séances par département</div>
+      <div class="cw" style="height:200px"><canvas id="sensibDeptC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ BRIQUE 1.5 : CAMPAGNE DE SENSIBILISATION ══ -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct" style="justify-content:space-between">
+      <div><span class="ct-dot" style="background:var(--red)"></span>📢 Campagne de sensibilisation</div>
+      <button class="btn" id="sensibCampToggleBtn" onclick="sensibToggleCampForm()"
+              style="font-size:10px;padding:4px 12px;background:linear-gradient(135deg,rgba(232,68,90,.2),rgba(232,68,90,.1));color:var(--red);border-color:rgba(232,68,90,.4);font-weight:600">
+        ➕ Lancer une campagne
+      </button>
+    </div>
+
+    <!-- Formulaire de configuration de campagne -->
+    <div id="sensibCampForm" style="display:none;margin-top:12px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:12px">
+        <div style="grid-column:1/-1">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">🎯 Objectif de la campagne *</div>
+          <input type="text" id="campObjective" class="tag-search-input" placeholder="Ex: Réduire les accidents liés aux brûlures en zone cuisson" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">⚠ Type(s) de risque ciblé(s) *</div>
+          <select id="campHazard" class="tag-dropdown" style="width:100%">
+            <option value="">— Sélectionner —</option>
+            <option>Glissade / Chute</option>
+            <option>Brûlure</option>
+            <option>Risque mécanique</option>
+            <option>Hygiène / Sécurité alimentaire</option>
+            <option>Incendie / Explosion</option>
+            <option>Risque électrique</option>
+            <option>Risque chimique</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📅 Date de début *</div>
+          <input type="date" id="campStart" class="tag-search-input" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">⏱ Durée par session (h)</div>
+          <input type="number" id="campSessionDur" class="tag-search-input" value="1" step="0.5" min="0.5" style="width:100%" oninput="sensibComputeCampaign()">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">👥 Participants / session</div>
+          <input type="number" id="campGroupSize" class="tag-search-input" value="10" step="1" min="1" style="width:100%" oninput="sensibComputeCampaign()">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📆 Sessions / jour</div>
+          <input type="number" id="campSessionsPerDay" class="tag-search-input" value="2" step="1" min="1" style="width:100%" oninput="sensibComputeCampaign()">
+        </div>
+      </div>
+
+      <!-- Sélection des postes / départements ciblés -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">🏭 Postes / départements concernés * <span style="color:var(--text3)">(cliquez pour (dé)sélectionner)</span></div>
+        <div id="campDeptChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- Sélection des superviseurs HSE -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">🧑‍🏫 Superviseurs HSE affectés <span style="color:var(--text3)">(auto-suggérés selon l'historique)</span></div>
+        <div id="campSupervisorChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- Calcul automatique -->
+      <div id="campComputeBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px"></div>
+
+      <div id="campMsg" style="display:none;margin-bottom:8px;font-size:11px;padding:6px 10px;border-radius:6px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="sensibLaunchCampaign()" id="campLaunchBtn"
+                style="background:linear-gradient(135deg,rgba(16,201,133,.2),rgba(16,201,133,.1));color:var(--green);border-color:rgba(16,201,133,.4);font-weight:600;padding:6px 18px">
+          🚀 Lancer la campagne
+        </button>
+        <button class="btn" onclick="sensibToggleCampForm()" style="font-size:11px;padding:6px 14px">Annuler</button>
+      </div>
+    </div>
+
+    <!-- Liste des campagnes actives -->
+    <div id="sensibCampList" style="margin-top:12px"></div>
+  </div>
+
+  <!-- ══ BRIQUE 2 : Recherche individuelle ══ -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>🔍 Suivi individuel par employé</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <input type="text" class="tag-search-input" id="sensibEmpSearch"
+             placeholder="Rechercher par Nom ou Matricule…"
+             oninput="sensibSearchEmployee()"
+             style="flex:1;min-width:200px">
+      <button class="btn" onclick="sensibClearEmployee()" style="font-size:10px;padding:4px 10px">✕ Effacer</button>
+    </div>
+    <!-- Dropdown résultats de recherche -->
+    <div id="sensibEmpResults" style="display:none;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;margin-bottom:10px"></div>
+    <!-- Fiche profil employé -->
+    <div id="sensibEmpProfile" style="display:none">
+      <div id="sensibEmpProfileCard" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;padding:10px;background:var(--bg3);border-radius:10px;border:1px solid var(--border)"></div>
+      <!-- Alerte GAP -->
+      <div id="sensibGapAlert" style="display:none;margin-bottom:10px;padding:10px 14px;border-radius:8px;background:rgba(232,68,90,.12);border:1px solid rgba(232,68,90,.4);color:var(--red);font-size:11px;font-weight:500"></div>
+      <!-- Historique employé -->
+      <div class="ct" style="margin-bottom:6px"><span class="ct-dot" style="background:var(--p3)"></span>Historique des sensibilisations</div>
+      <div class="tblw">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th><th>Thème</th><th>Type de risque</th><th>Formateur HSE</th><th>Statut</th><th style="text-align:center">Émargement</th>
+            </tr>
+          </thead>
+          <tbody id="sensibEmpHistoryBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="sensibEmpEmpty" style="color:var(--text3);font-size:11px;padding:8px 0">Saisissez un nom ou matricule pour afficher le profil de l'employé.</div>
+  </div>
+
+  <!-- ══ BRIQUE 3 : Leaderboard formateurs ══ -->
+  <div class="row2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>🏆 Classement des formateurs HSE</div>
+      <div id="sensibLeaderboard" style="display:flex;flex-direction:column;gap:6px;padding:4px 0;max-height:240px;overflow-y:auto"></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>Performance comparée de l'équipe HSE</div>
+      <div class="cw" style="height:220px"><canvas id="sensibTeamC"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ══ BRIQUE 4 : Formulaire saisie + upload ══ -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>📝 Enregistrer une nouvelle session</div>
+
+    <!-- Champs communs à tous les participants -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px">
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Date de la session *</div>
+        <input type="date" id="sensibFormDate" class="tag-search-input" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Type de risque *</div>
+        <select id="sensibFormHazard" class="tag-dropdown" style="width:100%">
+          <option value="">— Sélectionner —</option>
+          <option>Glissade / Chute</option>
+          <option>Brûlure</option>
+          <option>Risque mécanique</option>
+          <option>Hygiène / Sécurité alimentaire</option>
+          <option>Incendie / Explosion</option>
+          <option>Risque électrique</option>
+          <option>Risque chimique</option>
+          <option>Autre</option>
+        </select>
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Thème / Sujet</div>
+        <input type="text" id="sensibFormTheme" class="tag-search-input" placeholder="Ex: Utilisation EPI" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Formateur HSE *</div>
+        <input type="text" id="sensibFormTrainer" class="tag-search-input" placeholder="Nom du formateur" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Durée (heures)</div>
+        <input type="number" id="sensibFormDur" class="tag-search-input" placeholder="Ex: 1.5" step="0.5" min="0" style="width:100%">
+      </div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Statut présence</div>
+        <select id="sensibFormStatus" class="tag-dropdown" style="width:100%">
+          <option value="Présent">Présent</option>
+          <option value="Absent">Absent</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Zone ajout participant avec autocomplete -->
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg3)">
+      <div style="font-size:10px;font-weight:600;color:var(--p4);margin-bottom:8px;letter-spacing:.4px">👷 AJOUTER UN PARTICIPANT</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;flex-wrap:wrap">
+        <div style="position:relative">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Matricule *</div>
+          <input type="text" id="sensibFormMat" class="tag-search-input" placeholder="Ex: 1001"
+                 oninput="sensibMatInput()" onkeydown="sensibMatKey(event)" autocomplete="off" style="width:100%">
+          <div id="sensibMatSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;
+               background:var(--bg2);border:1px solid var(--p3);border-radius:8px;box-shadow:0 8px 24px var(--shadow);
+               max-height:180px;overflow-y:auto;margin-top:3px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Nom de l'employé *</div>
+          <input type="text" id="sensibFormName" class="tag-search-input" placeholder="Nom Prénom" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Département</div>
+          <input type="text" id="sensibFormDept" class="tag-search-input" placeholder="Auto-rempli"
+                 style="width:100%;background:var(--bg4)" readonly>
+        </div>
+        <button class="btn" onclick="sensibAddParticipant()"
+                style="background:linear-gradient(135deg,rgba(13,168,210,.2),rgba(13,168,210,.1));color:var(--p4);
+                       border-color:rgba(13,168,210,.4);font-weight:600;white-space:nowrap;padding:5px 12px">
+          ➕ Ajouter
+        </button>
+      </div>
+      <!-- Liste des participants ajoutés -->
+      <div id="sensibParticipantsPanel" style="margin-top:10px;display:none">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:5px">
+          Participants de cette session : <span id="sensibParticipantCount" style="color:var(--p4);font-weight:600">0</span>
+        </div>
+        <div id="sensibParticipantsList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+      <div id="sensibParticipantsEmpty" style="margin-top:8px;font-size:10px;color:var(--text3)">
+        ℹ️ Ajoutez au moins un participant avant d'enregistrer.
+      </div>
+    </div>
+
+    <!-- Zone upload émargement (photo partagée entre tous les participants) -->
+    <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;margin-bottom:12px;cursor:pointer;transition:border-color .2s"
+         id="sensibDropZone"
+         onclick="document.getElementById('sensibFileInput').click()"
+         ondragover="event.preventDefault();this.style.borderColor='var(--p4)'"
+         ondragleave="this.style.borderColor='var(--border)'"
+         ondrop="sensibHandleDrop(event)">
+      <div style="font-size:22px;margin-bottom:4px">📎</div>
+      <div style="font-size:11px;color:var(--text2);font-weight:500">Téléverser la feuille d'émargement <span style="color:var(--red)">*</span></div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">JPG, PNG ou PDF — une seule photo pour tous les participants<br>
+        <span style="color:var(--amber);font-size:9px;font-weight:600">Obligatoire — le lien Drive sera généré automatiquement</span></div>
+      <input type="file" id="sensibFileInput" accept="image/jpeg,image/png,application/pdf" style="display:none" onchange="sensibHandleFile(this)">
+    </div>
+    <div id="sensibFilePreview" style="display:none;margin-bottom:10px;font-size:10px;color:var(--green);padding:6px 10px;background:rgba(16,201,133,.1);border-radius:6px;border:1px solid rgba(16,201,133,.3)"></div>
+    <div id="sensibFormMsg" style="display:none;margin-bottom:8px;font-size:11px;padding:6px 10px;border-radius:6px"></div>
+    <button class="btn" onclick="sensibSubmitForm()" id="sensibSubmitBtn"
+            style="background:linear-gradient(135deg,rgba(16,201,133,.2),rgba(16,201,133,.1));color:var(--green);border-color:rgba(16,201,133,.4);font-weight:600;padding:6px 18px">
+      ✅ Enregistrer la session
+    </button>
+  </div>
+
+  <!-- ══ Registre général (filtre + tableau) ══ -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="sensibSearch"
+           placeholder="Rechercher employé, département, risque, formateur…"
+           oninput="renderSensib()">
+    <select class="tag-sort-sel" id="sensibSort" onchange="renderSensib()">
+      <option value="date_desc">Date ↓ récent</option>
+      <option value="date_asc">Date ↑ ancien</option>
+      <option value="name_az">Nom A→Z</option>
+      <option value="dept_az">Département A→Z</option>
+      <option value="hazard_az">Risque A→Z</option>
+    </select>
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearSensibFilters()">↺ Reset</button>
+  </div>
+  <div class="tag-filter-row" style="margin-bottom:10px">
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">⚠ Risque :</span>
+      <select class="tag-dropdown" id="sensibFilterHazard" onchange="renderSensib()">
+        <option value="all">Tous</option>
+      </select>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">🏭 Département :</span>
+      <select class="tag-dropdown" id="sensibFilterDept" onchange="renderSensib()">
+        <option value="all">Tous</option>
+      </select>
+    </div>
+    <div class="tag-filter-group">
+      <span class="tag-filter-lbl">👤 Formateur :</span>
+      <select class="tag-dropdown" id="sensibFilterTrainer" onchange="renderSensib()">
+        <option value="all">Tous</option>
+      </select>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">
+      <span class="ct-dot" style="background:var(--green)"></span>Registre complet des sensibilisations
+      <span id="sensibListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Matricule</th><th>Employé</th><th>Département</th>
+            <th>Risque</th><th>Thème</th><th>Formateur</th><th>Durée</th><th>Statut</th>
+            <th style="text-align:center">Émargement</th>
+          </tr>
+        </thead>
+        <tbody id="sensibBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ Viewer intégré pièce jointe (aucune ouverture externe) ══ -->
+  <div id="sensibPjModal" onclick="if(event.target===this)sensibClosePj()"
+       style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);
+              align-items:center;justify-content:center;padding:24px">
+    <div style="background:var(--bg2,#1a1a1a);border-radius:12px;width:min(960px,95vw);
+                height:min(88vh,860px);display:flex;flex-direction:column;overflow:hidden;
+                box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;
+                  border-bottom:1px solid rgba(255,255,255,.08)">
+        <span style="font-weight:600;color:var(--text,#fff);font-size:13px">📋 Feuille d'émargement</span>
+        <button onclick="sensibClosePj()"
+                style="background:rgba(255,255,255,.08);color:var(--text,#fff);border:none;
+                       border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <iframe id="sensibPjFrame" src="" title="Pièce jointe émargement"
+              referrerpolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin"
+              style="flex:1;width:100%;border:0;background:#fff"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PRODUITS CHIMIQUES ET FDS ═══ -->
+<div id="chimiques" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span><span class="ct-dot" style="background:#f5a623"></span>⚗️ Produits chimiques et FDS</span>
+      <span id="chimiquesSourceMeta" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">Chargement…</span>
+    </div>
+    <div id="chimiquesKpiRow" style="display:flex;gap:12px;flex-wrap:wrap;margin:14px 0 4px"></div>
+  </div>
+  <div class="card" style="margin-bottom:12px;padding:12px 16px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input id="chimiquesSearch" type="text" placeholder="🔍 Rechercher un produit, emplacement…"
+             oninput="chimiquesRender()"
+             style="flex:1;min-width:200px;padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+      <select id="chimiquesFilterFds" onchange="chimiquesRender()"
+              style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+        <option value="">📄 Toutes FDS</option>
+        <option value="oui">✅ FDS disponible</option>
+        <option value="non">❌ FDS manquante</option>
+      </select>
+      <select id="chimiquesFilterEmp" onchange="chimiquesRender()"
+              style="padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+        <option value="">📦 Tous emplacements</option>
+      </select>
+      <button onclick="chimiquesResetFilters()"
+              style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:11px;cursor:pointer">↺ Reset</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">
+      <span class="ct-dot" style="background:var(--green)"></span>
+      Inventaire des produits chimiques
+      <span id="chimiquesCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:6px">—</span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th style="text-align:center">Quantité</th>
+            <th style="text-align:center">FDS</th>
+            <th>Emplacement</th>
+            <th>Localisation</th>
+          </tr>
+        </thead>
+        <tbody id="chimiquesBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ EPI ═══ -->
 <div id="epi" class="page">
   <!-- Présentation EPI affichée DIRECTEMENT dans le dashboard (iframe interne) -->
@@ -2709,6 +3105,114 @@ html.light .pests-search-input{background:#edf2f7}
       </table>
     </div>
   </div>
+
+  <!-- ══ Recherche dotation employé ══ -->
+  <div class="card" style="margin-top:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>🔍 Rechercher la dotation d'un employé</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start;margin-bottom:12px">
+      <div style="flex:1;min-width:220px;position:relative">
+        <input id="epiDotSearch" type="text" placeholder="Matricule ou nom de l'employé…"
+               oninput="epiDotSearchInput()"
+               autocomplete="off"
+               style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+        <div id="epiDotSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;
+             background:var(--bg2);border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto"></div>
+      </div>
+      <button class="btn" style="font-size:11px;padding:7px 16px;flex-shrink:0" onclick="epiDotClearSearch()">↺ Effacer</button>
+    </div>
+    <div id="epiDotProfile" style="display:none">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;padding:10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">
+        <div><span style="font-size:10px;color:var(--text3)">Matricule</span><br><strong id="epiDotProfMat" style="color:var(--p4);font-family:'JetBrains Mono',monospace"></strong></div>
+        <div><span style="font-size:10px;color:var(--text3)">Nom</span><br><strong id="epiDotProfName"></strong></div>
+        <div><span style="font-size:10px;color:var(--text3)">Département</span><br><strong id="epiDotProfDept" style="color:var(--text2)"></strong></div>
+        <div style="margin-left:auto"><span style="font-size:10px;color:var(--text3)">Dotations enregistrées</span><br>
+          <span id="epiDotProfCount" style="font-size:18px;font-weight:700;color:var(--green)">0</span>
+        </div>
+      </div>
+      <div class="tblw">
+        <table>
+          <thead><tr>
+            <th>Date</th><th>EPI</th><th>Taille</th><th style="text-align:center">Qté</th><th>Commentaire</th>
+          </tr></thead>
+          <tbody id="epiDotProfBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="epiDotEmpty" style="text-align:center;color:var(--text3);font-size:12px;padding:20px 0">
+      Saisissez un matricule ou un nom pour afficher les dotations de l'employé.
+    </div>
+  </div>
+
+  <!-- ══ Enregistrer une dotation ══ -->
+  <div class="card" style="margin-top:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--green)"></span>➕ Attribuer une dotation EPI</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:12px">
+      <!-- Matricule + autocomplete -->
+      <div style="position:relative">
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Matricule <span style="color:var(--red)">*</span></label>
+        <input id="epiFormMat" type="text" placeholder="Ex: 1001" autocomplete="off"
+               oninput="epiFormMatInput()"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+        <div id="epiFormMatSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;
+             background:var(--bg2);border:1px solid var(--border);border-radius:0 0 8px 8px;max-height:180px;overflow-y:auto"></div>
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Nom employé</label>
+        <input id="epiFormName" type="text" readonly placeholder="Auto-rempli"
+               style="width:100%;padding:7px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Département</label>
+        <input id="epiFormDept" type="text" readonly placeholder="Auto-rempli"
+               style="width:100%;padding:7px 10px;background:var(--bg4);border:1px solid var(--border);border-radius:7px;color:var(--text2);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">EPI attribué <span style="color:var(--red)">*</span></label>
+        <input id="epiFormEpi" type="text" placeholder="Ex: Casque, Gants, Lunettes…"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Taille / Référence</label>
+        <input id="epiFormTaille" type="text" placeholder="Ex: M, L, XL, 42…"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+      <div>
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Quantité <span style="color:var(--red)">*</span></label>
+        <input id="epiFormQty" type="number" min="1" value="1"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:10px;color:var(--text3);display:block;margin-bottom:4px">Commentaire</label>
+        <input id="epiFormCmt" type="text" placeholder="Remarques, motif de remplacement…"
+               style="width:100%;padding:7px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px">
+      </div>
+    </div>
+    <div id="epiFormMsg" style="display:none;margin-bottom:10px;font-size:11px;padding:7px 12px;border-radius:7px"></div>
+    <button id="epiFormSubmitBtn" class="btn" onclick="epiFormSubmit()"
+            style="background:var(--green);color:#fff;border:none;padding:9px 24px;font-size:12px;font-weight:600;border-radius:8px;cursor:pointer">
+      ✅ Enregistrer la dotation
+    </button>
+  </div>
+
+  <!-- ══ Registre des dotations ══ -->
+  <div class="card" style="margin-top:14px">
+    <div class="ct" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span><span class="ct-dot" style="background:var(--amber)"></span>📋 Registre des dotations EPI</span>
+      <button class="btn" style="font-size:10px;padding:4px 10px" onclick="epiDotReload()">⟳ Actualiser</button>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead><tr>
+          <th>Date</th><th>Matricule</th><th>Employé</th><th>Département</th>
+          <th>EPI</th><th>Taille</th><th style="text-align:center">Qté</th><th>Commentaire</th>
+        </tr></thead>
+        <tbody id="epiDotRegBody">
+          <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:16px">Cliquez sur « Actualiser » pour charger le registre.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
 
 <!-- ═══ NUISIBLES ═══ -->
@@ -3447,6 +3951,1005 @@ function toggleTheme(){
   try{ localStorage.setItem('hse_theme',isLight?'light':'dark'); }catch(e){}
 }
 (function(){ try{ if(localStorage.getItem('hse_theme')==='light'){isLight=false;toggleTheme();} }catch(e){} })();
+
+// ══ SENSIBILISATION HSE — MODULE COMPLET ═════════════════════
+var _sensibData=[], _sensibEmployees=[], _sensibTargets=[], _sensibCharts={};
+var _sensibFile=null, _sensibSelectedMat=null, _sensibParticipants=[];
+document.addEventListener('click',function(e){
+  var sug=document.getElementById('sensibMatSuggest');
+  if(sug&&!sug.contains(e.target)&&e.target.id!=='sensibFormMat') sug.style.display='none';
+});
+
+// Charge employés + sessions via appels dédiés (indépendant de getData)
+var _sensibLoaded=false;
+function _sensibSetMeta(txt,color){
+  var el=document.getElementById('sensibSourceMeta');
+  if(el){el.textContent=txt;if(color)el.style.color=color;}
+}
+function sensibForceReload(){ _sensibLoaded=false; sensibLoadOnDemand(); }
+function sensibLoadOnDemand(){
+  renderSensib();
+  sensibBuildCampaignUI();
+  if(_sensibLoaded) return;
+  _sensibLoaded=true;
+  var reloadBtn=document.getElementById('sensibReloadBtn');
+  _sensibSetMeta('⏳ Chargement…','var(--amber)');
+  // Charge employés (autocomplete) — appel dédié
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(r&&r.employees&&r.employees.length){
+        var existing={};
+        _sensibEmployees.forEach(function(e){existing[e.matricule]=1;});
+        r.employees.forEach(function(e){if(e.matricule&&!existing[e.matricule])_sensibEmployees.push(e);});
+      }
+    })
+    .withFailureHandler(function(){})
+    .getSensibEmployeesForClient();
+  // Charge sessions si vide — essaie d'abord la fonction dédiée
+  if(!_sensibData.length){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(r&&r.error&&!r.entries){
+          // Fonction absente du script déployé → essai via getDataForClient
+          _sensibSetMeta('⚠ Script à redéployer — tentative via getData…','var(--amber)');
+          _sensibLoaded=false;
+          google.script.run
+            .withSuccessHandler(function(d){
+              if(d&&d.sensibilisation&&d.sensibilisation.length){
+                _sensibData=d.sensibilisation;
+                _sensibEmployees=d.sensibilisationEmployees||_sensibEmployees;
+                _sensibRedraw();
+              } else {
+                _sensibSetMeta('⚠ Aucune donnée — vérifiez le script','var(--red)');
+                if(reloadBtn)reloadBtn.style.display='';
+              }
+            })
+            .withFailureHandler(function(e){
+              _sensibSetMeta('✕ Erreur : '+String(e),'var(--red)');
+              _sensibLoaded=false;
+              if(reloadBtn)reloadBtn.style.display='';
+            })
+            .getDataForClient();
+          return;
+        }
+        if(r&&r.entries&&r.entries.length){
+          _sensibData=r.entries;
+          if(r.employees&&r.employees.length) _sensibEmployees=r.employees;
+          _sensibRedraw();
+        } else {
+          _sensibSetMeta('0 session enregistrée','var(--text3)');
+          if(reloadBtn)reloadBtn.style.display='';
+        }
+      })
+      .withFailureHandler(function(e){
+        // La fonction n'existe pas encore dans le script déployé
+        _sensibSetMeta('⚠ Redéployez le script Apps Script','var(--red)');
+        _sensibLoaded=false;
+        if(reloadBtn)reloadBtn.style.display='';
+      })
+      .getSensibSessionsForClient();
+  } else {
+    _sensibRedraw();
+  }
+}
+function _sensibRedraw(){
+  buildSensibFilters();
+  buildSensibKpis();
+  buildSensibProgressBars();
+  buildSensibCharts();
+  buildSensibLeaderboard();
+  renderSensib();
+  sensibBuildCampaignUI();
+  _sensibSetMeta(_sensibData.length+' session(s)','var(--text3)');
+  var reloadBtn=document.getElementById('sensibReloadBtn');
+  if(reloadBtn)reloadBtn.style.display='none';
+}
+
+// ══ CAMPAGNE DE SENSIBILISATION ═══════════════════════════════
+var _sensibCampaigns=[], _campSelDepts={}, _campSelSupers={};
+function sensibLoadCampaigns(){
+  try{ _sensibCampaigns=JSON.parse(localStorage.getItem('sensibCampaigns')||'[]'); }
+  catch(e){ _sensibCampaigns=[]; }
+}
+function sensibSaveCampaigns(){
+  try{ localStorage.setItem('sensibCampaigns',JSON.stringify(_sensibCampaigns)); }catch(e){}
+}
+function sensibToggleCampForm(){
+  var f=document.getElementById('sensibCampForm');
+  if(!f) return;
+  var show=f.style.display==='none';
+  f.style.display=show?'block':'none';
+  if(show){
+    sensibBuildCampDeptChips();
+    sensibBuildCampSupervisorChips();
+    sensibComputeCampaign();
+  }
+}
+// Liste unique des départements depuis Employees_DB (fallback sessions)
+function sensibAllDepartments(){
+  var d={};
+  _sensibEmployees.forEach(function(e){ if(e.department) d[e.department]=1; });
+  _sensibData.forEach(function(r){ if(r.department) d[r.department]=1; });
+  return Object.keys(d).sort();
+}
+function sensibBuildCampDeptChips(){
+  var cont=document.getElementById('campDeptChips'); if(!cont) return;
+  var depts=sensibAllDepartments();
+  if(!depts.length){ cont.innerHTML='<span style="font-size:10px;color:var(--text3)">Aucun département trouvé dans Employees_DB</span>'; return; }
+  cont.innerHTML=depts.map(function(dp){
+    var on=_campSelDepts[dp]?1:0;
+    return '<button onclick="sensibToggleCampDept(\''+escH(dp)+'\')" '
+      +'style="font-size:10px;padding:5px 11px;border-radius:18px;cursor:pointer;transition:all .15s;'
+      +'border:1px solid '+(on?'var(--p3)':'var(--border)')+';'
+      +'background:'+(on?'rgba(11,145,181,.25)':'var(--bg3)')+';'
+      +'color:'+(on?'var(--p4)':'var(--text2)')+';font-weight:'+(on?'600':'400')+'">'
+      +(on?'✓ ':'')+escH(dp)+'</button>';
+  }).join('');
+}
+function sensibToggleCampDept(dp){
+  if(_campSelDepts[dp]) delete _campSelDepts[dp]; else _campSelDepts[dp]=1;
+  sensibBuildCampDeptChips();
+  sensibComputeCampaign();
+}
+function sensibBuildCampSupervisorChips(){
+  var cont=document.getElementById('campSupervisorChips'); if(!cont) return;
+  // Superviseurs = formateurs présents dans l'historique, triés par nb sessions
+  var trainers={};
+  _sensibData.forEach(function(r){ if(r.trainer) trainers[r.trainer]=(trainers[r.trainer]||0)+1; });
+  var list=Object.keys(trainers).sort(function(a,b){return trainers[b]-trainers[a];});
+  if(!list.length){
+    cont.innerHTML='<span style="font-size:10px;color:var(--text3)">Aucun formateur dans l\'historique. </span>'
+      +'<input type="text" id="campManualSuper" class="tag-search-input" placeholder="Saisir un superviseur" style="width:200px;display:inline-block;margin-left:6px">';
+    return;
+  }
+  // Auto-suggestion : top 2 pré-sélectionnés si rien choisi
+  if(!Object.keys(_campSelSupers).length){ list.slice(0,2).forEach(function(t){_campSelSupers[t]=1;}); }
+  cont.innerHTML=list.map(function(t){
+    var on=_campSelSupers[t]?1:0;
+    return '<button onclick="sensibToggleCampSuper(\''+escH(t)+'\')" '
+      +'style="font-size:10px;padding:5px 11px;border-radius:18px;cursor:pointer;transition:all .15s;'
+      +'border:1px solid '+(on?'var(--green)':'var(--border)')+';'
+      +'background:'+(on?'rgba(16,201,133,.2)':'var(--bg3)')+';'
+      +'color:'+(on?'var(--green)':'var(--text2)')+';font-weight:'+(on?'600':'400')+'">'
+      +(on?'✓ ':'')+escH(t)+' <span style="opacity:.6">('+trainers[t]+')</span></button>';
+  }).join('');
+}
+function sensibToggleCampSuper(t){
+  if(_campSelSupers[t]) delete _campSelSupers[t]; else _campSelSupers[t]=1;
+  sensibBuildCampSupervisorChips();
+  sensibComputeCampaign();
+}
+// Calcul automatique : cibles, durée, planning
+function sensibCampTargetCount(){
+  var selDepts=Object.keys(_campSelDepts);
+  if(!selDepts.length) return 0;
+  var count=0;
+  // Compter depuis Employees_DB
+  if(_sensibEmployees.length){
+    _sensibEmployees.forEach(function(e){ if(e.department&&_campSelDepts[e.department]) count++; });
+  } else {
+    // Fallback : matricules uniques dans les sessions
+    var seen={};
+    _sensibData.forEach(function(r){ if(r.department&&_campSelDepts[r.department]&&r.matricule&&!seen[r.matricule]){seen[r.matricule]=1;count++;} });
+  }
+  return count;
+}
+function sensibComputeCampaign(){
+  var box=document.getElementById('campComputeBox'); if(!box) return;
+  var targets=sensibCampTargetCount();
+  var groupSize=parseInt(document.getElementById('campGroupSize').value||'10')||10;
+  var sessDur=parseFloat(document.getElementById('campSessionDur').value||'1')||1;
+  var perDay=parseInt(document.getElementById('campSessionsPerDay').value||'2')||2;
+  var nbSessions=targets>0?Math.ceil(targets/groupSize):0;
+  var totalHours=nbSessions*sessDur;
+  var nbDays=nbSessions>0?Math.ceil(nbSessions/perDay):0;
+  var selDepts=Object.keys(_campSelDepts);
+  var selSupers=Object.keys(_campSelSupers);
+  var cards=[
+    {label:'Personnes ciblées',val:targets,color:'var(--p4)',icon:'👥'},
+    {label:'Sessions nécessaires',val:nbSessions,color:'var(--amber)',icon:'📋'},
+    {label:'Durée totale',val:totalHours.toFixed(1)+'h',color:'var(--green)',icon:'⏱'},
+    {label:'Jours estimés',val:nbDays,color:'var(--p3)',icon:'📆'},
+    {label:'Départements',val:selDepts.length,color:'var(--text2)',icon:'🏭'},
+    {label:'Superviseurs',val:selSupers.length,color:'var(--red)',icon:'🧑‍🏫'}
+  ];
+  box.innerHTML=cards.map(function(c){
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center">'
+      +'<div style="font-size:15px">'+c.icon+'</div>'
+      +'<div style="font-size:18px;font-weight:700;color:'+c.color+'">'+c.val+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+c.label+'</div></div>';
+  }).join('');
+}
+function sensibCampMsg(txt,type){
+  var el=document.getElementById('campMsg'); if(!el) return;
+  el.textContent=txt;
+  el.style.background=type==='ok'?'rgba(16,201,133,.1)':'rgba(232,68,90,.1)';
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.style.border='1px solid '+(type==='ok'?'rgba(16,201,133,.3)':'rgba(232,68,90,.3)');
+  el.style.display='block';
+  setTimeout(function(){ el.style.display='none'; },5000);
+}
+function sensibLaunchCampaign(){
+  var obj=document.getElementById('campObjective').value.trim();
+  var haz=document.getElementById('campHazard').value;
+  var start=document.getElementById('campStart').value;
+  var selDepts=Object.keys(_campSelDepts);
+  if(!obj||!haz||!start){ sensibCampMsg('Renseignez l\'objectif, le type de risque et la date de début.','err'); return; }
+  if(!selDepts.length){ sensibCampMsg('Sélectionnez au moins un département/poste ciblé.','err'); return; }
+  var selSupers=Object.keys(_campSelSupers);
+  var manual=document.getElementById('campManualSuper');
+  if(manual&&manual.value.trim()) selSupers.push(manual.value.trim());
+  var targets=sensibCampTargetCount();
+  var groupSize=parseInt(document.getElementById('campGroupSize').value||'10')||10;
+  var sessDur=parseFloat(document.getElementById('campSessionDur').value||'1')||1;
+  var perDay=parseInt(document.getElementById('campSessionsPerDay').value||'2')||2;
+  var nbSessions=targets>0?Math.ceil(targets/groupSize):0;
+  var nbDays=nbSessions>0?Math.ceil(nbSessions/perDay):0;
+  // Planning prévisionnel
+  var planning=[]; var d=new Date(start); var remaining=nbSessions; var grp=1;
+  while(remaining>0){
+    var daySessions=Math.min(perDay,remaining);
+    var dayPlan=[];
+    for(var s=0;s<daySessions;s++){
+      var sup=selSupers.length?selSupers[(grp-1)%selSupers.length]:'—';
+      dayPlan.push({group:grp,supervisor:sup,size:Math.min(groupSize,targets-(grp-1)*groupSize)});
+      grp++;
+    }
+    planning.push({date:d.toISOString().slice(0,10),sessions:dayPlan});
+    remaining-=daySessions;
+    d.setDate(d.getDate()+1);
+  }
+  var camp={
+    id:Date.now(),
+    objective:obj, hazard:haz, startDate:start,
+    departments:selDepts, supervisors:selSupers,
+    targetCount:targets, groupSize:groupSize, sessionDur:sessDur,
+    nbSessions:nbSessions, nbDays:nbDays,
+    planning:planning,
+    status:'En cours', createdAt:new Date().toISOString()
+  };
+  _sensibCampaigns.unshift(camp);
+  sensibSaveCampaigns();
+  _campSelDepts={}; _campSelSupers={};
+  document.getElementById('campObjective').value='';
+  document.getElementById('campHazard').value='';
+  document.getElementById('campStart').value='';
+  sensibCampMsg('Campagne lancée avec succès !','ok');
+  sensibToggleCampForm();
+  sensibBuildCampaignUI();
+}
+// Avancement = sessions réalisées (depuis la date de début, risque + dept correspondants)
+function sensibCampaignProgress(camp){
+  var startMs=new Date(camp.startDate).getTime();
+  var coveredMats={};
+  _sensibData.forEach(function(r){
+    if((r.dateMs||0)<startMs) return;
+    if(camp.hazard && r.hazard!==camp.hazard) return;
+    if(camp.departments.length && r.department && camp.departments.indexOf(r.department)<0) return;
+    if(r.matricule) coveredMats[r.matricule]=1;
+  });
+  var covered=Object.keys(coveredMats).length;
+  var coverage=camp.targetCount>0?Math.round(covered/camp.targetCount*100):0;
+  var sessionsDone=0;
+  _sensibData.forEach(function(r){
+    if((r.dateMs||0)>=startMs && (!camp.hazard||r.hazard===camp.hazard) &&
+       (!camp.departments.length||!r.department||camp.departments.indexOf(r.department)>=0)) sessionsDone++;
+  });
+  var realisation=camp.nbSessions>0?Math.round(Math.min(sessionsDone,camp.nbSessions)/camp.nbSessions*100):0;
+  return {covered:covered,coverage:coverage,sessionsDone:sessionsDone,realisation:realisation};
+}
+function sensibCloseCampaign(id){
+  var c=_sensibCampaigns.find(function(x){return x.id===id;});
+  if(!c) return;
+  var p=sensibCampaignProgress(c);
+  c.status='Clôturée';
+  c.results={covered:p.covered,coverage:p.coverage,sessionsDone:p.sessionsDone,realisation:p.realisation,closedAt:new Date().toISOString()};
+  sensibSaveCampaigns();
+  sensibBuildCampaignUI();
+}
+function sensibDeleteCampaign(id){
+  _sensibCampaigns=_sensibCampaigns.filter(function(x){return x.id!==id;});
+  sensibSaveCampaigns();
+  sensibBuildCampaignUI();
+}
+function sensibTogglePlanning(id){
+  var el=document.getElementById('campPlan_'+id);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+function sensibBuildCampaignUI(){
+  if(!_sensibCampaigns.length) sensibLoadCampaigns();
+  var cont=document.getElementById('sensibCampList'); if(!cont) return;
+  if(!_sensibCampaigns.length){
+    cont.innerHTML='<div style="font-size:11px;color:var(--text3);padding:8px 0">Aucune campagne active. Cliquez sur « Lancer une campagne » pour en créer une.</div>';
+    return;
+  }
+  cont.innerHTML=_sensibCampaigns.map(function(c){
+    var p=c.status==='Clôturée'&&c.results?c.results:sensibCampaignProgress(c);
+    var statusCol=c.status==='Clôturée'?'var(--text3)':'var(--green)';
+    var planRows=c.planning.map(function(d){
+      return '<tr><td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3)">'+escH(d.date)+'</td>'
+        +'<td style="font-size:10px">'+d.sessions.map(function(s){return 'G'+s.group+' ('+s.size+'p · '+escH(s.supervisor)+')';}).join('<br>')+'</td></tr>';
+    }).join('');
+    var resultsBlock=c.status==='Clôturée'&&c.results?
+      '<div style="margin-top:8px;padding:8px;background:rgba(16,201,133,.08);border:1px solid rgba(16,201,133,.25);border-radius:8px">'
+      +'<div style="font-size:10px;font-weight:600;color:var(--green);margin-bottom:4px">✅ RÉSULTATS APRÈS CLÔTURE</div>'
+      +'<div style="font-size:11px;color:var(--text2)">Personnes couvertes : <strong>'+c.results.covered+'/'+c.targetCount+'</strong> · '
+      +'Taux de couverture : <strong>'+c.results.coverage+'%</strong> · '
+      +'Sessions réalisées : <strong>'+c.results.sessionsDone+'</strong> · '
+      +'Taux de réalisation : <strong>'+c.results.realisation+'%</strong></div></div>':'';
+    return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg2)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:200px">'
+          +'<div style="font-size:13px;font-weight:700;color:var(--text)">🎯 '+escH(c.objective)+'</div>'
+          +'<div style="font-size:10px;color:var(--text3);margin-top:2px">⚠ '+escH(c.hazard)+' · 📅 début '+escH(c.startDate)+'</div>'
+        +'</div>'
+        +'<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:14px;color:'+statusCol+';border:1px solid '+statusCol+'">'+escH(c.status)+'</span>'
+      +'</div>'
+      // Résumé
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px">'
+        +'<div><div style="font-size:9px;color:var(--text3)">Public cible</div><div style="font-size:11px;font-weight:600">'+c.departments.map(escH).join(', ')+'</div></div>'
+        +'<div><div style="font-size:9px;color:var(--text3)">Auditeurs visés</div><div style="font-size:11px;font-weight:600;color:var(--p4)">'+c.targetCount+'</div></div>'
+        +'<div><div style="font-size:9px;color:var(--text3)">Durée estimée</div><div style="font-size:11px;font-weight:600">'+(c.nbSessions*c.sessionDur).toFixed(1)+'h · '+c.nbDays+'j</div></div>'
+        +'<div><div style="font-size:9px;color:var(--text3)">Superviseurs</div><div style="font-size:11px;font-weight:600">'+(c.supervisors.length?c.supervisors.map(escH).join(', '):'—')+'</div></div>'
+      +'</div>'
+      // Avancement
+      +'<div style="margin-top:10px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px">'
+          +'<span>Avancement (réalisation)</span><span style="color:var(--amber)">'+p.realisation+'% · '+p.sessionsDone+' session(s)</span></div>'
+        +'<div style="background:var(--bg4);border-radius:4px;height:7px;overflow:hidden"><div style="height:100%;background:var(--amber);width:'+p.realisation+'%;border-radius:4px;transition:width .5s"></div></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin:6px 0 3px"><span>Taux de couverture</span><span style="color:var(--green)">'+p.coverage+'% · '+p.covered+'/'+c.targetCount+'</span></div>'
+        +'<div style="background:var(--bg4);border-radius:4px;height:7px;overflow:hidden"><div style="height:100%;background:var(--green);width:'+p.coverage+'%;border-radius:4px;transition:width .5s"></div></div>'
+      +'</div>'
+      +resultsBlock
+      // Actions
+      +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+        +'<button class="btn" style="font-size:10px;padding:3px 10px" onclick="sensibTogglePlanning('+c.id+')">📋 Planning prévisionnel</button>'
+        +(c.status!=='Clôturée'?'<button class="btn" style="font-size:10px;padding:3px 10px;color:var(--green);border-color:rgba(16,201,133,.4)" onclick="sensibCloseCampaign('+c.id+')">✓ Clôturer</button>':'')
+        +'<button class="btn" style="font-size:10px;padding:3px 10px;color:var(--red);border-color:rgba(232,68,90,.3)" onclick="sensibDeleteCampaign('+c.id+')">🗑 Supprimer</button>'
+      +'</div>'
+      // Planning (masqué)
+      +'<div id="campPlan_'+c.id+'" style="display:none;margin-top:10px">'
+        +'<div class="tblw"><table><thead><tr><th>Date</th><th>Sessions (groupe · taille · superviseur)</th></tr></thead><tbody>'+planRows+'</tbody></table></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function initSensib(d){
+  _sensibData      = d.sensibilisation || [];
+  _sensibEmployees = d.sensibilisationEmployees || [];
+  _sensibTargets   = d.sensibilisationTargets || [];
+  var srcLink=document.getElementById('sensibSourceLink');
+  if(srcLink&&d.sensibilisationSourceUrl) srcLink.href=d.sensibilisationSourceUrl;
+  var meta=document.getElementById('sensibSourceMeta');
+  if(meta) meta.textContent=_sensibData.length+' session(s)';
+  buildSensibFilters();
+  buildSensibKpis();
+  buildSensibProgressBars();
+  buildSensibCharts();
+  buildSensibLeaderboard();
+  renderSensib();
+}
+
+// ── Brique 1 : KPIs ──────────────────────────────────────────
+function buildSensibKpis(){
+  var row=document.getElementById('sensibKpiRow'); if(!row) return;
+  var total=_sensibData.length;
+  var mats={};
+  _sensibData.forEach(function(r){ if(r.matricule) mats[r.matricule]=1; });
+  var covered=Object.keys(mats).length;
+  var totalStaff=_sensibEmployees.length || covered;
+  var coveragePct=totalStaff>0?Math.round(covered/totalStaff*100):0;
+  var totalHours=0;
+  _sensibData.forEach(function(r){ totalHours+=r.duration||0; });
+  var hazards={};
+  _sensibData.forEach(function(r){ if(r.hazard) hazards[r.hazard]=(hazards[r.hazard]||0)+1; });
+  var kpis=[
+    {label:'Sessions totales',    val:total,                      color:'var(--p4)',  icon:'🎓'},
+    {label:'Employés touchés',    val:covered+'/'+totalStaff,      color:'var(--green)',icon:'👷'},
+    {label:'Taux de couverture',  val:coveragePct+'%',            color:coveragePct>=80?'var(--green)':coveragePct>=50?'var(--amber)':'var(--red)', icon:'📊'},
+    {label:'Heures investies',    val:totalHours.toFixed(1)+'h',  color:'var(--amber)',icon:'⏱'},
+    {label:'Types de risque',     val:Object.keys(hazards).length, color:'var(--p3)',  icon:'⚠️'},
+  ];
+  row.innerHTML=kpis.map(function(k){
+    return '<div class="kpi" style="flex:1;min-width:130px;display:flex;flex-direction:column;align-items:center;gap:2px">'
+      +'<div style="font-size:18px">'+k.icon+'</div>'
+      +'<div class="kpi-val" style="color:'+k.color+';font-size:22px">'+k.val+'</div>'
+      +'<div class="kpi-lbl" style="text-align:center">'+k.label+'</div></div>';
+  }).join('');
+}
+
+// ── Brique 1 : Progress bars Actual vs Target ──────────────────
+function buildSensibProgressBars(){
+  var cont=document.getElementById('sensibProgressBars'); if(!cont) return;
+  var card=document.getElementById('sensibProgressCard');
+  var hazards={};
+  _sensibData.forEach(function(r){ if(r.hazard) hazards[r.hazard]=(hazards[r.hazard]||0)+1; });
+  if(!_sensibTargets.length){
+    if(card) card.style.display='none';
+    return;
+  }
+  if(card) card.style.display='';
+  cont.innerHTML=_sensibTargets.map(function(t){
+    var actual=hazards[t.hazard]||0;
+    var pct=t.target>0?Math.min(100,Math.round(actual/t.target*100)):0;
+    var col=pct>=100?'var(--green)':pct>=60?'var(--amber)':'var(--red)';
+    return '<div>'
+      +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px">'
+      +'<span>'+escH(t.hazard)+'</span><span style="color:'+col+'">'+actual+' / '+t.target+' ('+pct+'%)</span></div>'
+      +'<div style="background:var(--bg4);border-radius:4px;height:8px;overflow:hidden">'
+      +'<div style="height:100%;border-radius:4px;background:'+col+';width:'+pct+'%;transition:width .6s ease"></div></div></div>';
+  }).join('');
+}
+
+// ── Brique 1 : Graphiques ──────────────────────────────────────
+var _SCOLS=['#0da8d2','#f5a623','#10c985','#e8445a','#7b5ea7','#4ab8c1','#d4a843','#6ec97b','#e88a5a'];
+function buildSensibCharts(){
+  function kill(k){ if(_sensibCharts[k]){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } }
+  kill('hazard'); kill('dept'); kill('team');
+  var hazards={}, depts={};
+  _sensibData.forEach(function(r){
+    if(r.hazard) hazards[r.hazard]=(hazards[r.hazard]||0)+1;
+    if(r.department) depts[r.department]=(depts[r.department]||0)+1;
+  });
+  function mkBar(cid,labels,vals,key){
+    var el=document.getElementById(cid); if(!el) return;
+    _sensibCharts[key]=new Chart(el,{type:'bar',data:{labels:labels,datasets:[{data:vals,backgroundColor:_SCOLS.slice(0,vals.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'var(--text2)',font:{size:9}},grid:{display:false}},y:{ticks:{color:'var(--text3)',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}}}}});
+  }
+  var hK=Object.keys(hazards).sort(function(a,b){return hazards[b]-hazards[a];}).slice(0,8);
+  mkBar('sensibHazardC',hK,hK.map(function(k){return hazards[k];}),'hazard');
+  var dK=Object.keys(depts).sort(function(a,b){return depts[b]-depts[a];}).slice(0,8);
+  mkBar('sensibDeptC',dK,dK.map(function(k){return depts[k];}),'dept');
+}
+
+// ── Brique 3 : Leaderboard formateurs ─────────────────────────
+function buildSensibLeaderboard(){
+  var lb=document.getElementById('sensibLeaderboard'); if(!lb) return;
+  var trainers={};
+  _sensibData.forEach(function(r){
+    if(!r.trainer) return;
+    if(!trainers[r.trainer]) trainers[r.trainer]={sessions:0,employees:{},hours:0};
+    trainers[r.trainer].sessions++;
+    if(r.matricule) trainers[r.trainer].employees[r.matricule]=1;
+    trainers[r.trainer].hours+=r.duration||0;
+  });
+  var sorted=Object.keys(trainers).sort(function(a,b){return trainers[b].sessions-trainers[a].sessions;});
+  if(!sorted.length){ lb.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucun formateur enregistré.</div>'; return; }
+  var medals=['🥇','🥈','🥉'];
+  lb.innerHTML=sorted.map(function(t,i){
+    var tr=trainers[t];
+    var empCount=Object.keys(tr.employees).length;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border)">'
+      +'<div style="font-size:18px;flex-shrink:0">'+(medals[i]||'#'+(i+1))+'</div>'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(t)+'</div>'
+      +'<div style="font-size:10px;color:var(--text3)">'+tr.sessions+' sessions · '+empCount+' employés · '+tr.hours.toFixed(1)+'h</div></div>'
+      +'<div style="font-size:12px;font-weight:700;color:var(--amber)">'+tr.sessions+'</div></div>';
+  }).join('');
+
+  // Team comparison chart
+  function kill(k){ if(_sensibCharts[k]){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } }
+  kill('team');
+  var el=document.getElementById('sensibTeamC'); if(!el) return;
+  var labels=sorted.slice(0,6).map(function(t){return t.split(' ')[0];});
+  var ds1=sorted.slice(0,6).map(function(t){return trainers[t].sessions;});
+  var ds2=sorted.slice(0,6).map(function(t){return Object.keys(trainers[t].employees).length;});
+  var ds3=sorted.slice(0,6).map(function(t){return +trainers[t].hours.toFixed(1);});
+  _sensibCharts['team']=new Chart(el,{type:'bar',data:{labels:labels,datasets:[
+    {label:'Sessions',data:ds1,backgroundColor:'rgba(13,168,210,.7)',borderRadius:3},
+    {label:'Employés',data:ds2,backgroundColor:'rgba(245,166,35,.7)',borderRadius:3},
+    {label:'Heures',data:ds3,backgroundColor:'rgba(16,201,133,.7)',borderRadius:3}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'var(--text2)',font:{size:9}}}},scales:{x:{ticks:{color:'var(--text2)',font:{size:9}},grid:{display:false}},y:{ticks:{color:'var(--text3)',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+
+// ── Brique 2 : Recherche individuelle ─────────────────────────
+function sensibSearchEmployee(){
+  var q=document.getElementById('sensibEmpSearch').value.trim().toLowerCase();
+  var res=document.getElementById('sensibEmpResults');
+  var profile=document.getElementById('sensibEmpProfile');
+  var empty=document.getElementById('sensibEmpEmpty');
+  if(!q){ res.style.display='none'; profile.style.display='none'; empty.style.display=''; _sensibSelectedMat=null; return; }
+  // Search in employees list + session data
+  var found={};
+  _sensibEmployees.forEach(function(e){
+    if((e.name||'').toLowerCase().indexOf(q)>-1||(e.matricule||'').indexOf(q)>-1) found[e.matricule]=e;
+  });
+  _sensibData.forEach(function(r){
+    if(!found[r.matricule]&&((r.name||'').toLowerCase().indexOf(q)>-1||(r.matricule||'').indexOf(q)>-1)){
+      found[r.matricule]={matricule:r.matricule,name:r.name,department:r.department};
+    }
+  });
+  var list=Object.values(found).slice(0,10);
+  if(!list.length){ res.innerHTML='<div style="padding:8px 12px;font-size:11px;color:var(--text3)">Aucun employé trouvé</div>'; res.style.display='block'; profile.style.display='none'; empty.style.display='none'; return; }
+  res.innerHTML=list.map(function(e){
+    return '<div style="padding:8px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background .15s" '
+      +'onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'\'" '
+      +'onclick="sensibSelectEmployee(\''+escH(e.matricule)+'\')">'
+      +'<strong>'+escH(e.name||e.matricule)+'</strong> <span style="color:var(--text3)">— '+escH(e.matricule)+(e.department?' · '+escH(e.department):'')+'</span></div>';
+  }).join('');
+  res.style.display='block'; profile.style.display='none'; empty.style.display='none';
+}
+
+function sensibSelectEmployee(mat){
+  _sensibSelectedMat=mat;
+  document.getElementById('sensibEmpResults').style.display='none';
+  // Find employee info
+  var emp=_sensibEmployees.find(function(e){return e.matricule===mat;});
+  if(!emp) {
+    var firstSess=_sensibData.find(function(r){return r.matricule===mat;});
+    if(firstSess) emp={matricule:mat,name:firstSess.name,department:firstSess.department};
+    else emp={matricule:mat,name:'—',department:'—'};
+  }
+  // Filter sessions for this employee
+  var history=_sensibData.filter(function(r){return r.matricule===mat;}).sort(function(a,b){return (b.dateMs||0)-(a.dateMs||0);});
+  var lastSession=history.length?history[0].timestamp:'—';
+  // Profile card
+  var card=document.getElementById('sensibEmpProfileCard');
+  card.innerHTML=[
+    {label:'Nom',val:emp.name||mat},
+    {label:'Matricule',val:mat},
+    {label:'Département',val:emp.department||'—'},
+    {label:'Sessions assistées',val:history.length},
+    {label:'Dernière sensibilisation',val:lastSession}
+  ].map(function(f){
+    return '<div style="min-width:130px"><div style="font-size:9px;color:var(--text3);margin-bottom:2px">'+f.label+'</div>'
+      +'<div style="font-size:12px;font-weight:600;color:var(--text)">'+escH(String(f.val))+'</div></div>';
+  }).join('');
+  // Gap Alert: check if any session in last 6 months for mandatory hazards by dept
+  var gapDiv=document.getElementById('sensibGapAlert');
+  var sixMonthsAgo=Date.now()-6*30*24*3600*1000;
+  var dept=(emp.department||'').toLowerCase();
+  var mandatoryHazards=[];
+  if(dept.indexOf('cuisson')>-1||dept.indexOf('baking')>-1) mandatoryHazards=['Brûlure','Risque mécanique','Incendie / Explosion'];
+  else if(dept.indexOf('emballage')>-1||dept.indexOf('packaging')>-1) mandatoryHazards=['Risque mécanique','Hygiène / Sécurité alimentaire'];
+  else if(dept.indexOf('production')>-1) mandatoryHazards=['Glissade / Chute','Risque mécanique'];
+  var gaps=mandatoryHazards.filter(function(h){
+    return !history.some(function(s){ return s.hazard===h && (s.dateMs||0)>sixMonthsAgo; });
+  });
+  if(gaps.length){
+    gapDiv.innerHTML='⚠️ <strong>GAP ALERT</strong> — Sensibilisation(s) obligatoire(s) manquante(s) ces 6 derniers mois pour ce poste : <strong>'+gaps.map(escH).join(', ')+'</strong>';
+    gapDiv.style.display='block';
+  } else { gapDiv.style.display='none'; }
+  // History table
+  var tb=document.getElementById('sensibEmpHistoryBody');
+  if(!history.length){
+    tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:16px">Aucune session enregistrée</td></tr>';
+  } else {
+    tb.innerHTML=history.map(function(r){
+      var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
+      var linkCell=sensibPjButton(r.attendanceUrl);
+      return '<tr>'
+        +'<td style="font-size:10px;font-family:JetBrains Mono,monospace;color:var(--text3)">'+escH(r.timestamp)+'</td>'
+        +'<td style="font-size:11px">'+escH(r.theme||'—')+'</td>'
+        +'<td><span class="rbadge" style="background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)">'+escH(r.hazard||'—')+'</span></td>'
+        +'<td style="font-size:11px;color:var(--text2)">'+escH(r.trainer||'—')+'</td>'
+        +'<td style="color:'+statusCol+';font-size:10px;font-weight:600">'+escH(r.status||'Présent')+'</td>'
+        +'<td style="text-align:center">'+linkCell+'</td>'
+        +'</tr>';
+    }).join('');
+  }
+  document.getElementById('sensibEmpProfile').style.display='block';
+  document.getElementById('sensibEmpEmpty').style.display='none';
+}
+
+// ── Pièce jointe : bouton + viewer intégré (aucune ouverture externe) ──
+// Extrait l'ID Drive de n'importe quel format de lien.
+function sensibDriveFileId(url){
+  if(!url) return '';
+  var m=String(url).match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+      ||String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/)
+      ||String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m?m[1]:'';
+}
+function sensibPjButton(url){
+  var id=sensibDriveFileId(url);
+  if(!id) return '<span style="color:var(--text3);font-size:10px">—</span>';
+  return '<button onclick="sensibViewPj(\''+id+'\')" '
+    +'style="background:rgba(74,144,226,.15);color:var(--p4);border:1px solid rgba(74,144,226,.35);'
+    +'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600" '
+    +'title="Afficher la pièce jointe dans le dashboard">📋 Voir PJ</button>';
+}
+function sensibViewPj(id){
+  var ov=document.getElementById('sensibPjModal');
+  var fr=document.getElementById('sensibPjFrame');
+  // /preview = viewer intégré Google Drive (iframe), pas de redirection externe.
+  fr.src='https://drive.google.com/file/d/'+id+'/preview';
+  ov.style.display='flex';
+}
+function sensibClosePj(){
+  var ov=document.getElementById('sensibPjModal');
+  document.getElementById('sensibPjFrame').src='';
+  ov.style.display='none';
+}
+
+function sensibClearEmployee(){
+  _sensibSelectedMat=null;
+  document.getElementById('sensibEmpSearch').value='';
+  document.getElementById('sensibEmpResults').style.display='none';
+  document.getElementById('sensibEmpProfile').style.display='none';
+  document.getElementById('sensibEmpEmpty').style.display='';
+}
+
+// ── Filtres registre général ───────────────────────────────────
+function buildSensibFilters(){
+  var hazards={},depts={},trainers={};
+  _sensibData.forEach(function(r){
+    if(r.hazard) hazards[r.hazard]=1;
+    if(r.department) depts[r.department]=1;
+    if(r.trainer) trainers[r.trainer]=1;
+  });
+  function fillSel(id,obj){
+    var sel=document.getElementById(id); if(!sel) return;
+    var cur=sel.value;
+    sel.innerHTML='<option value="all">Tous</option>';
+    Object.keys(obj).sort().forEach(function(k){ var o=document.createElement('option'); o.value=k; o.textContent=k; sel.appendChild(o); });
+    if(cur&&obj[cur]) sel.value=cur;
+  }
+  fillSel('sensibFilterHazard',hazards);
+  fillSel('sensibFilterDept',depts);
+  fillSel('sensibFilterTrainer',trainers);
+}
+
+function renderSensib(){
+  var q=(document.getElementById('sensibSearch')||{}).value||'';
+  var fh=(document.getElementById('sensibFilterHazard')||{}).value||'all';
+  var fd=(document.getElementById('sensibFilterDept')||{}).value||'all';
+  var ft=(document.getElementById('sensibFilterTrainer')||{}).value||'all';
+  var sort=(document.getElementById('sensibSort')||{}).value||'date_desc';
+  var rows=_sensibData.filter(function(r){
+    if(fh!=='all'&&r.hazard!==fh) return false;
+    if(fd!=='all'&&r.department!==fd) return false;
+    if(ft!=='all'&&r.trainer!==ft) return false;
+    if(q){ var lq=q.toLowerCase(); var s=(r.name+' '+r.department+' '+r.hazard+' '+r.trainer+' '+r.matricule+' '+r.theme).toLowerCase(); if(s.indexOf(lq)<0) return false; }
+    return true;
+  });
+  rows.sort(function(a,b){
+    if(sort==='date_desc') return (b.dateMs||0)-(a.dateMs||0);
+    if(sort==='date_asc')  return (a.dateMs||0)-(b.dateMs||0);
+    if(sort==='name_az')   return (a.name||'').localeCompare(b.name||'');
+    if(sort==='dept_az')   return (a.department||'').localeCompare(b.department||'');
+    if(sort==='hazard_az') return (a.hazard||'').localeCompare(b.hazard||'');
+    return 0;
+  });
+  var cnt=document.getElementById('sensibListCount'); if(cnt) cnt.textContent=rows.length+' / '+_sensibData.length;
+  var tb=document.getElementById('sensibBody'); if(!tb) return;
+  if(!rows.length){ tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Aucune session trouvée</td></tr>'; return; }
+  tb.innerHTML=rows.map(function(r){
+    var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
+    var linkCell=sensibPjButton(r.attendanceUrl);
+    return '<tr>'
+      +'<td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3)">'+escH(r.timestamp)+'</td>'
+      +'<td style="font-family:JetBrains Mono,monospace;font-size:11px">'+escH(r.matricule)+'</td>'
+      +'<td style="font-weight:500">'+escH(r.name)+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+escH(r.department)+'</td>'
+      +'<td><span class="rbadge" style="background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)">'+escH(r.hazard||'—')+'</span></td>'
+      +'<td style="font-size:10px;color:var(--text2)">'+escH(r.theme||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+escH(r.trainer)+'</td>'
+      +'<td style="font-size:11px;text-align:center">'+((r.duration||0)>0?r.duration+'h':'—')+'</td>'
+      +'<td style="color:'+statusCol+';font-size:10px;font-weight:600">'+escH(r.status||'Présent')+'</td>'
+      +'<td style="text-align:center">'+linkCell+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+function clearSensibFilters(){
+  ['sensibSearch','sensibFilterHazard','sensibFilterDept','sensibFilterTrainer'].forEach(function(id){
+    var el=document.getElementById(id); if(el){if(el.tagName==='INPUT')el.value='';else el.value=el.options[0].value;}
+  });
+  renderSensib();
+}
+
+// ── Brique 4 : Autocomplete matricule ─────────────────────────
+function sensibGetEmpList(){
+  var all={};
+  _sensibEmployees.forEach(function(e){ if(e.matricule) all[e.matricule]=e; });
+  _sensibData.forEach(function(r){ if(r.matricule&&!all[r.matricule]) all[r.matricule]={matricule:r.matricule,name:r.name,department:r.department}; });
+  return Object.values(all);
+}
+function sensibMatInput(){
+  var q=(document.getElementById('sensibFormMat').value||'').trim().toLowerCase();
+  var sug=document.getElementById('sensibMatSuggest');
+  if(!q){sug.style.display='none';return;}
+  var list=sensibGetEmpList().filter(function(e){
+    return (e.matricule||'').toLowerCase().indexOf(q)>-1||(e.name||'').toLowerCase().indexOf(q)>-1;
+  }).slice(0,10);
+  if(!list.length){sug.style.display='none';return;}
+  sug.innerHTML=list.map(function(e,i){
+    return '<div data-idx="'+i+'" style="padding:7px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background .12s" '
+      +'onmousedown="sensibPickEmployee(\''+escH(e.matricule)+'\',\''+escH(e.name)+'\',\''+escH(e.department||'')+'\');event.preventDefault()" '
+      +'onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'\'">'
+      +'<strong style="color:var(--p4)">'+escH(e.matricule)+'</strong>'
+      +' — '+escH(e.name||'—')
+      +(e.department?'<span style="color:var(--text3);font-size:10px"> · '+escH(e.department)+'</span>':'')
+      +'</div>';
+  }).join('');
+  sug.style.display='block';
+}
+function sensibMatKey(e){
+  if(e.key==='Escape'||e.key==='Tab') document.getElementById('sensibMatSuggest').style.display='none';
+}
+function sensibPickEmployee(mat,name,dept){
+  document.getElementById('sensibFormMat').value=mat;
+  document.getElementById('sensibFormName').value=name;
+  document.getElementById('sensibFormDept').value=dept;
+  document.getElementById('sensibMatSuggest').style.display='none';
+}
+
+// ── Brique 4 : Gestion multi-participants ──────────────────────
+function sensibAddParticipant(){
+  var mat=(document.getElementById('sensibFormMat').value||'').trim();
+  var name=(document.getElementById('sensibFormName').value||'').trim();
+  var dept=(document.getElementById('sensibFormDept').value||'').trim();
+  if(!mat||!name){sensibShowMsg('Matricule et Nom obligatoires pour ajouter un participant.','err');return;}
+  if(_sensibParticipants.some(function(p){return p.matricule===mat;})){
+    sensibShowMsg('Ce participant est déjà dans la liste.','err'); return;
+  }
+  _sensibParticipants.push({matricule:mat,name:name,department:dept});
+  document.getElementById('sensibFormMat').value='';
+  document.getElementById('sensibFormName').value='';
+  document.getElementById('sensibFormDept').value='';
+  document.getElementById('sensibMatSuggest').style.display='none';
+  sensibRenderParticipants();
+}
+function sensibRemoveParticipant(mat){
+  _sensibParticipants=_sensibParticipants.filter(function(p){return p.matricule!==mat;});
+  sensibRenderParticipants();
+}
+function sensibRenderParticipants(){
+  var panel=document.getElementById('sensibParticipantsPanel');
+  var empty=document.getElementById('sensibParticipantsEmpty');
+  var cnt=document.getElementById('sensibParticipantCount');
+  var list=document.getElementById('sensibParticipantsList');
+  if(!_sensibParticipants.length){
+    panel.style.display='none'; empty.style.display=''; return;
+  }
+  panel.style.display=''; empty.style.display='none';
+  cnt.textContent=_sensibParticipants.length;
+  list.innerHTML=_sensibParticipants.map(function(p){
+    return '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg4);'
+      +'border-radius:20px;border:1px solid var(--border);font-size:11px">'
+      +'<span style="color:var(--p4);font-weight:600">'+escH(p.matricule)+'</span>'
+      +'<span>'+escH(p.name)+'</span>'
+      +(p.department?'<span style="color:var(--text3);font-size:9px">'+escH(p.department)+'</span>':'')
+      +'<button onclick="sensibRemoveParticipant(\''+escH(p.matricule)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 2px;line-height:1">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+// ── Brique 4 : Upload & formulaire ────────────────────────────
+function sensibHandleFile(input){
+  var file=input.files[0]; if(!file) return;
+  _sensibFile=file;
+  var prev=document.getElementById('sensibFilePreview');
+  prev.innerHTML='📎 '+escH(file.name)+' ('+Math.round(file.size/1024)+' Ko)';
+  prev.style.display='block';
+  document.getElementById('sensibDropZone').style.borderColor='var(--green)';
+}
+function sensibHandleDrop(e){
+  e.preventDefault();
+  document.getElementById('sensibDropZone').style.borderColor='var(--border)';
+  var file=e.dataTransfer.files[0]; if(!file) return;
+  _sensibFile=file;
+  var prev=document.getElementById('sensibFilePreview');
+  prev.innerHTML='📎 '+escH(file.name)+' ('+Math.round(file.size/1024)+' Ko)';
+  prev.style.display='block';
+}
+function sensibShowMsg(txt,type){
+  var el=document.getElementById('sensibFormMsg');
+  if(!el) return;
+  el.textContent=txt;
+  el.style.background=type==='ok'?'rgba(16,201,133,.1)':'rgba(232,68,90,.1)';
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.style.border='1px solid '+(type==='ok'?'rgba(16,201,133,.3)':'rgba(232,68,90,.3)');
+  el.style.display='block';
+  setTimeout(function(){ el.style.display='none'; }, 5000);
+}
+function sensibSubmitForm(){
+  var hazard=document.getElementById('sensibFormHazard').value;
+  var trainer=document.getElementById('sensibFormTrainer').value.trim();
+  var dateVal=document.getElementById('sensibFormDate').value;
+  if(!hazard||!trainer||!dateVal){ sensibShowMsg('Veuillez remplir les champs obligatoires : date, type de risque et formateur.','err'); return; }
+  if(!_sensibParticipants.length){ sensibShowMsg('Ajoutez au moins un participant avant d\'enregistrer.','err'); return; }
+  if(!_sensibFile){ sensibShowMsg('⚠️ La feuille d\'émargement (photo / PDF) est obligatoire.','err'); return; }
+  var btn=document.getElementById('sensibSubmitBtn');
+  btn.disabled=true; btn.textContent='Enregistrement…';
+  var commonData={
+    hazard:hazard,
+    trainer:trainer,
+    theme:document.getElementById('sensibFormTheme').value.trim(),
+    duration:parseFloat(document.getElementById('sensibFormDur').value||'0')||0,
+    status:document.getElementById('sensibFormStatus').value
+  };
+  function saveAllParticipants(attendanceUrl){
+    var participants=_sensibParticipants.slice();
+    var saved=0,errors=0;
+    function saveNext(){
+      if(!participants.length){
+        btn.disabled=false; btn.textContent='✅ Enregistrer la session';
+        if(errors===0) sensibShowMsg(saved+' participant(s) enregistré(s) avec succès !','ok');
+        else sensibShowMsg(saved+' enregistré(s), '+errors+' erreur(s).','err');
+        if(errors===0) sensibResetForm();
+        return;
+      }
+      var p=participants.shift();
+      var data=Object.assign({},commonData,{matricule:p.matricule,name:p.name,department:p.department,attendanceUrl:attendanceUrl||''});
+      google.script.run.withSuccessHandler(function(r){
+        if(r&&r.success) saved++; else errors++;
+        saveNext();
+      }).withFailureHandler(function(){ errors++; saveNext(); }).addSensibilisationRecord(data);
+    }
+    saveNext();
+  }
+  // PJ obligatoire — upload bloquant
+  var reader=new FileReader();
+  reader.onload=function(ev){
+    var b64=ev.target.result.split(',')[1];
+    var riskType=(hazard||'risque').replace(/[^a-zA-Z0-9]/g,'_');
+    btn.textContent='⬆️ Upload Drive…';
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||!r.success||!r.url){
+          btn.disabled=false; btn.textContent='✅ Enregistrer la session';
+          sensibShowMsg('❌ Échec upload Drive : '+(r&&r.error?r.error:'réponse vide'),'err');
+          return;
+        }
+        // Indicateur : upload OK
+        var prev=document.getElementById('sensibFilePreview');
+        if(prev) prev.innerHTML='✅ Fichier uploadé — <span style="color:var(--green);font-size:10px">lien Drive généré</span>';
+        saveAllParticipants(r.url);
+      })
+      .withFailureHandler(function(e){
+        btn.disabled=false; btn.textContent='✅ Enregistrer la session';
+        sensibShowMsg('❌ Erreur réseau lors de l\'upload Drive : '+(e&&e.message?e.message:e),'err');
+      })
+      .uploadAttendanceToSensibDrive(b64,_sensibFile.type,dateVal,riskType);
+  };
+  reader.readAsDataURL(_sensibFile);
+}
+function sensibResetForm(){
+  ['sensibFormMat','sensibFormName','sensibFormDept','sensibFormTheme','sensibFormTrainer','sensibFormDur','sensibFormDate'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var hz=document.getElementById('sensibFormHazard'); if(hz) hz.value='';
+  var st=document.getElementById('sensibFormStatus'); if(st) st.value='Présent';
+  _sensibFile=null; _sensibParticipants=[];
+  var prev=document.getElementById('sensibFilePreview'); if(prev) prev.style.display='none';
+  var dz=document.getElementById('sensibDropZone'); if(dz) dz.style.borderColor='var(--border)';
+  var fi=document.getElementById('sensibFileInput'); if(fi) fi.value='';
+  sensibRenderParticipants();
+}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ══ PRODUITS CHIMIQUES ET FDS ══════════════════════════════════
+var _chimiquesData = [];
+
+function chimiquesLoadOnDemand() {
+  if (_chimiquesData.length) { chimiquesRender(); return; }
+  var meta = document.getElementById('chimiquesSourceMeta');
+  if (meta) meta.textContent = '⏳ Chargement…';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      _chimiquesData = r && r.items ? r.items : [];
+      if (meta) meta.textContent = 'Source : Liste produits chimiques et FDS · '
+        + _chimiquesData.filter(function(x){return !x.isCategory;}).length + ' produits';
+      chimiquesPopulateFilters();
+      chimiquesRender();
+    })
+    .withFailureHandler(function(e) {
+      if (meta) meta.textContent = '❌ Erreur : ' + (e && e.message ? e.message : e);
+    })
+    .getChimiquesForClient();
+}
+
+function chimiquesPopulateFilters() {
+  var emps = {};
+  _chimiquesData.forEach(function(r) { if (!r.isCategory && r.emplacement) emps[r.emplacement] = 1; });
+  var sel = document.getElementById('chimiquesFilterEmp');
+  if (!sel) return;
+  var cur = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  Object.keys(emps).sort().forEach(function(e) {
+    var o = document.createElement('option'); o.value = e; o.textContent = e; sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+function chimiquesResetFilters() {
+  ['chimiquesSearch','chimiquesFilterFds','chimiquesFilterEmp'].forEach(function(id){
+    var el = document.getElementById(id); if (!el) return;
+    if (el.tagName === 'INPUT') el.value = ''; else el.value = el.options[0].value;
+  });
+  chimiquesRender();
+}
+
+function chimiquesRender() {
+  var search = (document.getElementById('chimiquesSearch') || {}).value || '';
+  var fdsF   = (document.getElementById('chimiquesFilterFds') || {}).value || '';
+  var empF   = (document.getElementById('chimiquesFilterEmp') || {}).value || '';
+  search = search.toLowerCase();
+  var total = 0, fdsOk = 0, fdsMissing = 0;
+  _chimiquesData.forEach(function(r) {
+    if (r.isCategory) return;
+    total++;
+    if (r.fds.toLowerCase() === 'oui') fdsOk++;
+    else fdsMissing++;
+  });
+  var kpiRow = document.getElementById('chimiquesKpiRow');
+  if (kpiRow) {
+    var pct = total > 0 ? Math.round(fdsOk / total * 100) : 0;
+    kpiRow.innerHTML = [
+      {label:'Total produits', val:total, color:'var(--p4)'},
+      {label:'FDS disponibles', val:fdsOk, color:'var(--green)'},
+      {label:'FDS manquantes', val:fdsMissing, color:'var(--red)'},
+      {label:'Taux FDS', val:pct+'%', color:pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}
+    ].map(function(k){
+      return '<div style="flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;text-align:center">'
+        +'<div style="font-size:20px;font-weight:700;color:'+k.color+'">'+k.val+'</div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+k.label+'</div>'
+        +'</div>';
+    }).join('');
+  }
+  var rows = _chimiquesData.filter(function(r) {
+    if (r.isCategory) return true;
+    if (fdsF && r.fds.toLowerCase() !== fdsF) return false;
+    if (empF && r.emplacement !== empF) return false;
+    if (search) {
+      var hay = (r.name+' '+r.emplacement+' '+r.localisation).toLowerCase();
+      if (hay.indexOf(search) === -1) return false;
+    }
+    return true;
+  });
+  var dataRows = rows.filter(function(r){return !r.isCategory;});
+  var cnt = document.getElementById('chimiquesCount');
+  if (cnt) cnt.textContent = dataRows.length + ' / ' + total;
+  var tb = document.getElementById('chimiquesBody');
+  if (!tb) return;
+  if (!dataRows.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Aucun produit trouvé</td></tr>';
+    return;
+  }
+  var html = '';
+  rows.forEach(function(r) {
+    if (r.isCategory) {
+      html += '<tr style="background:rgba(245,166,35,.12)">'
+        +'<td colspan="5" style="font-weight:700;color:var(--amber);font-size:12px;padding:8px 12px;letter-spacing:.5px">▶ '+escH(r.name)+'</td>'
+        +'</tr>';
+      return;
+    }
+    var fdsCell;
+    if (r.fds.toLowerCase() === 'oui') {
+      if (r.fdsUrl) {
+        fdsCell = '<button onclick="chimiquesViewFds(\''+escH(r.fdsUrl)+'\')" '
+          +'style="background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3);'
+          +'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">📄 Voir FDS</button>';
+      } else {
+        fdsCell = '<span style="color:var(--green);font-size:11px;font-weight:600">✅ Oui</span>';
+      }
+    } else if (r.fds.toLowerCase() === 'non' || !r.fds) {
+      fdsCell = '<span style="color:var(--red);font-size:11px;font-weight:600">❌ Manquante</span>';
+    } else {
+      fdsCell = '<span style="color:var(--text2);font-size:11px">'+escH(r.fds)+'</span>';
+    }
+    html += '<tr>'
+      +'<td style="font-weight:500">'+escH(r.name)+'</td>'
+      +'<td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:11px">'+escH(r.qty||'—')+'</td>'
+      +'<td style="text-align:center">'+fdsCell+'</td>'
+      +'<td style="font-size:11px;color:var(--text2)">'+escH(r.emplacement||'—')+'</td>'
+      +'<td style="font-size:11px;color:var(--text3)">'+escH(r.localisation||'—')+'</td>'
+      +'</tr>';
+  });
+  tb.innerHTML = html;
+}
+
+function chimiquesViewFds(url) {
+  var id = sensibDriveFileId(url);
+  if (id) {
+    sensibViewPj(id);
+  } else {
+    var ov = document.getElementById('sensibPjModal');
+    var fr = document.getElementById('sensibPjFrame');
+    if (ov && fr) { fr.src = url; ov.style.display = 'flex'; }
+  }
+}
 
 // ══ NAVIGATION ════════════════════════════════════════════════
 function goTab(id,el){
@@ -5152,6 +6655,9 @@ function render(data){
 
   // ── NUISIBLES ───────────────────────────────────────────
   renderPests();
+
+  // ══ SENSIBILISATION HSE ═══════════════════════════
+  if(data.sensibilisation)initSensib(data);
 }
 
 
@@ -6121,6 +7627,141 @@ if (typeof window.normalize !== 'function') {
 }
 
 
+// ══ PRODUITS CHIMIQUES ET FDS ══════════════════════════════════
+var _chimiquesData = [];
+
+function chimiquesLoadOnDemand() {
+  if (_chimiquesData.length) { chimiquesRender(); return; }
+  var meta = document.getElementById('chimiquesSourceMeta');
+  if (meta) meta.textContent = '⏳ Chargement…';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      _chimiquesData = r && r.items ? r.items : [];
+      if (meta) meta.textContent = 'Source : Liste produits chimiques et FDS · ' + _chimiquesData.filter(function(x){return !x.isCategory;}).length + ' produits';
+      chimiquesPopulateFilters();
+      chimiquesRender();
+    })
+    .withFailureHandler(function(e) {
+      if (meta) meta.textContent = '❌ Erreur : ' + (e && e.message ? e.message : e);
+    })
+    .getChimiquesForClient();
+}
+
+function chimiquesPopulateFilters() {
+  var emps = {};
+  _chimiquesData.forEach(function(r) { if (!r.isCategory && r.emplacement) emps[r.emplacement] = 1; });
+  var sel = document.getElementById('chimiquesFilterEmp');
+  if (!sel) return;
+  var cur = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  Object.keys(emps).sort().forEach(function(e) {
+    var o = document.createElement('option'); o.value = e; o.textContent = e; sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+function chimiquesResetFilters() {
+  ['chimiquesSearch','chimiquesFilterFds','chimiquesFilterEmp'].forEach(function(id){
+    var el = document.getElementById(id); if (!el) return;
+    if (el.tagName === 'INPUT') el.value = ''; else el.value = el.options[0].value;
+  });
+  chimiquesRender();
+}
+
+function chimiquesRender() {
+  var search = (document.getElementById('chimiquesSearch') || {}).value || '';
+  var fdsF   = (document.getElementById('chimiquesFilterFds') || {}).value || '';
+  var empF   = (document.getElementById('chimiquesFilterEmp') || {}).value || '';
+  search = search.toLowerCase();
+
+  var total = 0, fdsOk = 0, fdsMissing = 0;
+  _chimiquesData.forEach(function(r) {
+    if (r.isCategory) return;
+    total++;
+    if (r.fds.toLowerCase() === 'oui') fdsOk++;
+    else fdsMissing++;
+  });
+
+  // KPIs
+  var kpiRow = document.getElementById('chimiquesKpiRow');
+  if (kpiRow) {
+    var pct = total > 0 ? Math.round(fdsOk / total * 100) : 0;
+    kpiRow.innerHTML = [
+      {label:'Total produits', val:total, color:'var(--p4)'},
+      {label:'FDS disponibles', val:fdsOk, color:'var(--green)'},
+      {label:'FDS manquantes', val:fdsMissing, color:'var(--red)'},
+      {label:'Taux FDS', val:pct+'%', color:pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}
+    ].map(function(k){
+      return '<div style="flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;text-align:center">'
+        +'<div style="font-size:20px;font-weight:700;color:'+k.color+'">'+k.val+'</div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+k.label+'</div>'
+        +'</div>';
+    }).join('');
+  }
+
+  var rows = _chimiquesData.filter(function(r) {
+    if (r.isCategory) return true;
+    if (fdsF && r.fds.toLowerCase() !== fdsF) return false;
+    if (empF && r.emplacement !== empF) return false;
+    if (search) {
+      var hay = (r.name + ' ' + r.emplacement + ' ' + r.localisation).toLowerCase();
+      if (hay.indexOf(search) === -1) return false;
+    }
+    return true;
+  });
+
+  var dataRows = rows.filter(function(r){return !r.isCategory;});
+  var cnt = document.getElementById('chimiquesCount');
+  if (cnt) cnt.textContent = dataRows.length + ' / ' + total;
+
+  var tb = document.getElementById('chimiquesBody');
+  if (!tb) return;
+  if (!dataRows.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Aucun produit trouvé</td></tr>';
+    return;
+  }
+
+  var html = '';
+  rows.forEach(function(r) {
+    if (r.isCategory) {
+      html += '<tr style="background:rgba(245,166,35,.12)">'
+        + '<td colspan="5" style="font-weight:700;color:var(--amber);font-size:12px;padding:8px 12px;letter-spacing:.5px">▶ ' + esc(r.name) + '</td>'
+        + '</tr>';
+      return;
+    }
+    var fdsCell;
+    if (r.fds.toLowerCase() === 'oui') {
+      if (r.fdsUrl) {
+        fdsCell = '<button onclick="chimiquesViewFds(\'' + escAttr(r.fdsUrl) + '\')" '
+          + 'style="background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3);'
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">📄 Voir FDS</button>';
+      } else {
+        fdsCell = '<span style="color:var(--green);font-size:11px;font-weight:600">✅ Oui</span>';
+      }
+    } else if (r.fds.toLowerCase() === 'non' || !r.fds) {
+      fdsCell = '<span style="color:var(--red);font-size:11px;font-weight:600">❌ Manquante</span>';
+    } else {
+      fdsCell = '<span style="color:var(--text2);font-size:11px">' + esc(r.fds) + '</span>';
+    }
+    html += '<tr>'
+      + '<td style="font-weight:500">' + esc(r.name) + '</td>'
+      + '<td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:11px">' + esc(r.qty || '—') + '</td>'
+      + '<td style="text-align:center">' + fdsCell + '</td>'
+      + '<td style="font-size:11px;color:var(--text2)">' + esc(r.emplacement || '—') + '</td>'
+      + '<td style="font-size:11px;color:var(--text3)">' + esc(r.localisation || '—') + '</td>'
+      + '</tr>';
+  });
+  tb.innerHTML = html;
+}
+
+function chimiquesViewFds(url) {
+  if (typeof openCleaningEmbed === 'function') {
+    openCleaningEmbed(url, 'Fiche de Données de Sécurité', 'FDS', '📄');
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
 // ══ IA ════════════════════════════════════════════════════════
 // ══ EPI ══════════════════════════════════════════════════════
 // Filtres + rendu de la feuille « Gestion du Stock des EPI V2 ».
@@ -6240,6 +7881,221 @@ function populateEpiDropdowns(list){
 
 // Initialise l'iframe de la slide une seule fois (au premier render).
 // Ensuite la slide reste affichée sans rechargement.
+// ══ DOTATIONS EPI ════════════════════════════════════════════════
+var _epiEmployees  = [];  // liste depuis Employees_DB
+var _epiDotations  = [];  // registre EPI_Dotations
+var _epiDotSelMat  = null;
+
+// Charge les employés (réutilise getSensibEmployeesForClient)
+function epiEnsureEmployees(cb) {
+  if (_epiEmployees.length) { if (cb) cb(); return; }
+  google.script.run
+    .withSuccessHandler(function(r) {
+      _epiEmployees = r && r.employees ? r.employees : [];
+      if (cb) cb();
+    })
+    .withFailureHandler(function() { if (cb) cb(); })
+    .getSensibEmployeesForClient();
+}
+
+// ── Recherche dotation ──────────────────────────────────────────
+function epiDotSearchInput() {
+  var q = (document.getElementById('epiDotSearch').value || '').trim().toLowerCase();
+  var sug = document.getElementById('epiDotSuggest');
+  if (!q) { sug.style.display = 'none'; epiDotClearSearch(); return; }
+  epiEnsureEmployees(function() {
+    var hits = _epiEmployees.filter(function(e) {
+      return (e.matricule + ' ' + e.name).toLowerCase().indexOf(q) > -1;
+    }).slice(0, 8);
+    if (!hits.length) { sug.style.display = 'none'; return; }
+    sug.innerHTML = hits.map(function(e) {
+      return '<div onclick="epiDotPickEmployee(\'' + escH(e.matricule) + '\',\'' + escH(e.name) + '\',\'' + escH(e.department) + '\')" '
+        + 'style="padding:7px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid rgba(255,255,255,.05)" '
+        + 'onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'
+        + '<strong style="color:var(--p4)">' + escH(e.matricule) + '</strong> — ' + escH(e.name)
+        + (e.department ? ' <span style="color:var(--text3);font-size:10px">(' + escH(e.department) + ')</span>' : '')
+        + '</div>';
+    }).join('');
+    sug.style.display = 'block';
+  });
+}
+
+function epiDotPickEmployee(mat, name, dept) {
+  document.getElementById('epiDotSearch').value = mat + ' — ' + name;
+  document.getElementById('epiDotSuggest').style.display = 'none';
+  _epiDotSelMat = mat;
+  epiDotShowProfile(mat, name, dept);
+}
+
+function epiDotShowProfile(mat, name, dept) {
+  document.getElementById('epiDotProfMat').textContent  = mat;
+  document.getElementById('epiDotProfName').textContent = name;
+  document.getElementById('epiDotProfDept').textContent = dept || '—';
+  var rows = _epiDotations.filter(function(d) { return d.matricule === mat; });
+  document.getElementById('epiDotProfCount').textContent = rows.length;
+  var tb = document.getElementById('epiDotProfBody');
+  if (!rows.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:12px">Aucune dotation enregistrée pour cet employé.</td></tr>';
+  } else {
+    tb.innerHTML = rows.map(function(d) {
+      return '<tr>'
+        + '<td style="font-size:10px;font-family:\'JetBrains Mono\',monospace;color:var(--text3)">' + escH(d.date) + '</td>'
+        + '<td style="font-weight:500">' + escH(d.epi) + '</td>'
+        + '<td style="font-size:11px">' + escH(d.taille || '—') + '</td>'
+        + '<td style="text-align:center;font-weight:700;color:var(--p4)">' + escH(String(d.quantite)) + '</td>'
+        + '<td style="font-size:11px;color:var(--text2)">' + escH(d.commentaire || '—') + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+  document.getElementById('epiDotProfile').style.display = 'block';
+  document.getElementById('epiDotEmpty').style.display   = 'none';
+}
+
+function epiDotClearSearch() {
+  _epiDotSelMat = null;
+  document.getElementById('epiDotSearch').value = '';
+  document.getElementById('epiDotSuggest').style.display = 'none';
+  document.getElementById('epiDotProfile').style.display = 'none';
+  document.getElementById('epiDotEmpty').style.display   = '';
+}
+
+// ── Formulaire dotation ─────────────────────────────────────────
+function epiFormMatInput() {
+  var q = (document.getElementById('epiFormMat').value || '').trim().toLowerCase();
+  var sug = document.getElementById('epiFormMatSuggest');
+  if (!q) { sug.style.display = 'none'; return; }
+  epiEnsureEmployees(function() {
+    var hits = _epiEmployees.filter(function(e) {
+      return (e.matricule + ' ' + e.name).toLowerCase().indexOf(q) > -1;
+    }).slice(0, 8);
+    if (!hits.length) { sug.style.display = 'none'; return; }
+    sug.innerHTML = hits.map(function(e) {
+      return '<div onclick="epiFormPickEmployee(\'' + escH(e.matricule) + '\',\'' + escH(e.name) + '\',\'' + escH(e.department) + '\')" '
+        + 'style="padding:7px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid rgba(255,255,255,.05)" '
+        + 'onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'\'">'
+        + '<strong style="color:var(--p4)">' + escH(e.matricule) + '</strong> — ' + escH(e.name)
+        + (e.department ? ' <span style="color:var(--text3);font-size:10px">(' + escH(e.department) + ')</span>' : '')
+        + '</div>';
+    }).join('');
+    sug.style.display = 'block';
+  });
+}
+
+function epiFormPickEmployee(mat, name, dept) {
+  document.getElementById('epiFormMat').value  = mat;
+  document.getElementById('epiFormName').value = name;
+  document.getElementById('epiFormDept').value = dept || '';
+  document.getElementById('epiFormMatSuggest').style.display = 'none';
+}
+
+function epiFormShowMsg(txt, type) {
+  var el = document.getElementById('epiFormMsg');
+  if (!el) return;
+  el.textContent = txt;
+  el.style.background = type === 'ok' ? 'rgba(16,201,133,.1)' : 'rgba(232,68,90,.1)';
+  el.style.color  = type === 'ok' ? 'var(--green)' : 'var(--red)';
+  el.style.border = '1px solid ' + (type === 'ok' ? 'rgba(16,201,133,.3)' : 'rgba(232,68,90,.3)');
+  el.style.display = 'block';
+  setTimeout(function() { el.style.display = 'none'; }, 5000);
+}
+
+function epiFormSubmit() {
+  var mat  = (document.getElementById('epiFormMat').value  || '').trim();
+  var name = (document.getElementById('epiFormName').value || '').trim();
+  var epi  = (document.getElementById('epiFormEpi').value  || '').trim();
+  var qty  = parseInt(document.getElementById('epiFormQty').value) || 0;
+  if (!mat)  { epiFormShowMsg('Le matricule est obligatoire.', 'err'); return; }
+  if (!epi)  { epiFormShowMsg("Le nom de l'EPI est obligatoire.", 'err'); return; }
+  if (qty < 1) { epiFormShowMsg('La quantité doit être ≥ 1.', 'err'); return; }
+  var btn = document.getElementById('epiFormSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Enregistrement…';
+  var data = {
+    matricule:   mat,
+    name:        name,
+    department:  (document.getElementById('epiFormDept').value  || '').trim(),
+    epi:         epi,
+    taille:      (document.getElementById('epiFormTaille').value || '').trim(),
+    quantite:    qty,
+    commentaire: (document.getElementById('epiFormCmt').value   || '').trim()
+  };
+  google.script.run
+    .withSuccessHandler(function(r) {
+      btn.disabled = false; btn.textContent = '✅ Enregistrer la dotation';
+      if (r && r.success) {
+        var stockMsg = '';
+        if (r.stock && r.stock.updated) {
+          stockMsg = ' · Stock « ' + r.stock.designation + ' » : ' + r.stock.before + ' → ' + r.stock.after;
+        } else if (r.stock && r.stock.reason === 'no_match') {
+          stockMsg = ' · ⚠️ EPI introuvable dans le stock (non décrémenté)';
+        }
+        epiFormShowMsg('Dotation enregistrée avec succès !' + stockMsg, 'ok');
+        epiFormReset();
+        epiDotReload(); // rafraîchit le registre
+        // Rafraîchir la liste EPI (stock à jour) si la fonction existe
+        if (typeof refreshData === 'function') refreshData();
+        else if (typeof loadData === 'function') loadData();
+      } else {
+        epiFormShowMsg('Erreur : ' + (r && r.error ? r.error : 'inconnue'), 'err');
+      }
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false; btn.textContent = '✅ Enregistrer la dotation';
+      epiFormShowMsg('Erreur réseau : ' + (e && e.message ? e.message : e), 'err');
+    })
+    .addEpiDotation(data);
+}
+
+function epiFormReset() {
+  ['epiFormMat','epiFormName','epiFormDept','epiFormEpi','epiFormTaille','epiFormCmt'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var qty = document.getElementById('epiFormQty'); if (qty) qty.value = 1;
+}
+
+// ── Registre dotations ──────────────────────────────────────────
+function epiDotReload() {
+  var tb = document.getElementById('epiDotRegBody');
+  if (tb) tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:16px">⏳ Chargement…</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      _epiDotations = r && r.dotations ? r.dotations : [];
+      epiDotRenderRegister();
+      // Si un employé est sélectionné, rafraîchir son profil
+      if (_epiDotSelMat) {
+        var emp = _epiEmployees.filter(function(e){ return e.matricule === _epiDotSelMat; })[0];
+        if (emp) epiDotShowProfile(emp.matricule, emp.name, emp.department);
+      }
+    })
+    .withFailureHandler(function(e) {
+      var tb2 = document.getElementById('epiDotRegBody');
+      if (tb2) tb2.innerHTML = '<tr><td colspan="8" style="color:var(--red);padding:12px">❌ Erreur : ' + escH(e && e.message ? e.message : String(e)) + '</td></tr>';
+    })
+    .getEpiDotationsForClient();
+}
+
+function epiDotRenderRegister() {
+  var tb = document.getElementById('epiDotRegBody');
+  if (!tb) return;
+  if (!_epiDotations.length) {
+    tb.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:16px">Aucune dotation enregistrée.</td></tr>';
+    return;
+  }
+  // Du plus récent au plus ancien
+  var sorted = _epiDotations.slice().reverse();
+  tb.innerHTML = sorted.map(function(d) {
+    return '<tr>'
+      + '<td style="font-size:10px;font-family:\'JetBrains Mono\',monospace;color:var(--text3)">' + escH(d.date) + '</td>'
+      + '<td style="font-family:\'JetBrains Mono\',monospace;font-size:11px;color:var(--p4)">' + escH(d.matricule) + '</td>'
+      + '<td style="font-weight:500">' + escH(d.name) + '</td>'
+      + '<td style="font-size:11px;color:var(--text2)">' + escH(d.department || '—') + '</td>'
+      + '<td style="font-weight:500">' + escH(d.epi) + '</td>'
+      + '<td style="font-size:11px">' + escH(d.taille || '—') + '</td>'
+      + '<td style="text-align:center;font-weight:700;color:var(--p4)">' + escH(String(d.quantite)) + '</td>'
+      + '<td style="font-size:11px;color:var(--text2)">' + escH(d.commentaire || '—') + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
 function ensureEpiSlideLoaded(){
   var f = document.getElementById('epiSlideFrame');
   if (!f || !D) return;
@@ -8884,6 +10740,7 @@ var RBAC_SECTIONS=[
   {id:'epi',label:'EPI (Équipements)',icon:'🦺'},
   {id:'energie',label:'Énergie',icon:'⚡'},
   {id:'nuisibles',label:'Nuisibles',icon:'🐀'},
+  {id:'sensibilisation',label:'Sensibilisation HSE',icon:'🎓'},
   {id:'ia',label:'IA / Gemini',icon:'🤖'}
 ];
 var currentUser=null, editingUsername=null;
