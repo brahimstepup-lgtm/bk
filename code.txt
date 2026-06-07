@@ -2422,7 +2422,7 @@ function getData() {
   out.sensibilisationEmployees = sensib.employees || [];
   out.sensibilisationTargets = sensib.targets || [];
   out.sensibilisationSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SENSIB_SHEET_ID +
-                                 '/edit?gid=' + SENSIB_SHEET_GID + '#gid=' + SENSIB_SHEET_GID;
+                                 '/edit?gid=129519468#gid=129519468';
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
