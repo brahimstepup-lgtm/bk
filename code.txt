@@ -3552,9 +3552,15 @@ function addSensibilisationRecord(data) {
     if (!sh) sh = sheets[0];
     sh.appendRow([
       new Date(),
-      data.matricule || '', data.name || '', data.department || '',
-      data.hazard || '', data.trainer || '', data.attendanceUrl || '',
-      data.theme || '', data.duration || 0, data.status || 'Présent'
+      data.matricule || '',
+      data.name || '',
+      data.department || '',
+      data.hazard || '',
+      data.trainer || '',
+      data.attendanceUrl || '',
+      data.theme || '',
+      data.duration || 0,
+      data.status || 'Présent'
     ]);
     return { success: true };
   } catch(e) { return { success: false, error: e.toString() }; }
