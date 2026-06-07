@@ -3939,7 +3939,7 @@ function sensibSelectEmployee(mat){
   } else {
     tb.innerHTML=history.map(function(r){
       var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
-      var linkCell=r.attendanceUrl?'<a href="'+r.attendanceUrl+'" target="_blank" rel="noopener" style="color:var(--p4);font-size:11px;text-decoration:underline" title="Voir la feuille d\'émargement">📋 Voir</a>':'<span style="color:var(--text3)">—</span>';
+      var linkCell=r.attendanceUrl?'<a href="'+escH(r.attendanceUrl)+'" target="_blank" rel="noopener" style="color:var(--p4);font-size:11px;text-decoration:underline" title="Ouvrir la feuille d\'émargement sur Google Drive">📋 Voir</a>':'<span style="color:var(--text3)">—</span>';
       return '<tr>'
         +'<td style="font-size:10px;font-family:JetBrains Mono,monospace;color:var(--text3)">'+escH(r.timestamp)+'</td>'
         +'<td style="font-size:11px">'+escH(r.theme||'—')+'</td>'

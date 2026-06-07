@@ -3434,6 +3434,38 @@ function readSensibilisation() {
     var iDur    = sensibColIdx(hdr, ['duration','duree','durée','heures','hours']);
     var iStatus = sensibColIdx(hdr, ['status','statut','presence','présence']);
 
+    // ── Pré-chargement batch des liens hypertext (colonne iLink) ──
+    // getRichTextValues() en une seule requête plutôt que N appels par cellule.
+    var linkRtvBatch = [];
+    if (iLink > -1 && raw.length > 1) {
+      try {
+        var rtvMatrix = sh.getRange(2, iLink + 1, raw.length - 1, 1).getRichTextValues();
+        for (var bi = 0; bi < rtvMatrix.length; bi++) {
+          var rtv = rtvMatrix[bi][0];
+          var burl = '';
+          if (rtv) {
+            var runs = rtv.getRuns();
+            for (var bj = 0; bj < runs.length; bj++) {
+              var lu = runs[bj].getLinkUrl();
+              if (lu) { burl = lu; break; }
+            }
+          }
+          linkRtvBatch.push(burl);
+        }
+      } catch(batchErr) { linkRtvBatch = []; }
+    }
+
+    function extractDriveUrl(raw) {
+      if (!raw) return '';
+      var s = String(raw).trim();
+      if (s.indexOf('drive.google.com') > -1) return s;
+      if (s.indexOf('https://') === 0 || s.indexOf('http://') === 0) return s;
+      // Extraire un fileId de type id=XXX ou /d/XXX
+      var m = s.match(/(?:id=|\/d\/)([a-zA-Z0-9_\-]{10,})/);
+      if (m) return 'https://drive.google.com/file/d/' + m[1] + '/view?usp=sharing';
+      return '';
+    }
+
     var entries = [];
     for (var r = 1; r < raw.length; r++) {
       var row = raw[r];
@@ -3448,14 +3480,9 @@ function readSensibilisation() {
         dateStr = String(ts || '').trim();
         try { if (dateStr) dateMs = new Date(dateStr).getTime(); } catch(ex) {}
       }
-      var linkVal = iLink > -1 ? row[iLink] : '';
-      var linkUrl = '';
-      try {
-        var cell = sh.getRange(r + 1, iLink + 1);
-        var rv = cell.getRichTextValue();
-        if (rv) { var runs = rv.getRuns(); if (runs.length > 0 && runs[0].getLinkUrl()) linkUrl = runs[0].getLinkUrl(); }
-      } catch(e2) {}
-      if (!linkUrl && String(linkVal).indexOf('http') === 0) linkUrl = String(linkVal);
+      // Lien : batch RTV en priorité, sinon valeur brute de la cellule
+      var linkUrl = (linkRtvBatch[r - 1] || '');
+      if (!linkUrl && iLink > -1) linkUrl = extractDriveUrl(row[iLink]);
       var dur = 0;
       if (iDur > -1) { dur = parseFloat(String(row[iDur] || '0').replace(',','.')); if (isNaN(dur)) dur = 0; }
       entries.push({
@@ -3536,7 +3563,10 @@ function uploadAttendanceToSensibDrive(base64Data, mimeType, sessionDate, riskTy
     var blob = Utilities.newBlob(bytes, mimeType, safeName + ext);
     var file = folder.createFile(blob);
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    return { success: true, fileId: file.getId(), url: file.getUrl(), filename: safeName + ext };
+    var fileId = file.getId();
+    // URL directe et partageable, format garanti (pas de redirection login)
+    var viewUrl = 'https://drive.google.com/file/d/' + fileId + '/view?usp=sharing';
+    return { success: true, fileId: fileId, url: viewUrl, filename: safeName + ext };
   } catch(e) { return { success: false, error: e.toString() }; }
 }
 
@@ -3550,7 +3580,7 @@ function addSensibilisationRecord(data) {
       if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
     }
     if (!sh) sh = sheets[0];
-    sh.appendRow([
+    var newRow = [
       new Date(),
       data.matricule || '',
       data.name || '',
@@ -3561,7 +3591,21 @@ function addSensibilisationRecord(data) {
       data.theme || '',
       data.duration || 0,
       data.status || 'Présent'
-    ]);
+    ];
+    sh.appendRow(newRow);
+    // Écrire le lien comme vrai hypertext dans la colonne G pour
+    // que getRichTextValues() le récupère correctement à la prochaine lecture.
+    if (data.attendanceUrl) {
+      try {
+        var lastRow = sh.getLastRow();
+        var linkCell = sh.getRange(lastRow, 7); // colonne G = index 7 (1-based)
+        var rtv = SpreadsheetApp.newRichTextValue()
+          .setText(data.attendanceUrl)
+          .setLinkUrl(data.attendanceUrl)
+          .build();
+        linkCell.setRichTextValue(rtv);
+      } catch(e3) { /* non bloquant */ }
+    }
     return { success: true };
   } catch(e) { return { success: false, error: e.toString() }; }
 }
