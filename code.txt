@@ -3413,13 +3413,9 @@ function readSensibilisation() {
   try {
     var ss = SpreadsheetApp.openById(SENSIB_SHEET_ID);
     var sheets = ss.getSheets();
-    var sh = null, empSh = null;
+    var sh = null;
     for (var i = 0; i < sheets.length; i++) {
-      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) sh = sheets[i];
-      else {
-        var sn = sheets[i].getName().toLowerCase();
-        if (sn.indexOf('employ') > -1 || sn.indexOf('effectif') > -1 || sn.indexOf('list') > -1) empSh = sheets[i];
-      }
+      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
     }
     if (!sh) sh = sheets[0];
 
@@ -3476,42 +3472,28 @@ function readSensibilisation() {
       });
     }
 
-    // Read employee list
+    // ── Employees_DB : feuille dédiée dans le même classeur ──────
     var employees = [];
-    // Try to find employees in a separate sheet first
+    var empSh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getName() === 'Employees_DB') { empSh = sheets[i]; break; }
+    }
     if (empSh) {
       var empRaw = empSh.getDataRange().getValues();
       if (empRaw && empRaw.length > 1) {
         var eHdr = empRaw[0].map(function(h){return String(h).trim().toLowerCase();});
-        var eMat  = sensibColIdx(eHdr, ['matricule','matric']);
-        var eName = sensibColIdx(eHdr, ['name','nom','employee']);
-        var eDept = sensibColIdx(eHdr, ['department','dept','departement']);
-        for (var e = 1; e < empRaw.length; e++) {
-          var er = empRaw[e];
+        var eMat  = sensibColIdx(eHdr, ['matricule','matric','id']);
+        var eName = sensibColIdx(eHdr, ['name','nom','employee','prénom']);
+        var eDept = sensibColIdx(eHdr, ['department','dept','departement','département']);
+        for (var ei = 1; ei < empRaw.length; ei++) {
+          var er = empRaw[ei];
           var em = eMat > -1 ? String(er[eMat]||'').trim() : '';
           if (!em) continue;
-          employees.push({ matricule: em, name: eName > -1 ? String(er[eName]||'').trim() : '', department: eDept > -1 ? String(er[eDept]||'').trim() : '' });
-        }
-      }
-    }
-    // Fallback: also look for a second table in the same sheet (common pattern)
-    if (!employees.length) {
-      // Scan for a second header row
-      var empStartRow = -1;
-      for (var row2 = 2; row2 < raw.length; row2++) {
-        var rowStr = raw[row2].map(function(c){return String(c).trim().toLowerCase();}).join('|');
-        if (rowStr.indexOf('matricule') > -1 || rowStr.indexOf('employee') > -1) { empStartRow = row2; break; }
-      }
-      if (empStartRow > -1 && empStartRow + 1 < raw.length) {
-        var eHdr2 = raw[empStartRow].map(function(h){return String(h).trim().toLowerCase();});
-        var eMat2  = sensibColIdx(eHdr2, ['matricule','matric']);
-        var eName2 = sensibColIdx(eHdr2, ['name','nom','employee']);
-        var eDept2 = sensibColIdx(eHdr2, ['department','dept']);
-        for (var e2 = empStartRow + 1; e2 < raw.length; e2++) {
-          var er2 = raw[e2];
-          var em2 = eMat2 > -1 ? String(er2[eMat2]||'').trim() : '';
-          if (!em2) continue;
-          employees.push({ matricule: em2, name: eName2 > -1 ? String(er2[eName2]||'').trim() : '', department: eDept2 > -1 ? String(er2[eDept2]||'').trim() : '' });
+          employees.push({
+            matricule:  em,
+            name:       eName > -1 ? String(er[eName]||'').trim() : '',
+            department: eDept > -1 ? String(er[eDept]||'').trim() : ''
+          });
         }
       }
     }
