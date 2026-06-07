@@ -2665,6 +2665,83 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
   </div>
 
+  <!-- ══ BRIQUE 1.5 : CAMPAGNE DE SENSIBILISATION ══ -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct" style="justify-content:space-between">
+      <div><span class="ct-dot" style="background:var(--red)"></span>📢 Campagne de sensibilisation</div>
+      <button class="btn" id="sensibCampToggleBtn" onclick="sensibToggleCampForm()"
+              style="font-size:10px;padding:4px 12px;background:linear-gradient(135deg,rgba(232,68,90,.2),rgba(232,68,90,.1));color:var(--red);border-color:rgba(232,68,90,.4);font-weight:600">
+        ➕ Lancer une campagne
+      </button>
+    </div>
+
+    <!-- Formulaire de configuration de campagne -->
+    <div id="sensibCampForm" style="display:none;margin-top:12px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-bottom:12px">
+        <div style="grid-column:1/-1">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">🎯 Objectif de la campagne *</div>
+          <input type="text" id="campObjective" class="tag-search-input" placeholder="Ex: Réduire les accidents liés aux brûlures en zone cuisson" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">⚠ Type(s) de risque ciblé(s) *</div>
+          <select id="campHazard" class="tag-dropdown" style="width:100%">
+            <option value="">— Sélectionner —</option>
+            <option>Glissade / Chute</option>
+            <option>Brûlure</option>
+            <option>Risque mécanique</option>
+            <option>Hygiène / Sécurité alimentaire</option>
+            <option>Incendie / Explosion</option>
+            <option>Risque électrique</option>
+            <option>Risque chimique</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📅 Date de début *</div>
+          <input type="date" id="campStart" class="tag-search-input" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">⏱ Durée par session (h)</div>
+          <input type="number" id="campSessionDur" class="tag-search-input" value="1" step="0.5" min="0.5" style="width:100%" oninput="sensibComputeCampaign()">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">👥 Participants / session</div>
+          <input type="number" id="campGroupSize" class="tag-search-input" value="10" step="1" min="1" style="width:100%" oninput="sensibComputeCampaign()">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px">📆 Sessions / jour</div>
+          <input type="number" id="campSessionsPerDay" class="tag-search-input" value="2" step="1" min="1" style="width:100%" oninput="sensibComputeCampaign()">
+        </div>
+      </div>
+
+      <!-- Sélection des postes / départements ciblés -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">🏭 Postes / départements concernés * <span style="color:var(--text3)">(cliquez pour (dé)sélectionner)</span></div>
+        <div id="campDeptChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- Sélection des superviseurs HSE -->
+      <div style="margin-bottom:12px">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:6px">🧑‍🏫 Superviseurs HSE affectés <span style="color:var(--text3)">(auto-suggérés selon l'historique)</span></div>
+        <div id="campSupervisorChips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+
+      <!-- Calcul automatique -->
+      <div id="campComputeBox" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px"></div>
+
+      <div id="campMsg" style="display:none;margin-bottom:8px;font-size:11px;padding:6px 10px;border-radius:6px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="sensibLaunchCampaign()" id="campLaunchBtn"
+                style="background:linear-gradient(135deg,rgba(16,201,133,.2),rgba(16,201,133,.1));color:var(--green);border-color:rgba(16,201,133,.4);font-weight:600;padding:6px 18px">
+          🚀 Lancer la campagne
+        </button>
+        <button class="btn" onclick="sensibToggleCampForm()" style="font-size:11px;padding:6px 14px">Annuler</button>
+      </div>
+    </div>
+
+    <!-- Liste des campagnes actives -->
+    <div id="sensibCampList" style="margin-top:12px"></div>
+  </div>
+
   <!-- ══ BRIQUE 2 : Recherche individuelle ══ -->
   <div class="card" style="margin-bottom:14px">
     <div class="ct"><span class="ct-dot" style="background:var(--p3)"></span>🔍 Suivi individuel par employé</div>
@@ -3710,6 +3787,7 @@ function _sensibSetMeta(txt,color){
 function sensibForceReload(){ _sensibLoaded=false; sensibLoadOnDemand(); }
 function sensibLoadOnDemand(){
   renderSensib();
+  sensibBuildCampaignUI();
   if(_sensibLoaded) return;
   _sensibLoaded=true;
   var reloadBtn=document.getElementById('sensibReloadBtn');
@@ -3779,9 +3857,280 @@ function _sensibRedraw(){
   buildSensibCharts();
   buildSensibLeaderboard();
   renderSensib();
+  sensibBuildCampaignUI();
   _sensibSetMeta(_sensibData.length+' session(s)','var(--text3)');
   var reloadBtn=document.getElementById('sensibReloadBtn');
   if(reloadBtn)reloadBtn.style.display='none';
+}
+
+// ══ CAMPAGNE DE SENSIBILISATION ═══════════════════════════════
+var _sensibCampaigns=[], _campSelDepts={}, _campSelSupers={};
+function sensibLoadCampaigns(){
+  try{ _sensibCampaigns=JSON.parse(localStorage.getItem('sensibCampaigns')||'[]'); }
+  catch(e){ _sensibCampaigns=[]; }
+}
+function sensibSaveCampaigns(){
+  try{ localStorage.setItem('sensibCampaigns',JSON.stringify(_sensibCampaigns)); }catch(e){}
+}
+function sensibToggleCampForm(){
+  var f=document.getElementById('sensibCampForm');
+  if(!f) return;
+  var show=f.style.display==='none';
+  f.style.display=show?'block':'none';
+  if(show){
+    sensibBuildCampDeptChips();
+    sensibBuildCampSupervisorChips();
+    sensibComputeCampaign();
+  }
+}
+// Liste unique des départements depuis Employees_DB (fallback sessions)
+function sensibAllDepartments(){
+  var d={};
+  _sensibEmployees.forEach(function(e){ if(e.department) d[e.department]=1; });
+  _sensibData.forEach(function(r){ if(r.department) d[r.department]=1; });
+  return Object.keys(d).sort();
+}
+function sensibBuildCampDeptChips(){
+  var cont=document.getElementById('campDeptChips'); if(!cont) return;
+  var depts=sensibAllDepartments();
+  if(!depts.length){ cont.innerHTML='<span style="font-size:10px;color:var(--text3)">Aucun département trouvé dans Employees_DB</span>'; return; }
+  cont.innerHTML=depts.map(function(dp){
+    var on=_campSelDepts[dp]?1:0;
+    return '<button onclick="sensibToggleCampDept(\''+escH(dp)+'\')" '
+      +'style="font-size:10px;padding:5px 11px;border-radius:18px;cursor:pointer;transition:all .15s;'
+      +'border:1px solid '+(on?'var(--p3)':'var(--border)')+';'
+      +'background:'+(on?'rgba(11,145,181,.25)':'var(--bg3)')+';'
+      +'color:'+(on?'var(--p4)':'var(--text2)')+';font-weight:'+(on?'600':'400')+'">'
+      +(on?'✓ ':'')+escH(dp)+'</button>';
+  }).join('');
+}
+function sensibToggleCampDept(dp){
+  if(_campSelDepts[dp]) delete _campSelDepts[dp]; else _campSelDepts[dp]=1;
+  sensibBuildCampDeptChips();
+  sensibComputeCampaign();
+}
+function sensibBuildCampSupervisorChips(){
+  var cont=document.getElementById('campSupervisorChips'); if(!cont) return;
+  // Superviseurs = formateurs présents dans l'historique, triés par nb sessions
+  var trainers={};
+  _sensibData.forEach(function(r){ if(r.trainer) trainers[r.trainer]=(trainers[r.trainer]||0)+1; });
+  var list=Object.keys(trainers).sort(function(a,b){return trainers[b]-trainers[a];});
+  if(!list.length){
+    cont.innerHTML='<span style="font-size:10px;color:var(--text3)">Aucun formateur dans l\'historique. </span>'
+      +'<input type="text" id="campManualSuper" class="tag-search-input" placeholder="Saisir un superviseur" style="width:200px;display:inline-block;margin-left:6px">';
+    return;
+  }
+  // Auto-suggestion : top 2 pré-sélectionnés si rien choisi
+  if(!Object.keys(_campSelSupers).length){ list.slice(0,2).forEach(function(t){_campSelSupers[t]=1;}); }
+  cont.innerHTML=list.map(function(t){
+    var on=_campSelSupers[t]?1:0;
+    return '<button onclick="sensibToggleCampSuper(\''+escH(t)+'\')" '
+      +'style="font-size:10px;padding:5px 11px;border-radius:18px;cursor:pointer;transition:all .15s;'
+      +'border:1px solid '+(on?'var(--green)':'var(--border)')+';'
+      +'background:'+(on?'rgba(16,201,133,.2)':'var(--bg3)')+';'
+      +'color:'+(on?'var(--green)':'var(--text2)')+';font-weight:'+(on?'600':'400')+'">'
+      +(on?'✓ ':'')+escH(t)+' <span style="opacity:.6">('+trainers[t]+')</span></button>';
+  }).join('');
+}
+function sensibToggleCampSuper(t){
+  if(_campSelSupers[t]) delete _campSelSupers[t]; else _campSelSupers[t]=1;
+  sensibBuildCampSupervisorChips();
+  sensibComputeCampaign();
+}
+// Calcul automatique : cibles, durée, planning
+function sensibCampTargetCount(){
+  var selDepts=Object.keys(_campSelDepts);
+  if(!selDepts.length) return 0;
+  var count=0;
+  // Compter depuis Employees_DB
+  if(_sensibEmployees.length){
+    _sensibEmployees.forEach(function(e){ if(e.department&&_campSelDepts[e.department]) count++; });
+  } else {
+    // Fallback : matricules uniques dans les sessions
+    var seen={};
+    _sensibData.forEach(function(r){ if(r.department&&_campSelDepts[r.department]&&r.matricule&&!seen[r.matricule]){seen[r.matricule]=1;count++;} });
+  }
+  return count;
+}
+function sensibComputeCampaign(){
+  var box=document.getElementById('campComputeBox'); if(!box) return;
+  var targets=sensibCampTargetCount();
+  var groupSize=parseInt(document.getElementById('campGroupSize').value||'10')||10;
+  var sessDur=parseFloat(document.getElementById('campSessionDur').value||'1')||1;
+  var perDay=parseInt(document.getElementById('campSessionsPerDay').value||'2')||2;
+  var nbSessions=targets>0?Math.ceil(targets/groupSize):0;
+  var totalHours=nbSessions*sessDur;
+  var nbDays=nbSessions>0?Math.ceil(nbSessions/perDay):0;
+  var selDepts=Object.keys(_campSelDepts);
+  var selSupers=Object.keys(_campSelSupers);
+  var cards=[
+    {label:'Personnes ciblées',val:targets,color:'var(--p4)',icon:'👥'},
+    {label:'Sessions nécessaires',val:nbSessions,color:'var(--amber)',icon:'📋'},
+    {label:'Durée totale',val:totalHours.toFixed(1)+'h',color:'var(--green)',icon:'⏱'},
+    {label:'Jours estimés',val:nbDays,color:'var(--p3)',icon:'📆'},
+    {label:'Départements',val:selDepts.length,color:'var(--text2)',icon:'🏭'},
+    {label:'Superviseurs',val:selSupers.length,color:'var(--red)',icon:'🧑‍🏫'}
+  ];
+  box.innerHTML=cards.map(function(c){
+    return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;text-align:center">'
+      +'<div style="font-size:15px">'+c.icon+'</div>'
+      +'<div style="font-size:18px;font-weight:700;color:'+c.color+'">'+c.val+'</div>'
+      +'<div style="font-size:9px;color:var(--text3)">'+c.label+'</div></div>';
+  }).join('');
+}
+function sensibCampMsg(txt,type){
+  var el=document.getElementById('campMsg'); if(!el) return;
+  el.textContent=txt;
+  el.style.background=type==='ok'?'rgba(16,201,133,.1)':'rgba(232,68,90,.1)';
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.style.border='1px solid '+(type==='ok'?'rgba(16,201,133,.3)':'rgba(232,68,90,.3)');
+  el.style.display='block';
+  setTimeout(function(){ el.style.display='none'; },5000);
+}
+function sensibLaunchCampaign(){
+  var obj=document.getElementById('campObjective').value.trim();
+  var haz=document.getElementById('campHazard').value;
+  var start=document.getElementById('campStart').value;
+  var selDepts=Object.keys(_campSelDepts);
+  if(!obj||!haz||!start){ sensibCampMsg('Renseignez l\'objectif, le type de risque et la date de début.','err'); return; }
+  if(!selDepts.length){ sensibCampMsg('Sélectionnez au moins un département/poste ciblé.','err'); return; }
+  var selSupers=Object.keys(_campSelSupers);
+  var manual=document.getElementById('campManualSuper');
+  if(manual&&manual.value.trim()) selSupers.push(manual.value.trim());
+  var targets=sensibCampTargetCount();
+  var groupSize=parseInt(document.getElementById('campGroupSize').value||'10')||10;
+  var sessDur=parseFloat(document.getElementById('campSessionDur').value||'1')||1;
+  var perDay=parseInt(document.getElementById('campSessionsPerDay').value||'2')||2;
+  var nbSessions=targets>0?Math.ceil(targets/groupSize):0;
+  var nbDays=nbSessions>0?Math.ceil(nbSessions/perDay):0;
+  // Planning prévisionnel
+  var planning=[]; var d=new Date(start); var remaining=nbSessions; var grp=1;
+  while(remaining>0){
+    var daySessions=Math.min(perDay,remaining);
+    var dayPlan=[];
+    for(var s=0;s<daySessions;s++){
+      var sup=selSupers.length?selSupers[(grp-1)%selSupers.length]:'—';
+      dayPlan.push({group:grp,supervisor:sup,size:Math.min(groupSize,targets-(grp-1)*groupSize)});
+      grp++;
+    }
+    planning.push({date:d.toISOString().slice(0,10),sessions:dayPlan});
+    remaining-=daySessions;
+    d.setDate(d.getDate()+1);
+  }
+  var camp={
+    id:Date.now(),
+    objective:obj, hazard:haz, startDate:start,
+    departments:selDepts, supervisors:selSupers,
+    targetCount:targets, groupSize:groupSize, sessionDur:sessDur,
+    nbSessions:nbSessions, nbDays:nbDays,
+    planning:planning,
+    status:'En cours', createdAt:new Date().toISOString()
+  };
+  _sensibCampaigns.unshift(camp);
+  sensibSaveCampaigns();
+  _campSelDepts={}; _campSelSupers={};
+  document.getElementById('campObjective').value='';
+  document.getElementById('campHazard').value='';
+  document.getElementById('campStart').value='';
+  sensibCampMsg('Campagne lancée avec succès !','ok');
+  sensibToggleCampForm();
+  sensibBuildCampaignUI();
+}
+// Avancement = sessions réalisées (depuis la date de début, risque + dept correspondants)
+function sensibCampaignProgress(camp){
+  var startMs=new Date(camp.startDate).getTime();
+  var coveredMats={};
+  _sensibData.forEach(function(r){
+    if((r.dateMs||0)<startMs) return;
+    if(camp.hazard && r.hazard!==camp.hazard) return;
+    if(camp.departments.length && r.department && camp.departments.indexOf(r.department)<0) return;
+    if(r.matricule) coveredMats[r.matricule]=1;
+  });
+  var covered=Object.keys(coveredMats).length;
+  var coverage=camp.targetCount>0?Math.round(covered/camp.targetCount*100):0;
+  var sessionsDone=0;
+  _sensibData.forEach(function(r){
+    if((r.dateMs||0)>=startMs && (!camp.hazard||r.hazard===camp.hazard) &&
+       (!camp.departments.length||!r.department||camp.departments.indexOf(r.department)>=0)) sessionsDone++;
+  });
+  var realisation=camp.nbSessions>0?Math.round(Math.min(sessionsDone,camp.nbSessions)/camp.nbSessions*100):0;
+  return {covered:covered,coverage:coverage,sessionsDone:sessionsDone,realisation:realisation};
+}
+function sensibCloseCampaign(id){
+  var c=_sensibCampaigns.find(function(x){return x.id===id;});
+  if(!c) return;
+  var p=sensibCampaignProgress(c);
+  c.status='Clôturée';
+  c.results={covered:p.covered,coverage:p.coverage,sessionsDone:p.sessionsDone,realisation:p.realisation,closedAt:new Date().toISOString()};
+  sensibSaveCampaigns();
+  sensibBuildCampaignUI();
+}
+function sensibDeleteCampaign(id){
+  _sensibCampaigns=_sensibCampaigns.filter(function(x){return x.id!==id;});
+  sensibSaveCampaigns();
+  sensibBuildCampaignUI();
+}
+function sensibTogglePlanning(id){
+  var el=document.getElementById('campPlan_'+id);
+  if(el) el.style.display=el.style.display==='none'?'block':'none';
+}
+function sensibBuildCampaignUI(){
+  if(!_sensibCampaigns.length) sensibLoadCampaigns();
+  var cont=document.getElementById('sensibCampList'); if(!cont) return;
+  if(!_sensibCampaigns.length){
+    cont.innerHTML='<div style="font-size:11px;color:var(--text3);padding:8px 0">Aucune campagne active. Cliquez sur « Lancer une campagne » pour en créer une.</div>';
+    return;
+  }
+  cont.innerHTML=_sensibCampaigns.map(function(c){
+    var p=c.status==='Clôturée'&&c.results?c.results:sensibCampaignProgress(c);
+    var statusCol=c.status==='Clôturée'?'var(--text3)':'var(--green)';
+    var planRows=c.planning.map(function(d){
+      return '<tr><td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3)">'+escH(d.date)+'</td>'
+        +'<td style="font-size:10px">'+d.sessions.map(function(s){return 'G'+s.group+' ('+s.size+'p · '+escH(s.supervisor)+')';}).join('<br>')+'</td></tr>';
+    }).join('');
+    var resultsBlock=c.status==='Clôturée'&&c.results?
+      '<div style="margin-top:8px;padding:8px;background:rgba(16,201,133,.08);border:1px solid rgba(16,201,133,.25);border-radius:8px">'
+      +'<div style="font-size:10px;font-weight:600;color:var(--green);margin-bottom:4px">✅ RÉSULTATS APRÈS CLÔTURE</div>'
+      +'<div style="font-size:11px;color:var(--text2)">Personnes couvertes : <strong>'+c.results.covered+'/'+c.targetCount+'</strong> · '
+      +'Taux de couverture : <strong>'+c.results.coverage+'%</strong> · '
+      +'Sessions réalisées : <strong>'+c.results.sessionsDone+'</strong> · '
+      +'Taux de réalisation : <strong>'+c.results.realisation+'%</strong></div></div>':'';
+    return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg2)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">'
+        +'<div style="flex:1;min-width:200px">'
+          +'<div style="font-size:13px;font-weight:700;color:var(--text)">🎯 '+escH(c.objective)+'</div>'
+          +'<div style="font-size:10px;color:var(--text3);margin-top:2px">⚠ '+escH(c.hazard)+' · 📅 début '+escH(c.startDate)+'</div>'
+        +'</div>'
+        +'<span style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:14px;color:'+statusCol+';border:1px solid '+statusCol+'">'+escH(c.status)+'</span>'
+      +'</div>'
+      // Résumé
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:10px">'
+        +'<div><div style="font-size:9px;color:var(--text3)">Public cible</div><div style="font-size:11px;font-weight:600">'+c.departments.map(escH).join(', ')+'</div></div>'
+        +'<div><div style="font-size:9px;color:var(--text3)">Auditeurs visés</div><div style="font-size:11px;font-weight:600;color:var(--p4)">'+c.targetCount+'</div></div>'
+        +'<div><div style="font-size:9px;color:var(--text3)">Durée estimée</div><div style="font-size:11px;font-weight:600">'+(c.nbSessions*c.sessionDur).toFixed(1)+'h · '+c.nbDays+'j</div></div>'
+        +'<div><div style="font-size:9px;color:var(--text3)">Superviseurs</div><div style="font-size:11px;font-weight:600">'+(c.supervisors.length?c.supervisors.map(escH).join(', '):'—')+'</div></div>'
+      +'</div>'
+      // Avancement
+      +'<div style="margin-top:10px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-bottom:3px">'
+          +'<span>Avancement (réalisation)</span><span style="color:var(--amber)">'+p.realisation+'% · '+p.sessionsDone+' session(s)</span></div>'
+        +'<div style="background:var(--bg4);border-radius:4px;height:7px;overflow:hidden"><div style="height:100%;background:var(--amber);width:'+p.realisation+'%;border-radius:4px;transition:width .5s"></div></div>'
+        +'<div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin:6px 0 3px"><span>Taux de couverture</span><span style="color:var(--green)">'+p.coverage+'% · '+p.covered+'/'+c.targetCount+'</span></div>'
+        +'<div style="background:var(--bg4);border-radius:4px;height:7px;overflow:hidden"><div style="height:100%;background:var(--green);width:'+p.coverage+'%;border-radius:4px;transition:width .5s"></div></div>'
+      +'</div>'
+      +resultsBlock
+      // Actions
+      +'<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+        +'<button class="btn" style="font-size:10px;padding:3px 10px" onclick="sensibTogglePlanning('+c.id+')">📋 Planning prévisionnel</button>'
+        +(c.status!=='Clôturée'?'<button class="btn" style="font-size:10px;padding:3px 10px;color:var(--green);border-color:rgba(16,201,133,.4)" onclick="sensibCloseCampaign('+c.id+')">✓ Clôturer</button>':'')
+        +'<button class="btn" style="font-size:10px;padding:3px 10px;color:var(--red);border-color:rgba(232,68,90,.3)" onclick="sensibDeleteCampaign('+c.id+')">🗑 Supprimer</button>'
+      +'</div>'
+      // Planning (masqué)
+      +'<div id="campPlan_'+c.id+'" style="display:none;margin-top:10px">'
+        +'<div class="tblw"><table><thead><tr><th>Date</th><th>Sessions (groupe · taille · superviseur)</th></tr></thead><tbody>'+planRows+'</tbody></table></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
 }
 
 function initSensib(d){
