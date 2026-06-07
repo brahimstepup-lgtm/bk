@@ -7519,6 +7519,141 @@ if (typeof window.normalize !== 'function') {
 }
 
 
+// ══ PRODUITS CHIMIQUES ET FDS ══════════════════════════════════
+var _chimiquesData = [];
+
+function chimiquesLoadOnDemand() {
+  if (_chimiquesData.length) { chimiquesRender(); return; }
+  var meta = document.getElementById('chimiquesSourceMeta');
+  if (meta) meta.textContent = '⏳ Chargement…';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      _chimiquesData = r && r.items ? r.items : [];
+      if (meta) meta.textContent = 'Source : Liste produits chimiques et FDS · ' + _chimiquesData.filter(function(x){return !x.isCategory;}).length + ' produits';
+      chimiquesPopulateFilters();
+      chimiquesRender();
+    })
+    .withFailureHandler(function(e) {
+      if (meta) meta.textContent = '❌ Erreur : ' + (e && e.message ? e.message : e);
+    })
+    .getChimiquesForClient();
+}
+
+function chimiquesPopulateFilters() {
+  var emps = {};
+  _chimiquesData.forEach(function(r) { if (!r.isCategory && r.emplacement) emps[r.emplacement] = 1; });
+  var sel = document.getElementById('chimiquesFilterEmp');
+  if (!sel) return;
+  var cur = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  Object.keys(emps).sort().forEach(function(e) {
+    var o = document.createElement('option'); o.value = e; o.textContent = e; sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+function chimiquesResetFilters() {
+  ['chimiquesSearch','chimiquesFilterFds','chimiquesFilterEmp'].forEach(function(id){
+    var el = document.getElementById(id); if (!el) return;
+    if (el.tagName === 'INPUT') el.value = ''; else el.value = el.options[0].value;
+  });
+  chimiquesRender();
+}
+
+function chimiquesRender() {
+  var search = (document.getElementById('chimiquesSearch') || {}).value || '';
+  var fdsF   = (document.getElementById('chimiquesFilterFds') || {}).value || '';
+  var empF   = (document.getElementById('chimiquesFilterEmp') || {}).value || '';
+  search = search.toLowerCase();
+
+  var total = 0, fdsOk = 0, fdsMissing = 0;
+  _chimiquesData.forEach(function(r) {
+    if (r.isCategory) return;
+    total++;
+    if (r.fds.toLowerCase() === 'oui') fdsOk++;
+    else fdsMissing++;
+  });
+
+  // KPIs
+  var kpiRow = document.getElementById('chimiquesKpiRow');
+  if (kpiRow) {
+    var pct = total > 0 ? Math.round(fdsOk / total * 100) : 0;
+    kpiRow.innerHTML = [
+      {label:'Total produits', val:total, color:'var(--p4)'},
+      {label:'FDS disponibles', val:fdsOk, color:'var(--green)'},
+      {label:'FDS manquantes', val:fdsMissing, color:'var(--red)'},
+      {label:'Taux FDS', val:pct+'%', color:pct>=80?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}
+    ].map(function(k){
+      return '<div style="flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;text-align:center">'
+        +'<div style="font-size:20px;font-weight:700;color:'+k.color+'">'+k.val+'</div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+k.label+'</div>'
+        +'</div>';
+    }).join('');
+  }
+
+  var rows = _chimiquesData.filter(function(r) {
+    if (r.isCategory) return true;
+    if (fdsF && r.fds.toLowerCase() !== fdsF) return false;
+    if (empF && r.emplacement !== empF) return false;
+    if (search) {
+      var hay = (r.name + ' ' + r.emplacement + ' ' + r.localisation).toLowerCase();
+      if (hay.indexOf(search) === -1) return false;
+    }
+    return true;
+  });
+
+  var dataRows = rows.filter(function(r){return !r.isCategory;});
+  var cnt = document.getElementById('chimiquesCount');
+  if (cnt) cnt.textContent = dataRows.length + ' / ' + total;
+
+  var tb = document.getElementById('chimiquesBody');
+  if (!tb) return;
+  if (!dataRows.length) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Aucun produit trouvé</td></tr>';
+    return;
+  }
+
+  var html = '';
+  rows.forEach(function(r) {
+    if (r.isCategory) {
+      html += '<tr style="background:rgba(245,166,35,.12)">'
+        + '<td colspan="5" style="font-weight:700;color:var(--amber);font-size:12px;padding:8px 12px;letter-spacing:.5px">▶ ' + esc(r.name) + '</td>'
+        + '</tr>';
+      return;
+    }
+    var fdsCell;
+    if (r.fds.toLowerCase() === 'oui') {
+      if (r.fdsUrl) {
+        fdsCell = '<button onclick="chimiquesViewFds(\'' + escAttr(r.fdsUrl) + '\')" '
+          + 'style="background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3);'
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">📄 Voir FDS</button>';
+      } else {
+        fdsCell = '<span style="color:var(--green);font-size:11px;font-weight:600">✅ Oui</span>';
+      }
+    } else if (r.fds.toLowerCase() === 'non' || !r.fds) {
+      fdsCell = '<span style="color:var(--red);font-size:11px;font-weight:600">❌ Manquante</span>';
+    } else {
+      fdsCell = '<span style="color:var(--text2);font-size:11px">' + esc(r.fds) + '</span>';
+    }
+    html += '<tr>'
+      + '<td style="font-weight:500">' + esc(r.name) + '</td>'
+      + '<td style="text-align:center;font-family:\'JetBrains Mono\',monospace;font-size:11px">' + esc(r.qty || '—') + '</td>'
+      + '<td style="text-align:center">' + fdsCell + '</td>'
+      + '<td style="font-size:11px;color:var(--text2)">' + esc(r.emplacement || '—') + '</td>'
+      + '<td style="font-size:11px;color:var(--text3)">' + esc(r.localisation || '—') + '</td>'
+      + '</tr>';
+  });
+  tb.innerHTML = html;
+}
+
+function chimiquesViewFds(url) {
+  if (typeof openCleaningEmbed === 'function') {
+    openCleaningEmbed(url, 'Fiche de Données de Sécurité', 'FDS', '📄');
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
 // ══ IA ════════════════════════════════════════════════════════
 // ══ EPI ══════════════════════════════════════════════════════
 // Filtres + rendu de la feuille « Gestion du Stock des EPI V2 ».

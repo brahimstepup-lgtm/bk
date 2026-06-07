@@ -68,6 +68,7 @@ var EPI_SHEET_NAME = 'Gestion du Stock des EPI (Équipements de Protection Indiv
 // est la forme officielle acceptée dans une iframe.
 var EPI_SLIDES_ID    = '1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk';
 var EPI_SLIDES_SLIDE = 'id.p4';
+var CHIMIQUES_SHEET_GID = 144569838;
 
 // ── SENSIBILISATION HSE (gid=1066013908) ─────────────────────────
 var SENSIB_SHEET_ID  = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
