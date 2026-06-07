@@ -2715,6 +2715,93 @@ function getData() {
     out.accidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
   }
 
+  // ── SENSIBILISATION (HSE Awareness) ──────────────────────────
+  // Feuille « HSE_Awareness_Database_V3 » — une ligne par participant.
+  // Colonnes (0-based) :
+  //   0 Date/Timestamp 1 Matricule 2 Nom 3 Département 4 Type de risque
+  //   5 Formateur HSE 6 Lien feuille d'émargement 7 Thème/Sujet
+  //   8 Durée (h) 9 Statut présence 10 Pièce jointe de session (PJ)
+  out.awareness = [];
+  out.awarenessTrainers = [];
+  out.awarenessRisks = [];
+  out.awarenessThemes = [];
+  var awSheet = findSheet(['awareness','sensibilis','awarness','emargement']);
+  if (awSheet) {
+    var awRange = awSheet.getDataRange();
+    var awData  = awRange.getValues();
+    var awRich = null, awForm = null;
+    try { awRich = awRange.getRichTextValues(); } catch(e1) { awRich = null; }
+    try { awForm = awRange.getFormulas();        } catch(e2) { awForm = null; }
+    // Extrait l'URL d'une cellule (lien émargement / PJ) de façon robuste.
+    function awCellUrl(rIdx, cIdx) {
+      if (awForm && awForm[rIdx] && awForm[rIdx][cIdx]) {
+        var f = String(awForm[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      if (awRich && awRich[rIdx] && awRich[rIdx][cIdx]) {
+        var rt = awRich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var rk = 0; rk < runs.length; rk++) {
+              var ru = runs[rk].getLinkUrl && runs[rk].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(e3) {}
+      }
+      var v = (awData[rIdx] || [])[cIdx];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(e4) {}
+      }
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
+    var awTrainerSet = {}, awRiskSet = {}, awThemeSet = {};
+    for (var ai = 1; ai < awData.length; ai++) {   // ligne 0 = entêtes
+      var ar = awData[ai];
+      if (!ar) continue;
+      if (isNull(ar[0]) && isNull(ar[1]) && isNull(ar[2])) continue;  // ligne vide
+      var awPd  = parseDate(ar[0]);
+      var awIso = (awPd && !isNaN(awPd.getTime())) ? Utilities.formatDate(awPd, 'GMT+1', 'yyyy-MM-dd') : '';
+      var formateur = isNull(ar[5]) ? '' : String(ar[5]).trim();
+      var risque    = isNull(ar[4]) ? '' : String(ar[4]).trim();
+      var theme     = isNull(ar[7]) ? '' : String(ar[7]).trim();
+      if (formateur) awTrainerSet[formateur] = true;
+      if (risque)    awRiskSet[risque] = true;
+      if (theme)     awThemeSet[theme] = true;
+      out.awareness.push({
+        date: fmtDate(ar[0]) || (isNull(ar[0]) ? '' : safeText(ar[0])),
+        isoDate: awIso,
+        matricule: isNull(ar[1]) ? '' : safeText(ar[1]),
+        nom:       isNull(ar[2]) ? '' : String(ar[2]).trim(),
+        departement: isNull(ar[3]) ? '' : String(ar[3]).trim(),
+        risque: risque,
+        formateur: formateur,
+        emargement: awCellUrl(ai, 6),
+        theme: theme,
+        duree: isNull(ar[8]) ? '' : safeText(ar[8]),
+        statut: isNull(ar[9]) ? '' : String(ar[9]).trim(),
+        pj: awCellUrl(ai, 10)
+      });
+    }
+    out.awarenessTrainers = Object.keys(awTrainerSet).sort();
+    out.awarenessRisks    = Object.keys(awRiskSet).sort();
+    out.awarenessThemes   = Object.keys(awThemeSet).sort();
+    out.awareness.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
+  }
+
   out.metrics = calcMetrics(out);
   return out;
 }
@@ -3060,6 +3147,104 @@ function uploadFileToDrive(folderId, fileName, base64Data, mimeType) {
     return { success: true, fileId: file.getId(), url: file.getUrl() };
   } catch(e) {
     Logger.log('uploadFileToDrive error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ── SENSIBILISATION (HSE Awareness) — enregistrement session ─
+// Feuille « HSE_Awareness_Database_V3 », 1 ligne par participant :
+//   0 Date 1 Matricule 2 Nom 3 Département 4 Type de risque
+//   5 Formateur 6 Lien émargement 7 Thème 8 Durée 9 Statut 10 PJ
+// La pièce jointe ET le lien d'émargement sont OPTIONNELS.
+// ════════════════════════════════════════════════════════════
+
+// Sous-dossier Drive « Sensibilisation » sous le dossier parent déjà
+// autorisé (évite l'erreur DriveApp.createFile liée aux autorisations).
+function getAwarenessFolderId_() {
+  try {
+    var parent = DriveApp.getFolderById(CLEAN_PARENT_FOLDER_ID);
+    var it = parent.getFoldersByName('Sensibilisation');
+    if (it.hasNext()) return it.next().getId();
+    return parent.createFolder('Sensibilisation').getId();
+  } catch(e) {
+    Logger.log('getAwarenessFolderId_ error: ' + e.message);
+    return CLEAN_PARENT_FOLDER_ID;
+  }
+}
+
+function crudAddAwareness(username, sessionData) {
+  try {
+    var perm = checkWritePermission(username, 'sensibilisation');
+    if (!perm.ok) return { success: false, error: perm.error };
+
+    if (!sessionData) return { success: false, error: 'Aucune donnée reçue.' };
+    var participants = sessionData.participants || [];
+    if (!participants.length) return { success: false, error: 'Ajoutez au moins un participant.' };
+    if (!sessionData.theme || !String(sessionData.theme).trim())
+      return { success: false, error: 'Le thème / sujet est obligatoire.' };
+    if (!sessionData.formateur || !String(sessionData.formateur).trim())
+      return { success: false, error: 'Le formateur HSE est obligatoire.' };
+
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sh = null, sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      var nm = normalize(sheets[i].getName());
+      if (nm.indexOf('awareness') > -1 || nm.indexOf('sensibilis') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) return { success: false, error: 'Feuille « HSE_Awareness_Database_V3 » introuvable.' };
+
+    // ── Pièce jointe de session (OPTIONNELLE) → Drive ──
+    var pjUrl = '';
+    if (sessionData.pjBase64 && sessionData.pjName) {
+      var up = uploadFileToDrive(
+        getAwarenessFolderId_(),
+        'PJ_' + Utilities.formatDate(new Date(), 'GMT+1', 'yyyyMMdd_HHmmss') + '_' + sessionData.pjName,
+        sessionData.pjBase64, sessionData.pjMime || 'application/octet-stream');
+      if (up.success) {
+        pjUrl = up.url || '';
+        try {
+          DriveApp.getFileById(up.fileId).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        } catch(eShare) { Logger.log('PJ share warn: ' + eShare.message); }
+      } else {
+        return { success: false, error: 'Échec upload pièce jointe : ' + (up.error || 'inconnu') };
+      }
+    }
+
+    // ── Lien feuille d'émargement (OPTIONNEL) ──
+    var emargement = String(sessionData.emargement || '').trim();
+    if (emargement && !/^https?:\/\//i.test(emargement))
+      return { success: false, error: 'Le lien d\'émargement doit commencer par http(s)://' };
+
+    // Entête colonne K (PJ session) si absente
+    try { if (isNull(sh.getRange(1, 11).getValue())) sh.getRange(1, 11).setValue('Session PJ'); } catch(eh) {}
+
+    var date = String(sessionData.date || '').trim()
+      || Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy HH:mm');
+    var rows = [];
+    for (var p = 0; p < participants.length; p++) {
+      var pa = participants[p] || {};
+      rows.push([
+        date,
+        String(pa.matricule || '').trim(),
+        String(pa.nom || '').trim(),
+        String(pa.departement || '').trim(),
+        String(sessionData.risque || '').trim(),
+        String(sessionData.formateur || '').trim(),
+        emargement,
+        String(sessionData.theme || '').trim(),
+        String(sessionData.duree || '').trim(),
+        String(sessionData.statut || 'Présent').trim(),
+        pjUrl
+      ]);
+    }
+    var startRow = sh.getLastRow() + 1;
+    sh.getRange(startRow, 1, rows.length, 11).setValues(rows);
+
+    Logger.log('Awareness session added: ' + rows.length + ' participant(s) by ' + username);
+    return { success: true, message: 'Session enregistrée (' + rows.length + ' participant' + (rows.length > 1 ? 's' : '') + ').' };
+  } catch(e) {
+    Logger.log('crudAddAwareness error: ' + e.message);
     return { success: false, error: e.message };
   }
 }
