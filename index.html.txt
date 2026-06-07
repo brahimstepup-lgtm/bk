@@ -352,6 +352,12 @@ tr:hover td{background:var(--bg3);color:var(--text)}
 .acc-lbl{font-size:9px;color:var(--text3);text-transform:uppercase}
 .acc-row{cursor:pointer;transition:background .15s}
 .acc-row:hover td{background:rgba(9,99,126,.08)!important;color:var(--text)!important}
+.acc-pj-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:9px;
+  font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;
+  color:#fff;background:linear-gradient(135deg,var(--red),#c5354a);
+  border:1px solid rgba(232,68,90,.5);box-shadow:0 4px 14px rgba(232,68,90,.28);transition:all .2s}
+.acc-pj-btn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,68,90,.4)}
+.acc-pj-btn:active{transform:translateY(0)}
 
 /* ══ ENERGIE ══ */
 .egrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
@@ -3722,6 +3728,7 @@ html.light .pests-search-input{background:#edf2f7}
       <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
       <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
       <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
+      <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
     </div>
   </div>
 </div>
@@ -5354,7 +5361,24 @@ function openAccModal(acc){
   if(acc.circonstance){document.getElementById('mAccCirc').textContent=acc.circonstance;circSec.style.display='block';}else circSec.style.display='none';
   var causeSec=document.getElementById('mAccCauseSec');
   if(acc.cause){document.getElementById('mAccCause').textContent=acc.cause;causeSec.style.display='block';}else causeSec.style.display='none';
+  // ── Pièce jointe (colonne K) — bouton « Voir PJ » visible seulement si un lien existe ──
+  var pjSec=document.getElementById('mAccPjSec');
+  if(acc.pj && /^https?:\/\//i.test(acc.pj)){
+    currentAccPJ=acc.pj;
+    currentAccPJTitle=(acc.nom||'Accident')+(acc.date?' · '+acc.date:'');
+    pjSec.style.display='block';
+  }else{
+    currentAccPJ='';
+    pjSec.style.display='none';
+  }
   openModal('accModal');
+}
+// ── Voir PJ : affiche le document de la colonne K DANS le dashboard ──
+// (visionneuse iframe intégrée, sans ouvrir Google Drive ni un nouvel onglet)
+var currentAccPJ='', currentAccPJTitle='';
+function openAccPJ(){
+  if(!currentAccPJ) return;
+  openCleaningEmbed(currentAccPJ, currentAccPJTitle||'Pièce jointe', 'PIÈCE JOINTE · ACCIDENT', '📎');
 }
 
 // ══ MODAL TAG — Photo Drive automatique ═══════════════════════
