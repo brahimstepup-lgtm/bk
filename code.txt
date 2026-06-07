@@ -3440,6 +3440,12 @@ function readSensibilisation() {
     var iDur    = sensibColIdx(hdr, ['duration','duree','durée','heures','hours']);
     var iStatus = sensibColIdx(hdr, ['status','statut','presence','présence']);
 
+    // Fallback par position fixe si les headers colonnes I/J sont absents
+    // (sheet créé avant l'ajout de theme/duration/status)
+    if (iTheme  === -1 && hdr.length > 7)  iTheme  = 7;
+    if (iDur    === -1 && hdr.length > 8)  iDur    = 8;
+    if (iStatus === -1 && hdr.length > 9)  iStatus = 9;
+
     // ── Pré-chargement batch des liens hypertext (colonne iLink) ──
     // getRichTextValues() en une seule requête plutôt que N appels par cellule.
     var linkRtvBatch = [];
@@ -3597,6 +3603,24 @@ function addSensibilisationRecord(data) {
       }
     }
     if (!sh) sh = sheets[0];
+
+    // Réparer les headers manquants (colonnes H-J) si nécessaire
+    var expectedHeaders = [
+      'Timestamp','Matricule','Employee Name','Department',
+      'Hazard Type','HSE Trainer','Attendance Sheet','theme','duration','status'
+    ];
+    var hdrRow = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    var needsUpdate = false;
+    for (var hi = 0; hi < expectedHeaders.length; hi++) {
+      if (!hdrRow[hi] || String(hdrRow[hi]).trim() === '') {
+        hdrRow[hi] = expectedHeaders[hi];
+        needsUpdate = true;
+      }
+    }
+    if (needsUpdate) {
+      sh.getRange(1, 1, 1, expectedHeaders.length).setValues([hdrRow.slice(0, expectedHeaders.length)]);
+    }
+
     var newRow = [
       new Date(),
       data.matricule || '',
