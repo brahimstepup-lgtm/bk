@@ -68,6 +68,7 @@ var EPI_SHEET_NAME = 'Gestion du Stock des EPI (Équipements de Protection Indiv
 // est la forme officielle acceptée dans une iframe.
 var EPI_SLIDES_ID    = '1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk';
 var EPI_SLIDES_SLIDE = 'id.p4';
+var CHIMIQUES_SHEET_GID = 144569838;
 
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
@@ -3387,3 +3388,73 @@ function crudUploadFile(username, section, fileName, base64Data, mimeType) {
 function getDataForClient() {
   return getData();
 }
+
+function readChimiquesData() {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getName() === 'Liste produits chimiques et FDS') { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (sheets[i].getSheetId() === CHIMIQUES_SHEET_GID) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) return { items: [], error: 'Feuille introuvable' };
+    var raw = sh.getDataRange().getValues();
+    if (!raw || raw.length < 2) return { items: [] };
+    var hdr = raw[0].map(function(h){ return String(h).trim().toLowerCase(); });
+    var iName = -1, iQty = -1, iFds = -1, iEmp = -1, iLoc = -1;
+    for (var c = 0; c < hdr.length; c++) {
+      if (hdr[c].indexOf('utilit') > -1 || hdr[c].indexOf('produit') > -1 || hdr[c].indexOf('nom') > -1) iName = c;
+      else if (hdr[c].indexOf('quant') > -1) iQty = c;
+      else if (hdr[c].indexOf('fds') > -1) iFds = c;
+      else if (hdr[c].indexOf('emplace') > -1) iEmp = c;
+      else if (hdr[c].indexOf('local') > -1) iLoc = c;
+    }
+    if (iName === -1) iName = 0;
+    if (iQty  === -1) iQty  = 1;
+    if (iFds  === -1) iFds  = 2;
+    if (iEmp  === -1) iEmp  = 3;
+    if (iLoc  === -1) iLoc  = 4;
+    // Batch-fetch FDS hyperlinks (col iFds)
+    var fdsLinks = {};
+    try {
+      var rtvMatrix = sh.getRange(2, iFds + 1, raw.length - 1, 1).getRichTextValues();
+      for (var bi = 0; bi < rtvMatrix.length; bi++) {
+        var rtv = rtvMatrix[bi][0];
+        var url = rtv ? rtv.getLinkUrl() : null;
+        if (url) fdsLinks[bi + 1] = url; // 1-based row offset from data start
+      }
+    } catch(e2) {}
+    var items = [];
+    for (var r = 1; r < raw.length; r++) {
+      var row = raw[r];
+      var name = String(row[iName] || '').trim();
+      if (!name) continue;
+      var qty  = String(row[iQty]  || '').trim();
+      var fds  = String(row[iFds]  || '').trim();
+      var emp  = String(row[iEmp]  || '').trim();
+      var loc  = String(row[iLoc]  || '').trim();
+      // Category row: name filled but qty/fds/emp/loc all blank
+      var isCategory = name && !qty && !fds && !emp && !loc;
+      var fdsUrl = fdsLinks[r] || (fds && fds.toLowerCase().indexOf('http') > -1 ? fds : '');
+      var fdsVal = fds.toLowerCase() === 'oui' || fds.toLowerCase() === 'non' ? fds :
+                   (fdsUrl ? 'Oui' : fds);
+      items.push({
+        name: name,
+        qty: qty,
+        fds: fdsVal,
+        fdsUrl: fdsUrl,
+        emplacement: emp,
+        localisation: loc,
+        isCategory: isCategory
+      });
+    }
+    return { items: items };
+  } catch(e) { return { items: [], error: e.toString() }; }
+}
+
+function getChimiquesForClient() { return readChimiquesData(); }
