@@ -3804,6 +3804,7 @@ function readEpiDotations() {
 function addEpiDotation(data) {
   try {
     var sh = getOrCreateEpiDotSheet();
+    var qty = parseInt(data.quantite) || 1;
     sh.appendRow([
       new Date(),
       data.matricule   || '',
@@ -3811,11 +3812,85 @@ function addEpiDotation(data) {
       data.department  || '',
       data.epi         || '',
       data.taille      || '',
-      parseInt(data.quantite) || 1,
+      qty,
       data.commentaire || ''
     ]);
-    return { success: true };
+    // Mise à jour automatique du stock EPI
+    var stockRes = decrementEpiStock(data.epi || '', qty);
+    return { success: true, stock: stockRes };
   } catch(e) { return { success: false, error: e.toString() }; }
+}
+
+// Décrémente le stock de l'EPI correspondant dans la feuille de gestion.
+// Recherche par désignation (correspondance normalisée souple).
+function decrementEpiStock(designation, qty) {
+  try {
+    if (!designation) return { updated: false, reason: 'no_designation' };
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === EPI_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      var target = normalize(EPI_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) return { updated: false, reason: 'sheet_not_found' };
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 2) return { updated: false, reason: 'empty' };
+
+    // Détecter la ligne d'entête + colonnes désignation / stock
+    var hdrRow = -1, cDesig = -1, cQty = -1;
+    for (var r = 0; r < Math.min(data.length, 8); r++) {
+      var row = data[r], dCol = -1, qCol = -1;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c] || '').replace(/[\n\r#]/g, '').trim());
+        if (!h) continue;
+        if (qCol < 0 && (h.indexOf('stock') > -1 || h.indexOf('quantite') > -1 ||
+            h.indexOf('qte') > -1 || h === 'qty' || h.indexOf('disponible') > -1) &&
+            h.indexOf('min') < 0 && h.indexOf('seuil') < 0 && h.indexOf('alert') < 0) {
+          qCol = c; continue;
+        }
+        if (dCol < 0 && (h.indexOf('designation') > -1 || h.indexOf('libelle') > -1 ||
+            h.indexOf('intitule') > -1 || h.indexOf('nom') > -1 || h.indexOf('article') > -1 ||
+            h.indexOf('produit') > -1 || h.indexOf('epi') > -1 || h.indexOf('equipement') > -1)) {
+          dCol = c; continue;
+        }
+      }
+      if (dCol > -1 && qCol > -1) { hdrRow = r; cDesig = dCol; cQty = qCol; break; }
+    }
+    if (hdrRow < 0) { hdrRow = 0; cDesig = 1; cQty = 4; } // fallback positionnel
+
+    var want = normalize(designation);
+    var matchRow = -1, matchScore = 0;
+    for (var r = hdrRow + 1; r < data.length; r++) {
+      var dsg = normalize(String(data[r][cDesig] || '').trim());
+      if (!dsg) continue;
+      var score = 0;
+      if (dsg === want) score = 3;
+      else if (dsg.indexOf(want) > -1 || want.indexOf(dsg) > -1) score = 2;
+      else {
+        // chevauchement de tokens significatifs
+        var wt = want.split(/\s+/).filter(function(t){ return t.length > 3; });
+        var hit = wt.filter(function(t){ return dsg.indexOf(t) > -1; }).length;
+        if (hit > 0) score = 1;
+      }
+      if (score > matchScore) { matchScore = score; matchRow = r; if (score === 3) break; }
+    }
+    if (matchRow < 0) return { updated: false, reason: 'no_match', designation: designation };
+
+    var cur = parseFloat(String(data[matchRow][cQty] || '0').replace(',', '.'));
+    if (isNaN(cur)) cur = 0;
+    var next = cur - qty;
+    if (next < 0) next = 0;
+    sh.getRange(matchRow + 1, cQty + 1).setValue(next);
+    return { updated: true, designation: String(data[matchRow][cDesig]).trim(),
+             before: cur, after: next, removed: qty };
+  } catch(e) { return { updated: false, reason: e.toString() }; }
 }
 
 function getEpiDotationsForClient() { return readEpiDotations(); }

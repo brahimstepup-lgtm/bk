@@ -8022,9 +8022,18 @@ function epiFormSubmit() {
     .withSuccessHandler(function(r) {
       btn.disabled = false; btn.textContent = '✅ Enregistrer la dotation';
       if (r && r.success) {
-        epiFormShowMsg('Dotation enregistrée avec succès !', 'ok');
+        var stockMsg = '';
+        if (r.stock && r.stock.updated) {
+          stockMsg = ' · Stock « ' + r.stock.designation + ' » : ' + r.stock.before + ' → ' + r.stock.after;
+        } else if (r.stock && r.stock.reason === 'no_match') {
+          stockMsg = ' · ⚠️ EPI introuvable dans le stock (non décrémenté)';
+        }
+        epiFormShowMsg('Dotation enregistrée avec succès !' + stockMsg, 'ok');
         epiFormReset();
         epiDotReload(); // rafraîchit le registre
+        // Rafraîchir la liste EPI (stock à jour) si la fonction existe
+        if (typeof refreshData === 'function') refreshData();
+        else if (typeof loadData === 'function') loadData();
       } else {
         epiFormShowMsg('Erreur : ' + (r && r.error ? r.error : 'inconnue'), 'err');
       }
