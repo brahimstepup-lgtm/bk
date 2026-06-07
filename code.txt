@@ -2642,7 +2642,51 @@ function getData() {
   // ── ACCIDENTS ─────────────────────────────────────────────
   var accSheet = findSheet(['bilan','accident']);
   if (accSheet) {
-    var accData = accSheet.getDataRange().getValues();
+    var accRange = accSheet.getDataRange();
+    var accData  = accRange.getValues();
+    // Pièce jointe (colonne K) : l'URL peut être un =HYPERLINK, un lien
+    // RichText, un objet Drive ou du texte brut → on lit tout pour
+    // extraire l'URL de façon robuste.
+    var accRich = null, accForm = null;
+    try { accRich = accRange.getRichTextValues(); } catch(eAR) { accRich = null; }
+    try { accForm = accRange.getFormulas();        } catch(eAF) { accForm = null; }
+    // Extrait l'URL d'une cellule — ordre : 1) =HYPERLINK  2) RichText
+    //                                       3) objet Drive 4) URL en clair
+    function accCellUrl(rIdx, cIdx) {
+      if (accForm && accForm[rIdx] && accForm[rIdx][cIdx]) {
+        var f = String(accForm[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      if (accRich && accRich[rIdx] && accRich[rIdx][cIdx]) {
+        var rt = accRich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      var v = (accData[rIdx] || [])[cIdx];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(eU) {}
+      }
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
     var moisMap = {'janvier':'Janvier','fevrier':'Février','février':'Février','mars':'Mars','avril':'Avril','mai':'Mai','juin':'Juin','juillet':'Juillet'};
     var curMois = '';
     for (var i = 0; i < accData.length; i++) {
@@ -2664,7 +2708,8 @@ function getData() {
         nature:isNull(r[6])?'':String(r[6]).trim(),
         njp:toNumZ(r[7]),
         cause:isNull(r[8])?'':String(r[8]).trim(),
-        circonstance:isNull(r[9])?'':String(r[9]).trim()
+        circonstance:isNull(r[9])?'':String(r[9]).trim(),
+        pj:accCellUrl(i, 10)
       });
     }
     out.accidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
