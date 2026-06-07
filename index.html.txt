@@ -1625,7 +1625,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('permits',this)">📜 Permis de travail</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
   <button class="tab"    onclick="goTab('pests',this)">🐀 Nuisibles</button>
-  <button class="tab"    onclick="goTab('sensib',this)">🎓 Sensibilisation</button>
+  <button class="tab"    onclick="goTab('sensib',this);renderSensib();">🎓 Sensibilisation</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -2711,22 +2711,12 @@ html.light .pests-search-input{background:#edf2f7}
   <!-- ══ BRIQUE 4 : Formulaire saisie + upload ══ -->
   <div class="card" style="margin-bottom:14px">
     <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>📝 Enregistrer une nouvelle session</div>
+
+    <!-- Champs communs à tous les participants -->
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:12px">
       <div>
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Date de la session *</div>
         <input type="date" id="sensibFormDate" class="tag-search-input" style="width:100%">
-      </div>
-      <div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Matricule *</div>
-        <input type="text" id="sensibFormMat" class="tag-search-input" placeholder="Ex: 1001" style="width:100%">
-      </div>
-      <div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Nom de l'employé *</div>
-        <input type="text" id="sensibFormName" class="tag-search-input" placeholder="Nom Prénom" style="width:100%">
-      </div>
-      <div>
-        <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Département</div>
-        <input type="text" id="sensibFormDept" class="tag-search-input" placeholder="Ex: Production - Cuisson" style="width:100%">
       </div>
       <div>
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Type de risque *</div>
@@ -2762,7 +2752,47 @@ html.light .pests-search-input{background:#edf2f7}
         </select>
       </div>
     </div>
-    <!-- Zone upload émargement -->
+
+    <!-- Zone ajout participant avec autocomplete -->
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;background:var(--bg3)">
+      <div style="font-size:10px;font-weight:600;color:var(--p4);margin-bottom:8px;letter-spacing:.4px">👷 AJOUTER UN PARTICIPANT</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end;flex-wrap:wrap">
+        <div style="position:relative">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Matricule *</div>
+          <input type="text" id="sensibFormMat" class="tag-search-input" placeholder="Ex: 1001"
+                 oninput="sensibMatInput()" onkeydown="sensibMatKey(event)" autocomplete="off" style="width:100%">
+          <div id="sensibMatSuggest" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:200;
+               background:var(--bg2);border:1px solid var(--p3);border-radius:8px;box-shadow:0 8px 24px var(--shadow);
+               max-height:180px;overflow-y:auto;margin-top:3px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Nom de l'employé *</div>
+          <input type="text" id="sensibFormName" class="tag-search-input" placeholder="Nom Prénom" style="width:100%">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Département</div>
+          <input type="text" id="sensibFormDept" class="tag-search-input" placeholder="Auto-rempli"
+                 style="width:100%;background:var(--bg4)" readonly>
+        </div>
+        <button class="btn" onclick="sensibAddParticipant()"
+                style="background:linear-gradient(135deg,rgba(13,168,210,.2),rgba(13,168,210,.1));color:var(--p4);
+                       border-color:rgba(13,168,210,.4);font-weight:600;white-space:nowrap;padding:5px 12px">
+          ➕ Ajouter
+        </button>
+      </div>
+      <!-- Liste des participants ajoutés -->
+      <div id="sensibParticipantsPanel" style="margin-top:10px;display:none">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:5px">
+          Participants de cette session : <span id="sensibParticipantCount" style="color:var(--p4);font-weight:600">0</span>
+        </div>
+        <div id="sensibParticipantsList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+      <div id="sensibParticipantsEmpty" style="margin-top:8px;font-size:10px;color:var(--text3)">
+        ℹ️ Ajoutez au moins un participant avant d'enregistrer.
+      </div>
+    </div>
+
+    <!-- Zone upload émargement (photo partagée entre tous les participants) -->
     <div style="border:2px dashed var(--border);border-radius:10px;padding:16px;text-align:center;margin-bottom:12px;cursor:pointer;transition:border-color .2s"
          id="sensibDropZone"
          onclick="document.getElementById('sensibFileInput').click()"
@@ -2771,7 +2801,7 @@ html.light .pests-search-input{background:#edf2f7}
          ondrop="sensibHandleDrop(event)">
       <div style="font-size:22px;margin-bottom:4px">📎</div>
       <div style="font-size:11px;color:var(--text2);font-weight:500">Téléverser la feuille d'émargement</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:2px">JPG, PNG ou PDF — cliquez ou glissez ici</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:2px">JPG, PNG ou PDF — une seule photo pour tous les participants</div>
       <input type="file" id="sensibFileInput" accept="image/jpeg,image/png,application/pdf" style="display:none" onchange="sensibHandleFile(this)">
     </div>
     <div id="sensibFilePreview" style="display:none;margin-bottom:10px;font-size:10px;color:var(--green);padding:6px 10px;background:rgba(16,201,133,.1);border-radius:6px;border:1px solid rgba(16,201,133,.3)"></div>
@@ -3663,7 +3693,11 @@ function toggleTheme(){
 
 // ══ SENSIBILISATION HSE — MODULE COMPLET ═════════════════════
 var _sensibData=[], _sensibEmployees=[], _sensibTargets=[], _sensibCharts={};
-var _sensibFile=null, _sensibSelectedMat=null;
+var _sensibFile=null, _sensibSelectedMat=null, _sensibParticipants=[];
+document.addEventListener('click',function(e){
+  var sug=document.getElementById('sensibMatSuggest');
+  if(sug&&!sug.contains(e.target)&&e.target.id!=='sensibFormMat') sug.style.display='none';
+});
 
 function initSensib(d){
   _sensibData      = d.sensibilisation || [];
@@ -3958,6 +3992,83 @@ function clearSensibFilters(){
   renderSensib();
 }
 
+// ── Brique 4 : Autocomplete matricule ─────────────────────────
+function sensibGetEmpList(){
+  var all={};
+  _sensibEmployees.forEach(function(e){ if(e.matricule) all[e.matricule]=e; });
+  _sensibData.forEach(function(r){ if(r.matricule&&!all[r.matricule]) all[r.matricule]={matricule:r.matricule,name:r.name,department:r.department}; });
+  return Object.values(all);
+}
+function sensibMatInput(){
+  var q=(document.getElementById('sensibFormMat').value||'').trim().toLowerCase();
+  var sug=document.getElementById('sensibMatSuggest');
+  if(!q){sug.style.display='none';return;}
+  var list=sensibGetEmpList().filter(function(e){
+    return (e.matricule||'').toLowerCase().indexOf(q)>-1||(e.name||'').toLowerCase().indexOf(q)>-1;
+  }).slice(0,10);
+  if(!list.length){sug.style.display='none';return;}
+  sug.innerHTML=list.map(function(e,i){
+    return '<div data-idx="'+i+'" style="padding:7px 12px;cursor:pointer;font-size:11px;border-bottom:1px solid var(--border);transition:background .12s" '
+      +'onmousedown="sensibPickEmployee(\''+escH(e.matricule)+'\',\''+escH(e.name)+'\',\''+escH(e.department||'')+'\');event.preventDefault()" '
+      +'onmouseover="this.style.background=\'var(--bg4)\'" onmouseout="this.style.background=\'\'">'
+      +'<strong style="color:var(--p4)">'+escH(e.matricule)+'</strong>'
+      +' — '+escH(e.name||'—')
+      +(e.department?'<span style="color:var(--text3);font-size:10px"> · '+escH(e.department)+'</span>':'')
+      +'</div>';
+  }).join('');
+  sug.style.display='block';
+}
+function sensibMatKey(e){
+  if(e.key==='Escape'||e.key==='Tab') document.getElementById('sensibMatSuggest').style.display='none';
+}
+function sensibPickEmployee(mat,name,dept){
+  document.getElementById('sensibFormMat').value=mat;
+  document.getElementById('sensibFormName').value=name;
+  document.getElementById('sensibFormDept').value=dept;
+  document.getElementById('sensibMatSuggest').style.display='none';
+}
+
+// ── Brique 4 : Gestion multi-participants ──────────────────────
+function sensibAddParticipant(){
+  var mat=(document.getElementById('sensibFormMat').value||'').trim();
+  var name=(document.getElementById('sensibFormName').value||'').trim();
+  var dept=(document.getElementById('sensibFormDept').value||'').trim();
+  if(!mat||!name){sensibShowMsg('Matricule et Nom obligatoires pour ajouter un participant.','err');return;}
+  if(_sensibParticipants.some(function(p){return p.matricule===mat;})){
+    sensibShowMsg('Ce participant est déjà dans la liste.','err'); return;
+  }
+  _sensibParticipants.push({matricule:mat,name:name,department:dept});
+  document.getElementById('sensibFormMat').value='';
+  document.getElementById('sensibFormName').value='';
+  document.getElementById('sensibFormDept').value='';
+  document.getElementById('sensibMatSuggest').style.display='none';
+  sensibRenderParticipants();
+}
+function sensibRemoveParticipant(mat){
+  _sensibParticipants=_sensibParticipants.filter(function(p){return p.matricule!==mat;});
+  sensibRenderParticipants();
+}
+function sensibRenderParticipants(){
+  var panel=document.getElementById('sensibParticipantsPanel');
+  var empty=document.getElementById('sensibParticipantsEmpty');
+  var cnt=document.getElementById('sensibParticipantCount');
+  var list=document.getElementById('sensibParticipantsList');
+  if(!_sensibParticipants.length){
+    panel.style.display='none'; empty.style.display=''; return;
+  }
+  panel.style.display=''; empty.style.display='none';
+  cnt.textContent=_sensibParticipants.length;
+  list.innerHTML=_sensibParticipants.map(function(p){
+    return '<div style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg4);'
+      +'border-radius:20px;border:1px solid var(--border);font-size:11px">'
+      +'<span style="color:var(--p4);font-weight:600">'+escH(p.matricule)+'</span>'
+      +'<span>'+escH(p.name)+'</span>'
+      +(p.department?'<span style="color:var(--text3);font-size:9px">'+escH(p.department)+'</span>':'')
+      +'<button onclick="sensibRemoveParticipant(\''+escH(p.matricule)+'\')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 2px;line-height:1">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
 // ── Brique 4 : Upload & formulaire ────────────────────────────
 function sensibHandleFile(input){
   var file=input.files[0]; if(!file) return;
@@ -3987,49 +4098,54 @@ function sensibShowMsg(txt,type){
   setTimeout(function(){ el.style.display='none'; }, 5000);
 }
 function sensibSubmitForm(){
-  var mat=document.getElementById('sensibFormMat').value.trim();
-  var name=document.getElementById('sensibFormName').value.trim();
   var hazard=document.getElementById('sensibFormHazard').value;
   var trainer=document.getElementById('sensibFormTrainer').value.trim();
   var dateVal=document.getElementById('sensibFormDate').value;
-  if(!mat||!name||!hazard||!trainer||!dateVal){ sensibShowMsg('Veuillez remplir les champs obligatoires (*)','err'); return; }
+  if(!hazard||!trainer||!dateVal){ sensibShowMsg('Veuillez remplir les champs obligatoires : date, type de risque et formateur.','err'); return; }
+  if(!_sensibParticipants.length){ sensibShowMsg('Ajoutez au moins un participant avant d\'enregistrer.','err'); return; }
   var btn=document.getElementById('sensibSubmitBtn');
   btn.disabled=true; btn.textContent='Enregistrement…';
-  function doSave(attendanceUrl){
-    var data={
-      matricule:mat, name:name,
-      department:document.getElementById('sensibFormDept').value.trim(),
-      hazard:hazard,
-      trainer:trainer,
-      theme:document.getElementById('sensibFormTheme').value.trim(),
-      duration:parseFloat(document.getElementById('sensibFormDur').value||'0')||0,
-      status:document.getElementById('sensibFormStatus').value,
-      attendanceUrl:attendanceUrl||''
-    };
-    google.script.run.withSuccessHandler(function(r){
-      btn.disabled=false; btn.textContent='✅ Enregistrer la session';
-      if(r&&r.success){ sensibShowMsg('Session enregistrée avec succès !','ok'); sensibResetForm(); }
-      else sensibShowMsg('Erreur lors de l\'enregistrement : '+(r&&r.error||'inconnue'),'err');
-    }).withFailureHandler(function(e){
-      btn.disabled=false; btn.textContent='✅ Enregistrer la session';
-      sensibShowMsg('Erreur réseau : '+e,'err');
-    }).addSensibilisationRecord(data);
+  var commonData={
+    hazard:hazard,
+    trainer:trainer,
+    theme:document.getElementById('sensibFormTheme').value.trim(),
+    duration:parseFloat(document.getElementById('sensibFormDur').value||'0')||0,
+    status:document.getElementById('sensibFormStatus').value
+  };
+  function saveAllParticipants(attendanceUrl){
+    var participants=_sensibParticipants.slice();
+    var saved=0,errors=0;
+    function saveNext(){
+      if(!participants.length){
+        btn.disabled=false; btn.textContent='✅ Enregistrer la session';
+        if(errors===0) sensibShowMsg(saved+' participant(s) enregistré(s) avec succès !','ok');
+        else sensibShowMsg(saved+' enregistré(s), '+errors+' erreur(s).','err');
+        if(errors===0) sensibResetForm();
+        return;
+      }
+      var p=participants.shift();
+      var data=Object.assign({},commonData,{matricule:p.matricule,name:p.name,department:p.department,attendanceUrl:attendanceUrl||''});
+      google.script.run.withSuccessHandler(function(r){
+        if(r&&r.success) saved++; else errors++;
+        saveNext();
+      }).withFailureHandler(function(){ errors++; saveNext(); }).addSensibilisationRecord(data);
+    }
+    saveNext();
   }
   if(_sensibFile){
     var reader=new FileReader();
     reader.onload=function(ev){
       var b64=ev.target.result.split(',')[1];
-      var sessionDate=dateVal;
       var riskType=(hazard||'risque').replace(/[^a-zA-Z0-9]/g,'_');
       google.script.run.withSuccessHandler(function(r){
-        doSave(r&&r.url?r.url:'');
+        saveAllParticipants(r&&r.url?r.url:'');
       }).withFailureHandler(function(){
-        doSave('');
-      }).uploadAttendanceToSensibDrive(b64,_sensibFile.type,sessionDate,riskType);
+        saveAllParticipants('');
+      }).uploadAttendanceToSensibDrive(b64,_sensibFile.type,dateVal,riskType);
     };
     reader.readAsDataURL(_sensibFile);
   } else {
-    doSave('');
+    saveAllParticipants('');
   }
 }
 function sensibResetForm(){
@@ -4038,10 +4154,11 @@ function sensibResetForm(){
   });
   var hz=document.getElementById('sensibFormHazard'); if(hz) hz.value='';
   var st=document.getElementById('sensibFormStatus'); if(st) st.value='Présent';
-  _sensibFile=null;
+  _sensibFile=null; _sensibParticipants=[];
   var prev=document.getElementById('sensibFilePreview'); if(prev) prev.style.display='none';
   var dz=document.getElementById('sensibDropZone'); if(dz) dz.style.borderColor='var(--border)';
   var fi=document.getElementById('sensibFileInput'); if(fi) fi.value='';
+  sensibRenderParticipants();
 }
 function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
