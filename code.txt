@@ -3415,7 +3415,12 @@ function readSensibilisation() {
     var sheets = ss.getSheets();
     var sh = null;
     for (var i = 0; i < sheets.length; i++) {
-      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
+      if (sheets[i].getName() === 'HSE_Awareness_Database_V3') { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
+      }
     }
     if (!sh) sh = sheets[0];
 
@@ -3577,7 +3582,12 @@ function addSensibilisationRecord(data) {
     var sheets = ss.getSheets();
     var sh = null;
     for (var i = 0; i < sheets.length; i++) {
-      if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
+      if (sheets[i].getName() === 'HSE_Awareness_Database_V3') { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (sheets[i].getSheetId() === SENSIB_SHEET_GID) { sh = sheets[i]; break; }
+      }
     }
     if (!sh) sh = sheets[0];
     var newRow = [
