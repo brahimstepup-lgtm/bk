@@ -72,6 +72,7 @@ var EPI_SLIDES_SLIDE = 'id.p4';
 // ── SENSIBILISATION HSE (gid=1066013908) ─────────────────────────
 var SENSIB_SHEET_ID  = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
 var SENSIB_SHEET_GID = 1066013908;
+var SENSIB_DRIVE_FOLDER_ID = '1WLpH3ej2BQGPf-TLhYFLRlWIMQAmGgEP';
 
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
@@ -3558,9 +3559,15 @@ function readSensibilisation() {
 // ── Upload feuille d'émargement vers Google Drive ─────────────
 function uploadAttendanceToSensibDrive(base64Data, mimeType, sessionDate, riskType) {
   try {
-    var folderName = 'Sensibilisation_HSE_Emargements';
-    var folders = DriveApp.getFoldersByName(folderName);
-    var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    // Dossier Drive cible imposé (lien fourni). Fallback par nom si l'ID échoue.
+    var folder;
+    try {
+      folder = DriveApp.getFolderById(SENSIB_DRIVE_FOLDER_ID);
+    } catch (eFolder) {
+      var folderName = 'Sensibilisation_HSE_Emargements';
+      var folders = DriveApp.getFoldersByName(folderName);
+      folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+    }
     var safeName = (sessionDate || 'date') + '_' + (riskType || 'risque');
     safeName = safeName.replace(/[^a-zA-Z0-9_\-]/g, '_');
     var ext = mimeType === 'application/pdf' ? '.pdf' : mimeType.indexOf('png') > -1 ? '.png' : '.jpg';

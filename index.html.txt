@@ -2944,6 +2944,27 @@ html.light .pests-search-input{background:#edf2f7}
       </table>
     </div>
   </div>
+
+  <!-- ══ Viewer intégré pièce jointe (aucune ouverture externe) ══ -->
+  <div id="sensibPjModal" onclick="if(event.target===this)sensibClosePj()"
+       style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.78);
+              align-items:center;justify-content:center;padding:24px">
+    <div style="background:var(--bg2,#1a1a1a);border-radius:12px;width:min(960px,95vw);
+                height:min(88vh,860px);display:flex;flex-direction:column;overflow:hidden;
+                box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;
+                  border-bottom:1px solid rgba(255,255,255,.08)">
+        <span style="font-weight:600;color:var(--text,#fff);font-size:13px">📋 Feuille d'émargement</span>
+        <button onclick="sensibClosePj()"
+                style="background:rgba(255,255,255,.08);color:var(--text,#fff);border:none;
+                       border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px">✕</button>
+      </div>
+      <iframe id="sensibPjFrame" src="" title="Pièce jointe émargement"
+              referrerpolicy="no-referrer"
+              sandbox="allow-scripts allow-same-origin"
+              style="flex:1;width:100%;border:0;background:#fff"></iframe>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ EPI ═══ -->
@@ -4334,7 +4355,7 @@ function sensibSelectEmployee(mat){
   } else {
     tb.innerHTML=history.map(function(r){
       var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
-      var linkCell=r.attendanceUrl?'<a href="'+escH(r.attendanceUrl)+'" target="_blank" rel="noopener" style="color:var(--p4);font-size:11px;text-decoration:underline" title="Ouvrir la feuille d\'émargement sur Google Drive">📋 Voir</a>':'<span style="color:var(--text3)">—</span>';
+      var linkCell=sensibPjButton(r.attendanceUrl);
       return '<tr>'
         +'<td style="font-size:10px;font-family:JetBrains Mono,monospace;color:var(--text3)">'+escH(r.timestamp)+'</td>'
         +'<td style="font-size:11px">'+escH(r.theme||'—')+'</td>'
@@ -4347,6 +4368,36 @@ function sensibSelectEmployee(mat){
   }
   document.getElementById('sensibEmpProfile').style.display='block';
   document.getElementById('sensibEmpEmpty').style.display='none';
+}
+
+// ── Pièce jointe : bouton + viewer intégré (aucune ouverture externe) ──
+// Extrait l'ID Drive de n'importe quel format de lien.
+function sensibDriveFileId(url){
+  if(!url) return '';
+  var m=String(url).match(/\/file\/d\/([a-zA-Z0-9_-]+)/)
+      ||String(url).match(/[?&]id=([a-zA-Z0-9_-]+)/)
+      ||String(url).match(/\/d\/([a-zA-Z0-9_-]+)/);
+  return m?m[1]:'';
+}
+function sensibPjButton(url){
+  var id=sensibDriveFileId(url);
+  if(!id) return '<span style="color:var(--text3);font-size:10px">—</span>';
+  return '<button onclick="sensibViewPj(\''+id+'\')" '
+    +'style="background:rgba(74,144,226,.15);color:var(--p4);border:1px solid rgba(74,144,226,.35);'
+    +'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600" '
+    +'title="Afficher la pièce jointe dans le dashboard">📋 Voir PJ</button>';
+}
+function sensibViewPj(id){
+  var ov=document.getElementById('sensibPjModal');
+  var fr=document.getElementById('sensibPjFrame');
+  // /preview = viewer intégré Google Drive (iframe), pas de redirection externe.
+  fr.src='https://drive.google.com/file/d/'+id+'/preview';
+  ov.style.display='flex';
+}
+function sensibClosePj(){
+  var ov=document.getElementById('sensibPjModal');
+  document.getElementById('sensibPjFrame').src='';
+  ov.style.display='none';
 }
 
 function sensibClearEmployee(){
@@ -4403,7 +4454,7 @@ function renderSensib(){
   if(!rows.length){ tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">Aucune session trouvée</td></tr>'; return; }
   tb.innerHTML=rows.map(function(r){
     var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
-    var linkCell=r.attendanceUrl?'<a href="'+r.attendanceUrl+'" target="_blank" rel="noopener" style="color:var(--p4);font-size:11px;text-decoration:underline">📋 Voir</a>':'<span style="color:var(--text3);font-size:10px">—</span>';
+    var linkCell=sensibPjButton(r.attendanceUrl);
     return '<tr>'
       +'<td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3)">'+escH(r.timestamp)+'</td>'
       +'<td style="font-family:JetBrains Mono,monospace;font-size:11px">'+escH(r.matricule)+'</td>'
