@@ -3566,6 +3566,47 @@ function addSensibilisationRecord(data) {
   } catch(e) { return { success: false, error: e.toString() }; }
 }
 
+// ── Employés Sensibilisation : appel direct depuis le client ─────
+// Lit UNIQUEMENT la feuille Employees_DB du classeur SENSIB_SHEET_ID.
+// Appelé séparément de getData() pour garantir la disponibilité de
+// l'autocomplete même si readSensibilisation() est lente ou échoue.
+function getSensibEmployeesForClient() {
+  try {
+    var ss = SpreadsheetApp.openById(SENSIB_SHEET_ID);
+    var sheets = ss.getSheets();
+    var empSh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getName() === 'Employees_DB') { empSh = sheets[i]; break; }
+    }
+    if (!empSh) return { employees: [], error: 'Feuille Employees_DB introuvable' };
+    var raw = empSh.getDataRange().getValues();
+    if (!raw || raw.length < 2) return { employees: [] };
+    var hdr = raw[0].map(function(h) { return String(h).trim().toLowerCase(); });
+    var iMat  = sensibColIdx(hdr, ['matricule','matric','id']);
+    var iName = sensibColIdx(hdr, ['employee name','name','nom','prénom']);
+    var iDept = sensibColIdx(hdr, ['department','dept','departement','département']);
+    var employees = [];
+    for (var r = 1; r < raw.length; r++) {
+      var mat = iMat > -1 ? String(raw[r][iMat] || '').trim() : '';
+      if (!mat) continue;
+      employees.push({
+        matricule:  mat,
+        name:       iName > -1 ? String(raw[r][iName] || '').trim() : '',
+        department: iDept > -1 ? String(raw[r][iDept] || '').trim() : ''
+      });
+    }
+    return { employees: employees };
+  } catch(e) { return { employees: [], error: e.toString() }; }
+}
+
+// ── Sessions Sensibilisation : appel direct depuis le client ─────
+function getSensibSessionsForClient() {
+  try {
+    var result = readSensibilisation();
+    return { entries: result.entries || [], employees: result.employees || [] };
+  } catch(e) { return { entries: [], employees: [], error: e.toString() }; }
+}
+
 // ── Wrapper exposé au client (getData renommé pour éviter conflit) ──
 function getDataForClient() {
   return getData();

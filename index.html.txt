@@ -1625,7 +1625,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('permits',this)">📜 Permis de travail</button>
   <button class="tab"    onclick="goTab('epi',this)">🦺 EPI</button>
   <button class="tab"    onclick="goTab('pests',this)">🐀 Nuisibles</button>
-  <button class="tab"    onclick="goTab('sensib',this);renderSensib();">🎓 Sensibilisation</button>
+  <button class="tab"    onclick="goTab('sensib',this);sensibLoadOnDemand();">🎓 Sensibilisation</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -3698,6 +3698,45 @@ document.addEventListener('click',function(e){
   var sug=document.getElementById('sensibMatSuggest');
   if(sug&&!sug.contains(e.target)&&e.target.id!=='sensibFormMat') sug.style.display='none';
 });
+
+// Charge employés + sessions via appels dédiés (indépendant de getData)
+var _sensibLoaded=false;
+function sensibLoadOnDemand(){
+  renderSensib();
+  if(_sensibLoaded) return;
+  _sensibLoaded=true;
+  // Charge la liste des employés pour l'autocomplete
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(r&&r.employees&&r.employees.length){
+        var existing={};
+        _sensibEmployees.forEach(function(e){existing[e.matricule]=1;});
+        r.employees.forEach(function(e){if(e.matricule&&!existing[e.matricule])_sensibEmployees.push(e);});
+      }
+    })
+    .withFailureHandler(function(){})
+    .getSensibEmployeesForClient();
+  // Charge les sessions si le tableau est vide
+  if(!_sensibData.length){
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(r&&r.entries&&r.entries.length){
+          _sensibData=r.entries;
+          if(r.employees&&r.employees.length){
+            _sensibEmployees=r.employees;
+          }
+          buildSensibFilters();
+          buildSensibKpis();
+          buildSensibProgressBars();
+          buildSensibCharts();
+          buildSensibLeaderboard();
+          renderSensib();
+        }
+      })
+      .withFailureHandler(function(){})
+      .getSensibSessionsForClient();
+  }
+}
 
 function initSensib(d){
   _sensibData      = d.sensibilisation || [];
