@@ -69,9 +69,9 @@ var EPI_SHEET_NAME = 'Gestion du Stock des EPI (Équipements de Protection Indiv
 var EPI_SLIDES_ID    = '1KEPtRoECkefkKd6eKPdWJxTOXWNDgtSP8BRHHpWX1Vk';
 var EPI_SLIDES_SLIDE = 'id.p4';
 
-// ── SENSIBILISATION HSE (spreadsheet dédié, gid=359820712) ──────
-var SENSIB_SHEET_ID  = '1jhoxtRXYpotPToGmAlpaG-nBBzfwynplWyNk0xLckGo';
-var SENSIB_SHEET_GID = 359820712;
+// ── SENSIBILISATION HSE (gid=1066013908) ─────────────────────────
+var SENSIB_SHEET_ID  = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
+var SENSIB_SHEET_GID = 1066013908;
 
 // ── Point d'entrée HTTP ───────────────────────────────────────
 function doGet(e) {
@@ -2422,7 +2422,7 @@ function getData() {
   out.sensibilisationEmployees = sensib.employees || [];
   out.sensibilisationTargets = sensib.targets || [];
   out.sensibilisationSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SENSIB_SHEET_ID +
-                                 '/edit?gid=129519468#gid=129519468';
+                                 '/edit?gid=' + SENSIB_SHEET_GID + '#gid=' + SENSIB_SHEET_GID;
 
   // ── KPI ──────────────────────────────────────────────────
   var kpiSheet = findSheet(['kpi']) || sheets[0];
