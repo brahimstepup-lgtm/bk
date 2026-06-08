@@ -10601,24 +10601,38 @@ function renderPestMap(){
   }).join('');
 }
 
-/* Mode calibrage : pestMapCalibrate() → cliquez sur le plan, les
-   coordonnées x/y (en %) s'affichent dans la console pour les copier
-   dans PEST_MAP_POINTS. Rappelez la fonction pour désactiver. */
+/* Mode calibrage : tapez pestMapCalibrate() dans la console, puis
+   cliquez sur l'emplacement d'un piège sur le plan → la ligne prête à
+   coller dans PEST_MAP_POINTS s'affiche dans la console (avec un repère
+   visuel temporaire). Rappelez pestMapCalibrate() pour désactiver.
+   Pendant le calibrage, le clic n'ouvre PAS la fiche du dispositif. */
 var _pestMapCalib=false;
 function pestMapCalibrate(){
   var wrap=document.getElementById('pestMapWrap'); if(!wrap) return;
   _pestMapCalib=!_pestMapCalib;
   wrap.style.cursor=_pestMapCalib?'crosshair':'';
-  console.log('[Cartographie] calibrage '+(_pestMapCalib?'ACTIVÉ — cliquez sur un emplacement':'désactivé'));
-  if(pestMapCalibrate._h) return;
-  pestMapCalibrate._h=function(ev){
-    if(!_pestMapCalib) return;
-    var r=wrap.getBoundingClientRect();
-    var x=((ev.clientX-r.left)/r.width*100).toFixed(1);
-    var y=((ev.clientY-r.top )/r.height*100).toFixed(1);
-    console.log('{ num:\'?\', type:\'ext\', x:'+x+', y:'+y+' },');
-  };
-  wrap.addEventListener('click',pestMapCalibrate._h);
+  if(!pestMapCalibrate._h){
+    pestMapCalibrate._h=function(ev){
+      if(!_pestMapCalib) return;
+      ev.stopPropagation(); ev.preventDefault();      // neutralise le clic sur un repère existant
+      var r=wrap.getBoundingClientRect();
+      var x=(((ev.clientX-r.left)/r.width )*100).toFixed(1);
+      var y=(((ev.clientY-r.top )/r.height)*100).toFixed(1);
+      var pts=document.getElementById('pestMapPts');
+      if(pts){                                          // repère visuel temporaire
+        var d=document.createElement('div');
+        d.style.cssText='position:absolute;left:'+x+'%;top:'+y+'%;width:11px;height:11px;'
+          +'border-radius:50%;background:#10c985;transform:translate(-50%,-50%);'
+          +'box-shadow:0 0 0 3px rgba(16,201,133,.4);z-index:9;pointer-events:none';
+        pts.appendChild(d); setTimeout(function(){ d.remove(); },2500);
+      }
+      console.log('{ num:\'?\', type:\'ext\', x:'+x+', y:'+y+' },  // ← remplacez num, et type (ext=bleu / int=jaune)');
+    };
+    wrap.addEventListener('click', pestMapCalibrate._h, true); // phase de capture
+  }
+  console.log('%c[Cartographie] Calibrage '+(_pestMapCalib?'ACTIVÉ':'désactivé'),
+    'font-weight:bold;color:'+(_pestMapCalib?'#10c985':'#e8445a'));
+  if(_pestMapCalib) console.log('→ Cliquez sur un emplacement de piège. Rappelez pestMapCalibrate() pour arrêter.');
 }
 
 /* Ouverture de la modale + appel serveur getDispositifData() */
