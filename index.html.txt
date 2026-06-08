@@ -997,6 +997,70 @@ html.light .pests-mini-tab.on{background:#edf2f7}
 .pests-mini-pane{display:none}
 .pests-mini-pane.on{display:block}
 
+/* ════ Cartographie interactive des dispositifs ════════════ */
+.pestmap-legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.pestmap-leg{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);
+  font-family:'JetBrains Mono',monospace}
+.pestmap-leg i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.35)}
+.pestmap-leg.ext i{background:#2f7ed8}
+.pestmap-leg.int i{background:#f4d11a}
+.pestmap-hint{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin:2px 0 10px}
+.pestmap-wrap{position:relative;width:100%;border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;background:var(--bg3);line-height:0}
+.pestmap-img{width:100%;height:auto;display:block;-webkit-user-drag:none;user-select:none}
+.pestmap-pts{position:absolute;inset:0}
+/* Repère cliquable — positionné en % (left/top) pour rester responsive */
+.pestmap-pt{position:absolute;transform:translate(-50%,-50%);
+  min-width:20px;height:20px;padding:0 3px;border-radius:4px;cursor:pointer;
+  font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;
+  color:#fff;border:1.5px solid rgba(255,255,255,.85);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .12s,box-shadow .12s;z-index:2}
+.pestmap-pt.blue{background:#2f7ed8}
+.pestmap-pt.yellow{background:#f4d11a;color:#1a1a1a;border-color:rgba(0,0,0,.55)}
+.pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);
+  z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+.pestmap-ph{display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  min-height:220px;padding:30px;text-align:center;color:var(--text3);font-size:11.5px;line-height:1.6;
+  border:2px dashed var(--border);border-radius:10px;background:var(--bg2)}
+.pestmap-ph b{color:var(--text2)}
+.pestmap-ph code{background:var(--bg4);padding:1px 6px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text)}
+
+/* ── Modale détail dispositif ──────────────────────────── */
+.dispo-loading{display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding:48px 0;color:var(--text3);font-size:12px}
+.dispo-err,.dispo-empty{padding:22px;text-align:center;color:var(--text2);font-size:12px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:9px;line-height:1.6}
+.dispo-err{color:#ff8a9b}
+.dispo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px}
+.dispo-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+.dispo-lbl{font-size:9.5px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.dispo-val{font-size:12.5px;color:var(--text);font-weight:600;word-break:break-word}
+.dispo-hist-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:9px}
+.dispo-hist{width:100%;border-collapse:collapse;font-size:11px}
+.dispo-hist th{background:var(--bg3);color:var(--text3);text-align:left;padding:7px 10px;
+  font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;position:sticky;top:0}
+.dispo-hist td{padding:7px 10px;border-top:1px solid var(--border);color:var(--text2);vertical-align:top}
+.dispo-hist tr:hover td{background:var(--bg3)}
+.dispo-hd{font-family:'JetBrains Mono',monospace;color:var(--text);white-space:nowrap}
+.dispo-badge{font-size:9.5px;padding:2px 7px;border-radius:10px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;display:inline-block;
+  background:var(--bg4);color:var(--text2);border:1px solid var(--border)}
+.dispo-badge.b-r {background:rgba(232,68,90,.16);color:#ff8a9b;border-color:rgba(232,68,90,.4)}
+.dispo-badge.b-ok{background:rgba(16,201,133,.14);color:#10c985;border-color:rgba(16,201,133,.4)}
+.dispo-badge.b-q {background:rgba(245,166,35,.14);color:#f5a623;border-color:rgba(245,166,35,.4)}
+.dispo-badge.b-a {background:rgba(139,92,246,.14);color:#a855f7;border-color:rgba(139,92,246,.4)}
+.dispo-rawtitle{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  margin:14px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.dispo-raw{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px}
+.dispo-raw-row{display:flex;flex-direction:column;gap:2px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:7px;padding:6px 9px}
+.dispo-raw-row span{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.3px}
+.dispo-raw-row b{font-size:11.5px;color:var(--text);font-weight:600;word-break:break-word}
+
 /* Suivi par type d'insecte volant : header + tabs colorés */
 .pests-types-header{display:flex;align-items:center;gap:9px;margin:6px 0 9px;padding:10px 12px;
   background:linear-gradient(135deg,rgba(20,184,166,.10),rgba(20,184,166,.04));
@@ -3352,6 +3416,34 @@ html.light .pests-search-input{background:#edf2f7}
 
     <!-- ── Bandeau "Deux systèmes séparés" supprimé ── -->
 
+    <!-- ── CARTOGRAPHIE INTERACTIVE DES DISPOSITIFS ── -->
+    <div class="pests-sub" id="pestMapSub">
+      <div class="pests-sub-head">
+        <div class="pests-sub-icon" style="background:rgba(47,126,216,.15);border-color:rgba(47,126,216,.4);color:#2f7ed8">🗺️</div>
+        <div>
+          <div class="pests-sub-title">Cartographie des dispositifs</div>
+          <div class="pests-sub-sub">Plan du rez-de-chaussée &amp; extérieur · cliquez un repère</div>
+        </div>
+        <div class="pestmap-legend">
+          <span class="pestmap-leg ext"><i></i> Boîtes d'appât raticide (extérieur)</span>
+          <span class="pestmap-leg int"><i></i> Pièges mécaniques (intérieur)</span>
+        </div>
+      </div>
+      <div class="pestmap-hint">🖱️ Survolez pour le numéro · cliquez pour afficher le détail et l'historique du dispositif.</div>
+      <div class="pestmap-wrap" id="pestMapWrap">
+        <img class="pestmap-img" id="pestMapImg" alt="Plan — cartographie des boîtes d'appât et pièges"
+             onerror="this.style.display='none';var p=document.getElementById('pestMapPh');if(p)p.style.display='flex';">
+        <div class="pestmap-pts" id="pestMapPts"></div>
+      </div>
+      <div class="pestmap-ph" id="pestMapPh">
+        <div style="font-size:30px">🗺️</div>
+        <div><b>Plan non configuré.</b><br>
+          Renseignez l'URL de votre image de plan dans la constante
+          <code>PEST_MAP_IMG_URL</code> (voir le bloc de configuration JS),
+          puis placez vos repères dans <code>PEST_MAP_POINTS</code>.</div>
+      </div>
+    </div>
+
     <!-- ── Tableau de bord GLOBAL (totaux uniquement) ── -->
     <div class="pests-sub" id="pestsSouDashSub">
       <div class="pests-sub-head">
@@ -3645,6 +3737,22 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 </div><!-- /main -->
+
+<!-- ═══ MODAL DÉTAIL DISPOSITIF (cartographie) ═══ -->
+<div class="modal-bg" id="dispoModal" style="display:none" onclick="if(event.target===this)closeModal('dispoModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="dispoBadge">📍</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id"   id="dispoId">—</div>
+        <div class="modal-hdr-name" id="dispoName">—</div>
+        <div class="modal-chips"    id="dispoChips"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('dispoModal')">✕</button>
+    </div>
+    <div class="modal-body" id="dispoBody"></div>
+  </div>
+</div>
 
 <!-- ═══ MODAL INCIDENT ═══ -->
 <div class="modal-bg" id="incModal" style="display:none" onclick="if(event.target===this)closeModal('incModal')">
@@ -10408,6 +10516,201 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
+  renderPestMap();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CARTOGRAPHIE INTERACTIVE DES DISPOSITIFS (Nuisibles › Rongeurs)
+   ──────────────────────────────────────────────────────────────
+   ① PEST_MAP_IMG_URL : URL de votre plan (image de fond).
+   ② PEST_MAP_TYPES   : pour chaque type de repère → couleur + feuille
+                        source interrogée côté serveur.
+   ③ PEST_MAP_POINTS  : la liste de vos repères. Pour CHAQUE piège :
+        { num:'12', type:'ext', x:34.5, y:21.0 }
+      • num  : numéro affiché ET recherché dans le Google Sheet
+      • type : clé de PEST_MAP_TYPES ('ext' = bleu, 'int' = jaune)
+      • x,y  : position en POURCENTAGE de l'image (0 = gauche/haut,
+               100 = droite/bas). Voir le guide d'ajustement plus bas.
+   ══════════════════════════════════════════════════════════════ */
+// ① URL du plan. Ex. depuis Google Drive (fichier partagé « tous ceux
+//    qui ont le lien ») : 'https://drive.google.com/thumbnail?id=ID_DU_FICHIER&sz=w2000'
+var PEST_MAP_IMG_URL = '';
+
+// ② Les deux familles de repères de votre plan.
+var PEST_MAP_TYPES = {
+  ext: { label:"Boîte d'appât raticide (extérieur)", color:'blue',   source:'rat'  },
+  int: { label:'Piège mécanique (intérieur)',        color:'yellow', source:'mech' }
+  // Besoin d'une 3e famille ? Ex :
+  // , glue:{ label:'Boîte à colle (intérieur)', color:'yellow', source:'glue' }
+};
+
+// ③ Repères du plan — coordonnées de DÉPART à ajuster sur VOTRE image.
+//    (Voir la console : tapez pestMapCalibrate() puis cliquez sur le plan
+//     pour lire les coordonnées x/y exactes de chaque emplacement.)
+var PEST_MAP_POINTS = [
+  // ── Boîtes d'appât raticide · extérieur (BLEU) ──
+  { num:'1',  type:'ext', x:9.5,  y:11.0 },
+  { num:'2',  type:'ext', x:12.5, y:15.5 },
+  { num:'5',  type:'ext', x:9.5,  y:19.5 },
+  { num:'6',  type:'ext', x:9.5,  y:43.0 },
+  { num:'8',  type:'ext', x:11.5, y:64.5 },
+  { num:'13', type:'ext', x:46.5, y:15.0 },
+  { num:'17', type:'ext', x:48.0, y:31.5 },
+  { num:'19', type:'ext', x:54.0, y:35.0 },
+  { num:'21', type:'ext', x:59.0, y:35.0 },
+  { num:'22', type:'ext', x:63.0, y:35.0 },
+  { num:'16', type:'ext', x:73.0, y:43.0 },
+  { num:'25', type:'ext', x:84.0, y:49.0 },
+  { num:'26', type:'ext', x:89.0, y:71.5 },
+  { num:'29', type:'ext', x:64.5, y:10.0 },
+  // ── Pièges mécaniques · intérieur (JAUNE) ──
+  { num:'1',  type:'int', x:14.5, y:21.5 },
+  { num:'2',  type:'int', x:16.5, y:21.5 },
+  { num:'3',  type:'int', x:18.5, y:21.5 },
+  { num:'4',  type:'int', x:20.5, y:21.5 },
+  { num:'5',  type:'int', x:16.5, y:41.5 },
+  { num:'6',  type:'int', x:25.5, y:26.5 },
+  { num:'13', type:'int', x:48.5, y:38.5 },
+  { num:'14', type:'int', x:50.5, y:38.5 },
+  { num:'15', type:'int', x:29.5, y:38.5 }
+];
+
+function renderPestMap(){
+  var wrap = document.getElementById('pestMapPts');
+  var img  = document.getElementById('pestMapImg');
+  var ph   = document.getElementById('pestMapPh');
+  if(!wrap) return;
+
+  // Pas d'image configurée → afficher le bloc d'aide
+  if(!PEST_MAP_IMG_URL){
+    if(img) img.style.display='none';
+    if(ph)  ph.style.display='flex';
+    wrap.innerHTML='';
+    return;
+  }
+  if(ph)  ph.style.display='none';
+  if(img){ img.style.display='block'; if(img.getAttribute('src')!==PEST_MAP_IMG_URL) img.src=PEST_MAP_IMG_URL; }
+
+  wrap.innerHTML = PEST_MAP_POINTS.map(function(p){
+    var t = PEST_MAP_TYPES[p.type] || {color:'blue',label:''};
+    return '<button type="button" class="pestmap-pt '+(t.color||'blue')+'"'
+      + ' style="left:'+p.x+'%;top:'+p.y+'%"'
+      + ' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
+      + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')">'
+      + esc(String(p.num)) + '</button>';
+  }).join('');
+}
+
+/* Mode calibrage : pestMapCalibrate() → cliquez sur le plan, les
+   coordonnées x/y (en %) s'affichent dans la console pour les copier
+   dans PEST_MAP_POINTS. Rappelez la fonction pour désactiver. */
+var _pestMapCalib=false;
+function pestMapCalibrate(){
+  var wrap=document.getElementById('pestMapWrap'); if(!wrap) return;
+  _pestMapCalib=!_pestMapCalib;
+  wrap.style.cursor=_pestMapCalib?'crosshair':'';
+  console.log('[Cartographie] calibrage '+(_pestMapCalib?'ACTIVÉ — cliquez sur un emplacement':'désactivé'));
+  if(pestMapCalibrate._h) return;
+  pestMapCalibrate._h=function(ev){
+    if(!_pestMapCalib) return;
+    var r=wrap.getBoundingClientRect();
+    var x=((ev.clientX-r.left)/r.width*100).toFixed(1);
+    var y=((ev.clientY-r.top )/r.height*100).toFixed(1);
+    console.log('{ num:\'?\', type:\'ext\', x:'+x+', y:'+y+' },');
+  };
+  wrap.addEventListener('click',pestMapCalibrate._h);
+}
+
+/* Ouverture de la modale + appel serveur getDispositifData() */
+function openDispo(num, type){
+  var t = PEST_MAP_TYPES[type] || {};
+  document.getElementById('dispoBadge').textContent = (t.color==='yellow'?'🟡':'🔵');
+  document.getElementById('dispoId').textContent    = (t.label || 'Dispositif');
+  document.getElementById('dispoName').textContent  = 'N° ' + num;
+  document.getElementById('dispoChips').innerHTML    = '';
+  var body = document.getElementById('dispoBody');
+  body.innerHTML = '<div class="dispo-loading"><div class="spin"></div>'
+    + '<div>Chargement des données…</div></div>';
+  openModal('dispoModal');
+  google.script.run
+    .withSuccessHandler(function(res){ renderDispo(res, num); })
+    .withFailureHandler(function(err){
+      body.innerHTML = '<div class="dispo-err">⚠️ Erreur de chargement : '+esc(err.message)+'</div>';
+    })
+    .getDispositifData(String(num), (t.source || 'rat'));
+}
+
+function renderDispo(res, num){
+  var body = document.getElementById('dispoBody');
+  if(!res || !res.ok){
+    body.innerHTML = '<div class="dispo-err">⚠️ '+esc((res&&res.error)||'Données indisponibles')+'</div>';
+    return;
+  }
+  document.getElementById('dispoChips').innerHTML =
+      (res.sheetName ? '<span class="modal-chip">📄 '+esc(res.sheetName)+'</span>' : '')
+    + '<span class="modal-chip">'+(res.found ? (res.history.length+' contrôle(s)') : 'Aucun enregistrement')+'</span>';
+
+  if(!res.found){
+    body.innerHTML = '<div class="dispo-empty">Aucune ligne ne correspond au numéro '
+      + '<b>'+esc(String(num))+'</b> dans la feuille « '+esc(res.sheetName||'?')+' ».<br>'
+      + 'Vérifiez la correspondance numéro ↔ colonne emplacement / n° piège.</div>';
+    return;
+  }
+
+  var d = res.details || {};
+  var html = '';
+  html += '<div class="modal-section"><div class="modal-sec-title"><span>📌</span>Détails du dispositif</div>'
+       + '<div class="dispo-grid">'
+       + dispoItem('Localisation',         d.localisation)
+       + dispoItem('Statut actuel',        d.statut)
+       + dispoItem('Consommable / appât',  d.consommable)
+       + dispoItem("Date d'installation",  d.dateInstallation)
+       + dispoItem('Dernier contrôle',     d.dernierControle)
+       + dispoItem('Nombre de contrôles',  d.nbControles)
+       + '</div></div>';
+
+  html += '<div class="modal-section"><div class="modal-sec-title"><span>🕑</span>Historique des passages</div>';
+  if(res.history && res.history.length){
+    html += '<div class="dispo-hist-wrap"><table class="dispo-hist"><thead><tr>'
+         + '<th>Date</th><th>État / Statut</th><th>Action / Observation</th></tr></thead><tbody>';
+    res.history.forEach(function(h){
+      html += '<tr><td class="dispo-hd">'+esc(h.date||'—')+'</td>'
+           + '<td>'+dispoStatutBadge(h.statut)+'</td>'
+           + '<td>'+esc(h.action||'—')+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    var lastCells = (res.history[0] && res.history[0].cells) || [];
+    var filled = lastCells.filter(function(c){ return c.v!==''; });
+    if(filled.length){
+      html += '<div class="dispo-rawtitle">Détail complet du dernier contrôle ('+esc(res.history[0].date||'')+')</div>'
+           + '<div class="dispo-raw">';
+      filled.forEach(function(c){
+        html += '<div class="dispo-raw-row"><span>'+esc(c.h)+'</span><b>'+esc(c.v)+'</b></div>';
+      });
+      html += '</div>';
+    }
+  } else {
+    html += '<div class="dispo-empty">Aucun historique daté pour ce dispositif.</div>';
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+function dispoItem(lbl, val){
+  var v = (val===0 || val) ? String(val) : '';
+  if(v==='') v='—';
+  return '<div class="dispo-item"><div class="dispo-lbl">'+esc(lbl)+'</div>'
+       + '<div class="dispo-val">'+esc(v)+'</div></div>';
+}
+function dispoStatutBadge(s){
+  if(!s) return '—';
+  var n = String(s).toUpperCase(), cls='n';
+  if(n.indexOf('SOU')>-1) cls='r';
+  else if(n.indexOf('RAS')>-1) cls='ok';
+  else if(/NT|CAS|RT|INAC/.test(n)) cls='q';
+  else if(/EBR|CON/.test(n)) cls='a';
+  return '<span class="dispo-badge b-'+cls+'">'+esc(s)+'</span>';
 }
 
 window.onload=function(){
