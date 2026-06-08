@@ -10548,31 +10548,89 @@ var PEST_MAP_TYPES = {
 //    (Voir la console : tapez pestMapCalibrate() puis cliquez sur le plan
 //     pour lire les coordonnées x/y exactes de chaque emplacement.)
 var PEST_MAP_POINTS = [
-  // ── Boîtes d'appât raticide · extérieur (BLEU) ──
-  { num:'1',  type:'ext', x:9.5,  y:11.0 },
-  { num:'2',  type:'ext', x:12.5, y:15.5 },
-  { num:'5',  type:'ext', x:9.5,  y:19.5 },
-  { num:'6',  type:'ext', x:9.5,  y:43.0 },
-  { num:'8',  type:'ext', x:11.5, y:64.5 },
-  { num:'13', type:'ext', x:46.5, y:15.0 },
-  { num:'17', type:'ext', x:48.0, y:31.5 },
+  /* ═══ BOÎTES D'APPÂT RATICIDE · EXTÉRIEUR (BLEU) ═══
+     Coordonnées approximatives (% de l'image) — à affiner avec
+     pestMapCalibrate(). Vérifiez surtout que `num` correspond bien
+     au n° de la boîte dans la feuille « boîtes à raticide ». */
+  // — Entrée PL / haut-gauche —
+  { num:'1',  type:'ext', x:9.7,  y:10.8 },
+  { num:'2',  type:'ext', x:12.5, y:11.0 },
+  { num:'3',  type:'ext', x:24.5, y:12.0 },
+  { num:'3',  type:'ext', x:26.5, y:12.5 },
+  { num:'18', type:'ext', x:41.0, y:6.0  },
+  // — Mur extérieur gauche (haut → bas) —
+  { num:'2',  type:'ext', x:12.5, y:15.0 },
+  { num:'5',  type:'ext', x:9.6,  y:18.6 },
+  { num:'5',  type:'ext', x:9.6,  y:26.5 },
+  { num:'6',  type:'ext', x:9.6,  y:37.5 },
+  { num:'5',  type:'ext', x:9.6,  y:45.0 },
+  { num:'6',  type:'ext', x:10.0, y:49.5 },
+  { num:'5',  type:'ext', x:9.6,  y:57.5 },
+  { num:'8',  type:'ext', x:10.2, y:65.0 },
+  { num:'8',  type:'ext', x:10.2, y:74.0 },
+  // — Cuves / Marche-charge —
+  { num:'13', type:'ext', x:45.5, y:16.0 },
+  { num:'18', type:'ext', x:45.0, y:23.0 },
+  { num:'17', type:'ext', x:48.0, y:31.0 },
+  // — Corridor haut (production) —
   { num:'19', type:'ext', x:54.0, y:35.0 },
-  { num:'21', type:'ext', x:59.0, y:35.0 },
+  { num:'21', type:'ext', x:57.0, y:35.0 },
+  { num:'21', type:'ext', x:58.5, y:35.0 },
+  { num:'22', type:'ext', x:61.5, y:35.0 },
   { num:'22', type:'ext', x:63.0, y:35.0 },
-  { num:'16', type:'ext', x:73.0, y:43.0 },
+  // — Côté droit (TGBT / quai) —
+  { num:'23', type:'ext', x:76.5, y:38.5 },
+  { num:'16', type:'ext', x:72.5, y:43.5 },
+  { num:'29', type:'ext', x:79.5, y:43.5 },
   { num:'25', type:'ext', x:84.0, y:49.0 },
-  { num:'26', type:'ext', x:89.0, y:71.5 },
-  { num:'29', type:'ext', x:64.5, y:10.0 },
-  // ── Pièges mécaniques · intérieur (JAUNE) ──
-  { num:'1',  type:'int', x:14.5, y:21.5 },
-  { num:'2',  type:'int', x:16.5, y:21.5 },
-  { num:'3',  type:'int', x:18.5, y:21.5 },
-  { num:'4',  type:'int', x:20.5, y:21.5 },
-  { num:'5',  type:'int', x:16.5, y:41.5 },
-  { num:'6',  type:'int', x:25.5, y:26.5 },
-  { num:'13', type:'int', x:48.5, y:38.5 },
-  { num:'14', type:'int', x:50.5, y:38.5 },
-  { num:'15', type:'int', x:29.5, y:38.5 }
+  { num:'26', type:'ext', x:89.0, y:69.0 },
+  { num:'26', type:'ext', x:89.0, y:73.5 },
+  { num:'33', type:'ext', x:89.0, y:80.0 },
+  { num:'33', type:'ext', x:79.0, y:82.0 },
+  // — Panneaux photovoltaïques (haut-droite) —
+  { num:'29', type:'ext', x:62.5, y:9.0  },
+  { num:'29', type:'ext', x:64.5, y:12.0 },
+  { num:'29', type:'ext', x:69.0, y:18.0 },
+  { num:'29', type:'ext', x:73.0, y:25.0 },
+  // — Bureaux / cafétéria (extérieur bas) —
+  { num:'11', type:'ext', x:10.5, y:80.5 },
+  { num:'9',  type:'ext', x:10.2, y:84.0 },
+  { num:'10', type:'ext', x:24.5, y:92.0 },
+  { num:'11', type:'ext', x:28.5, y:92.0 },
+  { num:'12', type:'ext', x:32.0, y:92.0 },
+  { num:'12', type:'ext', x:35.5, y:92.0 },
+  { num:'14', type:'ext', x:44.0, y:92.0 },
+  { num:'15', type:'ext', x:46.5, y:86.5 },
+  { num:'18', type:'ext', x:47.0, y:84.0 },
+  { num:'31', type:'ext', x:47.5, y:80.5 },
+  { num:'31', type:'ext', x:49.5, y:76.0 },
+  { num:'33', type:'ext', x:58.5, y:75.0 },
+
+  /* ═══ PIÈGES MÉCANIQUES · INTÉRIEUR (JAUNE) ═══
+     `num` à recouper avec la feuille « pièges mécanique ». */
+  // — Local technique —
+  { num:'1',  type:'int', x:14.5, y:21.0 },
+  { num:'2',  type:'int', x:16.5, y:21.0 },
+  { num:'3',  type:'int', x:18.0, y:21.0 },
+  { num:'4',  type:'int', x:20.0, y:21.0 },
+  { num:'6',  type:'int', x:25.5, y:26.0 },
+  // — Bas-gauche intérieur —
+  { num:'1',  type:'int', x:13.5, y:33.0 },
+  { num:'3',  type:'int', x:13.5, y:36.0 },
+  { num:'5',  type:'int', x:16.5, y:41.0 },
+  { num:'8',  type:'int', x:18.5, y:41.0 },
+  // — Corridor central intérieur —
+  { num:'15', type:'int', x:29.0, y:38.5 },
+  { num:'13', type:'int', x:32.0, y:38.5 },
+  { num:'13', type:'int', x:45.0, y:38.5 },
+  { num:'12', type:'int', x:46.5, y:38.5 },
+  { num:'14', type:'int', x:49.0, y:38.5 },
+  // — Production bas / cafétéria (intérieur) —
+  { num:'5',  type:'int', x:16.5, y:76.0 },
+  { num:'6',  type:'int', x:19.0, y:76.0 },
+  { num:'7',  type:'int', x:43.0, y:76.0 },
+  { num:'8',  type:'int', x:46.0, y:76.0 },
+  { num:'19', type:'int', x:57.0, y:78.0 }
 ];
 
 function renderPestMap(){
