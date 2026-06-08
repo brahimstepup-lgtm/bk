@@ -3431,11 +3431,11 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
       <div class="pestmap-hint">🖱️ Survolez pour le numéro · cliquez pour afficher le détail et l'historique du dispositif.</div>
       <div class="pestmap-wrap" id="pestMapWrap">
-        <img class="pestmap-img" id="pestMapImg" alt="Plan — cartographie des boîtes d'appât et pièges"
+        <img class="pestmap-img" id="pestMapImg" alt="" style="display:none"
              onerror="this.style.display='none';var p=document.getElementById('pestMapPh');if(p)p.style.display='flex';">
         <div class="pestmap-pts" id="pestMapPts"></div>
       </div>
-      <div class="pestmap-ph" id="pestMapPh">
+      <div class="pestmap-ph" id="pestMapPh" style="display:flex">
         <div style="font-size:30px">🗺️</div>
         <div><b>Plan non configuré.</b><br>
           Renseignez l'URL de votre image de plan dans la constante
@@ -10495,6 +10495,7 @@ function renderPestIndoorKpis(){
 }
 
 function renderPests(){
+  renderPestMap(); // carte statique — indépendante des données serveur
   if(!D||!D.pests){
     // Marquer les sections comme vides
     ['pestsFlyingEmpty','pestsRatEmpty','pestsMechEmpty','pestsGlueEmpty'].forEach(function(id){
@@ -10516,7 +10517,6 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
-  renderPestMap();
 }
 
 /* ══════════════════════════════════════════════════════════════
