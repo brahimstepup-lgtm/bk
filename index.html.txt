@@ -1009,17 +1009,30 @@ html.light .pests-mini-tab.on{background:#edf2f7}
   overflow:hidden;background:var(--bg3);line-height:0}
 .pestmap-img{width:100%;height:auto;display:block;-webkit-user-drag:none;user-select:none}
 .pestmap-pts{position:absolute;inset:0}
-/* Repère cliquable — positionné en % (left/top) pour rester responsive */
+/* Repère cliquable — positionné en % (left/top) pour rester responsive.
+   Sans numéro affiché : petit carré de couleur. */
 .pestmap-pt{position:absolute;transform:translate(-50%,-50%);
-  min-width:20px;height:20px;padding:0 3px;border-radius:4px;cursor:pointer;
-  font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;
-  color:#fff;border:1.5px solid rgba(255,255,255,.85);
-  display:flex;align-items:center;justify-content:center;
+  width:15px;height:15px;padding:0;border-radius:4px;cursor:pointer;font-size:0;
+  border:1.5px solid rgba(255,255,255,.85);
   box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .12s,box-shadow .12s;z-index:2}
 .pestmap-pt.blue{background:#2f7ed8}
-.pestmap-pt.yellow{background:#f4d11a;color:#1a1a1a;border-color:rgba(0,0,0,.55)}
-.pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);
+.pestmap-pt.yellow{background:#f4d11a;border-color:rgba(0,0,0,.55)}
+.pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.5);
   z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+/* Marqueur sélectionné via le menu déroulant : mis en évidence */
+.pestmap-pt.highlight{z-index:8;transform:translate(-50%,-50%) scale(1.7);
+  border-color:#10c985;animation:pestPulse 1.1s ease-out 3}
+@keyframes pestPulse{
+  0%{box-shadow:0 0 0 0 rgba(16,201,133,.75),0 1px 4px rgba(0,0,0,.45)}
+  100%{box-shadow:0 0 0 16px rgba(16,201,133,0),0 1px 4px rgba(0,0,0,.45)}}
+/* Menu déroulant flottant en haut à droite de la carte */
+.pestmap-toolbar{position:absolute;top:10px;right:10px;z-index:6;line-height:normal}
+.pestmap-select{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;
+  padding:7px 11px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg2);color:var(--text);cursor:pointer;max-width:240px;
+  box-shadow:0 2px 10px rgba(0,0,0,.35)}
+.pestmap-select:hover{border-color:var(--p3)}
+.pestmap-select:focus{outline:none;border-color:var(--p3)}
 .pestmap-ph{display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   min-height:220px;padding:30px;text-align:center;color:var(--text3);font-size:11.5px;line-height:1.6;
   border:2px dashed var(--border);border-radius:10px;background:var(--bg2)}
@@ -3434,6 +3447,13 @@ html.light .pests-search-input{background:#edf2f7}
         <img class="pestmap-img" id="pestMapImg" alt="" style="display:none"
              onerror="this.style.display='none';var p=document.getElementById('pestMapPh');if(p)p.style.display='flex';">
         <div class="pestmap-pts" id="pestMapPts"></div>
+        <!-- Menu déroulant (haut-droite) : aller à une boîte / un piège -->
+        <div class="pestmap-toolbar" id="pestMapToolbar">
+          <select class="pestmap-select" id="pestMapSelect" aria-label="Aller à un dispositif"
+                  onchange="pestMapSelect(this.value)">
+            <option value="">🔍 Aller à un dispositif…</option>
+          </select>
+        </div>
       </div>
       <div class="pestmap-ph" id="pestMapPh" style="display:flex">
         <div style="font-size:30px">🗺️</div>
@@ -10643,6 +10663,7 @@ function renderPestMap(){
   if(!PEST_MAP_IMG_URL){
     if(img) img.style.display='none';
     if(ph)  ph.style.display='flex';
+    var tb0=document.getElementById('pestMapToolbar'); if(tb0) tb0.style.display='none';
     wrap.innerHTML='';
     return;
   }
@@ -10660,14 +10681,68 @@ function renderPestMap(){
     img.src=PEST_MAP_IMG_URL;
   } else if(img){ img.style.display='block'; }
 
-  wrap.innerHTML = PEST_MAP_POINTS.map(function(p){
+  // Marqueurs SANS numéro affiché (simple carré de couleur cliquable)
+  wrap.innerHTML = PEST_MAP_POINTS.map(function(p,idx){
     var t = PEST_MAP_TYPES[p.type] || {color:'blue',label:''};
-    return '<button type="button" class="pestmap-pt '+(t.color||'blue')+'"'
+    return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
       + ' style="left:'+p.x+'%;top:'+p.y+'%"'
       + ' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
-      + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')">'
-      + esc(String(p.num)) + '</button>';
+      + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')"></button>';
   }).join('');
+
+  pestMapFillSelect();
+}
+
+/* Remplit le menu déroulant (haut-droite) avec toutes les boîtes / pièges,
+   groupés par type. La valeur de chaque option = index dans PEST_MAP_POINTS
+   (permet de cibler le bon marqueur même en cas de numéros en doublon). */
+function pestMapFillSelect(){
+  var sel=document.getElementById('pestMapSelect');
+  var tb =document.getElementById('pestMapToolbar');
+  if(!sel) return;
+  if(tb) tb.style.display='';
+  // Regrouper les index par type
+  var byType={};
+  PEST_MAP_POINTS.forEach(function(p,idx){ (byType[p.type]=byType[p.type]||[]).push(idx); });
+  var html='<option value="">🔍 Aller à un dispositif…</option>';
+  Object.keys(byType).forEach(function(type){
+    var t=PEST_MAP_TYPES[type]||{label:type};
+    var noun=(t.source==='rat')?'Boîte':(t.source==='glue'?'Boîte colle':'Piège');
+    // compter les occurrences de chaque numéro pour suffixer les doublons
+    var total={};
+    byType[type].forEach(function(idx){ var n=PEST_MAP_POINTS[idx].num; total[n]=(total[n]||0)+1; });
+    var seen={};
+    html+='<optgroup label="'+esc(t.label||type)+'">';
+    byType[type].forEach(function(idx){
+      var n=PEST_MAP_POINTS[idx].num;
+      seen[n]=(seen[n]||0)+1;
+      var suffix=(total[n]>1)?(' ('+seen[n]+'/'+total[n]+')'):'';
+      html+='<option value="'+idx+'">'+esc(noun+' n° '+n+suffix)+'</option>';
+    });
+    html+='</optgroup>';
+  });
+  sel.innerHTML=html;
+}
+
+/* Sélection dans le menu → centre la carte sur le marqueur, le met en
+   évidence, et ouvre ses détails (modale). */
+function pestMapSelect(idxStr){
+  if(idxStr===''||idxStr==null) return;
+  var idx=parseInt(idxStr,10);
+  var p=PEST_MAP_POINTS[idx];
+  if(!p) return;
+  var btn=document.getElementById('pestpt-'+idx);
+  if(btn){
+    var prev=document.querySelector('.pestmap-pt.highlight');
+    if(prev) prev.classList.remove('highlight');
+    // relancer l'animation de pulsation
+    btn.classList.remove('highlight'); void btn.offsetWidth; btn.classList.add('highlight');
+    try{ btn.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}); }
+    catch(e){ try{ btn.scrollIntoView(); }catch(e2){} }
+  }
+  openDispo(String(p.num), p.type);
+  // Remettre le menu sur l'invite (menu d'action → re-sélection possible)
+  var sel=document.getElementById('pestMapSelect'); if(sel) sel.value='';
 }
 
 /* Mode calibrage : tapez pestMapCalibrate() dans la console, puis

@@ -1,7 +1,9 @@
 # Cartographie interactive des dispositifs — Nuisibles › Rongeurs
 
 Interface ajoutée dans l'onglet **🐀 Nuisibles → section Rongeurs** : un plan
-(image de fond) sur lequel sont superposés des **carrés cliquables**.
+(image de fond) sur lequel sont superposés des **carrés cliquables** (sans
+numéro affiché) + un **menu déroulant** en haut à droite pour aller à une
+boîte / un piège (centre + met en évidence le marqueur, puis ouvre ses détails).
 
 | Couleur | Famille (`type`) | Feuille Google Sheets interrogée (`source`) |
 |---------|------------------|---------------------------------------------|
@@ -57,7 +59,8 @@ var PEST_MAP_POINTS = [
 ];
 ```
 
-- **`num`** : le numéro **affiché** dans le carré **ET** recherché dans le Sheet.
+- **`num`** : le numéro du dispositif — listé dans le **menu déroulant** **ET**
+  recherché dans le Sheet (il n'est plus affiché sur le marqueur).
 - **`type`** : `'ext'` (bleu) ou `'int'` (jaune) — clés de `PEST_MAP_TYPES`.
 - **`x` / `y`** : position en **pourcentage** de l'image.
   `x=0` = bord gauche, `x=100` = bord droit · `y=0` = haut, `y=100` = bas.
