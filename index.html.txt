@@ -10534,7 +10534,7 @@ function renderPests(){
    ══════════════════════════════════════════════════════════════ */
 // ① URL du plan. Ex. depuis Google Drive (fichier partagé « tous ceux
 //    qui ont le lien ») : 'https://drive.google.com/thumbnail?id=ID_DU_FICHIER&sz=w2000'
-var PEST_MAP_IMG_URL = '';
+var PEST_MAP_IMG_URL = 'https://drive.google.com/thumbnail?id=1trNT1OvaP7m9PX-EyZlZ_d-1MuLV4wss&sz=w2000';
 
 // ② Les deux familles de repères de votre plan.
 var PEST_MAP_TYPES = {
@@ -10589,7 +10589,18 @@ function renderPestMap(){
     return;
   }
   if(ph)  ph.style.display='none';
-  if(img){ img.style.display='block'; if(img.getAttribute('src')!==PEST_MAP_IMG_URL) img.src=PEST_MAP_IMG_URL; }
+  if(img && img.getAttribute('src')!==PEST_MAP_IMG_URL){
+    // Repli d'affichage Drive : thumbnail → lh3 → encart d'aide
+    var idm = PEST_MAP_IMG_URL.match(/[?&]id=([^&]+)/) || PEST_MAP_IMG_URL.match(/\/d\/([^/?]+)/);
+    var fb  = idm ? ('https://lh3.googleusercontent.com/d/'+idm[1]+'=w2000') : '';
+    img.onerror = function(){
+      if(fb && img.src.indexOf('lh3.googleusercontent')<0){ img.src=fb; return; }
+      img.style.display='none';
+      if(ph) ph.style.display='flex';
+    };
+    img.style.display='block';
+    img.src=PEST_MAP_IMG_URL;
+  } else if(img){ img.style.display='block'; }
 
   wrap.innerHTML = PEST_MAP_POINTS.map(function(p){
     var t = PEST_MAP_TYPES[p.type] || {color:'blue',label:''};
