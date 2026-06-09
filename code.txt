@@ -2098,6 +2098,27 @@ function trapKey(v) {
   return normalize(s);
 }
 
+// Ensemble des numéros (clé trapKey) présents dans la colonne « N° » d'une
+// feuille pest déjà lue par readPestSheet — sert à colorer les repères côté
+// client (boîte à colle = rose). Repli sur la colonne emplacement si pas de « N° ».
+function pestNumsFromRead(r) {
+  var nums = {};
+  if (r && r.entries) {
+    var hd = r.headers || [], ncol = -1;
+    for (var c = 0; c < hd.length; c++) {
+      var hh = normalize(hd[c]).replace(/[^a-z0-9]/g, '');
+      if (hh === 'n' || hh === 'no' || hh === 'num' || hh.indexOf('numero') > -1) { ncol = c; break; }
+    }
+    r.entries.forEach(function(e){
+      var k = '';
+      if (ncol >= 0 && e.raw && e.raw.length > ncol) k = trapKey(e.raw[ncol]);
+      else if (e.zone) k = trapKey(e.zone);
+      if (k) nums[k] = true;
+    });
+  }
+  return Object.keys(nums);
+}
+
 // ════════════════════════════════════════════════════════════
 // ── CARTOGRAPHIE NUISIBLES (onglet « cartographie nuisibles ») ─
 // Lit la liste des plans (étages) à superposer dans la carte :
@@ -2661,6 +2682,9 @@ function getData() {
 
   // ── CARTOGRAPHIE NUISIBLES (3 plans : étage -1 / étage 0 / étage 1) ──
   out.cartoNuisibles = readCartoNuisibles(ss);   // [{ zone, url, fileId, rawUrl }, …]
+  // Numéros par feuille intérieure → coloration des repères (colle = rose)
+  out.pestMechNums = pestNumsFromRead(pests.mech);   // pièges mécanique
+  out.pestGlueNums = pestNumsFromRead(pests.glue);   // boîtes à colles
 
   // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
   var sensib = readSensibilisation();

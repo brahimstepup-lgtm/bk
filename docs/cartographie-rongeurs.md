@@ -20,6 +20,14 @@ serveur `getDispositifData(numero, source)` (dans `Code.gs`), puis affiche les
 > `boîtes à colles`. Si trouvé, la modale l'indique (badge 🩷 + chip
 > « ↪ via boîtes à colles »).
 
+> **Coloration automatique (rose)** : les plans ne dessinent que 2 couleurs
+> (bleu ext. / jaune int.). Côté serveur, `getDataForClient` renvoie les numéros
+> de chaque feuille intérieure (`pestMechNums`, `pestGlueNums`). À l'affichage,
+> un repère **intérieur** dont le n° est dans **boîtes à colles** mais **pas**
+> dans **pièges mécanique** est rendu **🩷 rose** (boîte à colle) ; les autres
+> restent 🟡 jaunes (piège mécanique). Aucune liste à maintenir à la main :
+> déplacez un n° entre les feuilles et la couleur suit au prochain chargement.
+
 ---
 
 ## 1. Où se trouve le code

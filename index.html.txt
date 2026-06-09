@@ -10754,14 +10754,21 @@ function renderPestMap(){
     }
   }
 
-  // Repères de l'étage courant — NUMÉROTÉS et cliquables
+  // Repères de l'étage courant — NUMÉROTÉS et cliquables.
+  // Reclassement par données : un repère intérieur dont le n° est dans la
+  // feuille « boîtes à colles » (et pas dans « pièges mécanique ») devient ROSE.
+  var glueSet={}, mechSet={};
+  ((D && D.pestGlueNums) || []).forEach(function(n){ glueSet[String(n)]=1; });
+  ((D && D.pestMechNums) || []).forEach(function(n){ mechSet[String(n)]=1; });
   var pts = pestMapPointsForFloor(floor.zone);
   wrap.innerHTML = pts.map(function(p,idx){
-    var t = PEST_MAP_TYPES[p.type] || {color:'blue',label:''};
+    var et = p.type;
+    if(et==='int' && glueSet[String(p.num)] && !mechSet[String(p.num)]) et='glue';
+    var t = PEST_MAP_TYPES[et] || {color:'blue',label:''};
     return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
       + ' style="left:'+p.x+'%;top:'+p.y+'%"'
       + ' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
-      + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')">'
+      + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(et)+'\')">'
       + esc(String(p.num)) + '</button>';
   }).join('');
 }

@@ -235,6 +235,9 @@ function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 
+// Démo : n° par feuille (dans l'app → D.pestGlueNums / D.pestMechNums).
+var DEMO_MECH_NUMS={'1':1,'2':1,'3':1,'12':1};
+var DEMO_GLUE_NUMS={'5':1,'14':1};
 function renderPestMap(){
   var wrap=document.getElementById('pestMapPts'), img=document.getElementById('pestMapImg');
   pestMapFloors=PEST_MAP_FLOORS_DEMO;   // dans l'app : D.cartoNuisibles
@@ -243,13 +246,17 @@ function renderPestMap(){
   pestMapRenderFloors();
   var floor=pestMapFloors[pestMapFloorIdx]||{};
   if(img && floor.url && img.getAttribute('src')!==floor.url) img.src=floor.url;
+  // Reclassement par données : intérieur en colles (pas en mécanique) → rose
+  var glueSet=DEMO_GLUE_NUMS, mechSet=DEMO_MECH_NUMS;
   var pts=pestMapPointsForFloor(floor.zone);
   wrap.innerHTML=pts.map(function(p,idx){     // marqueurs NUMÉROTÉS et cliquables
-    var t=PEST_MAP_TYPES[p.type]||{color:'blue',label:''};
+    var et=p.type;
+    if(et==='int' && glueSet[String(p.num)] && !mechSet[String(p.num)]) et='glue';
+    var t=PEST_MAP_TYPES[et]||{color:'blue',label:''};
     return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
       +' style="left:'+p.x+'%;top:'+p.y+'%"'
       +' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
-      +' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')">'
+      +' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(et)+'\')">'
       +esc(String(p.num))+'</button>';
   }).join('');
 }
