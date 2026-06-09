@@ -1975,42 +1975,61 @@ function getDispositifData(numero, source) {
       fk:   { kwds:['fk','flying','insecte volant','insectes volants'],
               label:'Borne à insectes volants' }
     };
-    var conf = KW[source] || KW.rat;
-    out.source    = KW[source] ? source : 'rat';
-    out.typeLabel = conf.label;
-
     var ss  = SpreadsheetApp.openById(SHEET_ID);
-    var res = readPestSheet(ss, conf.kwds, conf.label);
-    out.sheetName = res.sheetName || '';
-    out.headers   = res.headers   || [];
-    if (!res.entries || !res.entries.length) { out.ok = true; return out; }
+    var primary = KW[source] ? source : 'rat';
+    // Repli demandé : un piège mécanique non trouvé est cherché dans les boîtes à colles.
+    var candidates = (primary === 'mech') ? ['mech', 'glue'] : [primary];
+    var target = trapKey(out.numero);
 
-    var meta    = res.meta || {};
-    var target  = trapKey(out.numero);
-    var zoneIdx = (meta.primaryZone >= 0) ? meta.primaryZone : -1;
+    var res = null, meta = null, matches = [], zoneIdx = -1, usedSource = '';
+    var firstRes = null, firstSource = primary;
 
-    // 1) Correspondance via la colonne emplacement / n° piège détectée
-    var matches = res.entries.filter(function(e){
-      if (zoneIdx >= 0 && e.raw && e.raw.length > zoneIdx &&
-          trapKey(e.raw[zoneIdx]) === target) return true;
-      if (e.zone && trapKey(e.zone) === target) return true;
-      return false;
-    });
-
-    // 2) Repli : balayer toutes les cellules non-date
-    if (!matches.length) {
-      matches = res.entries.filter(function(e){
-        if (!e.raw) return false;
-        for (var c = 0; c < e.raw.length; c++) {
-          if (meta.dateCols && meta.dateCols.indexOf(c) > -1) continue;
-          if (trapKey(e.raw[c]) === target) return true;
-        }
+    for (var ci = 0; ci < candidates.length; ci++) {
+      var sc   = candidates[ci];
+      var conf = KW[sc];
+      var r    = readPestSheet(ss, conf.kwds, conf.label);
+      if (ci === 0) firstRes = r;
+      if (!r.entries || !r.entries.length) continue;
+      var m  = r.meta || {};
+      var zi = (m.primaryZone >= 0) ? m.primaryZone : -1;
+      // a) via la colonne emplacement / n°
+      var mt = r.entries.filter(function(e){
+        if (zi >= 0 && e.raw && e.raw.length > zi && trapKey(e.raw[zi]) === target) return true;
+        if (e.zone && trapKey(e.zone) === target) return true;
         return false;
       });
+      // b) repli : toutes les cellules non-date
+      if (!mt.length) {
+        mt = r.entries.filter(function(e){
+          if (!e.raw) return false;
+          for (var c = 0; c < e.raw.length; c++) {
+            if (m.dateCols && m.dateCols.indexOf(c) > -1) continue;
+            if (trapKey(e.raw[c]) === target) return true;
+          }
+          return false;
+        });
+      }
+      if (mt.length) { res = r; meta = m; matches = mt; zoneIdx = zi; usedSource = sc; break; }
     }
 
-    if (!matches.length) { out.ok = true; return out; }
-    out.found = true;
+    // Rien trouvé dans aucune feuille candidate → renvoyer les infos de la 1ère cherchée
+    if (!matches.length) {
+      var fr = firstRes || {};
+      out.source    = firstSource;
+      out.typeLabel = (KW[firstSource] || {}).label || '';
+      out.sheetName = fr.sheetName || '';
+      out.headers   = fr.headers   || [];
+      out.ok = true;
+      return out;
+    }
+
+    // Trouvé (éventuellement via le repli « boîtes à colles »)
+    out.source    = usedSource;
+    out.typeLabel = (KW[usedSource] || {}).label || '';
+    out.sheetName = res.sheetName || '';
+    out.headers   = res.headers   || [];
+    out.fallback  = (usedSource !== firstSource);
+    out.found     = true;
 
     // 3) Colonnes utiles supplémentaires (produit / installation / état)
     var prodIdx = -1, installIdx = -1, consoIdx = -1;

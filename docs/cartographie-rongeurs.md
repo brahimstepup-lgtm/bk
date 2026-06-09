@@ -7,12 +7,18 @@ Interface ajoutée dans l'onglet **🐀 Nuisibles → section Rongeurs** : un pl
 
 | Couleur | Famille (`type`) | Feuille Google Sheets interrogée (`source`) |
 |---------|------------------|---------------------------------------------|
-| 🔵 Bleu   | `ext` | `boîtes à raticide` (extérieur) → `getDispositifData(num,'rat')` |
-| 🟡 Jaune  | `int` | `pièges mécanique` (intérieur) → `getDispositifData(num,'mech')` |
+| 🔵 Bleu   | `ext`  | `boîtes à raticide` (extérieur) → `getDispositifData(num,'rat')` |
+| 🟡 Jaune  | `int`  | `pièges mécanique` (intérieur) → `getDispositifData(num,'mech')` |
+| 🩷 Rose   | `glue` | `boîtes à colles` (intérieur) → `getDispositifData(num,'glue')` |
 
 Au clic : une **modale** s'ouvre, affiche un **spinner**, appelle la fonction
 serveur `getDispositifData(numero, source)` (dans `Code.gs`), puis affiche les
 **détails** + l'**historique des passages**.
+
+> **Repli automatique** : si un **piège mécanique** (`'mech'`) n'a aucune ligne
+> correspondante, le serveur cherche le **même numéro** dans la feuille
+> `boîtes à colles`. Si trouvé, la modale l'indique (badge 🩷 + chip
+> « ↪ via boîtes à colles »).
 
 ---
 
@@ -167,15 +173,20 @@ complet trié du plus récent au plus ancien.
 
 ---
 
-## 6. Ajouter une 3ᵉ famille (ex. boîtes à colles)
+## 6. Les familles de repères (`PEST_MAP_TYPES`)
 
 ```js
 var PEST_MAP_TYPES = {
   ext:  { label:"Boîte d'appât raticide (extérieur)", color:'blue',   source:'rat'  },
   int:  { label:'Piège mécanique (intérieur)',        color:'yellow', source:'mech' },
-  glue: { label:'Boîte à colle (intérieur)',          color:'yellow', source:'glue' }
+  glue: { label:'Boîte à colle (intérieur)',          color:'pink',   source:'glue' }
 };
 ```
 
-`source` accepte `'rat'`, `'mech'`, `'glue'`, `'fk'` (déjà gérés côté serveur).
-Pour une couleur supplémentaire, ajoutez une classe `.pestmap-pt.xxx` en CSS.
+- `source` accepte `'rat'`, `'mech'`, `'glue'`, `'fk'` (tous gérés côté serveur).
+- Les pièges `'int'` (mécanique) bénéficient du **repli automatique** vers
+  `boîtes à colles` (voir l'encart en haut). Pour placer explicitement une
+  **boîte à colle** (repère 🩷 rose), utilisez `type:'glue'` dans
+  `PEST_MAP_POINTS_BY_FLOOR`.
+- Pour une couleur supplémentaire : ajoutez `.pestmap-pt.xxx` (marqueur) et
+  `.pestmap-leg.xxx i` (légende) en CSS, puis `color:'xxx'` dans le type.

@@ -39,6 +39,7 @@ h1{font-size:18px;margin:0 0 4px}
 .pestmap-leg i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.35)}
 .pestmap-leg.ext i{background:#2f7ed8}
 .pestmap-leg.int i{background:#f4d11a}
+.pestmap-leg.glue i{background:#ec4899}
 .pestmap-hint{font-size:10px;color:var(--text3);font-family:monospace;margin:2px 0 10px}
 .pestmap-wrap{position:relative;width:100%;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg3);line-height:0}
 .pestmap-img{width:100%;height:auto;display:block}
@@ -49,6 +50,7 @@ h1{font-size:18px;margin:0 0 4px}
   box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .12s,box-shadow .12s;z-index:2}
 .pestmap-pt.blue{background:#2f7ed8}
 .pestmap-pt.yellow{background:#f4d11a;color:#1a1a1a;border-color:rgba(0,0,0,.55)}
+.pestmap-pt.pink{background:#ec4899}
 .pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
 .pestmap-floors{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);padding:4px;border-radius:9px;border:1px solid var(--border);margin:2px 0 10px}
 .pestmap-floor-btn{padding:6px 13px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text3);
@@ -118,6 +120,7 @@ h1{font-size:18px;margin:0 0 4px}
     <div class="pestmap-legend">
       <span class="pestmap-leg ext"><i></i> Boîtes d'appât raticide (extérieur)</span>
       <span class="pestmap-leg int"><i></i> Pièges mécaniques (intérieur)</span>
+      <span class="pestmap-leg glue"><i></i> Boîtes à colles (intérieur)</span>
     </div>
   </div>
   <!-- Sélecteur d'étage (en démo : 3 plans factices) -->
@@ -174,8 +177,9 @@ var DEMO_PLAN_SVG = encodeURIComponent(
 
 /* ════════ CONFIGURATION (démo) ════════ */
 var PEST_MAP_TYPES = {
-  ext: { label:"Boîte d'appât raticide (extérieur)", color:'blue',   source:'rat'  },
-  int: { label:'Piège mécanique (intérieur)',        color:'yellow', source:'mech' }
+  ext:  { label:"Boîte d'appât raticide (extérieur)", color:'blue',   source:'rat'  },
+  int:  { label:'Piège mécanique (intérieur)',        color:'yellow', source:'mech' },
+  glue: { label:'Boîte à colle (intérieur)',          color:'pink',   source:'glue' }
 };
 
 // En démo : 3 plans factices. Dans l'app, cette liste vient de
@@ -195,7 +199,8 @@ var PEST_MAP_POINTS_BY_FLOOR = {
     { num:'25', type:'ext', x:90, y:62 }, { num:'29', type:'ext', x:80, y:18 },
     { num:'1',  type:'int', x:19, y:23 }, { num:'2',  type:'int', x:24, y:23 },
     { num:'3',  type:'int', x:29, y:23 }, { num:'5',  type:'int', x:22, y:62 },
-    { num:'12', type:'int', x:45, y:62 }, { num:'14', type:'int', x:55, y:45 }
+    { num:'12', type:'int', x:45, y:62 }, { num:'14', type:'int', x:55, y:45 },
+    { num:'7',  type:'glue', x:35, y:50 }, { num:'9', type:'glue', x:62, y:70 }
   ],
   'etage -1': [
     { num:'1', type:'ext', x:20, y:30 }, { num:'2', type:'ext', x:40, y:58 },
@@ -257,9 +262,12 @@ function pestMapRenderFloors(){
 }
 function pestMapSetFloor(i){ if(i===pestMapFloorIdx) return; pestMapFloorIdx=i; renderPestMap(); }
 
+function dispoBadgeIcon(color){ return color==='yellow'?'🟡':(color==='pink'?'🩷':'🔵'); }
+var DISPO_SRC={ rat:{c:'blue',l:"Boîte d'appât raticide (extérieur)"}, mech:{c:'yellow',l:'Piège mécanique (intérieur)'},
+  glue:{c:'pink',l:'Boîte à colle (intérieur)'}, fk:{c:'blue',l:'Borne à insectes volants'} };
 function openDispo(num,type){
   var t=PEST_MAP_TYPES[type]||{};
-  document.getElementById('dispoBadge').textContent=(t.color==='yellow'?'🟡':'🔵');
+  document.getElementById('dispoBadge').textContent=dispoBadgeIcon(t.color);
   document.getElementById('dispoId').textContent=(t.label||'Dispositif');
   document.getElementById('dispoName').textContent='N° '+num;
   document.getElementById('dispoChips').innerHTML='';
@@ -272,8 +280,12 @@ function openDispo(num,type){
 
 function renderDispo(res,num){
   var body=document.getElementById('dispoBody');
+  var s=DISPO_SRC[res.source];
+  if(s){ document.getElementById('dispoBadge').textContent=dispoBadgeIcon(s.c);
+         document.getElementById('dispoId').textContent=s.l; }
+  var fbChip=res.fallback?'<span class="modal-chip" style="background:rgba(236,72,153,.18);color:#ec4899">↪ via boîtes à colles</span>':'';
   document.getElementById('dispoChips').innerHTML=
-      (res.sheetName?'<span class="modal-chip">📄 '+esc(res.sheetName)+'</span>':'')
+      (res.sheetName?'<span class="modal-chip">📄 '+esc(res.sheetName)+'</span>':'')+fbChip
     +'<span class="modal-chip">'+(res.found?(res.history.length+' contrôle(s)'):'Aucun enregistrement')+'</span>';
   if(!res.found){
     body.innerHTML='<div class="dispo-empty">Aucune ligne ne correspond au numéro <b>'+esc(String(num))+'</b>.</div>';
@@ -310,11 +322,14 @@ function dispoStatutBadge(s){ if(!s)return '—'; var n=String(s).toUpperCase(),
 /* ════════ SERVEUR SIMULÉ (remplace getDispositifData côté GAS) ════════ */
 function mockGetDispositifData(num,source,cb){
   setTimeout(function(){                       // simule la latence réseau
-    var ext = (source==='rat');
-    var sheet = ext?'boîtes à raticide':'pièges mécanique';
-    var label = ext?"Boîte d'appât raticide (extérieur)":'Piège mécanique (intérieur)';
-    // 1 chance sur ~7 : numéro inconnu → found:false (pour montrer le cas vide)
-    if(parseInt(num,10)%7===0){ cb({ok:true,found:false,numero:num,source:source,sheetName:sheet}); return; }
+    var fallback=false, usedSource=source;
+    // Repli simulé : piège mécanique introuvable (n° multiple de 7) → cherché dans boîtes à colles
+    if(source==='mech' && parseInt(num,10)%7===0){ usedSource='glue'; fallback=true; }
+    // Cas réellement introuvable (boîte raticide n° multiple de 13)
+    if(source==='rat' && parseInt(num,10)%13===0){ cb({ok:true,found:false,numero:num,source:'rat',sheetName:'boîtes à raticide'}); return; }
+    var ext=(usedSource==='rat'), glue=(usedSource==='glue');
+    var sheet = ext?'boîtes à raticide':(glue?'boîtes à colles':'pièges mécanique');
+    var label = ext?"Boîte d'appât raticide (extérieur)":(glue?'Boîte à colle (intérieur)':'Piège mécanique (intérieur)');
     var seq = ext ? ['RAS','CON','EBR','SOU','RAS'] : ['RAS','RAS','SOU','NT','RAS'];
     var acts= ext ? ['RAS','Appât consommé → remplacé','Boîte ébréchée signalée','Capture (souris) retirée','RAS']
                   : ['RAS','RAS','Capture retirée, piège réarmé','Piège non trouvé','RAS'];
@@ -328,7 +343,7 @@ function mockGetDispositifData(num,source,cb){
     }
     hist.reverse(); // plus récent en premier
     cb({
-      ok:true, found:true, numero:num, source:source, sheetName:sheet, typeLabel:label,
+      ok:true, found:true, numero:num, source:usedSource, fallback:fallback, sheetName:sheet, typeLabel:label,
       headers:['Date',(ext?'N° Boîte':'N° Piège'),'Statut',(ext?'Appât':'Consommable'),'Action','Contrôleur'],
       details:{ localisation:(ext?'Extérieur · ':'Intérieur · ')+'point '+num, statut:hist[0].statut,
         consommable:ext?'Bloc paraffiné':'—', dateInstallation:'12/02/2026',
