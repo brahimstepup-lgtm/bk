@@ -210,16 +210,18 @@ var pestMapFloors=[], pestMapFloorIdx=-1;
 function floorKey(s){ return String(s||'').toLowerCase()
   .replace(/[àáâ]/g,'a').replace(/[éèê]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ûü]/g,'u')
   .replace(/\s+/g,' ').trim(); }
+function floorLevel(s){ var m=floorKey(s).match(/etage\s*(-?\d+)/); return m?parseInt(m[1],10):null; }
 function pestMapPointsForFloor(zone){
   var k=floorKey(zone), keys=Object.keys(PEST_MAP_POINTS_BY_FLOOR);
   for(var i=0;i<keys.length;i++){ if(floorKey(keys[i])===k) return PEST_MAP_POINTS_BY_FLOOR[keys[i]]; }
   var kk=k.replace(/[^a-z0-9]/g,'');
   for(var j=0;j<keys.length;j++){ if(floorKey(keys[j]).replace(/[^a-z0-9]/g,'')===kk) return PEST_MAP_POINTS_BY_FLOOR[keys[j]]; }
+  var lvl=floorLevel(zone);
+  if(lvl!==null){ for(var n=0;n<keys.length;n++){ if(floorLevel(keys[n])===lvl) return PEST_MAP_POINTS_BY_FLOOR[keys[n]]; } }
   return [];
 }
 function pestMapDefaultFloorIdx(){
-  for(var i=0;i<pestMapFloors.length;i++){ var k=floorKey(pestMapFloors[i].zone);
-    if(k.indexOf('etage 0')>-1||k.indexOf('etage0')>-1) return i; }
+  for(var i=0;i<pestMapFloors.length;i++){ if(floorLevel(pestMapFloors[i].zone)===0) return i; }
   return 0;
 }
 
