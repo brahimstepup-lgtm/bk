@@ -43,18 +43,18 @@ h1{font-size:18px;margin:0 0 4px}
 .pestmap-wrap{position:relative;width:100%;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg3);line-height:0}
 .pestmap-img{width:100%;height:auto;display:block}
 .pestmap-pts{position:absolute;inset:0}
-.pestmap-pt{position:absolute;transform:translate(-50%,-50%);width:15px;height:15px;padding:0;font-size:0;
-  border-radius:4px;cursor:pointer;border:1.5px solid rgba(255,255,255,.85);
+.pestmap-pt{position:absolute;transform:translate(-50%,-50%);min-width:20px;height:20px;padding:0 3px;
+  border-radius:4px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;line-height:1;
+  color:#fff;border:1.5px solid rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;
   box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .12s,box-shadow .12s;z-index:2}
 .pestmap-pt.blue{background:#2f7ed8}
-.pestmap-pt.yellow{background:#f4d11a;border-color:rgba(0,0,0,.55)}
-.pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.5);z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
-.pestmap-pt.highlight{z-index:8;transform:translate(-50%,-50%) scale(1.7);border-color:#10c985;animation:pestPulse 1.1s ease-out 3}
-@keyframes pestPulse{0%{box-shadow:0 0 0 0 rgba(16,201,133,.75),0 1px 4px rgba(0,0,0,.45)}100%{box-shadow:0 0 0 16px rgba(16,201,133,0),0 1px 4px rgba(0,0,0,.45)}}
-.pestmap-toolbar{position:absolute;top:10px;right:10px;z-index:6;line-height:normal}
-.pestmap-select{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;padding:7px 11px;border-radius:8px;
-  border:1px solid var(--border);background:var(--bg2);color:var(--text);cursor:pointer;max-width:240px;box-shadow:0 2px 10px rgba(0,0,0,.35)}
-.pestmap-select:hover,.pestmap-select:focus{outline:none;border-color:var(--p3)}
+.pestmap-pt.yellow{background:#f4d11a;color:#1a1a1a;border-color:rgba(0,0,0,.55)}
+.pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+.pestmap-floors{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);padding:4px;border-radius:9px;border:1px solid var(--border);margin:2px 0 10px}
+.pestmap-floor-btn{padding:6px 13px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text3);
+  border:1px solid transparent;background:transparent;transition:all .15s;font-family:'Inter',sans-serif}
+.pestmap-floor-btn:hover:not(.on){color:var(--text2)}
+.pestmap-floor-btn.on{background:var(--bg2);color:var(--text);border-color:var(--border)}
 
 .modal-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:9999;display:none;
   align-items:center;justify-content:center;padding:20px}
@@ -120,23 +120,20 @@ h1{font-size:18px;margin:0 0 4px}
       <span class="pestmap-leg int"><i></i> Pièges mécaniques (intérieur)</span>
     </div>
   </div>
-  <div class="pestmap-hint">🖱️ Survolez un marqueur ou utilisez le menu en haut à droite pour ouvrir un dispositif.</div>
+  <!-- Sélecteur d'étage (en démo : 3 plans factices) -->
+  <div class="pestmap-floors" id="pestMapFloors"></div>
+  <div class="pestmap-hint">🖱️ Cliquez un repère numéroté pour afficher le détail et l'historique.</div>
   <div class="pestmap-wrap" id="pestMapWrap">
-    <!-- Plan SCHÉMATIQUE de démonstration (remplacé par votre image via PEST_MAP_IMG_URL) -->
+    <!-- Plan SCHÉMATIQUE de démonstration -->
     <img class="pestmap-img" id="pestMapImg" alt="Plan de démonstration">
     <div class="pestmap-pts" id="pestMapPts"></div>
-    <div class="pestmap-toolbar" id="pestMapToolbar">
-      <select class="pestmap-select" id="pestMapSelect" aria-label="Aller à un dispositif" onchange="pestMapSelect(this.value)">
-        <option value="">🔍 Aller à un dispositif…</option>
-      </select>
-    </div>
   </div>
 </div>
 
 <div class="note">
-  👉 Dans votre app, remplacez le plan de démo par votre image (constante <code>PEST_MAP_IMG_URL</code>)
-  et ajustez les coordonnées dans <code>PEST_MAP_POINTS</code> (voir <code>cartographie-rongeurs.md</code>,
-  ou tapez <code>pestMapCalibrate()</code> dans la console puis cliquez sur le plan).
+  👉 Dans votre app, les 3 plans viennent de l'onglet <code>cartographie nuisibles</code> du Sheet
+  (zone + lien Drive). Les repères se définissent par étage dans <code>PEST_MAP_POINTS_BY_FLOOR</code>
+  (voir <code>cartographie-rongeurs.md</code>, ou <code>pestMapCalibrate()</code> dans la console puis clic sur le plan).
 </div>
 
 <!-- Modale détail dispositif (identique à l'app) -->
@@ -175,25 +172,56 @@ var DEMO_PLAN_SVG = encodeURIComponent(
   + '</svg>'
 );
 
-/* ════════ CONFIGURATION (identique à l'app) ════════ */
-var PEST_MAP_IMG_URL = 'data:image/svg+xml,' + DEMO_PLAN_SVG;   // ← votre URL de plan dans l'app
-
+/* ════════ CONFIGURATION (démo) ════════ */
 var PEST_MAP_TYPES = {
   ext: { label:"Boîte d'appât raticide (extérieur)", color:'blue',   source:'rat'  },
   int: { label:'Piège mécanique (intérieur)',        color:'yellow', source:'mech' }
 };
 
-var PEST_MAP_POINTS = [
-  // 🔵 extérieur
-  { num:'1',  type:'ext', x:11,  y:13 }, { num:'2',  type:'ext', x:11, y:34 },
-  { num:'5',  type:'ext', x:11,  y:60 }, { num:'6',  type:'ext', x:11, y:78 },
-  { num:'13', type:'ext', x:50,  y:11 }, { num:'16', type:'ext', x:90, y:30 },
-  { num:'25', type:'ext', x:90,  y:62 }, { num:'29', type:'ext', x:80, y:18 },
-  // 🟡 intérieur
-  { num:'1',  type:'int', x:19,  y:23 }, { num:'2',  type:'int', x:24, y:23 },
-  { num:'3',  type:'int', x:29,  y:23 }, { num:'5',  type:'int', x:22, y:62 },
-  { num:'12', type:'int', x:45,  y:62 }, { num:'14', type:'int', x:55, y:45 }
+// En démo : 3 plans factices. Dans l'app, cette liste vient de
+// D.cartoNuisibles (onglet « cartographie nuisibles » : zone + lien Drive).
+var PEST_MAP_FLOORS_DEMO = [
+  { zone:'etage -1',               url:'data:image/svg+xml,'+DEMO_PLAN_SVG },
+  { zone:'etage0 et voie externe', url:'data:image/svg+xml,'+DEMO_PLAN_SVG },
+  { zone:'etage 1',                url:'data:image/svg+xml,'+DEMO_PLAN_SVG }
 ];
+
+// Repères PAR étage (clé = libellé de zone).
+var PEST_MAP_POINTS_BY_FLOOR = {
+  'etage0 et voie externe': [
+    { num:'1',  type:'ext', x:11, y:13 }, { num:'2',  type:'ext', x:11, y:34 },
+    { num:'5',  type:'ext', x:11, y:60 }, { num:'6',  type:'ext', x:11, y:78 },
+    { num:'13', type:'ext', x:50, y:11 }, { num:'16', type:'ext', x:90, y:30 },
+    { num:'25', type:'ext', x:90, y:62 }, { num:'29', type:'ext', x:80, y:18 },
+    { num:'1',  type:'int', x:19, y:23 }, { num:'2',  type:'int', x:24, y:23 },
+    { num:'3',  type:'int', x:29, y:23 }, { num:'5',  type:'int', x:22, y:62 },
+    { num:'12', type:'int', x:45, y:62 }, { num:'14', type:'int', x:55, y:45 }
+  ],
+  'etage -1': [
+    { num:'1', type:'ext', x:20, y:30 }, { num:'2', type:'ext', x:40, y:58 },
+    { num:'3', type:'int', x:62, y:42 }
+  ],
+  'etage 1': [
+    { num:'1', type:'int', x:30, y:35 }, { num:'2', type:'int', x:56, y:60 }
+  ]
+};
+
+var pestMapFloors=[], pestMapFloorIdx=-1;
+function floorKey(s){ return String(s||'').toLowerCase()
+  .replace(/[àáâ]/g,'a').replace(/[éèê]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ûü]/g,'u')
+  .replace(/\s+/g,' ').trim(); }
+function pestMapPointsForFloor(zone){
+  var k=floorKey(zone), keys=Object.keys(PEST_MAP_POINTS_BY_FLOOR);
+  for(var i=0;i<keys.length;i++){ if(floorKey(keys[i])===k) return PEST_MAP_POINTS_BY_FLOOR[keys[i]]; }
+  var kk=k.replace(/[^a-z0-9]/g,'');
+  for(var j=0;j<keys.length;j++){ if(floorKey(keys[j]).replace(/[^a-z0-9]/g,'')===kk) return PEST_MAP_POINTS_BY_FLOOR[keys[j]]; }
+  return [];
+}
+function pestMapDefaultFloorIdx(){
+  for(var i=0;i<pestMapFloors.length;i++){ var k=floorKey(pestMapFloors[i].zone);
+    if(k.indexOf('etage 0')>-1||k.indexOf('etage0')>-1) return i; }
+  return 0;
+}
 
 /* ════════ RENDU DE LA CARTE (identique à l'app) ════════ */
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -202,46 +230,30 @@ function closeModal(id){ document.getElementById(id).style.display='none'; docum
 
 function renderPestMap(){
   var wrap=document.getElementById('pestMapPts'), img=document.getElementById('pestMapImg');
-  if(img && PEST_MAP_IMG_URL) img.src=PEST_MAP_IMG_URL;
-  wrap.innerHTML=PEST_MAP_POINTS.map(function(p,idx){     // marqueurs SANS numéro
+  pestMapFloors=PEST_MAP_FLOORS_DEMO;   // dans l'app : D.cartoNuisibles
+  if(!pestMapFloors.length) return;
+  if(pestMapFloorIdx<0||pestMapFloorIdx>=pestMapFloors.length) pestMapFloorIdx=pestMapDefaultFloorIdx();
+  pestMapRenderFloors();
+  var floor=pestMapFloors[pestMapFloorIdx]||{};
+  if(img && floor.url && img.getAttribute('src')!==floor.url) img.src=floor.url;
+  var pts=pestMapPointsForFloor(floor.zone);
+  wrap.innerHTML=pts.map(function(p,idx){     // marqueurs NUMÉROTÉS et cliquables
     var t=PEST_MAP_TYPES[p.type]||{color:'blue',label:''};
     return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
       +' style="left:'+p.x+'%;top:'+p.y+'%"'
       +' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
-      +' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')"></button>';
+      +' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')">'
+      +esc(String(p.num))+'</button>';
   }).join('');
-  pestMapFillSelect();
 }
-function pestMapFillSelect(){
-  var sel=document.getElementById('pestMapSelect'); if(!sel) return;
-  var byType={}; PEST_MAP_POINTS.forEach(function(p,idx){ (byType[p.type]=byType[p.type]||[]).push(idx); });
-  var html='<option value="">🔍 Aller à un dispositif…</option>';
-  Object.keys(byType).forEach(function(type){
-    var t=PEST_MAP_TYPES[type]||{label:type};
-    var noun=(t.source==='rat')?'Boîte':(t.source==='glue'?'Boîte colle':'Piège');
-    var total={}; byType[type].forEach(function(idx){ var n=PEST_MAP_POINTS[idx].num; total[n]=(total[n]||0)+1; });
-    var seen={}; html+='<optgroup label="'+esc(t.label||type)+'">';
-    byType[type].forEach(function(idx){
-      var n=PEST_MAP_POINTS[idx].num; seen[n]=(seen[n]||0)+1;
-      var sfx=(total[n]>1)?(' ('+seen[n]+'/'+total[n]+')'):'';
-      html+='<option value="'+idx+'">'+esc(noun+' n° '+n+sfx)+'</option>';
-    });
-    html+='</optgroup>';
-  });
-  sel.innerHTML=html;
+function pestMapRenderFloors(){
+  var el=document.getElementById('pestMapFloors'); if(!el) return;
+  el.innerHTML=pestMapFloors.map(function(f,i){
+    return '<button type="button" class="pestmap-floor-btn'+(i===pestMapFloorIdx?' on':'')+'"'
+      +' onclick="pestMapSetFloor('+i+')">'+esc(f.zone)+'</button>';
+  }).join('');
 }
-function pestMapSelect(idxStr){
-  if(idxStr===''||idxStr==null) return;
-  var idx=parseInt(idxStr,10), p=PEST_MAP_POINTS[idx]; if(!p) return;
-  var btn=document.getElementById('pestpt-'+idx);
-  if(btn){
-    var prev=document.querySelector('.pestmap-pt.highlight'); if(prev) prev.classList.remove('highlight');
-    btn.classList.remove('highlight'); void btn.offsetWidth; btn.classList.add('highlight');
-    try{ btn.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}); }catch(e){}
-  }
-  openDispo(String(p.num), p.type);
-  var sel=document.getElementById('pestMapSelect'); if(sel) sel.value='';
-}
+function pestMapSetFloor(i){ if(i===pestMapFloorIdx) return; pestMapFloorIdx=i; renderPestMap(); }
 
 function openDispo(num,type){
   var t=PEST_MAP_TYPES[type]||{};

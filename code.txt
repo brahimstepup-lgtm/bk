@@ -2080,6 +2080,76 @@ function trapKey(v) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── CARTOGRAPHIE NUISIBLES (onglet « cartographie nuisibles ») ─
+// Lit la liste des plans (étages) à superposer dans la carte :
+//   colonne « zone »  + colonne « lien drive de cartographie ».
+// Chaque lien Drive (…/file/d/ID/view) est converti en URL
+// d'image embarquable (thumbnail).
+// Renvoie : [ { zone, url, fileId, rawUrl }, … ] dans l'ordre du Sheet.
+// ════════════════════════════════════════════════════════════
+function readCartoNuisibles(ss) {
+  var out = [];
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('cartographie') > -1 && n.indexOf('nuisible') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var j = 0; j < sheets.length; j++) {
+        if (normalize(sheets[j].getName()).indexOf('cartographie') > -1) { sh = sheets[j]; break; }
+      }
+    }
+    if (!sh) { Logger.log('[Carto] onglet « cartographie nuisibles » non trouvé'); return out; }
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null, formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e1) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(e2) { formulas = null; }
+    if (!data || data.length < 2) return out;
+
+    // Colonnes : zone + lien
+    var hdr = data[0] || [];
+    var zoneCol = 0, urlCol = 1;
+    for (var c = 0; c < hdr.length; c++) {
+      var h = normalize(String(hdr[c] || ''));
+      if (h.indexOf('zone') > -1) zoneCol = c;
+      if (h.indexOf('lien') > -1 || h.indexOf('drive') > -1 ||
+          h.indexOf('url') > -1  || h.indexOf('carto') > -1) urlCol = c;
+    }
+
+    function cellUrl(r, cc) {
+      if (formulas && formulas[r] && formulas[r][cc]) {
+        var mm = String(formulas[r][cc]).match(/HYPERLINK\("([^"]+)"/i);
+        if (mm) return mm[1];
+      }
+      if (rich && rich[r] && rich[r][cc]) {
+        try { var u = rich[r][cc].getLinkUrl(); if (u) return u; } catch(e3) {}
+      }
+      return String((data[r] && data[r][cc]) || '').trim();
+    }
+
+    for (var r = 1; r < data.length; r++) {
+      var zone = String((data[r][zoneCol] || '')).trim();
+      var raw  = cellUrl(r, urlCol);
+      if (!zone && !raw) continue;
+      var id = '';
+      var m = raw.match(/\/d\/([A-Za-z0-9_-]+)/) || raw.match(/[?&]id=([A-Za-z0-9_-]+)/);
+      if (m) id = m[1];
+      var url = id ? ('https://drive.google.com/thumbnail?id=' + id + '&sz=w2000') : raw;
+      out.push({ zone: zone, url: url, fileId: id, rawUrl: raw });
+    }
+    Logger.log('[Carto] ' + out.length + ' plan(s) : ' +
+               JSON.stringify(out.map(function(x){ return x.zone; })));
+  } catch (e) {
+    Logger.log('readCartoNuisibles error: ' + e.message);
+  }
+  return out;
+}
+
+// ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "Gestion des Permis de Travail" ──────────
 // Renvoie un objet :
 //   { entries:[{...}], headers:[...], sheetName:'...' }
@@ -2569,6 +2639,9 @@ function getData() {
   out.pests = pests;   // { fk, rat, mech, glue } — chacun = { entries, headers, sheetName, meta }
   out.pestsSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
                        '/edit?gid=1333145847#gid=1333145847';
+
+  // ── CARTOGRAPHIE NUISIBLES (3 plans : étage -1 / étage 0 / étage 1) ──
+  out.cartoNuisibles = readCartoNuisibles(ss);   // [{ zone, url, fileId, rawUrl }, …]
 
   // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
   var sensib = readSensibilisation();

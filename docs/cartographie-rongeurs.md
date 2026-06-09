@@ -1,9 +1,9 @@
 # Cartographie interactive des dispositifs — Nuisibles › Rongeurs
 
 Interface ajoutée dans l'onglet **🐀 Nuisibles → section Rongeurs** : un plan
-(image de fond) sur lequel sont superposés des **carrés cliquables** (sans
-numéro affiché) + un **menu déroulant** en haut à droite pour aller à une
-boîte / un piège (centre + met en évidence le marqueur, puis ouvre ses détails).
+(image de fond) sur lequel sont superposés des **carrés numérotés cliquables**
+(boîtes / pièges) + un **sélecteur d'étage** (boutons) pour basculer entre les
+3 cartographies. Un clic sur un repère ouvre ses détails + historique.
 
 | Couleur | Famille (`type`) | Feuille Google Sheets interrogée (`source`) |
 |---------|------------------|---------------------------------------------|
@@ -28,44 +28,53 @@ serveur `getDispositifData(numero, source)` (dans `Code.gs`), puis affiche les
 
 ---
 
-## 2. Étape 1 — mettre votre plan en image de fond
+## 2. Étape 1 — les plans viennent du Sheet (onglet « cartographie nuisibles »)
 
-1. Mettez votre image de plan sur **Google Drive**, clic droit →
-   **Partager → Tous les utilisateurs disposant du lien** (Lecteur).
-2. Récupérez l'**ID** du fichier dans son URL :
-   `https://drive.google.com/file/d/`**`1AbCdEf…ID…`**`/view`
-3. Dans `index.html.txt`, renseignez la constante :
+Les **3 cartographies** (étages) sont lues automatiquement depuis l'onglet
+**`cartographie nuisibles`** du Google Sheet :
 
-   ```js
-   var PEST_MAP_IMG_URL = 'https://drive.google.com/thumbnail?id=1AbCdEf…ID…&sz=w2000';
-   ```
+| zone | lien drive de cartographie |
+|------|----------------------------|
+| etage -1 | `https://drive.google.com/file/d/…ID…/view` |
+| etage0 et voie externe | `https://drive.google.com/file/d/…ID…/view` |
+| etage 1 | `https://drive.google.com/file/d/…ID…/view` |
 
-   > Tant que cette constante est vide, un encart d'aide s'affiche à la place
-   > du plan (le reste de l'app fonctionne normalement).
+- Colonne **`zone`** = libellé de l'étage (sert aussi de **clé** pour les repères).
+- Colonne **`lien drive`** = lien de partage du plan (fichier Drive partagé
+  « Tous les utilisateurs disposant du lien »). Le backend (`readCartoNuisibles`)
+  en extrait l'ID et l'affiche en image.
+- Un **sélecteur de boutons** (un par ligne) apparaît au-dessus de la carte ;
+  l'étage dont le libellé contient « etage 0 » est **affiché par défaut**.
 
-Vous pouvez aussi utiliser n'importe quelle URL d'image publique (`https://…/plan.png`).
+> Pour ajouter / changer un plan : éditez le Sheet puis **redéployez** la Web App.
+> Tant que l'onglet est vide, un encart d'aide s'affiche.
 
 ---
 
 ## 3. Étape 2 — positionner les carrés (le plus important)
 
-Chaque repère est **une ligne** dans le tableau `PEST_MAP_POINTS` :
+Les repères sont définis **par étage** dans `PEST_MAP_POINTS_BY_FLOOR`
+(`index.html.txt`). La **clé** doit correspondre au libellé `zone` du Sheet :
 
 ```js
-var PEST_MAP_POINTS = [
-  { num:'1',  type:'ext', x:9.5,  y:11.0 },   // 🔵 boîte raticide n°1
-  { num:'12', type:'int', x:48.5, y:38.5 },   // 🟡 piège mécanique n°12
-  …
-];
+var PEST_MAP_POINTS_BY_FLOOR = {
+  'etage0 et voie externe': [
+    { num:'1',  type:'ext', x:9.5,  y:11.0 },   // 🔵 boîte raticide n°1
+    { num:'12', type:'int', x:48.5, y:38.5 },   // 🟡 piège mécanique n°12
+    …
+  ],
+  'etage -1': [ /* … */ ],
+  'etage 1':  [ /* … */ ]
+};
 ```
 
-- **`num`** : le numéro du dispositif — listé dans le **menu déroulant** **ET**
-  recherché dans le Sheet (il n'est plus affiché sur le marqueur).
+- **`num`** : le numéro **affiché** sur le marqueur **ET** recherché dans le Sheet
+  (marqueur numéroté **cliquable** → ouvre la fiche détail + historique).
 - **`type`** : `'ext'` (bleu) ou `'int'` (jaune) — clés de `PEST_MAP_TYPES`.
-- **`x` / `y`** : position en **pourcentage** de l'image.
+- **`x` / `y`** : position en **pourcentage** de l'image (rendu **responsive**).
   `x=0` = bord gauche, `x=100` = bord droit · `y=0` = haut, `y=100` = bas.
-  *(Les % garantissent un rendu **responsive** : les carrés suivent l'image
-  quelle que soit la taille de l'écran.)*
+  > ⚠️ Les coordonnées dépendent de l'image : **un plan par étage**.
+  > Si vous changez l'image d'un étage, **recalibrez** ses repères.
 
 ### Méthode rapide : le mode calibrage intégré
 
@@ -83,8 +92,9 @@ var PEST_MAP_POINTS = [
    { num:'?', type:'ext', x:34.2, y:21.8 },
    ```
 
-4. Remplacez `num` et `type`, collez la ligne dans `PEST_MAP_POINTS`.
-   Recliquez `pestMapCalibrate()` pour désactiver le mode.
+4. Remplacez `num` et `type`, collez la ligne dans le tableau de l'étage
+   courant : `PEST_MAP_POINTS_BY_FLOOR['<zone de l'étage>']` (la console
+   rappelle l'étage actif). Recliquez `pestMapCalibrate()` pour désactiver.
 
 ### Méthode manuelle
 
