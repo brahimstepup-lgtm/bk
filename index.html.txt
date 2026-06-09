@@ -10548,98 +10548,130 @@ var PEST_MAP_TYPES = {
   // , glue:{ label:'Boîte à colle (intérieur)', color:'yellow', source:'glue' }
 };
 
-// Repères PAR ÉTAGE. La clé = libellé « zone » de l'onglet
-// « cartographie nuisibles ». Seul « étage 0 » est pré-rempli ;
-// ajoutez les repères des autres étages avec pestMapCalibrate().
-// ⚠️ Si vous changez l'image d'un étage, recalibrez ses repères.
+// Repères PAR ÉTAGE — positions AUTO-DÉTECTÉES depuis les plans Drive
+// (onglet « cartographie nuisibles »). La clé = libellé « zone » du Sheet.
+// Étage 0 : boîtes raticide 1–57 (ext/bleu) + pièges 30–46 (int/jaune).
+// Étage -1 : pièges 1–29. Étage 1 : pièges 47–52.
+// Ajustez si besoin avec pestMapCalibrate() (la console indique l'étage).
 var PEST_MAP_POINTS_BY_FLOOR = {
-  // ══════════ ÉTAGE 0 ET VOIE EXTERNE (affiché par défaut) ══════════
+  // ══════════ ÉTAGE 0 ET VOIE EXTERNE (boîtes 1–57 + pièges 30–46) ══════════
   'etage0 et voie externe': [
-  /* ═══ BOÎTES D'APPÂT RATICIDE · EXTÉRIEUR (BLEU) ═══ */
-  // — Entrée PL / haut-gauche —
-  { num:'1',  type:'ext', x:9.7,  y:10.8 },
-  { num:'2',  type:'ext', x:12.5, y:11.0 },
-  { num:'3',  type:'ext', x:24.5, y:12.0 },
-  { num:'3',  type:'ext', x:26.5, y:12.5 },
-  { num:'18', type:'ext', x:41.0, y:6.0  },
-  // — Mur extérieur gauche (haut → bas) —
-  { num:'2',  type:'ext', x:12.5, y:15.0 },
-  { num:'5',  type:'ext', x:9.6,  y:18.6 },
-  { num:'5',  type:'ext', x:9.6,  y:26.5 },
-  { num:'6',  type:'ext', x:9.6,  y:37.5 },
-  { num:'5',  type:'ext', x:9.6,  y:45.0 },
-  { num:'6',  type:'ext', x:10.0, y:49.5 },
-  { num:'5',  type:'ext', x:9.6,  y:57.5 },
-  { num:'8',  type:'ext', x:10.2, y:65.0 },
-  { num:'8',  type:'ext', x:10.2, y:74.0 },
-  // — Cuves / Marche-charge —
-  { num:'13', type:'ext', x:45.5, y:16.0 },
-  { num:'18', type:'ext', x:45.0, y:23.0 },
-  { num:'17', type:'ext', x:48.0, y:31.0 },
-  // — Corridor haut (production) —
-  { num:'19', type:'ext', x:54.0, y:35.0 },
-  { num:'21', type:'ext', x:57.0, y:35.0 },
-  { num:'21', type:'ext', x:58.5, y:35.0 },
-  { num:'22', type:'ext', x:61.5, y:35.0 },
-  { num:'22', type:'ext', x:63.0, y:35.0 },
-  // — Côté droit (TGBT / quai) —
-  { num:'23', type:'ext', x:76.5, y:38.5 },
-  { num:'16', type:'ext', x:72.5, y:43.5 },
-  { num:'29', type:'ext', x:79.5, y:43.5 },
-  { num:'25', type:'ext', x:84.0, y:49.0 },
-  { num:'26', type:'ext', x:89.0, y:69.0 },
-  { num:'26', type:'ext', x:89.0, y:73.5 },
-  { num:'33', type:'ext', x:89.0, y:80.0 },
-  { num:'33', type:'ext', x:79.0, y:82.0 },
-  // — Panneaux photovoltaïques (haut-droite) —
-  { num:'29', type:'ext', x:62.5, y:9.0  },
-  { num:'29', type:'ext', x:64.5, y:12.0 },
-  { num:'29', type:'ext', x:69.0, y:18.0 },
-  { num:'29', type:'ext', x:73.0, y:25.0 },
-  // — Bureaux / cafétéria (extérieur bas) —
-  { num:'11', type:'ext', x:10.5, y:80.5 },
-  { num:'9',  type:'ext', x:10.2, y:84.0 },
-  { num:'10', type:'ext', x:24.5, y:92.0 },
-  { num:'11', type:'ext', x:28.5, y:92.0 },
-  { num:'12', type:'ext', x:32.0, y:92.0 },
-  { num:'12', type:'ext', x:35.5, y:92.0 },
-  { num:'14', type:'ext', x:44.0, y:92.0 },
-  { num:'15', type:'ext', x:46.5, y:86.5 },
-  { num:'18', type:'ext', x:47.0, y:84.0 },
-  { num:'31', type:'ext', x:47.5, y:80.5 },
-  { num:'31', type:'ext', x:49.5, y:76.0 },
-  { num:'33', type:'ext', x:58.5, y:75.0 },
-
-  /* ═══ PIÈGES MÉCANIQUES · INTÉRIEUR (JAUNE) ═══
-     `num` à recouper avec la feuille « pièges mécanique ». */
-  // — Local technique —
-  { num:'1',  type:'int', x:14.5, y:21.0 },
-  { num:'2',  type:'int', x:16.5, y:21.0 },
-  { num:'3',  type:'int', x:18.0, y:21.0 },
-  { num:'4',  type:'int', x:20.0, y:21.0 },
-  { num:'6',  type:'int', x:25.5, y:26.0 },
-  // — Bas-gauche intérieur —
-  { num:'1',  type:'int', x:13.5, y:33.0 },
-  { num:'3',  type:'int', x:13.5, y:36.0 },
-  { num:'5',  type:'int', x:16.5, y:41.0 },
-  { num:'8',  type:'int', x:18.5, y:41.0 },
-  // — Corridor central intérieur —
-  { num:'15', type:'int', x:29.0, y:38.5 },
-  { num:'13', type:'int', x:32.0, y:38.5 },
-  { num:'13', type:'int', x:45.0, y:38.5 },
-  { num:'12', type:'int', x:46.5, y:38.5 },
-  { num:'14', type:'int', x:49.0, y:38.5 },
-  // — Production bas / cafétéria (intérieur) —
-  { num:'5',  type:'int', x:16.5, y:76.0 },
-  { num:'6',  type:'int', x:19.0, y:76.0 },
-  { num:'7',  type:'int', x:43.0, y:76.0 },
-  { num:'8',  type:'int', x:46.0, y:76.0 },
-  { num:'19', type:'int', x:57.0, y:78.0 }
+  { num:'1', type:'ext', x:15.3, y:6.4 },
+  { num:'2', type:'ext', x:7.3, y:9.8 },
+  { num:'3', type:'ext', x:12.0, y:10.3 },
+  { num:'4', type:'ext', x:9.7, y:14.8 },
+  { num:'5', type:'ext', x:7.3, y:19.1 },
+  { num:'6', type:'ext', x:9.5, y:24.8 },
+  { num:'7', type:'ext', x:9.4, y:32.6 },
+  { num:'8', type:'ext', x:9.4, y:34.7 },
+  { num:'9', type:'ext', x:7.3, y:40.7 },
+  { num:'10', type:'ext', x:9.4, y:47.1 },
+  { num:'11', type:'ext', x:7.3, y:53.7 },
+  { num:'12', type:'ext', x:9.4, y:61.6 },
+  { num:'13', type:'ext', x:7.2, y:70.0 },
+  { num:'14', type:'ext', x:9.3, y:77.8 },
+  { num:'15', type:'ext', x:9.3, y:85.8 },
+  { num:'16', type:'ext', x:19.8, y:88.5 },
+  { num:'17', type:'ext', x:22.2, y:88.5 },
+  { num:'18', type:'ext', x:24.8, y:88.5 },
+  { num:'19', type:'ext', x:28.0, y:88.5 },
+  { num:'20', type:'ext', x:37.0, y:88.5 },
+  { num:'21', type:'ext', x:38.8, y:79.8 },
+  { num:'22', type:'ext', x:44.3, y:81.9 },
+  { num:'23', type:'ext', x:39.5, y:74.8 },
+  { num:'24', type:'ext', x:40.2, y:78.1 },
+  { num:'25', type:'ext', x:41.1, y:74.8 },
+  { num:'26', type:'ext', x:54.1, y:77.2 },
+  { num:'27', type:'ext', x:54.1, y:72.9 },
+  { num:'28', type:'ext', x:70.1, y:74.6 },
+  { num:'29', type:'ext', x:80.4, y:73.0 },
+  { num:'30', type:'ext', x:80.4, y:67.9 },
+  { num:'31', type:'ext', x:77.7, y:56.8 },
+  { num:'32', type:'ext', x:75.0, y:45.7 },
+  { num:'33', type:'ext', x:71.4, y:40.6 },
+  { num:'34', type:'ext', x:67.5, y:35.1 },
+  { num:'35', type:'ext', x:63.0, y:24.5 },
+  { num:'36', type:'ext', x:65.1, y:21.6 },
+  { num:'37', type:'ext', x:56.2, y:32.6 },
+  { num:'38', type:'ext', x:56.3, y:9.1 },
+  { num:'39', type:'ext', x:54.3, y:12.5 },
+  { num:'40', type:'ext', x:51.9, y:32.7 },
+  { num:'41', type:'ext', x:47.4, y:32.7 },
+  { num:'42', type:'ext', x:41.9, y:28.4 },
+  { num:'43', type:'ext', x:39.4, y:28.5 },
+  { num:'44', type:'ext', x:39.5, y:16.1 },
+  { num:'45', type:'ext', x:36.2, y:6.1 },
+  { num:'46', type:'ext', x:32.8, y:32.7 },
+  { num:'47', type:'ext', x:29.4, y:32.6 },
+  { num:'48', type:'ext', x:22.5, y:32.8 },
+  { num:'49', type:'ext', x:22.1, y:29.1 },
+  { num:'50', type:'ext', x:21.4, y:25.2 },
+  { num:'51', type:'ext', x:20.0, y:18.0 },
+  { num:'52', type:'ext', x:17.7, y:16.4 },
+  { num:'53', type:'ext', x:13.8, y:16.4 },
+  { num:'54', type:'ext', x:11.2, y:18.2 },
+  { num:'55', type:'ext', x:15.4, y:14.4 },
+  { num:'56', type:'ext', x:20.5, y:12.0 },
+  { num:'57', type:'ext', x:19.0, y:10.6 },
+  { num:'30', type:'int', x:15.9, y:20.9 },
+  { num:'31', type:'int', x:14.7, y:20.9 },
+  { num:'32', type:'int', x:13.4, y:20.9 },
+  { num:'33', type:'int', x:12.1, y:20.9 },
+  { num:'34', type:'int', x:10.7, y:30.5 },
+  { num:'35', type:'int', x:10.7, y:33.7 },
+  { num:'36', type:'int', x:15.1, y:39.3 },
+  { num:'37', type:'int', x:24.7, y:35.5 },
+  { num:'38', type:'int', x:27.7, y:35.5 },
+  { num:'39', type:'int', x:39.3, y:35.5 },
+  { num:'40', type:'int', x:41.9, y:35.5 },
+  { num:'41', type:'int', x:65.2, y:39.3 },
+  { num:'42', type:'int', x:38.2, y:72.2 },
+  { num:'43', type:'int', x:36.3, y:72.5 },
+  { num:'44', type:'int', x:15.5, y:72.6 },
+  { num:'45', type:'int', x:13.4, y:72.5 },
+  { num:'46', type:'int', x:13.5, y:39.3 },
   ],
-  // ══════════ ÉTAGE -1 (à calibrer) ══════════
-  'etage -1': [],
-  // ══════════ ÉTAGE 1 (à calibrer) ══════════
-  'etage 1': []
+  // ══════════ ÉTAGE -1 (pièges 1–29) ══════════
+  'etage -1': [
+  { num:'1', type:'int', x:70.2, y:42.8 },
+  { num:'2', type:'int', x:67.2, y:38.9 },
+  { num:'3', type:'int', x:65.9, y:37.0 },
+  { num:'4', type:'int', x:64.2, y:34.7 },
+  { num:'5', type:'int', x:55.2, y:36.0 },
+  { num:'6', type:'int', x:52.0, y:36.0 },
+  { num:'7', type:'int', x:49.8, y:36.0 },
+  { num:'8', type:'int', x:47.3, y:36.0 },
+  { num:'9', type:'int', x:41.8, y:36.0 },
+  { num:'10', type:'int', x:37.8, y:36.0 },
+  { num:'11', type:'int', x:33.3, y:35.6 },
+  { num:'12', type:'int', x:14.8, y:39.4 },
+  { num:'13', type:'int', x:12.5, y:39.4 },
+  { num:'14', type:'int', x:10.6, y:71.2 },
+  { num:'15', type:'int', x:27.5, y:67.5 },
+  { num:'16', type:'int', x:30.1, y:65.1 },
+  { num:'17', type:'int', x:35.7, y:70.8 },
+  { num:'18', type:'int', x:37.3, y:70.8 },
+  { num:'19', type:'int', x:38.3, y:61.2 },
+  { num:'20', type:'int', x:43.4, y:61.3 },
+  { num:'21', type:'int', x:48.5, y:61.3 },
+  { num:'22', type:'int', x:54.0, y:60.8 },
+  { num:'23', type:'int', x:59.0, y:61.2 },
+  { num:'24', type:'int', x:77.9, y:72.1 },
+  { num:'25', type:'int', x:77.9, y:68.4 },
+  { num:'26', type:'int', x:60.0, y:58.9 },
+  { num:'27', type:'int', x:73.4, y:58.3 },
+  { num:'28', type:'int', x:73.4, y:54.5 },
+  { num:'29', type:'int', x:73.3, y:49.8 },
+  ],
+  // ══════════ ÉTAGE 1 (pièges 47–52) ══════════
+  'etage 1': [
+  { num:'47', type:'int', x:24.6, y:46.8 },
+  { num:'48', type:'int', x:43.1, y:43.4 },
+  { num:'49', type:'int', x:47.5, y:43.4 },
+  { num:'50', type:'int', x:65.4, y:44.3 },
+  { num:'51', type:'int', x:67.5, y:47.4 },
+  { num:'52', type:'int', x:23.0, y:47.3 },
+  ]
 };
 
 // ── État du sélecteur d'étage ──
@@ -10682,10 +10714,10 @@ function renderPestMap(){
 
   // Aucun plan configuré dans le Sheet → encart d'aide
   if(!pestMapFloors.length){
-    if(img) img.style.display='none';
-    if(ph)  ph.style.display='flex';
     var fb0=document.getElementById('pestMapFloors'); if(fb0) fb0.innerHTML='';
     wrap.innerHTML='';
+    pestMapShowPlaceholder('<div style="font-size:30px">🗺️</div><div><b>Cartographie non configurée.</b><br>'
+      +'Renseignez les plans dans l\'onglet <code>cartographie nuisibles</code> du Google Sheet, puis redéployez.</div>');
     return;
   }
   if(ph) ph.style.display='none';
@@ -10695,18 +10727,29 @@ function renderPestMap(){
 
   pestMapRenderFloors();
 
-  // Image de l'étage courant (repli Drive : thumbnail → lh3 → encart)
+  // Image de l'étage courant — rechargée à CHAQUE changement d'étage,
+  // avec chaîne de replis : lh3 (fiable) → thumbnail → message d'erreur.
   var floor = pestMapFloors[pestMapFloorIdx] || {};
-  var url   = floor.url || '';
+  var fid   = floor.fileId || '';
+  var candidates = fid
+    ? ['https://lh3.googleusercontent.com/d/'+fid+'=w2000',
+       'https://drive.google.com/thumbnail?id='+fid+'&sz=w2000']
+    : (floor.url ? [floor.url] : []);
   if(img){
-    img.onerror = function(){
-      if(floor.fileId && img.src.indexOf('lh3.googleusercontent')<0){
-        img.src='https://lh3.googleusercontent.com/d/'+floor.fileId+'=w2000'; return;
-      }
-      img.style.display='none'; if(ph) ph.style.display='flex';
-    };
-    img.style.display='block';
-    if(img.getAttribute('src')!==url) img.src=url;
+    if(!candidates.length){
+      pestMapShowPlaceholder('<div style="font-size:30px">🗺️</div><div><b>Lien de plan manquant pour cet étage.</b><br>'
+        +'Ajoutez le lien Drive dans l\'onglet <code>cartographie nuisibles</code>.</div>');
+    } else {
+      var ci=0;
+      img.onerror=function(){
+        ci++;
+        if(ci<candidates.length){ img.src=candidates[ci]; return; }
+        pestMapShowPlaceholder('<div style="font-size:30px">🖼️</div><div><b>Image du plan inaccessible.</b><br>'
+          +'Vérifiez le partage Drive du fichier (« Tous les utilisateurs disposant du lien »).</div>');
+      };
+      img.style.display='block';
+      img.src=candidates[0];   // (re)charge à chaque changement d'étage
+    }
   }
 
   // Repères de l'étage courant — NUMÉROTÉS et cliquables
@@ -10733,6 +10776,11 @@ function pestMapSetFloor(i){
   if(i===pestMapFloorIdx) return;
   pestMapFloorIdx=i;
   renderPestMap();
+}
+function pestMapShowPlaceholder(html){
+  var ph=document.getElementById('pestMapPh'), img=document.getElementById('pestMapImg');
+  if(img) img.style.display='none';
+  if(ph){ ph.innerHTML=html; ph.style.display='flex'; }
 }
 
 /* Mode calibrage : tapez pestMapCalibrate() dans la console, puis
