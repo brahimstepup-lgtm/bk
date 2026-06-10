@@ -2120,28 +2120,24 @@ function pestNumsFromRead(r) {
 }
 
 // ════════════════════════════════════════════════════════════
-// ── CARTOGRAPHIE NUISIBLES (onglet « cartographie nuisibles ») ─
-// Lit la liste des plans (étages) à superposer dans la carte :
+// ── CARTOGRAPHIE (onglets « cartographie … ») ────────────────
+// Lit la liste des plans (étages) à superposer dans une carte :
 //   colonne « zone »  + colonne « lien drive de cartographie ».
+// `kw` = mot-clé du nom d'onglet (« nuisible » ou « fly »).
 // Chaque lien Drive (…/file/d/ID/view) est converti en URL
 // d'image embarquable (thumbnail).
 // Renvoie : [ { zone, url, fileId, rawUrl }, … ] dans l'ordre du Sheet.
 // ════════════════════════════════════════════════════════════
-function readCartoNuisibles(ss) {
+function readCartoSheet(ss, kw) {
   var out = [];
   try {
     var sheets = ss.getSheets();
     var sh = null;
     for (var i = 0; i < sheets.length; i++) {
       var n = normalize(sheets[i].getName());
-      if (n.indexOf('cartographie') > -1 && n.indexOf('nuisible') > -1) { sh = sheets[i]; break; }
+      if (n.indexOf('cartographie') > -1 && n.indexOf(kw) > -1) { sh = sheets[i]; break; }
     }
-    if (!sh) {
-      for (var j = 0; j < sheets.length; j++) {
-        if (normalize(sheets[j].getName()).indexOf('cartographie') > -1) { sh = sheets[j]; break; }
-      }
-    }
-    if (!sh) { Logger.log('[Carto] onglet « cartographie nuisibles » non trouvé'); return out; }
+    if (!sh) { Logger.log('[Carto] onglet cartographie/' + kw + ' non trouvé'); return out; }
 
     var range    = sh.getDataRange();
     var data     = range.getValues();
@@ -2184,10 +2180,12 @@ function readCartoNuisibles(ss) {
     Logger.log('[Carto] ' + out.length + ' plan(s) : ' +
                JSON.stringify(out.map(function(x){ return x.zone; })));
   } catch (e) {
-    Logger.log('readCartoNuisibles error: ' + e.message);
+    Logger.log('readCartoSheet error: ' + e.message);
   }
   return out;
 }
+function readCartoNuisibles(ss) { return readCartoSheet(ss, 'nuisible'); }
+function readCartoFlyKiller(ss) { return readCartoSheet(ss, 'fly'); }
 
 // ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "Gestion des Permis de Travail" ──────────
@@ -2682,6 +2680,7 @@ function getData() {
 
   // ── CARTOGRAPHIE NUISIBLES (3 plans : étage -1 / étage 0 / étage 1) ──
   out.cartoNuisibles = readCartoNuisibles(ss);   // [{ zone, url, fileId, rawUrl }, …]
+  out.cartoFlyKiller = readCartoFlyKiller(ss);   // plans fly-killer (insectes volants)
   // Numéros par feuille intérieure → coloration des repères (colle = rose)
   out.pestMechNums = pestNumsFromRead(pests.mech);   // pièges mécanique
   out.pestGlueNums = pestNumsFromRead(pests.glue);   // boîtes à colles

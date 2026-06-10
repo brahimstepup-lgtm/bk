@@ -198,3 +198,29 @@ var PEST_MAP_TYPES = {
   `PEST_MAP_POINTS_BY_FLOOR`.
 - Pour une couleur supplémentaire : ajoutez `.pestmap-pt.xxx` (marqueur) et
   `.pestmap-leg.xxx i` (légende) en CSS, puis `color:'xxx'` dans le type.
+
+---
+
+## 7. Cartographie des fly-killers (Insectes volants)
+
+Une **2ᵉ cartographie**, dans la section **Insectes volants**, fonctionne sur le
+même principe mais avec des **icônes en forme d'appareil** (au lieu de carrés) :
+
+| Icône | Type (`type`) | Signification |
+|-------|---------------|---------------|
+| 🟦 réflecteur + panneau jaune | `fk_glue`    | Fly-killer **avec colle** |
+| 🟧 grille électrique          | `fk_nonglue` | Fly-killer **sans colle** |
+| ◻️ grisé barré                | `fk_removed` | Fly-killer **retiré** |
+
+- **Plans** : onglet **`cartographie fly-killer`** du Sheet (mêmes colonnes
+  `zone` + `lien drive`) → `D.cartoFlyKiller`. Sélecteur d'étage identique
+  (Étage -1 / Étage 0 / Étage 1 + brovind ; seul l'étage 0 a un plan pour l'instant).
+- **Données au clic** : feuille **`FK`** (insectes volants) — `getDispositifData(num,'fk')`.
+- **Repères** : `FLY_MAP_POINTS_BY_FLOOR` (étage 0 pré-rempli : appareils 9→23,
+  auto-détectés sur le plan ; bleu = avec colle, orange = sans colle).
+- **Icônes** : SVG dans `FLY_ICONS` (`glue` / `nonglue` / `removed`).
+  Pour marquer un appareil **retiré**, mettez `type:'fk_removed'`.
+
+Calibrage / ajout des étages -1 et 1 : ajoutez leurs liens Drive dans l'onglet
+`cartographie fly-killer`, puis placez les repères dans `FLY_MAP_POINTS_BY_FLOOR`
+(même méthode que `pestMapCalibrate()`).
