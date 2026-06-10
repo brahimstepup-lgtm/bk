@@ -1042,6 +1042,13 @@ html.light .pestmap-floor-btn.on{background:#edf2f7}
 .flymap-leg{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace}
 .flymap-leg .flyleg{display:inline-block;width:22px;height:18px;line-height:0}
 .flymap-leg .flyleg svg{width:22px;height:18px;display:block}
+/* Bouton repliable de la cartographie fly-killers */
+.fly-toggle-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  margin-top:14px;padding:11px 14px;border-radius:10px;cursor:pointer;background:var(--bg2);
+  border:1px solid var(--border);color:var(--text);font:600 13px/1.2 'Inter',sans-serif;transition:all .15s}
+.fly-toggle-btn:hover{border-color:var(--p3);background:var(--bg3)}
+.fly-toggle-btn.on{border-color:var(--p3)}
+.fly-toggle-chevron{font-size:12px;color:var(--text3);transition:transform .2s}
 .pestmap-ph{display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;
   min-height:220px;padding:30px;text-align:center;color:var(--text3);font-size:11.5px;line-height:1.6;
   border:2px dashed var(--border);border-radius:10px;background:var(--bg2)}
@@ -3329,34 +3336,6 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
     </div>
 
-    <!-- ── CARTOGRAPHIE FLY-KILLERS ── -->
-    <div class="pests-sub" id="flyMapSub">
-      <div class="pests-sub-head">
-        <div class="pests-sub-icon" style="background:rgba(20,184,166,.15);border-color:rgba(20,184,166,.4);color:#14b8a6">🪰</div>
-        <div>
-          <div class="pests-sub-title">Cartographie des fly-killers</div>
-          <div class="pests-sub-sub">Plans insectes volants · cliquez un appareil</div>
-        </div>
-        <div class="pestmap-legend">
-          <span class="flymap-leg"><i class="flyleg" data-fly="glue"></i> Avec colle</span>
-          <span class="flymap-leg"><i class="flyleg" data-fly="nonglue"></i> Sans colle</span>
-          <span class="flymap-leg"><i class="flyleg" data-fly="removed"></i> Retirés</span>
-        </div>
-      </div>
-      <div class="pestmap-floors" id="flyMapFloors"></div>
-      <div class="pestmap-hint">🖱️ Cliquez un appareil pour afficher son détail et son historique (feuille « FK »).</div>
-      <div class="pestmap-wrap" id="flyMapWrap">
-        <img class="pestmap-img" id="flyMapImg" alt="" style="display:none"
-             onerror="this.style.display='none';var p=document.getElementById('flyMapPh');if(p)p.style.display='flex';">
-        <div class="pestmap-pts" id="flyMapPts"></div>
-      </div>
-      <div class="pestmap-ph" id="flyMapPh" style="display:flex">
-        <div style="font-size:30px">🪰</div>
-        <div><b>Cartographie fly-killer non configurée.</b><br>
-          Renseignez les plans dans l'onglet <code>cartographie fly-killer</code> du Sheet.</div>
-      </div>
-    </div>
-
     <!-- KPI globaux (toutes catégories confondues) -->
     <div class="pests-kpi-grid" id="pestsFlyingKpis"></div>
 
@@ -3451,6 +3430,38 @@ html.light .pests-search-input{background:#edf2f7}
 
     <div class="pests-empty" id="pestsFlyingEmpty" style="display:none;margin-top:8px">
       Aucune donnée trouvée dans la feuille <strong>« FK »</strong>.
+    </div>
+
+    <!-- ── CARTOGRAPHIE FLY-KILLERS (repliable, en bas de la section) ── -->
+    <button type="button" class="fly-toggle-btn" id="flyToggleBtn" onclick="toggleFlyMap()">
+      <span>🪰 Cartographie des fly-killers</span>
+      <span class="fly-toggle-chevron" id="flyToggleChevron">▾</span>
+    </button>
+    <div class="pests-sub" id="flyMapSub" style="display:none;margin-top:10px">
+      <div class="pests-sub-head">
+        <div class="pests-sub-icon" style="background:rgba(20,184,166,.15);border-color:rgba(20,184,166,.4);color:#14b8a6">🪰</div>
+        <div>
+          <div class="pests-sub-title">Cartographie des fly-killers</div>
+          <div class="pests-sub-sub">Plans insectes volants · cliquez un appareil</div>
+        </div>
+        <div class="pestmap-legend">
+          <span class="flymap-leg"><i class="flyleg" data-fly="glue"></i> Avec colle</span>
+          <span class="flymap-leg"><i class="flyleg" data-fly="nonglue"></i> Sans colle</span>
+          <span class="flymap-leg"><i class="flyleg" data-fly="removed"></i> Retirés</span>
+        </div>
+      </div>
+      <div class="pestmap-floors" id="flyMapFloors"></div>
+      <div class="pestmap-hint">🖱️ Cliquez un appareil pour afficher son détail et son historique (feuille « FK »).</div>
+      <div class="pestmap-wrap" id="flyMapWrap">
+        <img class="pestmap-img" id="flyMapImg" alt="" style="display:none"
+             onerror="this.style.display='none';var p=document.getElementById('flyMapPh');if(p)p.style.display='flex';">
+        <div class="pestmap-pts" id="flyMapPts"></div>
+      </div>
+      <div class="pestmap-ph" id="flyMapPh" style="display:flex">
+        <div style="font-size:30px">🪰</div>
+        <div><b>Cartographie fly-killer non configurée.</b><br>
+          Renseignez les plans dans l'onglet <code>cartographie fly-killer</code> du Sheet.</div>
+      </div>
     </div>
   </div>
 
@@ -10932,6 +10943,16 @@ function flyShowPlaceholder(html){
   var ph=document.getElementById('flyMapPh'), img=document.getElementById('flyMapImg');
   if(img) img.style.display='none';
   if(ph){ ph.innerHTML=html; ph.style.display='flex'; }
+}
+// Repli/dépli de la cartographie fly-killers (masquée par défaut)
+function toggleFlyMap(){
+  var s=document.getElementById('flyMapSub'), ch=document.getElementById('flyToggleChevron'), b=document.getElementById('flyToggleBtn');
+  if(!s) return;
+  var open=(s.style.display==='none');
+  s.style.display=open?'block':'none';
+  if(ch) ch.style.transform=open?'rotate(180deg)':'';
+  if(b) b.classList.toggle('on',open);
+  if(open) renderFlyMap();   // (re)rendre à l'ouverture
 }
 
 /* Mode calibrage : tapez pestMapCalibrate() dans la console, puis

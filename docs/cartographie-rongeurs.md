@@ -203,8 +203,10 @@ var PEST_MAP_TYPES = {
 
 ## 7. Cartographie des fly-killers (Insectes volants)
 
-Une **2ᵉ cartographie**, dans la section **Insectes volants**, fonctionne sur le
-même principe mais avec des **icônes en forme d'appareil** (au lieu de carrés) :
+Une **2ᵉ cartographie**, **en bas de la section Insectes volants**, **masquée par
+défaut** derrière un bouton **« 🪰 Cartographie des fly-killers »** (clic pour
+l'afficher/replier). Même principe que les boîtes d'appât, mais avec des
+**icônes en forme d'appareil** (au lieu de carrés) :
 
 | Icône | Type (`type`) | Signification |
 |-------|---------------|---------------|
