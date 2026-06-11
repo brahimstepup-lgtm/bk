@@ -3233,6 +3233,17 @@ html.light .pests-search-input{background:#edf2f7}
     </a>
   </div>
 
+  <!-- ─── Bouton : Suivi de l'application des pesticides (ENR HSE 13) ─── -->
+  <div style="margin-bottom:14px">
+    <a class="btn btn-ai"
+       href="https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1032733378#gid=1032733378"
+       target="_blank" rel="noopener noreferrer"
+       style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;font-size:12px;text-decoration:none">
+      <span style="font-size:14px">🧪</span>
+      Suivi de l'application des pesticides (ENR HSE 13)
+    </a>
+  </div>
+
   <!-- ─── SECTION 1 : INSECTES VOLANTS (FK) ─── -->
   <div class="pests-section flying" id="pestsFlyingSection">
     <div class="pests-section-head">
