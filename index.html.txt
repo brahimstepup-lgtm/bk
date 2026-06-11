@@ -6199,7 +6199,7 @@ function clnToEmbedUrl(url){
   // Pas reconnu → renvoyer tel quel (le navigateur peut bloquer si X-Frame-Options)
   return url;
 }
-function openCleaningEmbed(rawUrl, title, kind, icon){
+function openCleaningEmbed(rawUrl, title, kind, icon, embedUrlOverride){
   var modal   = document.getElementById('clnEmbedModal');
   var iframe  = document.getElementById('clnEmbedFrame');
   var loader  = document.getElementById('clnEmbedLoading');
@@ -6209,7 +6209,7 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
   var badgeEl = document.getElementById('clnEmbedBadge');
   if (!modal || !iframe) return;
 
-  var embedUrl = clnToEmbedUrl(rawUrl);
+  var embedUrl = embedUrlOverride || clnToEmbedUrl(rawUrl);
   titleEl.textContent = title || '—';
   kindEl.textContent  = kind  || 'DOCUMENT';
   if (badgeEl && icon) badgeEl.textContent = icon;
@@ -6253,11 +6253,18 @@ function openProcedureEmbed(url, title){
 }
 
 // ── EMBED PESTICIDES — feuille « Suivi de l'application des pesticides (ENR HSE 13) » ──
-// Ouvre la feuille pesticides DANS le dashboard (viewer intégré), sans redirection externe.
+// Ouvre UNIQUEMENT la feuille pesticides DANS le dashboard (viewer intégré),
+// sans redirection externe et sans la barre d'onglets du classeur (single=true).
 function openPesticidesSource(){
-  var url = 'https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1032733378#gid=1032733378';
+  var SHEET = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
+  var GID   = '1032733378';
+  var url      = 'https://docs.google.com/spreadsheets/d/' + SHEET + '/edit?gid=' + GID + '#gid=' + GID;
+  // Affiche une seule feuille : widget=true masque la barre d'outils,
+  // single=true masque la liste des onglets, rm=minimal allège le chrome.
+  var embedUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET +
+                 '/preview?widget=true&headers=false&chrome=false&rm=minimal&single=true&gid=' + GID;
   openCleaningEmbed(url, "Suivi de l'application des pesticides (ENR HSE 13)",
-                    'FEUILLE SOURCE', '🧪');
+                    'FEUILLE SOURCE', '🧪', embedUrl);
 }
 
 function clearClnFilters(){
