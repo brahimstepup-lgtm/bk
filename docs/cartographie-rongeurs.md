@@ -218,8 +218,9 @@ l'afficher/replier). Même principe que les boîtes d'appât, mais avec des
   `zone` + `lien drive`) → `D.cartoFlyKiller`. Sélecteur d'étage identique
   (Étage -1 / Étage 0 / Étage 1 + brovind ; seul l'étage 0 a un plan pour l'instant).
 - **Données au clic** : feuille **`FK`** (insectes volants) — `getDispositifData(num,'fk')`.
-- **Repères** : `FLY_MAP_POINTS_BY_FLOOR` (étage 0 pré-rempli : appareils 9→23,
-  auto-détectés sur le plan ; bleu = avec colle, orange = sans colle).
+- **Repères** : `FLY_MAP_POINTS_BY_FLOOR` — **3 étages cartographiés**,
+  positions **auto-détectées** des plans (bleu = avec colle, orange = sans colle) :
+  Étage -1 (n° 1-8, 23, 24, 28, 29) · Étage 0 (9-17, 19-22, 30-35) · Étage 1 (25-27).
 - **Icônes** : SVG dans `FLY_ICONS` (`glue` / `nonglue` / `removed`).
   Pour marquer un appareil **retiré**, mettez `type:'fk_removed'`.
 

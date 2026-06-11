@@ -10858,27 +10858,49 @@ var FLY_ICONS = {
   removed: '<svg viewBox="0 0 30 24" width="30" height="24"><rect x="3" y="3" width="24" height="18" rx="3" fill="#9aa3ad" stroke="#5f6873"/><rect x="6" y="6.5" width="18" height="11" rx="1" fill="#cfd4da"/><path d="M7 7L23 17M23 7L7 17" stroke="#5f6873" stroke-width="1.6"/></svg>'
 };
 
+// Repères fly-killers PAR étage — positions auto-détectées des plans
+// (onglet « cartographie fly-killer »). Clé = libellé « zone » du Sheet.
 var FLY_MAP_POINTS_BY_FLOOR = {
-  // Étage 0 : fly-killers détectés sur le plan (bleu=avec colle, orange=sans colle)
-  'Etage0': [
-    { num:'9',  type:'fk_glue',    x:75.9, y:65.3 },
-    { num:'10', type:'fk_glue',    x:81.1, y:58.6 },
-    { num:'11', type:'fk_glue',    x:81.1, y:65.9 },
-    { num:'12', type:'fk_glue',    x:88.5, y:59.8 },
-    { num:'13', type:'fk_nonglue', x:25.0, y:49.4 },
-    { num:'14', type:'fk_glue',    x:41.1, y:48.7 },
-    { num:'15', type:'fk_glue',    x:36.7, y:42.1 },
-    { num:'16', type:'fk_glue',    x:17.0, y:25.6 },
-    { num:'17', type:'fk_nonglue', x:56.2, y:65.7 },
-    { num:'18', type:'fk_nonglue', x:95.8, y:90.5 },
-    { num:'19', type:'fk_glue',    x:60.2, y:21.8 },
-    { num:'20', type:'fk_nonglue', x:91.4, y:86.4 },
-    { num:'21', type:'fk_nonglue', x:93.8, y:73.2 },
-    { num:'22', type:'fk_nonglue', x:93.7, y:68.9 },
-    { num:'23', type:'fk_nonglue', x:90.5, y:90.7 }
+  'Etage -1': [
+    { num:'1', type:'fk_nonglue', x:5.6, y:68.9 },
+    { num:'2', type:'fk_glue', x:27.1, y:53.4 },
+    { num:'3', type:'fk_nonglue', x:31.8, y:46.2 },
+    { num:'4', type:'fk_nonglue', x:45.6, y:46.0 },
+    { num:'5', type:'fk_nonglue', x:56.8, y:45.9 },
+    { num:'6', type:'fk_nonglue', x:70.3, y:37.9 },
+    { num:'7', type:'fk_nonglue', x:78.9, y:95.0 },
+    { num:'8', type:'fk_nonglue', x:82.8, y:92.8 },
+    { num:'23', type:'fk_glue', x:25.3, y:52.4 },
+    { num:'24', type:'fk_nonglue', x:62.8, y:34.1 },
+    { num:'28', type:'fk_glue', x:76.4, y:14.7 },
+    { num:'29', type:'fk_glue', x:84.8, y:15.9 },
   ],
-  'Etage -1': [],
-  'Etage 1 + brovind': []
+  'Etage0': [
+    { num:'9', type:'fk_glue', x:75.5, y:66.9 },
+    { num:'10', type:'fk_glue', x:80.7, y:60.1 },
+    { num:'11', type:'fk_glue', x:80.7, y:67.6 },
+    { num:'12', type:'fk_glue', x:72.0, y:40.0 },
+    { num:'13', type:'fk_glue', x:58.0, y:40.0 },
+    { num:'14', type:'fk_glue', x:44.9, y:49.1 },
+    { num:'15', type:'fk_glue', x:19.0, y:48.0 },
+    { num:'16', type:'fk_glue', x:16.9, y:26.6 },
+    { num:'17', type:'fk_nonglue', x:18.0, y:17.0 },
+    { num:'19', type:'fk_glue', x:59.9, y:22.8 },
+    { num:'20', type:'fk_nonglue', x:90.9, y:88.4 },
+    { num:'21', type:'fk_nonglue', x:93.2, y:74.7 },
+    { num:'22', type:'fk_nonglue', x:93.2, y:70.5 },
+    { num:'30', type:'fk_nonglue', x:87.7, y:60.1 },
+    { num:'31', type:'fk_nonglue', x:88.7, y:93.2 },
+    { num:'32', type:'fk_nonglue', x:94.9, y:93.3 },
+    { num:'33', type:'fk_glue', x:35.1, y:39.5 },
+    { num:'34', type:'fk_nonglue', x:24.1, y:49.2 },
+    { num:'35', type:'fk_nonglue', x:55.3, y:69.0 },
+  ],
+  'Etage 1 + brovind': [
+    { num:'25', type:'fk_glue', x:93.6, y:85.9 },
+    { num:'26', type:'fk_glue', x:22.6, y:84.8 },
+    { num:'27', type:'fk_glue', x:91.3, y:26.6 },
+  ]
 };
 
 var flyMapFloors = [], flyMapFloorIdx = -1;
