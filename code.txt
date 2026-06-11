@@ -1929,6 +1929,265 @@ function readPests(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── DÉTAIL D'UN DISPOSITIF (cartographie interactive) ───────
+// Appelée par google.script.run depuis la cartographie de la
+// section « Nuisibles › Rongeurs ».
+//
+//   numero : numéro du piège / de la boîte cliqué (ex: "12")
+//   source : feuille concernée —
+//     'rat'  → boîtes à raticide  (carrés BLEUS · extérieur)
+//     'mech' → pièges mécanique   (carrés JAUNES · intérieur)
+//     'glue' → boîtes à colles
+//     'fk'   → insectes volants
+//
+// Renvoie un objet JSON :
+//   {
+//     ok, found, numero, source, sheetName, typeLabel,
+//     headers:[…],
+//     details:{ localisation, statut, consommable,
+//               dateInstallation, dernierControle, nbControles },
+//     history:[ { date, isoDate, statut, action,
+//                 cells:[{h,v}, …] }, … ]   // du + récent au + ancien
+//   }
+//
+// La recherche réutilise le lecteur générique readPestSheet() :
+//   1) on ouvre la bonne feuille selon `source`,
+//   2) on repère la colonne « emplacement / n° piège »,
+//   3) on garde les lignes dont le numéro correspond,
+//   4) on les trie par date décroissante (= historique des passages),
+//   5) on en déduit les détails synthétiques.
+// ════════════════════════════════════════════════════════════
+function getDispositifData(numero, source) {
+  var out = {
+    ok:false, found:false,
+    numero:String(numero == null ? '' : numero).trim(),
+    source:source || '', sheetName:'', typeLabel:'',
+    headers:[], details:{}, history:[]
+  };
+  try {
+    var KW = {
+      rat:  { kwds:['boites a raticide','boite a raticide','raticide'],
+              label:"Boîte d'appât raticide (extérieur)" },
+      mech: { kwds:['pieges mecanique','piege mecanique','pieges mecaniques','mecanique'],
+              label:'Piège mécanique (intérieur)' },
+      glue: { kwds:['boites a colles','boite a colle','boites a colle','boite a colles','colle'],
+              label:'Boîte à colle (intérieur)' },
+      fk:   { kwds:['fk','flying','insecte volant','insectes volants'],
+              label:'Borne à insectes volants' }
+    };
+    var ss  = SpreadsheetApp.openById(SHEET_ID);
+    var primary = KW[source] ? source : 'rat';
+    // Repli demandé : un piège mécanique non trouvé est cherché dans les boîtes à colles.
+    var candidates = (primary === 'mech') ? ['mech', 'glue'] : [primary];
+    var target = trapKey(out.numero);
+
+    var res = null, meta = null, matches = [], zoneIdx = -1, usedSource = '';
+    var firstRes = null, firstSource = primary;
+
+    for (var ci = 0; ci < candidates.length; ci++) {
+      var sc   = candidates[ci];
+      var conf = KW[sc];
+      var r    = readPestSheet(ss, conf.kwds, conf.label);
+      if (ci === 0) firstRes = r;
+      if (!r.entries || !r.entries.length) continue;
+      var m  = r.meta || {};
+      var zi = (m.primaryZone >= 0) ? m.primaryZone : -1;
+      // a) via la colonne emplacement / n°
+      var mt = r.entries.filter(function(e){
+        if (zi >= 0 && e.raw && e.raw.length > zi && trapKey(e.raw[zi]) === target) return true;
+        if (e.zone && trapKey(e.zone) === target) return true;
+        return false;
+      });
+      // b) repli : toutes les cellules non-date
+      if (!mt.length) {
+        mt = r.entries.filter(function(e){
+          if (!e.raw) return false;
+          for (var c = 0; c < e.raw.length; c++) {
+            if (m.dateCols && m.dateCols.indexOf(c) > -1) continue;
+            if (trapKey(e.raw[c]) === target) return true;
+          }
+          return false;
+        });
+      }
+      if (mt.length) { res = r; meta = m; matches = mt; zoneIdx = zi; usedSource = sc; break; }
+    }
+
+    // Rien trouvé dans aucune feuille candidate → renvoyer les infos de la 1ère cherchée
+    if (!matches.length) {
+      var fr = firstRes || {};
+      out.source    = firstSource;
+      out.typeLabel = (KW[firstSource] || {}).label || '';
+      out.sheetName = fr.sheetName || '';
+      out.headers   = fr.headers   || [];
+      out.ok = true;
+      return out;
+    }
+
+    // Trouvé (éventuellement via le repli « boîtes à colles »)
+    out.source    = usedSource;
+    out.typeLabel = (KW[usedSource] || {}).label || '';
+    out.sheetName = res.sheetName || '';
+    out.headers   = res.headers   || [];
+    out.fallback  = (usedSource !== firstSource);
+    out.found     = true;
+
+    // 3) Colonnes utiles supplémentaires (produit / installation / état)
+    var prodIdx = -1, installIdx = -1, consoIdx = -1;
+    for (var c = 0; c < res.headers.length; c++) {
+      var h = normalize(res.headers[c]);
+      if (!h) continue;
+      if (prodIdx < 0 && (h.indexOf('produit') > -1 || h.indexOf('appat') > -1 ||
+          h.indexOf('consommable') > -1)) prodIdx = c;
+      if (installIdx < 0 && (h.indexOf('install') > -1 || h.indexOf('pose') > -1 ||
+          h.indexOf('mise en place') > -1)) installIdx = c;
+      if (consoIdx < 0 && (h.indexOf('consom') > -1 || h.indexOf('niveau') > -1)) consoIdx = c;
+    }
+
+    // 4) Tri par date décroissante (historique)
+    matches.sort(function(a, b){ return (b.isoDate || '').localeCompare(a.isoDate || ''); });
+
+    var dated = matches.filter(function(e){ return e.isoDate; });
+    var first = dated.length ? dated[dated.length - 1] : null; // plus ancienne
+    var last  = matches[0];                                    // plus récente
+
+    // 5) Historique complet (toutes colonnes capturées par ligne)
+    out.history = matches.map(function(e){
+      var cells = [];
+      for (var c2 = 0; c2 < res.headers.length; c2++) {
+        var hh = String(res.headers[c2] || '').trim();
+        if (!hh) continue;
+        var vv = (e.raw && e.raw.length > c2) ? e.raw[c2] : '';
+        cells.push({ h:hh, v:String(vv == null ? '' : vv).trim() });
+      }
+      return {
+        date:    e.date    || '',
+        isoDate: e.isoDate || '',
+        statut:  e.statut  || (consoIdx >= 0 && e.raw ? safeText(e.raw[consoIdx]) : ''),
+        action:  e.action  || '',
+        cells:   cells
+      };
+    });
+
+    // 6) Détails synthétiques
+    out.details = {
+      localisation:     (zoneIdx >= 0 && last.raw ? safeText(last.raw[zoneIdx]) : (last.zone || '')) || out.numero,
+      statut:           last.statut || '',
+      consommable:      (prodIdx >= 0 && last.raw ? safeText(last.raw[prodIdx]) : ''),
+      dateInstallation: (installIdx >= 0 && first && first.raw ? safeText(first.raw[installIdx]) : (first ? first.date : '')),
+      dernierControle:  last.date || '',
+      nbControles:      matches.length
+    };
+
+    out.ok = true;
+    return out;
+  } catch (e) {
+    out.error = e.message;
+    Logger.log('getDispositifData error: ' + e.message);
+    return out;
+  }
+}
+
+// Clé de comparaison d'un numéro de piège : premier groupe de
+// chiffres trouvé (« Piège n°12 » → "12", « BAR-03 » → "3",
+// « 7 » → "7"). À défaut de chiffre, comparaison normalisée du texte.
+function trapKey(v) {
+  if (v == null) return '';
+  var s = String(v);
+  var m = s.match(/\d+/);
+  if (m) return String(parseInt(m[0], 10));
+  return normalize(s);
+}
+
+// Ensemble des numéros (clé trapKey) présents dans la colonne « N° » d'une
+// feuille pest déjà lue par readPestSheet — sert à colorer les repères côté
+// client (boîte à colle = rose). Repli sur la colonne emplacement si pas de « N° ».
+function pestNumsFromRead(r) {
+  var nums = {};
+  if (r && r.entries) {
+    var hd = r.headers || [], ncol = -1;
+    for (var c = 0; c < hd.length; c++) {
+      var hh = normalize(hd[c]).replace(/[^a-z0-9]/g, '');
+      if (hh === 'n' || hh === 'no' || hh === 'num' || hh.indexOf('numero') > -1) { ncol = c; break; }
+    }
+    r.entries.forEach(function(e){
+      var k = '';
+      if (ncol >= 0 && e.raw && e.raw.length > ncol) k = trapKey(e.raw[ncol]);
+      else if (e.zone) k = trapKey(e.zone);
+      if (k) nums[k] = true;
+    });
+  }
+  return Object.keys(nums);
+}
+
+// ════════════════════════════════════════════════════════════
+// ── CARTOGRAPHIE (onglets « cartographie … ») ────────────────
+// Lit la liste des plans (étages) à superposer dans une carte :
+//   colonne « zone »  + colonne « lien drive de cartographie ».
+// `kw` = mot-clé du nom d'onglet (« nuisible » ou « fly »).
+// Chaque lien Drive (…/file/d/ID/view) est converti en URL
+// d'image embarquable (thumbnail).
+// Renvoie : [ { zone, url, fileId, rawUrl }, … ] dans l'ordre du Sheet.
+// ════════════════════════════════════════════════════════════
+function readCartoSheet(ss, kw) {
+  var out = [];
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('cartographie') > -1 && n.indexOf(kw) > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) { Logger.log('[Carto] onglet cartographie/' + kw + ' non trouvé'); return out; }
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null, formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e1) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(e2) { formulas = null; }
+    if (!data || data.length < 2) return out;
+
+    // Colonnes : zone + lien
+    var hdr = data[0] || [];
+    var zoneCol = 0, urlCol = 1;
+    for (var c = 0; c < hdr.length; c++) {
+      var h = normalize(String(hdr[c] || ''));
+      if (h.indexOf('zone') > -1) zoneCol = c;
+      if (h.indexOf('lien') > -1 || h.indexOf('drive') > -1 ||
+          h.indexOf('url') > -1  || h.indexOf('carto') > -1) urlCol = c;
+    }
+
+    function cellUrl(r, cc) {
+      if (formulas && formulas[r] && formulas[r][cc]) {
+        var mm = String(formulas[r][cc]).match(/HYPERLINK\("([^"]+)"/i);
+        if (mm) return mm[1];
+      }
+      if (rich && rich[r] && rich[r][cc]) {
+        try { var u = rich[r][cc].getLinkUrl(); if (u) return u; } catch(e3) {}
+      }
+      return String((data[r] && data[r][cc]) || '').trim();
+    }
+
+    for (var r = 1; r < data.length; r++) {
+      var zone = String((data[r][zoneCol] || '')).trim();
+      var raw  = cellUrl(r, urlCol);
+      if (!zone && !raw) continue;
+      var id = '';
+      var m = raw.match(/\/d\/([A-Za-z0-9_-]+)/) || raw.match(/[?&]id=([A-Za-z0-9_-]+)/);
+      if (m) id = m[1];
+      var url = id ? ('https://drive.google.com/thumbnail?id=' + id + '&sz=w2000') : raw;
+      out.push({ zone: zone, url: url, fileId: id, rawUrl: raw });
+    }
+    Logger.log('[Carto] ' + out.length + ' plan(s) : ' +
+               JSON.stringify(out.map(function(x){ return x.zone; })));
+  } catch (e) {
+    Logger.log('readCartoSheet error: ' + e.message);
+  }
+  return out;
+}
+function readCartoNuisibles(ss) { return readCartoSheet(ss, 'nuisible'); }
+function readCartoFlyKiller(ss) { return readCartoSheet(ss, 'fly'); }
+
+// ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "Gestion des Permis de Travail" ──────────
 // Renvoie un objet :
 //   { entries:[{...}], headers:[...], sheetName:'...' }
@@ -2418,6 +2677,13 @@ function getData() {
   out.pests = pests;   // { fk, rat, mech, glue } — chacun = { entries, headers, sheetName, meta }
   out.pestsSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
                        '/edit?gid=1333145847#gid=1333145847';
+
+  // ── CARTOGRAPHIE NUISIBLES (3 plans : étage -1 / étage 0 / étage 1) ──
+  out.cartoNuisibles = readCartoNuisibles(ss);   // [{ zone, url, fileId, rawUrl }, …]
+  out.cartoFlyKiller = readCartoFlyKiller(ss);   // plans fly-killer (insectes volants)
+  // Numéros par feuille intérieure → coloration des repères (colle = rose)
+  out.pestMechNums = pestNumsFromRead(pests.mech);   // pièges mécanique
+  out.pestGlueNums = pestNumsFromRead(pests.glue);   // boîtes à colles
 
   // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
   var sensib = readSensibilisation();

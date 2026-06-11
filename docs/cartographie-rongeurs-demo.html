@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aperçu — Cartographie interactive des dispositifs (Rongeurs)</title>
+<!--
+  APERÇU AUTONOME (hors Google Apps Script).
+  Reproduit fidèlement l'interaction intégrée à la Web App :
+  carte + carrés bleus/jaunes cliquables + modale + spinner + rendu détail/historique.
+  Le serveur est ici SIMULÉ (mockGetDispositifData). Dans l'app réelle,
+  c'est google.script.run.getDispositifData(num, source) qui est appelé.
+  Ouvrez simplement ce fichier dans un navigateur.
+-->
+<style>
+:root{
+  --bg:#0b1620;--bg2:#0f1d29;--bg3:#15293a;--bg4:#1d3a52;--bg5:#264a68;
+  --border:#1a4055;--text:#eaf2f8;--text2:#a9c2d4;--text3:#6f8ba0;--p3:#2f9bd8;
+  font-family:'Inter',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);padding:22px;line-height:1.5}
+h1{font-size:18px;margin:0 0 4px}
+.sub{font-size:12px;color:var(--text3);margin-bottom:18px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;max-width:1080px}
+.pests-sub-head{display:flex;align-items:center;gap:9px;margin-bottom:10px;flex-wrap:wrap;
+  padding-bottom:10px;border-bottom:1px solid var(--border)}
+.pests-sub-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;
+  justify-content:center;font-size:15px;background:var(--bg3);border:1px solid var(--border)}
+.pests-sub-title{font-size:13px;font-weight:700}
+.pests-sub-sub{font-size:10px;color:var(--text3);font-family:monospace;margin-top:1px}
+.spin{width:36px;height:36px;border:3px solid var(--bg4);border-top-color:var(--p3);
+  border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── styles repris à l'identique de l'app ── */
+.pestmap-legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.pestmap-leg{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);font-family:monospace}
+.pestmap-leg i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.35)}
+.pestmap-leg.ext i{background:#2f7ed8}
+.pestmap-leg.int i{background:#f4d11a}
+.pestmap-leg.glue i{background:#ec4899}
+.pestmap-hint{font-size:10px;color:var(--text3);font-family:monospace;margin:2px 0 10px}
+.pestmap-wrap{position:relative;width:100%;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg3);line-height:0}
+.pestmap-img{width:100%;height:auto;display:block}
+.pestmap-pts{position:absolute;inset:0}
+.pestmap-pt{position:absolute;transform:translate(-50%,-50%);min-width:20px;height:20px;padding:0 3px;
+  border-radius:4px;cursor:pointer;font-size:10px;font-weight:700;font-family:monospace;line-height:1;
+  color:#fff;border:1.5px solid rgba(255,255,255,.85);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .12s,box-shadow .12s;z-index:2}
+.pestmap-pt.blue{background:#2f7ed8}
+.pestmap-pt.yellow{background:#f4d11a;color:#1a1a1a;border-color:rgba(0,0,0,.55)}
+.pestmap-pt.pink{background:#ec4899}
+.pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+.pestmap-floors{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);padding:4px;border-radius:9px;border:1px solid var(--border);margin:2px 0 10px}
+.pestmap-floor-btn{padding:6px 13px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text3);
+  border:1px solid transparent;background:transparent;transition:all .15s;font-family:'Inter',sans-serif}
+.pestmap-floor-btn:hover:not(.on){color:var(--text2)}
+.pestmap-floor-btn.on{background:var(--bg2);color:var(--text);border-color:var(--border)}
+
+.modal-bg{position:fixed;inset:0;background:rgba(5,15,22,.88);z-index:9999;display:none;
+  align-items:center;justify-content:center;padding:20px}
+.modal-panel{background:var(--bg2);border:1px solid var(--border);border-radius:16px;
+  width:560px;max-width:100%;max-height:88vh;display:flex;flex-direction:column;position:relative}
+.modal-top{display:flex;align-items:flex-start;gap:12px;padding:16px 18px 12px;border-bottom:1px solid var(--border)}
+.modal-badge{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  font-size:20px;background:var(--bg3);border:1px solid var(--border)}
+.modal-hdr-info{flex:1;min-width:0}
+.modal-hdr-id{font-size:10px;font-family:monospace;color:var(--text3);margin-bottom:3px}
+.modal-hdr-name{font-size:15px;font-weight:700;margin-bottom:4px}
+.modal-chips{display:flex;gap:5px;flex-wrap:wrap}
+.modal-chip{font-size:10px;padding:2px 8px;border-radius:4px;font-family:monospace;background:var(--bg4);color:var(--text2)}
+.modal-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:7px;cursor:pointer;
+  background:var(--bg4);border:1px solid var(--border);color:var(--text2)}
+.modal-body{overflow-y:auto;flex:1;padding:16px 18px}
+.modal-section{margin-bottom:16px}
+.modal-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;
+  color:var(--text3);margin-bottom:8px;display:flex;gap:6px;align-items:center}
+
+.dispo-loading{display:flex;flex-direction:column;align-items:center;gap:12px;padding:48px 0;color:var(--text3);font-size:12px}
+.dispo-empty{padding:22px;text-align:center;color:var(--text2);font-size:12px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:9px;line-height:1.6}
+.dispo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px}
+.dispo-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+.dispo-lbl{font-size:9.5px;color:var(--text3);font-family:monospace;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.dispo-val{font-size:12.5px;color:var(--text);font-weight:600;word-break:break-word}
+.dispo-hist-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:9px}
+.dispo-hist{width:100%;border-collapse:collapse;font-size:11px}
+.dispo-hist th{background:var(--bg3);color:var(--text3);text-align:left;padding:7px 10px;font-size:9.5px;
+  text-transform:uppercase;letter-spacing:.4px;font-weight:700}
+.dispo-hist td{padding:7px 10px;border-top:1px solid var(--border);color:var(--text2);vertical-align:top}
+.dispo-hd{font-family:monospace;color:var(--text);white-space:nowrap}
+.dispo-badge{font-size:9.5px;padding:2px 7px;border-radius:10px;font-weight:700;font-family:monospace;
+  display:inline-block;background:var(--bg4);color:var(--text2);border:1px solid var(--border)}
+.dispo-badge.b-r{background:rgba(232,68,90,.16);color:#ff8a9b;border-color:rgba(232,68,90,.4)}
+.dispo-badge.b-ok{background:rgba(16,201,133,.14);color:#10c985;border-color:rgba(16,201,133,.4)}
+.dispo-badge.b-q{background:rgba(245,166,35,.14);color:#f5a623;border-color:rgba(245,166,35,.4)}
+.dispo-badge.b-a{background:rgba(139,92,246,.14);color:#a855f7;border-color:rgba(139,92,246,.4)}
+.dispo-rawtitle{font-size:10px;color:var(--text3);font-family:monospace;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.dispo-raw{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px}
+.dispo-raw-row{display:flex;flex-direction:column;gap:2px;background:var(--bg3);border:1px solid var(--border);border-radius:7px;padding:6px 9px}
+.dispo-raw-row span{font-size:9px;color:var(--text3);font-family:monospace;text-transform:uppercase}
+.dispo-raw-row b{font-size:11.5px;color:var(--text);font-weight:600}
+.note{font-size:11px;color:var(--text3);margin-top:14px;max-width:1080px;line-height:1.6}
+.note code{background:var(--bg3);padding:1px 6px;border-radius:4px;font-family:monospace;color:var(--text2)}
+</style>
+</head>
+<body>
+
+<h1>🗺️ Cartographie interactive des dispositifs — aperçu</h1>
+<div class="sub">Démo autonome · le clic appelle un serveur <b>simulé</b>. Dans la Web App, c'est <code>google.script.run.getDispositifData()</code>.</div>
+
+<div class="card">
+  <div class="pests-sub-head">
+    <div class="pests-sub-icon" style="background:rgba(47,126,216,.15);border-color:rgba(47,126,216,.4);color:#2f7ed8">🗺️</div>
+    <div>
+      <div class="pests-sub-title">Cartographie des dispositifs</div>
+      <div class="pests-sub-sub">Plan du rez-de-chaussée &amp; extérieur · cliquez un repère</div>
+    </div>
+    <div class="pestmap-legend">
+      <span class="pestmap-leg ext"><i></i> Boîtes d'appât raticide (extérieur)</span>
+      <span class="pestmap-leg int"><i></i> Pièges mécaniques (intérieur)</span>
+      <span class="pestmap-leg glue"><i></i> Boîtes à colles (intérieur)</span>
+    </div>
+  </div>
+  <!-- Sélecteur d'étage (en démo : 3 plans factices) -->
+  <div class="pestmap-floors" id="pestMapFloors"></div>
+  <div class="pestmap-hint">🖱️ Cliquez un repère numéroté pour afficher le détail et l'historique.</div>
+  <div class="pestmap-wrap" id="pestMapWrap">
+    <!-- Plan SCHÉMATIQUE de démonstration -->
+    <img class="pestmap-img" id="pestMapImg" alt="Plan de démonstration">
+    <div class="pestmap-pts" id="pestMapPts"></div>
+  </div>
+</div>
+
+<div class="note">
+  👉 Dans votre app, les 3 plans viennent de l'onglet <code>cartographie nuisibles</code> du Sheet
+  (zone + lien Drive). Les repères se définissent par étage dans <code>PEST_MAP_POINTS_BY_FLOOR</code>
+  (voir <code>cartographie-rongeurs.md</code>, ou <code>pestMapCalibrate()</code> dans la console puis clic sur le plan).
+</div>
+
+<!-- Modale détail dispositif (identique à l'app) -->
+<div class="modal-bg" id="dispoModal" onclick="if(event.target===this)closeModal('dispoModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="dispoBadge">📍</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" id="dispoId">—</div>
+        <div class="modal-hdr-name" id="dispoName">—</div>
+        <div class="modal-chips" id="dispoChips"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('dispoModal')">✕</button>
+    </div>
+    <div class="modal-body" id="dispoBody"></div>
+  </div>
+</div>
+
+<script>
+/* ───── Plan schématique de démo (SVG inline en data-URI) ───── */
+var DEMO_PLAN_SVG = encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620">'
+  + '<rect width="1100" height="620" fill="#e9eef2"/>'
+  + '<text x="24" y="34" font-family="sans-serif" font-size="18" font-style="italic" fill="#33414d">Plan du Rez-de-Chaussée (±0.00) — démo</text>'
+  + '<rect x="150" y="60" width="820" height="430" fill="#f7fafc" stroke="#9fb0bd" stroke-width="2"/>'
+  + '<rect x="170" y="80" width="190" height="150" fill="#eef3f7" stroke="#b6c4cf"/>'
+  + '<text x="180" y="160" font-family="sans-serif" font-size="13" fill="#6b7b88">Local technique</text>'
+  + '<text x="520" y="300" font-family="sans-serif" font-size="15" fill="#7a8a96">Espace de Production</text>'
+  + '<rect x="170" y="320" width="430" height="150" fill="#eef3f7" stroke="#b6c4cf"/>'
+  + '<text x="185" y="345" font-family="sans-serif" font-size="12" fill="#6b7b88">Bureaux / Cafétéria</text>'
+  + '<rect x="820" y="90" width="150" height="90" fill="#cfd9e0" stroke="#9fb0bd"/>'
+  + '<text x="828" y="140" font-family="sans-serif" font-size="11" fill="#5b6b77">Panneaux PV</text>'
+  + '<text x="1010" y="80" font-family="sans-serif" font-size="14" fill="#33414d">Nord</text>'
+  + '<line x1="1020" y1="92" x2="1020" y2="140" stroke="#33414d" stroke-width="2"/>'
+  + '<text x="60" y="300" font-family="sans-serif" font-size="12" fill="#8b9aa6" transform="rotate(-90 60 300)">Voie extérieure</text>'
+  + '</svg>'
+);
+
+/* ════════ CONFIGURATION (démo) ════════ */
+var PEST_MAP_TYPES = {
+  ext:  { label:"Boîte d'appât raticide (extérieur)", color:'blue',   source:'rat'  },
+  int:  { label:'Piège mécanique (intérieur)',        color:'yellow', source:'mech' },
+  glue: { label:'Boîte à colle (intérieur)',          color:'pink',   source:'glue' }
+};
+
+// En démo : 3 plans factices. Dans l'app, cette liste vient de
+// D.cartoNuisibles (onglet « cartographie nuisibles » : zone + lien Drive).
+var PEST_MAP_FLOORS_DEMO = [
+  { zone:'etage -1',               url:'data:image/svg+xml,'+DEMO_PLAN_SVG },
+  { zone:'etage0 et voie externe', url:'data:image/svg+xml,'+DEMO_PLAN_SVG },
+  { zone:'etage 1',                url:'data:image/svg+xml,'+DEMO_PLAN_SVG }
+];
+
+// Repères PAR étage (clé = libellé de zone).
+var PEST_MAP_POINTS_BY_FLOOR = {
+  'etage0 et voie externe': [
+    { num:'1',  type:'ext', x:11, y:13 }, { num:'2',  type:'ext', x:11, y:34 },
+    { num:'5',  type:'ext', x:11, y:60 }, { num:'6',  type:'ext', x:11, y:78 },
+    { num:'13', type:'ext', x:50, y:11 }, { num:'16', type:'ext', x:90, y:30 },
+    { num:'25', type:'ext', x:90, y:62 }, { num:'29', type:'ext', x:80, y:18 },
+    { num:'1',  type:'int', x:19, y:23 }, { num:'2',  type:'int', x:24, y:23 },
+    { num:'3',  type:'int', x:29, y:23 }, { num:'5',  type:'int', x:22, y:62 },
+    { num:'12', type:'int', x:45, y:62 }, { num:'14', type:'int', x:55, y:45 },
+    { num:'7',  type:'glue', x:35, y:50 }, { num:'9', type:'glue', x:62, y:70 }
+  ],
+  'etage -1': [
+    { num:'1', type:'ext', x:20, y:30 }, { num:'2', type:'ext', x:40, y:58 },
+    { num:'3', type:'int', x:62, y:42 }
+  ],
+  'etage 1': [
+    { num:'1', type:'int', x:30, y:35 }, { num:'2', type:'int', x:56, y:60 }
+  ]
+};
+
+var pestMapFloors=[], pestMapFloorIdx=-1;
+function floorKey(s){ return String(s||'').toLowerCase()
+  .replace(/[àáâ]/g,'a').replace(/[éèê]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ûü]/g,'u')
+  .replace(/\s+/g,' ').trim(); }
+function floorLevel(s){ var m=floorKey(s).match(/etage\s*(-?\d+)/); return m?parseInt(m[1],10):null; }
+function pestMapPointsForFloor(zone){
+  var k=floorKey(zone), keys=Object.keys(PEST_MAP_POINTS_BY_FLOOR);
+  for(var i=0;i<keys.length;i++){ if(floorKey(keys[i])===k) return PEST_MAP_POINTS_BY_FLOOR[keys[i]]; }
+  var kk=k.replace(/[^a-z0-9]/g,'');
+  for(var j=0;j<keys.length;j++){ if(floorKey(keys[j]).replace(/[^a-z0-9]/g,'')===kk) return PEST_MAP_POINTS_BY_FLOOR[keys[j]]; }
+  var lvl=floorLevel(zone);
+  if(lvl!==null){ for(var n=0;n<keys.length;n++){ if(floorLevel(keys[n])===lvl) return PEST_MAP_POINTS_BY_FLOOR[keys[n]]; } }
+  return [];
+}
+function pestMapDefaultFloorIdx(){
+  for(var i=0;i<pestMapFloors.length;i++){ if(floorLevel(pestMapFloors[i].zone)===0) return i; }
+  return 0;
+}
+
+/* ════════ RENDU DE LA CARTE (identique à l'app) ════════ */
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
+
+// Démo : n° par feuille (dans l'app → D.pestGlueNums / D.pestMechNums).
+var DEMO_MECH_NUMS={'1':1,'2':1,'3':1,'12':1};
+var DEMO_GLUE_NUMS={'5':1,'14':1};
+function renderPestMap(){
+  var wrap=document.getElementById('pestMapPts'), img=document.getElementById('pestMapImg');
+  pestMapFloors=PEST_MAP_FLOORS_DEMO;   // dans l'app : D.cartoNuisibles
+  if(!pestMapFloors.length) return;
+  if(pestMapFloorIdx<0||pestMapFloorIdx>=pestMapFloors.length) pestMapFloorIdx=pestMapDefaultFloorIdx();
+  pestMapRenderFloors();
+  var floor=pestMapFloors[pestMapFloorIdx]||{};
+  if(img && floor.url && img.getAttribute('src')!==floor.url) img.src=floor.url;
+  // Reclassement par données : intérieur en colles (pas en mécanique) → rose
+  var glueSet=DEMO_GLUE_NUMS, mechSet=DEMO_MECH_NUMS;
+  var pts=pestMapPointsForFloor(floor.zone);
+  wrap.innerHTML=pts.map(function(p,idx){     // marqueurs NUMÉROTÉS et cliquables
+    var et=p.type;
+    if(et==='int' && glueSet[String(p.num)] && !mechSet[String(p.num)]) et='glue';
+    var t=PEST_MAP_TYPES[et]||{color:'blue',label:''};
+    return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
+      +' style="left:'+p.x+'%;top:'+p.y+'%"'
+      +' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
+      +' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(et)+'\')">'
+      +esc(String(p.num))+'</button>';
+  }).join('');
+}
+function pestMapRenderFloors(){
+  var el=document.getElementById('pestMapFloors'); if(!el) return;
+  el.innerHTML=pestMapFloors.map(function(f,i){
+    return '<button type="button" class="pestmap-floor-btn'+(i===pestMapFloorIdx?' on':'')+'"'
+      +' onclick="pestMapSetFloor('+i+')">'+esc(f.zone)+'</button>';
+  }).join('');
+}
+function pestMapSetFloor(i){ if(i===pestMapFloorIdx) return; pestMapFloorIdx=i; renderPestMap(); }
+
+function dispoBadgeIcon(color){ return color==='yellow'?'🟡':(color==='pink'?'🩷':'🔵'); }
+var DISPO_SRC={ rat:{c:'blue',l:"Boîte d'appât raticide (extérieur)"}, mech:{c:'yellow',l:'Piège mécanique (intérieur)'},
+  glue:{c:'pink',l:'Boîte à colle (intérieur)'}, fk:{c:'blue',l:'Borne à insectes volants'} };
+function openDispo(num,type){
+  var t=PEST_MAP_TYPES[type]||{};
+  document.getElementById('dispoBadge').textContent=dispoBadgeIcon(t.color);
+  document.getElementById('dispoId').textContent=(t.label||'Dispositif');
+  document.getElementById('dispoName').textContent='N° '+num;
+  document.getElementById('dispoChips').innerHTML='';
+  var body=document.getElementById('dispoBody');
+  body.innerHTML='<div class="dispo-loading"><div class="spin"></div><div>Chargement des données…</div></div>';
+  openModal('dispoModal');
+  // —— Dans l'app : google.script.run.withSuccessHandler(...).getDispositifData(String(num), t.source) ——
+  mockGetDispositifData(String(num), (t.source||'rat'), function(res){ renderDispo(res,num); });
+}
+
+function renderDispo(res,num){
+  var body=document.getElementById('dispoBody');
+  var s=DISPO_SRC[res.source];
+  if(s){ document.getElementById('dispoBadge').textContent=dispoBadgeIcon(s.c);
+         document.getElementById('dispoId').textContent=s.l; }
+  var fbChip=res.fallback?'<span class="modal-chip" style="background:rgba(236,72,153,.18);color:#ec4899">↪ via boîtes à colles</span>':'';
+  document.getElementById('dispoChips').innerHTML=
+      (res.sheetName?'<span class="modal-chip">📄 '+esc(res.sheetName)+'</span>':'')+fbChip
+    +'<span class="modal-chip">'+(res.found?(res.history.length+' contrôle(s)'):'Aucun enregistrement')+'</span>';
+  if(!res.found){
+    body.innerHTML='<div class="dispo-empty">Aucune ligne ne correspond au numéro <b>'+esc(String(num))+'</b>.</div>';
+    return;
+  }
+  var d=res.details||{}, html='';
+  html+='<div class="modal-section"><div class="modal-sec-title"><span>📌</span>Détails du dispositif</div><div class="dispo-grid">'
+    +dispoItem('Localisation',d.localisation)+dispoItem('Statut actuel',d.statut)
+    +dispoItem('Consommable / appât',d.consommable)+dispoItem("Date d'installation",d.dateInstallation)
+    +dispoItem('Dernier contrôle',d.dernierControle)+dispoItem('Nombre de contrôles',d.nbControles)
+    +'</div></div>';
+  html+='<div class="modal-section"><div class="modal-sec-title"><span>🕑</span>Historique des passages</div>';
+  html+='<div class="dispo-hist-wrap"><table class="dispo-hist"><thead><tr><th>Date</th><th>État / Statut</th><th>Action / Observation</th></tr></thead><tbody>';
+  res.history.forEach(function(h){
+    html+='<tr><td class="dispo-hd">'+esc(h.date||'—')+'</td><td>'+dispoStatutBadge(h.statut)+'</td><td>'+esc(h.action||'—')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  var filled=(res.history[0].cells||[]).filter(function(c){return c.v!=='';});
+  if(filled.length){
+    html+='<div class="dispo-rawtitle">Détail complet du dernier contrôle ('+esc(res.history[0].date||'')+')</div><div class="dispo-raw">';
+    filled.forEach(function(c){ html+='<div class="dispo-raw-row"><span>'+esc(c.h)+'</span><b>'+esc(c.v)+'</b></div>'; });
+    html+='</div>';
+  }
+  html+='</div>';
+  body.innerHTML=html;
+}
+function dispoItem(lbl,val){ var v=(val===0||val)?String(val):''; if(v==='')v='—';
+  return '<div class="dispo-item"><div class="dispo-lbl">'+esc(lbl)+'</div><div class="dispo-val">'+esc(v)+'</div></div>'; }
+function dispoStatutBadge(s){ if(!s)return '—'; var n=String(s).toUpperCase(),cls='n';
+  if(n.indexOf('SOU')>-1)cls='r'; else if(n.indexOf('RAS')>-1)cls='ok';
+  else if(/NT|CAS|RT|INAC/.test(n))cls='q'; else if(/EBR|CON/.test(n))cls='a';
+  return '<span class="dispo-badge b-'+cls+'">'+esc(s)+'</span>'; }
+
+/* ════════ SERVEUR SIMULÉ (remplace getDispositifData côté GAS) ════════ */
+function mockGetDispositifData(num,source,cb){
+  setTimeout(function(){                       // simule la latence réseau
+    var fallback=false, usedSource=source;
+    // Repli simulé : piège mécanique introuvable (n° multiple de 7) → cherché dans boîtes à colles
+    if(source==='mech' && parseInt(num,10)%7===0){ usedSource='glue'; fallback=true; }
+    // Cas réellement introuvable (boîte raticide n° multiple de 13)
+    if(source==='rat' && parseInt(num,10)%13===0){ cb({ok:true,found:false,numero:num,source:'rat',sheetName:'boîtes à raticide'}); return; }
+    var ext=(usedSource==='rat'), glue=(usedSource==='glue');
+    var sheet = ext?'boîtes à raticide':(glue?'boîtes à colles':'pièges mécanique');
+    var label = ext?"Boîte d'appât raticide (extérieur)":(glue?'Boîte à colle (intérieur)':'Piège mécanique (intérieur)');
+    var seq = ext ? ['RAS','CON','EBR','SOU','RAS'] : ['RAS','RAS','SOU','NT','RAS'];
+    var acts= ext ? ['RAS','Appât consommé → remplacé','Boîte ébréchée signalée','Capture (souris) retirée','RAS']
+                  : ['RAS','RAS','Capture retirée, piège réarmé','Piège non trouvé','RAS'];
+    var hist=[];
+    for(var i=0;i<5;i++){
+      var dd=new Date(2026,1+i,12); var ds=('0'+dd.getDate()).slice(-2)+'/'+('0'+(dd.getMonth()+1)).slice(-2)+'/'+dd.getFullYear();
+      hist.push({ date:ds, isoDate:dd.toISOString().slice(0,10), statut:seq[i], action:acts[i],
+        cells:[ {h:'Date',v:ds}, {h:(ext?'N° Boîte':'N° Piège'),v:num},
+                {h:'Statut',v:seq[i]}, {h:(ext?'Appât':'Consommable'),v:ext?'Bloc paraffiné':'—'},
+                {h:'Action',v:acts[i]}, {h:'Contrôleur',v:'Tech. dératisation'} ] });
+    }
+    hist.reverse(); // plus récent en premier
+    cb({
+      ok:true, found:true, numero:num, source:usedSource, fallback:fallback, sheetName:sheet, typeLabel:label,
+      headers:['Date',(ext?'N° Boîte':'N° Piège'),'Statut',(ext?'Appât':'Consommable'),'Action','Contrôleur'],
+      details:{ localisation:(ext?'Extérieur · ':'Intérieur · ')+'point '+num, statut:hist[0].statut,
+        consommable:ext?'Bloc paraffiné':'—', dateInstallation:'12/02/2026',
+        dernierControle:hist[0].date, nbControles:hist.length },
+      history:hist
+    });
+  }, 650);
+}
+
+renderPestMap();
+</script>
+</body>
+</html>

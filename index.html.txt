@@ -997,6 +997,106 @@ html.light .pests-mini-tab.on{background:#edf2f7}
 .pests-mini-pane{display:none}
 .pests-mini-pane.on{display:block}
 
+/* ════ Cartographie interactive des dispositifs ════════════ */
+.pestmap-legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-left:auto}
+.pestmap-leg{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);
+  font-family:'JetBrains Mono',monospace}
+.pestmap-leg i{width:12px;height:12px;border-radius:3px;display:inline-block;border:1px solid rgba(0,0,0,.35)}
+.pestmap-leg.ext i{background:#2f7ed8}
+.pestmap-leg.int i{background:#f4d11a}
+.pestmap-leg.glue i{background:#ec4899}
+.pestmap-hint{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin:2px 0 10px}
+.pestmap-wrap{position:relative;width:100%;border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;background:var(--bg3);line-height:0}
+.pestmap-img{width:100%;height:auto;display:block;-webkit-user-drag:none;user-select:none}
+.pestmap-pts{position:absolute;inset:0}
+/* Repère cliquable — positionné en % (left/top) pour rester responsive.
+   Numéro de la boîte / du piège affiché dans le carré. */
+.pestmap-pt{position:absolute;transform:translate(-50%,-50%);
+  min-width:20px;height:20px;padding:0 3px;border-radius:4px;cursor:pointer;
+  font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;
+  color:#fff;border:1.5px solid rgba(255,255,255,.85);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 1px 4px rgba(0,0,0,.45);transition:transform .12s,box-shadow .12s;z-index:2}
+.pestmap-pt.blue{background:#2f7ed8}
+.pestmap-pt.yellow{background:#f4d11a;color:#1a1a1a;border-color:rgba(0,0,0,.55)}
+.pestmap-pt.pink{background:#ec4899}
+.pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);
+  z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+/* Sélecteur d'étage (boutons) */
+.pestmap-floors{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);padding:4px;
+  border-radius:9px;border:1px solid var(--border);margin:2px 0 10px}
+.pestmap-floor-btn{padding:6px 13px;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;
+  color:var(--text3);border:1px solid transparent;background:transparent;transition:all .15s;
+  font-family:'Inter',sans-serif}
+.pestmap-floor-btn:hover:not(.on){color:var(--text2)}
+.pestmap-floor-btn.on{background:var(--bg2);color:var(--text);border-color:var(--border)}
+html.light .pestmap-floor-btn.on{background:#edf2f7}
+/* ── Cartographie fly-killers (icônes en forme d'appareil) ── */
+.flymap-pt{position:absolute;transform:translate(-50%,-50%);cursor:pointer;border:none;background:none;
+  padding:0;line-height:0;filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));transition:transform .12s;z-index:2}
+.flymap-pt svg{display:block;width:30px;height:24px;pointer-events:none}
+.flymap-pt .flymap-num{position:absolute;top:-8px;right:-8px;background:#0b1620;color:#fff;
+  font:700 9px/1 'JetBrains Mono',monospace;border:1px solid rgba(255,255,255,.55);border-radius:8px;padding:2px 4px}
+.flymap-pt:hover,.flymap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);z-index:6}
+.flymap-leg{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.flymap-leg .flyleg{display:inline-block;width:22px;height:18px;line-height:0}
+.flymap-leg .flyleg svg{width:22px;height:18px;display:block}
+/* Bouton repliable de la cartographie fly-killers */
+.fly-toggle-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;
+  margin-top:14px;padding:11px 14px;border-radius:10px;cursor:pointer;background:var(--bg2);
+  border:1px solid var(--border);color:var(--text);font:600 13px/1.2 'Inter',sans-serif;transition:all .15s}
+.fly-toggle-btn:hover{border-color:var(--p3);background:var(--bg3)}
+.fly-toggle-btn.on{border-color:var(--p3)}
+.fly-toggle-chevron{font-size:12px;color:var(--text3);transition:transform .2s}
+/* Cercle « zone de présence des insectes » (couleur = type dominant) */
+.flymap-zone{position:absolute;transform:translate(-50%,-50%);aspect-ratio:1;border-radius:50%;
+  border:2px solid #94a3b8;pointer-events:none;z-index:1}
+.flymap-ins-legend{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:0 0 10px}
+.flymap-ins-lbl{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.flymap-ins-leg{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);font-family:'JetBrains Mono',monospace}
+.flymap-ins-leg i{width:13px;height:13px;border-radius:50%;border:2px solid;display:inline-block}
+.pestmap-ph{display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+  min-height:220px;padding:30px;text-align:center;color:var(--text3);font-size:11.5px;line-height:1.6;
+  border:2px dashed var(--border);border-radius:10px;background:var(--bg2)}
+.pestmap-ph b{color:var(--text2)}
+.pestmap-ph code{background:var(--bg4);padding:1px 6px;border-radius:4px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text)}
+
+/* ── Modale détail dispositif ──────────────────────────── */
+.dispo-loading{display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding:48px 0;color:var(--text3);font-size:12px}
+.dispo-err,.dispo-empty{padding:22px;text-align:center;color:var(--text2);font-size:12px;
+  background:var(--bg3);border:1px solid var(--border);border-radius:9px;line-height:1.6}
+.dispo-err{color:#ff8a9b}
+.dispo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px}
+.dispo-item{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 11px}
+.dispo-lbl{font-size:9.5px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.dispo-val{font-size:12.5px;color:var(--text);font-weight:600;word-break:break-word}
+.dispo-hist-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:9px}
+.dispo-hist{width:100%;border-collapse:collapse;font-size:11px}
+.dispo-hist th{background:var(--bg3);color:var(--text3);text-align:left;padding:7px 10px;
+  font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;position:sticky;top:0}
+.dispo-hist td{padding:7px 10px;border-top:1px solid var(--border);color:var(--text2);vertical-align:top}
+.dispo-hist tr:hover td{background:var(--bg3)}
+.dispo-hd{font-family:'JetBrains Mono',monospace;color:var(--text);white-space:nowrap}
+.dispo-badge{font-size:9.5px;padding:2px 7px;border-radius:10px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;display:inline-block;
+  background:var(--bg4);color:var(--text2);border:1px solid var(--border)}
+.dispo-badge.b-r {background:rgba(232,68,90,.16);color:#ff8a9b;border-color:rgba(232,68,90,.4)}
+.dispo-badge.b-ok{background:rgba(16,201,133,.14);color:#10c985;border-color:rgba(16,201,133,.4)}
+.dispo-badge.b-q {background:rgba(245,166,35,.14);color:#f5a623;border-color:rgba(245,166,35,.4)}
+.dispo-badge.b-a {background:rgba(139,92,246,.14);color:#a855f7;border-color:rgba(139,92,246,.4)}
+.dispo-rawtitle{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  margin:14px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.dispo-raw{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px}
+.dispo-raw-row{display:flex;flex-direction:column;gap:2px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:7px;padding:6px 9px}
+.dispo-raw-row span{font-size:9px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  text-transform:uppercase;letter-spacing:.3px}
+.dispo-raw-row b{font-size:11.5px;color:var(--text);font-weight:600;word-break:break-word}
+
 /* Suivi par type d'insecte volant : header + tabs colorés */
 .pests-types-header{display:flex;align-items:center;gap:9px;margin:6px 0 9px;padding:10px 12px;
   background:linear-gradient(135deg,rgba(20,184,166,.10),rgba(20,184,166,.04));
@@ -3338,6 +3438,39 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="pests-empty" id="pestsFlyingEmpty" style="display:none;margin-top:8px">
       Aucune donnée trouvée dans la feuille <strong>« FK »</strong>.
     </div>
+
+    <!-- ── CARTOGRAPHIE FLY-KILLERS (repliable, en bas de la section) ── -->
+    <button type="button" class="fly-toggle-btn" id="flyToggleBtn" onclick="toggleFlyMap()">
+      <span>🪰 Cartographie des fly-killers</span>
+      <span class="fly-toggle-chevron" id="flyToggleChevron">▾</span>
+    </button>
+    <div class="pests-sub" id="flyMapSub" style="display:none;margin-top:10px">
+      <div class="pests-sub-head">
+        <div class="pests-sub-icon" style="background:rgba(20,184,166,.15);border-color:rgba(20,184,166,.4);color:#14b8a6">🪰</div>
+        <div>
+          <div class="pests-sub-title">Cartographie des fly-killers</div>
+          <div class="pests-sub-sub">Plans insectes volants · cliquez un appareil</div>
+        </div>
+        <div class="pestmap-legend">
+          <span class="flymap-leg"><i class="flyleg" data-fly="glue"></i> Avec colle</span>
+          <span class="flymap-leg"><i class="flyleg" data-fly="nonglue"></i> Sans colle</span>
+          <span class="flymap-leg"><i class="flyleg" data-fly="removed"></i> Retirés</span>
+        </div>
+      </div>
+      <div class="pestmap-floors" id="flyMapFloors"></div>
+      <div class="pestmap-hint">🖱️ Cliquez un appareil pour afficher son détail et son historique (feuille « FK »).</div>
+      <div class="flymap-ins-legend" id="flyInsLegend"></div>
+      <div class="pestmap-wrap" id="flyMapWrap">
+        <img class="pestmap-img" id="flyMapImg" alt="" style="display:none"
+             onerror="this.style.display='none';var p=document.getElementById('flyMapPh');if(p)p.style.display='flex';">
+        <div class="pestmap-pts" id="flyMapPts"></div>
+      </div>
+      <div class="pestmap-ph" id="flyMapPh" style="display:flex">
+        <div style="font-size:30px">🪰</div>
+        <div><b>Cartographie fly-killer non configurée.</b><br>
+          Renseignez les plans dans l'onglet <code>cartographie fly-killer</code> du Sheet.</div>
+      </div>
+    </div>
   </div>
 
   <!-- ─── SECTION 2 : RONGEURS (Voie ext. + Intérieur usine) ─── -->
@@ -3351,6 +3484,37 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
 
     <!-- ── Bandeau "Deux systèmes séparés" supprimé ── -->
+
+    <!-- ── CARTOGRAPHIE INTERACTIVE DES DISPOSITIFS ── -->
+    <div class="pests-sub" id="pestMapSub">
+      <div class="pests-sub-head">
+        <div class="pests-sub-icon" style="background:rgba(47,126,216,.15);border-color:rgba(47,126,216,.4);color:#2f7ed8">🗺️</div>
+        <div>
+          <div class="pests-sub-title">Cartographie des dispositifs</div>
+          <div class="pests-sub-sub">Plan du rez-de-chaussée &amp; extérieur · cliquez un repère</div>
+        </div>
+        <div class="pestmap-legend">
+          <span class="pestmap-leg ext"><i></i> Boîtes d'appât raticide (extérieur)</span>
+          <span class="pestmap-leg int"><i></i> Pièges mécaniques (intérieur)</span>
+          <span class="pestmap-leg glue"><i></i> Boîtes à colles (intérieur)</span>
+        </div>
+      </div>
+      <!-- Sélecteur d'étage (alimenté par l'onglet « cartographie nuisibles ») -->
+      <div class="pestmap-floors" id="pestMapFloors"></div>
+      <div class="pestmap-hint">🖱️ Cliquez un repère numéroté pour afficher le détail et l'historique du dispositif.</div>
+      <div class="pestmap-wrap" id="pestMapWrap">
+        <img class="pestmap-img" id="pestMapImg" alt="" style="display:none"
+             onerror="this.style.display='none';var p=document.getElementById('pestMapPh');if(p)p.style.display='flex';">
+        <div class="pestmap-pts" id="pestMapPts"></div>
+      </div>
+      <div class="pestmap-ph" id="pestMapPh" style="display:flex">
+        <div style="font-size:30px">🗺️</div>
+        <div><b>Cartographie non configurée.</b><br>
+          Renseignez les plans dans l'onglet <code>cartographie nuisibles</code>
+          du Google Sheet (colonnes <code>zone</code> + <code>lien drive</code>),
+          puis redéployez la Web App.</div>
+      </div>
+    </div>
 
     <!-- ── Tableau de bord GLOBAL (totaux uniquement) ── -->
     <div class="pests-sub" id="pestsSouDashSub">
@@ -3645,6 +3809,22 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 </div><!-- /main -->
+
+<!-- ═══ MODAL DÉTAIL DISPOSITIF (cartographie) ═══ -->
+<div class="modal-bg" id="dispoModal" style="display:none" onclick="if(event.target===this)closeModal('dispoModal')">
+  <div class="modal-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="dispoBadge">📍</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id"   id="dispoId">—</div>
+        <div class="modal-hdr-name" id="dispoName">—</div>
+        <div class="modal-chips"    id="dispoChips"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('dispoModal')">✕</button>
+    </div>
+    <div class="modal-body" id="dispoBody"></div>
+  </div>
+</div>
 
 <!-- ═══ MODAL INCIDENT ═══ -->
 <div class="modal-bg" id="incModal" style="display:none" onclick="if(event.target===this)closeModal('incModal')">
@@ -10387,6 +10567,8 @@ function renderPestIndoorKpis(){
 }
 
 function renderPests(){
+  renderPestMap(); // carte rongeurs — indépendante des données serveur
+  renderFlyMap();  // carte fly-killers (insectes volants)
   if(!D||!D.pests){
     // Marquer les sections comme vides
     ['pestsFlyingEmpty','pestsRatEmpty','pestsMechEmpty','pestsGlueEmpty'].forEach(function(id){
@@ -10408,6 +10590,595 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CARTOGRAPHIE INTERACTIVE DES DISPOSITIFS (Nuisibles › Rongeurs)
+   ──────────────────────────────────────────────────────────────
+   • PLANS (étages) : lus depuis le Sheet, onglet « cartographie
+     nuisibles » → D.cartoNuisibles = [{zone, url}, …]. Un sélecteur
+     de boutons bascule entre les étages (« étage 0 » par défaut).
+   • PEST_MAP_TYPES : couleur + feuille source par type de repère.
+   • PEST_MAP_POINTS_BY_FLOOR : repères PAR étage (numérotés, cliquables).
+   ══════════════════════════════════════════════════════════════ */
+// Familles de repères (couleur + feuille source interrogée côté serveur).
+var PEST_MAP_TYPES = {
+  ext:  { label:"Boîte d'appât raticide (extérieur)", color:'blue',   source:'rat'  },
+  int:  { label:'Piège mécanique (intérieur)',        color:'yellow', source:'mech' },
+  glue: { label:'Boîte à colle (intérieur)',          color:'pink',   source:'glue' },
+  // Fly-killers (insectes volants) — données : feuille « FK »
+  fk_glue:    { label:'Fly-killer · avec colle', source:'fk', badge:'🪰', icon:'glue' },
+  fk_nonglue: { label:'Fly-killer · sans colle', source:'fk', badge:'🪰', icon:'nonglue' },
+  fk_removed: { label:'Fly-killer · retiré',     source:'fk', badge:'🪰', icon:'removed' }
+};
+
+// Repères PAR ÉTAGE — positions AUTO-DÉTECTÉES depuis les plans Drive
+// (onglet « cartographie nuisibles »). La clé = libellé « zone » du Sheet.
+// Étage 0 : boîtes raticide 1–57 (ext/bleu) + pièges 30–46 (int/jaune).
+// Étage -1 : pièges 1–29. Étage 1 : pièges 47–52.
+// Ajustez si besoin avec pestMapCalibrate() (la console indique l'étage).
+var PEST_MAP_POINTS_BY_FLOOR = {
+  // ══════════ ÉTAGE 0 ET VOIE EXTERNE (boîtes 1–57 + pièges 30–46) ══════════
+  'etage0 et voie externe': [
+  { num:'1', type:'ext', x:15.3, y:6.4 },
+  { num:'2', type:'ext', x:7.3, y:9.8 },
+  { num:'3', type:'ext', x:12.0, y:10.3 },
+  { num:'4', type:'ext', x:9.7, y:14.8 },
+  { num:'5', type:'ext', x:7.3, y:19.1 },
+  { num:'6', type:'ext', x:9.5, y:24.8 },
+  { num:'7', type:'ext', x:9.4, y:32.6 },
+  { num:'8', type:'ext', x:9.4, y:34.7 },
+  { num:'9', type:'ext', x:7.3, y:40.7 },
+  { num:'10', type:'ext', x:9.4, y:47.1 },
+  { num:'11', type:'ext', x:7.3, y:53.7 },
+  { num:'12', type:'ext', x:9.4, y:61.6 },
+  { num:'13', type:'ext', x:7.2, y:70.0 },
+  { num:'14', type:'ext', x:9.3, y:77.8 },
+  { num:'15', type:'ext', x:9.3, y:85.8 },
+  { num:'16', type:'ext', x:19.8, y:88.5 },
+  { num:'17', type:'ext', x:22.2, y:88.5 },
+  { num:'18', type:'ext', x:24.8, y:88.5 },
+  { num:'19', type:'ext', x:28.0, y:88.5 },
+  { num:'20', type:'ext', x:37.0, y:88.5 },
+  { num:'21', type:'ext', x:38.8, y:79.8 },
+  { num:'22', type:'ext', x:44.3, y:81.9 },
+  { num:'23', type:'ext', x:39.5, y:74.8 },
+  { num:'24', type:'ext', x:40.2, y:78.1 },
+  { num:'25', type:'ext', x:41.1, y:74.8 },
+  { num:'26', type:'ext', x:54.1, y:77.2 },
+  { num:'27', type:'ext', x:54.1, y:72.9 },
+  { num:'28', type:'ext', x:70.1, y:74.6 },
+  { num:'29', type:'ext', x:80.4, y:73.0 },
+  { num:'30', type:'ext', x:80.4, y:67.9 },
+  { num:'31', type:'ext', x:77.7, y:56.8 },
+  { num:'32', type:'ext', x:75.0, y:45.7 },
+  { num:'33', type:'ext', x:71.4, y:40.6 },
+  { num:'34', type:'ext', x:67.5, y:35.1 },
+  { num:'35', type:'ext', x:63.0, y:24.5 },
+  { num:'36', type:'ext', x:65.1, y:21.6 },
+  { num:'37', type:'ext', x:56.2, y:32.6 },
+  { num:'38', type:'ext', x:56.3, y:9.1 },
+  { num:'39', type:'ext', x:54.3, y:12.5 },
+  { num:'40', type:'ext', x:51.9, y:32.7 },
+  { num:'41', type:'ext', x:47.4, y:32.7 },
+  { num:'42', type:'ext', x:41.9, y:28.4 },
+  { num:'43', type:'ext', x:39.4, y:28.5 },
+  { num:'44', type:'ext', x:39.5, y:16.1 },
+  { num:'45', type:'ext', x:36.2, y:6.1 },
+  { num:'46', type:'ext', x:32.8, y:32.7 },
+  { num:'47', type:'ext', x:29.4, y:32.6 },
+  { num:'48', type:'ext', x:22.5, y:32.8 },
+  { num:'49', type:'ext', x:22.1, y:29.1 },
+  { num:'50', type:'ext', x:21.4, y:25.2 },
+  { num:'51', type:'ext', x:20.0, y:18.0 },
+  { num:'52', type:'ext', x:17.7, y:16.4 },
+  { num:'53', type:'ext', x:13.8, y:16.4 },
+  { num:'54', type:'ext', x:11.2, y:18.2 },
+  { num:'55', type:'ext', x:15.4, y:14.4 },
+  { num:'56', type:'ext', x:20.5, y:12.0 },
+  { num:'57', type:'ext', x:19.0, y:10.6 },
+  { num:'30', type:'int', x:15.9, y:20.9 },
+  { num:'31', type:'int', x:14.7, y:20.9 },
+  { num:'32', type:'int', x:13.4, y:20.9 },
+  { num:'33', type:'int', x:12.1, y:20.9 },
+  { num:'34', type:'int', x:10.7, y:30.5 },
+  { num:'35', type:'int', x:10.7, y:33.7 },
+  { num:'36', type:'int', x:15.1, y:39.3 },
+  { num:'37', type:'int', x:24.7, y:35.5 },
+  { num:'38', type:'int', x:27.7, y:35.5 },
+  { num:'39', type:'int', x:39.3, y:35.5 },
+  { num:'40', type:'int', x:41.9, y:35.5 },
+  { num:'41', type:'int', x:65.2, y:39.3 },
+  { num:'42', type:'int', x:38.2, y:72.2 },
+  { num:'43', type:'int', x:36.3, y:72.5 },
+  { num:'44', type:'int', x:15.5, y:72.6 },
+  { num:'45', type:'int', x:13.4, y:72.5 },
+  { num:'46', type:'int', x:13.5, y:39.3 },
+  ],
+  // ══════════ ÉTAGE -1 (pièges 1–29) ══════════
+  'etage -1': [
+  { num:'1', type:'int', x:70.2, y:42.8 },
+  { num:'2', type:'int', x:67.2, y:38.9 },
+  { num:'3', type:'int', x:65.9, y:37.0 },
+  { num:'4', type:'int', x:64.2, y:34.7 },
+  { num:'5', type:'int', x:55.2, y:36.0 },
+  { num:'6', type:'int', x:52.0, y:36.0 },
+  { num:'7', type:'int', x:49.8, y:36.0 },
+  { num:'8', type:'int', x:47.3, y:36.0 },
+  { num:'9', type:'int', x:41.8, y:36.0 },
+  { num:'10', type:'int', x:37.8, y:36.0 },
+  { num:'11', type:'int', x:33.3, y:35.6 },
+  { num:'12', type:'int', x:14.8, y:39.4 },
+  { num:'13', type:'int', x:12.5, y:39.4 },
+  { num:'14', type:'int', x:10.6, y:71.2 },
+  { num:'15', type:'int', x:27.5, y:67.5 },
+  { num:'16', type:'int', x:30.1, y:65.1 },
+  { num:'17', type:'int', x:35.7, y:70.8 },
+  { num:'18', type:'int', x:37.3, y:70.8 },
+  { num:'19', type:'int', x:38.3, y:61.2 },
+  { num:'20', type:'int', x:43.4, y:61.3 },
+  { num:'21', type:'int', x:48.5, y:61.3 },
+  { num:'22', type:'int', x:54.0, y:60.8 },
+  { num:'23', type:'int', x:59.0, y:61.2 },
+  { num:'24', type:'int', x:77.9, y:72.1 },
+  { num:'25', type:'int', x:77.9, y:68.4 },
+  { num:'26', type:'int', x:60.0, y:58.9 },
+  { num:'27', type:'int', x:73.4, y:58.3 },
+  { num:'28', type:'int', x:73.4, y:54.5 },
+  { num:'29', type:'int', x:73.3, y:49.8 },
+  ],
+  // ══════════ ÉTAGE 1 (pièges 47–52) ══════════
+  'etage 1': [
+  { num:'47', type:'int', x:24.6, y:46.8 },
+  { num:'48', type:'int', x:43.1, y:43.4 },
+  { num:'49', type:'int', x:47.5, y:43.4 },
+  { num:'50', type:'int', x:65.4, y:44.3 },
+  { num:'51', type:'int', x:67.5, y:47.4 },
+  { num:'52', type:'int', x:23.0, y:47.3 },
+  ]
+};
+
+// ── État du sélecteur d'étage ──
+var pestMapFloors  = [];   // alimenté depuis D.cartoNuisibles
+var pestMapFloorIdx = -1;  // -1 → choisit l'étage par défaut au 1er rendu
+
+// Normalisation d'un libellé d'étage (pour faire correspondre la "zone"
+// du Sheet aux clés de PEST_MAP_POINTS_BY_FLOOR).
+function floorKey(s){
+  return String(s||'').toLowerCase()
+    .replace(/[àáâ]/g,'a').replace(/[éèê]/g,'e').replace(/[îï]/g,'i')
+    .replace(/[ôö]/g,'o').replace(/[ûü]/g,'u').replace(/\s+/g,' ').trim();
+}
+// Niveau d'étage déduit du libellé (« etage -1 » → -1, « etage0 … » → 0).
+function floorLevel(s){ var m=floorKey(s).match(/etage\s*(-?\d+)/); return m?parseInt(m[1],10):null; }
+function pestMapPointsForFloor(zone){
+  var k=floorKey(zone), keys=Object.keys(PEST_MAP_POINTS_BY_FLOOR);
+  for(var i=0;i<keys.length;i++){ if(floorKey(keys[i])===k) return PEST_MAP_POINTS_BY_FLOOR[keys[i]]; }
+  var kk=k.replace(/[^a-z0-9]/g,'');   // comparaison tolérante (espaces/ponctuation)
+  for(var j=0;j<keys.length;j++){ if(floorKey(keys[j]).replace(/[^a-z0-9]/g,'')===kk) return PEST_MAP_POINTS_BY_FLOOR[keys[j]]; }
+  var lvl=floorLevel(zone);            // repli par niveau d'étage (-1/0/1)
+  if(lvl!==null){ for(var n=0;n<keys.length;n++){ if(floorLevel(keys[n])===lvl) return PEST_MAP_POINTS_BY_FLOOR[keys[n]]; } }
+  return [];
+}
+function pestMapDefaultFloorIdx(){
+  for(var i=0;i<pestMapFloors.length;i++){ if(floorLevel(pestMapFloors[i].zone)===0) return i; }
+  for(var j=0;j<pestMapFloors.length;j++){ var k=floorKey(pestMapFloors[j].zone);
+    if(k.indexOf('etage 0')>-1 || k.indexOf('etage0')>-1) return j; }
+  return 0;
+}
+
+function renderPestMap(){
+  var wrap = document.getElementById('pestMapPts');
+  var img  = document.getElementById('pestMapImg');
+  var ph   = document.getElementById('pestMapPh');
+  if(!wrap) return;
+
+  // Plans (étages) depuis l'onglet « cartographie nuisibles »
+  pestMapFloors = (D && D.cartoNuisibles && D.cartoNuisibles.length) ? D.cartoNuisibles : [];
+
+  // Aucun plan configuré dans le Sheet → encart d'aide
+  if(!pestMapFloors.length){
+    var fb0=document.getElementById('pestMapFloors'); if(fb0) fb0.innerHTML='';
+    wrap.innerHTML='';
+    pestMapShowPlaceholder('<div style="font-size:30px">🗺️</div><div><b>Cartographie non configurée.</b><br>'
+      +'Renseignez les plans dans l\'onglet <code>cartographie nuisibles</code> du Google Sheet, puis redéployez.</div>');
+    return;
+  }
+  if(ph) ph.style.display='none';
+
+  // Étage courant (défaut = « étage 0 » au 1er rendu)
+  if(pestMapFloorIdx<0 || pestMapFloorIdx>=pestMapFloors.length) pestMapFloorIdx=pestMapDefaultFloorIdx();
+
+  pestMapRenderFloors();
+
+  // Image de l'étage courant — rechargée à CHAQUE changement d'étage,
+  // avec chaîne de replis : lh3 (fiable) → thumbnail → message d'erreur.
+  var floor = pestMapFloors[pestMapFloorIdx] || {};
+  var fid   = floor.fileId || '';
+  var candidates = fid
+    ? ['https://lh3.googleusercontent.com/d/'+fid+'=w2000',
+       'https://drive.google.com/thumbnail?id='+fid+'&sz=w2000']
+    : (floor.url ? [floor.url] : []);
+  if(img){
+    if(!candidates.length){
+      pestMapShowPlaceholder('<div style="font-size:30px">🗺️</div><div><b>Lien de plan manquant pour cet étage.</b><br>'
+        +'Ajoutez le lien Drive dans l\'onglet <code>cartographie nuisibles</code>.</div>');
+    } else {
+      var ci=0;
+      img.onerror=function(){
+        ci++;
+        if(ci<candidates.length){ img.src=candidates[ci]; return; }
+        pestMapShowPlaceholder('<div style="font-size:30px">🖼️</div><div><b>Image du plan inaccessible.</b><br>'
+          +'Vérifiez le partage Drive du fichier (« Tous les utilisateurs disposant du lien »).</div>');
+      };
+      img.style.display='block';
+      img.src=candidates[0];   // (re)charge à chaque changement d'étage
+    }
+  }
+
+  // Repères de l'étage courant — NUMÉROTÉS et cliquables.
+  // Reclassement par données : un repère intérieur dont le n° est dans la
+  // feuille « boîtes à colles » (et pas dans « pièges mécanique ») devient ROSE.
+  var glueSet={}, mechSet={};
+  ((D && D.pestGlueNums) || []).forEach(function(n){ glueSet[String(n)]=1; });
+  ((D && D.pestMechNums) || []).forEach(function(n){ mechSet[String(n)]=1; });
+  var pts = pestMapPointsForFloor(floor.zone);
+  wrap.innerHTML = pts.map(function(p,idx){
+    var et = p.type;
+    if(et==='int' && glueSet[String(p.num)] && !mechSet[String(p.num)]) et='glue';
+    var t = PEST_MAP_TYPES[et] || {color:'blue',label:''};
+    return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
+      + ' style="left:'+p.x+'%;top:'+p.y+'%"'
+      + ' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
+      + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(et)+'\')">'
+      + esc(String(p.num)) + '</button>';
+  }).join('');
+}
+
+/* Boutons de sélection d'étage (alimentés par D.cartoNuisibles). */
+function pestMapRenderFloors(){
+  var el=document.getElementById('pestMapFloors'); if(!el) return;
+  el.innerHTML = pestMapFloors.map(function(f,i){
+    return '<button type="button" class="pestmap-floor-btn'+(i===pestMapFloorIdx?' on':'')+'"'
+      + ' onclick="pestMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
+  }).join('');
+}
+function pestMapSetFloor(i){
+  if(i===pestMapFloorIdx) return;
+  pestMapFloorIdx=i;
+  renderPestMap();
+}
+function pestMapShowPlaceholder(html){
+  var ph=document.getElementById('pestMapPh'), img=document.getElementById('pestMapImg');
+  if(img) img.style.display='none';
+  if(ph){ ph.innerHTML=html; ph.style.display='flex'; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CARTOGRAPHIE FLY-KILLERS (section Insectes volants)
+   • Plans : Sheet onglet « cartographie fly-killer » → D.cartoFlyKiller.
+   • Icônes en forme d'appareil : glue (avec colle), nonglue (sans colle),
+     removed (retiré). Clic → détail/historique de la feuille « FK ».
+   ══════════════════════════════════════════════════════════════ */
+var FLY_ICONS = {
+  glue:    '<svg viewBox="0 0 30 24" width="30" height="24"><path d="M3 3H27L23 10H7Z" fill="#3b6fb0" stroke="#1f3f6b"/><rect x="6" y="10" width="18" height="2.4" fill="#dce8f7"/><rect x="6.5" y="12.4" width="17" height="8.2" fill="#f2d21a" stroke="#a98e00"/><path d="M9 12.4V20.6M12 12.4V20.6M15 12.4V20.6M18 12.4V20.6M21 12.4V20.6" stroke="#a98e00" stroke-width="0.6"/></svg>',
+  nonglue: '<svg viewBox="0 0 30 24" width="30" height="24"><rect x="3" y="3" width="24" height="18" rx="3" fill="#e8821e" stroke="#8a4e10"/><rect x="6" y="6.5" width="18" height="11" rx="1" fill="#23263a"/><path d="M9.5 6.5V17.5M14 6.5V17.5M18.5 6.5V17.5M23 6.5V17.5" stroke="#7fa8ff" stroke-width="1"/><path d="M6 9.5H24M6 12.5H24M6 15.5H24" stroke="#3a3f5c" stroke-width="0.5"/></svg>',
+  removed: '<svg viewBox="0 0 30 24" width="30" height="24"><rect x="3" y="3" width="24" height="18" rx="3" fill="#1b1b1b" stroke="#000"/><rect x="6" y="6.5" width="18" height="11" rx="1" fill="#3a3a3a"/><path d="M7 7L23 17M23 7L7 17" stroke="#e6e6e6" stroke-width="1.7"/></svg>'
+};
+
+// Repères fly-killers PAR étage — positions auto-détectées des plans
+// (onglet « cartographie fly-killer »). Clé = libellé « zone » du Sheet.
+var FLY_MAP_POINTS_BY_FLOOR = {
+  'Etage -1': [
+    { num:'1', type:'fk_glue', x:5.6, y:68.9 },
+    { num:'2', type:'fk_glue', x:27.1, y:53.4 },
+    { num:'3', type:'fk_nonglue', x:31.8, y:46.2 },
+    { num:'4', type:'fk_nonglue', x:45.6, y:46.0 },
+    { num:'5', type:'fk_nonglue', x:56.8, y:45.9 },
+    { num:'6', type:'fk_nonglue', x:70.3, y:37.9 },
+    { num:'7', type:'fk_removed', x:78.9, y:95.0 },
+    { num:'8', type:'fk_nonglue', x:82.8, y:92.8 },
+    { num:'23', type:'fk_removed', x:25.3, y:52.4 },
+    { num:'24', type:'fk_nonglue', x:62.8, y:34.1 },
+    { num:'28', type:'fk_glue', x:76.4, y:14.7 },
+    { num:'29', type:'fk_glue', x:84.8, y:15.9 },
+  ],
+  'Etage0': [
+    { num:'9', type:'fk_glue', x:75.5, y:66.9 },
+    { num:'10', type:'fk_glue', x:80.7, y:60.1 },
+    { num:'11', type:'fk_glue', x:80.7, y:67.6 },
+    { num:'12', type:'fk_removed', x:73.0, y:49.0 },
+    { num:'13', type:'fk_removed', x:60.7, y:49.2 },
+    { num:'14', type:'fk_glue', x:44.9, y:49.1 },
+    { num:'15', type:'fk_removed', x:18.7, y:48.9 },
+    { num:'16', type:'fk_glue', x:16.9, y:26.6 },
+    { num:'17', type:'fk_removed', x:17.0, y:17.9 },
+    { num:'19', type:'fk_glue', x:59.9, y:22.8 },
+    { num:'20', type:'fk_nonglue', x:90.9, y:88.4 },
+    { num:'21', type:'fk_nonglue', x:93.2, y:74.7 },
+    { num:'22', type:'fk_nonglue', x:93.2, y:70.5 },
+    { num:'30', type:'fk_glue', x:87.7, y:60.1 },
+    { num:'31', type:'fk_nonglue', x:88.7, y:93.2 },
+    { num:'32', type:'fk_nonglue', x:94.9, y:93.3 },
+    { num:'33', type:'fk_glue', x:35.1, y:39.5 },
+    { num:'34', type:'fk_nonglue', x:24.1, y:49.2 },
+    { num:'35', type:'fk_nonglue', x:55.3, y:69.0 }
+  ],
+  'Etage 1 + brovind': [
+    { num:'25', type:'fk_glue', x:93.6, y:85.9 },
+    { num:'26', type:'fk_glue', x:22.6, y:84.8 },
+    { num:'27', type:'fk_glue', x:91.3, y:26.6 },
+  ]
+};
+
+var flyMapFloors = [], flyMapFloorIdx = -1;
+function flyMapPointsForFloor(zone){
+  var k=floorKey(zone), keys=Object.keys(FLY_MAP_POINTS_BY_FLOOR);
+  for(var i=0;i<keys.length;i++){ if(floorKey(keys[i])===k) return FLY_MAP_POINTS_BY_FLOOR[keys[i]]; }
+  var lvl=floorLevel(zone);
+  if(lvl!==null){ for(var j=0;j<keys.length;j++){ if(floorLevel(keys[j])===lvl) return FLY_MAP_POINTS_BY_FLOOR[keys[j]]; } }
+  return [];
+}
+function flyMapDefaultFloorIdx(){
+  for(var i=0;i<flyMapFloors.length;i++){ if(floorLevel(flyMapFloors[i].zone)===0) return i; }
+  return 0;
+}
+// Cercle « zone de présence des insectes » : diamètre (% largeur plan) variable
+// selon le nombre de captures (√ pour que l'AIRE soit ∝ captures). Bornes min/max.
+var FLY_ZONE_MIN = 4.5, FLY_ZONE_MAX = 13;
+function hexA(hex,a){ hex=String(hex||'#94a3b8').replace('#',''); var n=parseInt(hex,16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
+// Type d'insecte DOMINANT par n° de fly-killer (feuille FK) → {key,color,label,total}
+function flyInsectByNum(){
+  var out={}; var s=(D&&D.pests&&D.pests.fk)?D.pests.fk:null;
+  if(!s||!s.entries||!s.entries.length) return out;
+  var headers=s.headers||[], types=flyDetectTypes(headers), idxMap=flyBuildIdxMap(headers);
+  if(idxMap.num<0) idxMap.num=flyFindCol(headers,'numero');
+  if(idxMap.num<0) idxMap.num=flyFindCol(headers,'num');
+  if(idxMap.num<0||!types.length) return out;
+  var agg={};
+  s.entries.forEach(function(e){
+    var raw=e.raw||[]; var m=String(raw[idxMap.num]==null?'':raw[idxMap.num]).match(/\d+/);
+    if(!m) return; var num=String(parseInt(m[0],10));
+    if(!agg[num]) agg[num]={};
+    types.forEach(function(t){ var v=flyCellNum(raw[t.colIdx]); if(v>0) agg[num][t.key]=(agg[num][t.key]||0)+v; });
+  });
+  Object.keys(agg).forEach(function(num){
+    var best=null,bv=0,tot=0;
+    Object.keys(agg[num]).forEach(function(k){ tot+=agg[num][k]; if(agg[num][k]>bv){bv=agg[num][k];best=k;} });
+    if(best){ var def=FLY_TYPES_DEF.filter(function(d){return d.key===best;})[0]||{};
+      out[num]={key:best,color:def.color||'#94a3b8',label:def.label||best,total:tot}; }
+  });
+  return out;
+}
+// Légende des couleurs « zone de présence » (types réellement présents)
+function flyRenderInsectLegend(insMap){
+  var el=document.getElementById('flyInsLegend'); if(!el) return;
+  var present={}; Object.keys(insMap||{}).forEach(function(n){ present[insMap[n].key]=1; });
+  var defs=FLY_TYPES_DEF.filter(function(d){ return present[d.key]; });
+  el.innerHTML = defs.length ? ('<span class="flymap-ins-lbl">⭕ Zone de présence — couleur = type dominant · taille = nb de captures :</span>'
+    + defs.map(function(d){ return '<span class="flymap-ins-leg"><i style="background:'+hexA(d.color,0.18)
+        +';border-color:'+d.color+'"></i>'+d.icon+' '+esc(d.label)+'</span>'; }).join('')) : '';
+}
+function renderFlyMap(){
+  var wrap=document.getElementById('flyMapPts'), img=document.getElementById('flyMapImg'), ph=document.getElementById('flyMapPh');
+  if(!wrap) return;
+  // Pictogrammes de légende (remplis une fois)
+  var legs=document.querySelectorAll('#flyMapSub .flyleg');
+  for(var li=0; li<legs.length; li++){ if(!legs[li].getAttribute('data-filled')){ legs[li].innerHTML=FLY_ICONS[legs[li].getAttribute('data-fly')]||''; legs[li].setAttribute('data-filled','1'); } }
+  flyMapFloors=(D && D.cartoFlyKiller && D.cartoFlyKiller.length)?D.cartoFlyKiller:[];
+  if(!flyMapFloors.length){
+    var fb=document.getElementById('flyMapFloors'); if(fb) fb.innerHTML='';
+    wrap.innerHTML='';
+    flyShowPlaceholder('<div style="font-size:30px">🪰</div><div><b>Cartographie fly-killer non configurée.</b><br>Renseignez l\'onglet <code>cartographie fly-killer</code> du Sheet, puis redéployez.</div>');
+    return;
+  }
+  if(ph) ph.style.display='none';
+  if(flyMapFloorIdx<0||flyMapFloorIdx>=flyMapFloors.length) flyMapFloorIdx=flyMapDefaultFloorIdx();
+  flyMapRenderFloors();
+  var floor=flyMapFloors[flyMapFloorIdx]||{}, fid=floor.fileId||'';
+  var cand=fid?['https://lh3.googleusercontent.com/d/'+fid+'=w2000','https://drive.google.com/thumbnail?id='+fid+'&sz=w2000']:(floor.url?[floor.url]:[]);
+  if(img){
+    if(!cand.length){
+      flyShowPlaceholder('<div style="font-size:30px">🪰</div><div><b>Pas de plan pour cet étage.</b><br>Ajoutez le lien Drive dans l\'onglet <code>cartographie fly-killer</code>.</div>');
+    } else {
+      var ci=0;
+      img.onerror=function(){ ci++; if(ci<cand.length){ img.src=cand[ci]; return; }
+        flyShowPlaceholder('<div style="font-size:30px">🖼️</div><div><b>Image du plan inaccessible.</b><br>Vérifiez le partage Drive (« Tous ceux qui ont le lien »).</div>'); };
+      img.style.display='block'; img.src=cand[0];
+    }
+  }
+  var pts=flyMapPointsForFloor(floor.zone);
+  var insMap=flyInsectByNum();   // n° → type d'insecte dominant (couleur de la zone)
+  var maxTot=1; Object.keys(insMap).forEach(function(n){ if(insMap[n].total>maxTot) maxTot=insMap[n].total; });
+  wrap.innerHTML=pts.map(function(p,idx){
+    var t=PEST_MAP_TYPES[p.type]||{}; var icon=FLY_ICONS[t.icon]||FLY_ICONS.glue;
+    var ins=insMap[String(parseInt(p.num,10))];
+    // Cercle seulement si captures ET appareil NON retiré ; diamètre ∝ √(captures)
+    var zone='';
+    if(ins && p.type!=='fk_removed'){
+      var diam=(FLY_ZONE_MIN+(FLY_ZONE_MAX-FLY_ZONE_MIN)*Math.sqrt(ins.total)/Math.sqrt(maxTot)).toFixed(1);
+      zone='<div class="flymap-zone" style="left:'+p.x+'%;top:'+p.y+'%;width:'+diam+'%;'
+        + 'background:'+hexA(ins.color,0.13)+';border-color:'+ins.color+'"'
+        + ' title="Zone de présence — '+esc(ins.label)+' ('+ins.total+' capture(s))"></div>';
+    }
+    return zone + '<button type="button" id="flypt-'+idx+'" class="flymap-pt"'
+      + ' style="left:'+p.x+'%;top:'+p.y+'%"'
+      + ' title="'+esc((t.label||'Fly-killer')+' — N° '+p.num+(ins?(' · présence: '+ins.label):''))+'"'
+      + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')">'
+      + icon + '<span class="flymap-num">'+esc(String(p.num))+'</span></button>';
+  }).join('');
+  flyRenderInsectLegend(insMap);
+}
+function flyMapRenderFloors(){
+  var el=document.getElementById('flyMapFloors'); if(!el) return;
+  el.innerHTML=flyMapFloors.map(function(f,i){
+    return '<button type="button" class="pestmap-floor-btn'+(i===flyMapFloorIdx?' on':'')+'"'
+      + ' onclick="flyMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
+  }).join('');
+}
+function flyMapSetFloor(i){ if(i===flyMapFloorIdx) return; flyMapFloorIdx=i; renderFlyMap(); }
+function flyShowPlaceholder(html){
+  var ph=document.getElementById('flyMapPh'), img=document.getElementById('flyMapImg');
+  if(img) img.style.display='none';
+  if(ph){ ph.innerHTML=html; ph.style.display='flex'; }
+}
+// Repli/dépli de la cartographie fly-killers (masquée par défaut)
+function toggleFlyMap(){
+  var s=document.getElementById('flyMapSub'), ch=document.getElementById('flyToggleChevron'), b=document.getElementById('flyToggleBtn');
+  if(!s) return;
+  var open=(s.style.display==='none');
+  s.style.display=open?'block':'none';
+  if(ch) ch.style.transform=open?'rotate(180deg)':'';
+  if(b) b.classList.toggle('on',open);
+  if(open) renderFlyMap();   // (re)rendre à l'ouverture
+}
+
+/* Mode calibrage : tapez pestMapCalibrate() dans la console, puis
+   cliquez sur l'emplacement d'un piège sur le plan → la ligne prête à
+   coller dans PEST_MAP_POINTS_BY_FLOOR[étage courant] s'affiche dans la
+   console (avec un repère visuel temporaire). Rappelez pestMapCalibrate()
+   pour désactiver. Pendant le calibrage, le clic n'ouvre PAS la fiche. */
+var _pestMapCalib=false;
+function pestMapCalibrate(){
+  var wrap=document.getElementById('pestMapWrap'); if(!wrap) return;
+  _pestMapCalib=!_pestMapCalib;
+  wrap.style.cursor=_pestMapCalib?'crosshair':'';
+  if(!pestMapCalibrate._h){
+    pestMapCalibrate._h=function(ev){
+      if(!_pestMapCalib) return;
+      ev.stopPropagation(); ev.preventDefault();      // neutralise le clic sur un repère existant
+      var r=wrap.getBoundingClientRect();
+      var x=(((ev.clientX-r.left)/r.width )*100).toFixed(1);
+      var y=(((ev.clientY-r.top )/r.height)*100).toFixed(1);
+      var pts=document.getElementById('pestMapPts');
+      if(pts){                                          // repère visuel temporaire
+        var d=document.createElement('div');
+        d.style.cssText='position:absolute;left:'+x+'%;top:'+y+'%;width:11px;height:11px;'
+          +'border-radius:50%;background:#10c985;transform:translate(-50%,-50%);'
+          +'box-shadow:0 0 0 3px rgba(16,201,133,.4);z-index:9;pointer-events:none';
+        pts.appendChild(d); setTimeout(function(){ d.remove(); },2500);
+      }
+      var fz=(pestMapFloors[pestMapFloorIdx]&&pestMapFloors[pestMapFloorIdx].zone)||'?';
+      console.log('{ num:\'?\', type:\'ext\', x:'+x+', y:'+y+' },  // étage « '+fz+' » · type ext=bleu / int=jaune');
+    };
+    wrap.addEventListener('click', pestMapCalibrate._h, true); // phase de capture
+  }
+  var fz0=(pestMapFloors[pestMapFloorIdx]&&pestMapFloors[pestMapFloorIdx].zone)||'?';
+  console.log('%c[Cartographie] Calibrage '+(_pestMapCalib?'ACTIVÉ':'désactivé')+' · étage « '+fz0+' »',
+    'font-weight:bold;color:'+(_pestMapCalib?'#10c985':'#e8445a'));
+  if(_pestMapCalib) console.log('→ Cliquez un emplacement ; collez la ligne dans PEST_MAP_POINTS_BY_FLOOR[\''+fz0+'\']. Rappelez pestMapCalibrate() pour arrêter.');
+}
+
+/* Ouverture de la modale + appel serveur getDispositifData() */
+function dispoBadgeIcon(color){ return color==='yellow'?'🟡':(color==='pink'?'🩷':'🔵'); }
+// Source serveur → couleur + libellé (pour refléter le repli mécanique → colles)
+var DISPO_SRC = {
+  rat:  { c:'blue',   l:"Boîte d'appât raticide (extérieur)" },
+  mech: { c:'yellow', l:'Piège mécanique (intérieur)' },
+  glue: { c:'pink',   l:'Boîte à colle (intérieur)' },
+  fk:   { c:'blue',   l:'Borne à insectes volants' }
+};
+function openDispo(num, type){
+  var t = PEST_MAP_TYPES[type] || {};
+  document.getElementById('dispoBadge').textContent = t.badge || dispoBadgeIcon(t.color);
+  document.getElementById('dispoId').textContent    = (t.label || 'Dispositif');
+  document.getElementById('dispoName').textContent  = 'N° ' + num;
+  document.getElementById('dispoChips').innerHTML    = '';
+  var body = document.getElementById('dispoBody');
+  body.innerHTML = '<div class="dispo-loading"><div class="spin"></div>'
+    + '<div>Chargement des données…</div></div>';
+  openModal('dispoModal');
+  google.script.run
+    .withSuccessHandler(function(res){ renderDispo(res, num); })
+    .withFailureHandler(function(err){
+      body.innerHTML = '<div class="dispo-err">⚠️ Erreur de chargement : '+esc(err.message)+'</div>';
+    })
+    .getDispositifData(String(num), (t.source || 'rat'));
+}
+
+function renderDispo(res, num){
+  var body = document.getElementById('dispoBody');
+  if(!res || !res.ok){
+    body.innerHTML = '<div class="dispo-err">⚠️ '+esc((res&&res.error)||'Données indisponibles')+'</div>';
+    return;
+  }
+  // En cas de repli (mécanique → colles), refléter la vraie feuille (badge + libellé)
+  if(res.fallback){
+    var s = DISPO_SRC[res.source];
+    if(s){
+      document.getElementById('dispoBadge').textContent = dispoBadgeIcon(s.c);
+      document.getElementById('dispoId').textContent    = s.l;
+    }
+  }
+  var fbChip = res.fallback
+    ? '<span class="modal-chip" style="background:rgba(236,72,153,.18);color:#ec4899">↪ via boîtes à colles</span>' : '';
+  document.getElementById('dispoChips').innerHTML =
+      (res.sheetName ? '<span class="modal-chip">📄 '+esc(res.sheetName)+'</span>' : '')
+    + fbChip
+    + '<span class="modal-chip">'+(res.found ? (res.history.length+' contrôle(s)') : 'Aucun enregistrement')+'</span>';
+
+  if(!res.found){
+    body.innerHTML = '<div class="dispo-empty">Aucune ligne ne correspond au numéro '
+      + '<b>'+esc(String(num))+'</b> dans la feuille « '+esc(res.sheetName||'?')+' ».<br>'
+      + 'Vérifiez la correspondance numéro ↔ colonne emplacement / n° piège.</div>';
+    return;
+  }
+
+  var d = res.details || {};
+  var html = '';
+  html += '<div class="modal-section"><div class="modal-sec-title"><span>📌</span>Détails du dispositif</div>'
+       + '<div class="dispo-grid">'
+       + dispoItem('Localisation',         d.localisation)
+       + dispoItem('Statut actuel',        d.statut)
+       + dispoItem('Consommable / appât',  d.consommable)
+       + dispoItem("Date d'installation",  d.dateInstallation)
+       + dispoItem('Dernier contrôle',     d.dernierControle)
+       + dispoItem('Nombre de contrôles',  d.nbControles)
+       + '</div></div>';
+
+  html += '<div class="modal-section"><div class="modal-sec-title"><span>🕑</span>Historique des passages</div>';
+  if(res.history && res.history.length){
+    html += '<div class="dispo-hist-wrap"><table class="dispo-hist"><thead><tr>'
+         + '<th>Date</th><th>État / Statut</th><th>Action / Observation</th></tr></thead><tbody>';
+    res.history.forEach(function(h){
+      html += '<tr><td class="dispo-hd">'+esc(h.date||'—')+'</td>'
+           + '<td>'+dispoStatutBadge(h.statut)+'</td>'
+           + '<td>'+esc(h.action||'—')+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+
+    var lastCells = (res.history[0] && res.history[0].cells) || [];
+    var filled = lastCells.filter(function(c){ return c.v!==''; });
+    if(filled.length){
+      html += '<div class="dispo-rawtitle">Détail complet du dernier contrôle ('+esc(res.history[0].date||'')+')</div>'
+           + '<div class="dispo-raw">';
+      filled.forEach(function(c){
+        html += '<div class="dispo-raw-row"><span>'+esc(c.h)+'</span><b>'+esc(c.v)+'</b></div>';
+      });
+      html += '</div>';
+    }
+  } else {
+    html += '<div class="dispo-empty">Aucun historique daté pour ce dispositif.</div>';
+  }
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+function dispoItem(lbl, val){
+  var v = (val===0 || val) ? String(val) : '';
+  if(v==='') v='—';
+  return '<div class="dispo-item"><div class="dispo-lbl">'+esc(lbl)+'</div>'
+       + '<div class="dispo-val">'+esc(v)+'</div></div>';
+}
+function dispoStatutBadge(s){
+  if(!s) return '—';
+  var n = String(s).toUpperCase(), cls='n';
+  if(n.indexOf('SOU')>-1) cls='r';
+  else if(n.indexOf('RAS')>-1) cls='ok';
+  else if(/NT|CAS|RT|INAC/.test(n)) cls='q';
+  else if(/EBR|CON/.test(n)) cls='a';
+  return '<span class="dispo-badge b-'+cls+'">'+esc(s)+'</span>';
 }
 
 window.onload=function(){
