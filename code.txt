@@ -1929,6 +1929,108 @@ function readPests(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+// ── LECTURE FEUILLE "Suivi de l'application des pesticides (ENR HSE 13)" ──
+// Schéma connu et stable :
+//   Date · Désignation Pesticide · Localisation · Target pest ·
+//   Concentration · Quantité · Methode
+// Renvoie { entries:[{...}], headers:[...], sheetName:'...' }
+// Chaque entry : { date, dateIso, produit, localisation, cible,
+//                  concentration, quantite, methode, raw[] }
+// ════════════════════════════════════════════════════════════
+function readPesticides(ss) {
+  var entries = [], headers = [], sheetName = '';
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('application des pesti') > -1 ||
+          (n.indexOf('pesti') > -1 && n.indexOf('cartograph') < 0)) {
+        sh = sheets[i]; break;
+      }
+    }
+    if (!sh) {
+      Logger.log('[Pesticides] feuille NON trouvée');
+      return { entries: entries, headers: headers, sheetName: '' };
+    }
+    sheetName = sh.getName();
+    var data = sh.getDataRange().getValues();
+    if (!data || !data.length) return { entries: entries, headers: headers, sheetName: sheetName };
+
+    // Détection de la ligne d'entête : contient "date" + "localisation" (ou "designation")
+    var hdrRow = -1;
+    for (var r = 0; r < Math.min(data.length, 8); r++) {
+      var row = data[r] || [], hasDate = false, hasLoc = false, hasDesig = false;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c] || ''));
+        if (h.indexOf('date') > -1) hasDate = true;
+        if (h.indexOf('localis') > -1 || h.indexOf('emplace') > -1) hasLoc = true;
+        if (h.indexOf('designation') > -1 || h.indexOf('pestis') > -1 || h.indexOf('pestic') > -1) hasDesig = true;
+      }
+      if (hasDate && (hasLoc || hasDesig)) { hdrRow = r; break; }
+    }
+    if (hdrRow < 0) hdrRow = 2;
+
+    var hv = data[hdrRow] || [];
+    for (var c = 0; c < hv.length; c++) headers.push(String(hv[c] || '').trim());
+
+    // Mapping des colonnes par mots-clés
+    function col(kws) {
+      for (var c = 0; c < headers.length; c++) {
+        var h = normalize(headers[c]);
+        for (var k = 0; k < kws.length; k++) if (h.indexOf(kws[k]) > -1) return c;
+      }
+      return -1;
+    }
+    var ciDate  = col(['date']);
+    var ciProd  = col(['designation', 'pestis', 'pestic', 'produit']);
+    var ciLoc   = col(['localis', 'emplace', 'lieu', 'zone']);
+    var ciCible = col(['target', 'cible', 'pest']);
+    var ciConc  = col(['concentr', 'dosage', 'dilution']);
+    var ciQte   = col(['quantit', 'qte']);
+    var ciMeth  = col(['methode', 'méthode', 'method', 'mode']);
+    if (ciDate  < 0) ciDate  = 0;
+    if (ciProd  < 0) ciProd  = 1;
+    if (ciLoc   < 0) ciLoc   = 2;
+    if (ciCible < 0) ciCible = 3;
+    if (ciConc  < 0) ciConc  = 4;
+    if (ciQte   < 0) ciQte   = 5;
+    if (ciMeth  < 0) ciMeth  = 6;
+
+    for (var r = hdrRow + 1; r < data.length; r++) {
+      var row = data[r] || [];
+      var produit = safeText(row[ciProd]);
+      var loc     = safeText(row[ciLoc]);
+      // Ignorer les lignes totalement vides
+      var any = false;
+      for (var c = 0; c < row.length; c++) { if (safeText(row[c]) !== '') { any = true; break; } }
+      if (!any) continue;
+      if (!produit && !loc && !safeText(row[ciMeth])) continue;
+
+      var raw = [];
+      for (var c = 0; c < headers.length; c++) raw.push(safeText(row[c]));
+
+      entries.push({
+        date:          fmtDate(row[ciDate]),
+        dateIso:       getIso(row[ciDate]),
+        produit:       produit,
+        localisation:  loc,
+        cible:         safeText(row[ciCible]),
+        concentration: safeText(row[ciConc]),
+        quantite:      safeText(row[ciQte]),
+        methode:       safeText(row[ciMeth]),
+        raw:           raw
+      });
+    }
+    Logger.log('[Pesticides] ' + sheetName + ' : ' + entries.length + ' entrées');
+  } catch (e) {
+    Logger.log('[Pesticides] ERREUR : ' + e);
+  }
+  return { entries: entries, headers: headers, sheetName: sheetName };
+}
+
+
+// ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "Gestion des Permis de Travail" ──────────
 // Renvoie un objet :
 //   { entries:[{...}], headers:[...], sheetName:'...' }
@@ -2418,6 +2520,14 @@ function getData() {
   out.pests = pests;   // { fk, rat, mech, glue } — chacun = { entries, headers, sheetName, meta }
   out.pestsSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
                        '/edit?gid=1333145847#gid=1333145847';
+
+  // ── PESTICIDES (feuille "Suivi de l'application des pesticides (ENR HSE 13)") ─
+  var pesti = readPesticides(ss);
+  out.pesticides          = (pesti && pesti.entries)   ? pesti.entries   : [];
+  out.pesticidesHeaders   = (pesti && pesti.headers)   ? pesti.headers   : [];
+  out.pesticidesSheetName = (pesti && pesti.sheetName) ? pesti.sheetName : '';
+  out.pesticidesSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                            '/edit?gid=1032733378#gid=1032733378';
 
   // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
   var sensib = readSensibilisation();

@@ -3919,6 +3919,76 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
+<!-- ═══ PESTICIDES — vue native (boutons + tableau) ═══ -->
+<div class="modal-bg" id="pestiModal" style="display:none" onclick="if(event.target===this)closeModal('pestiModal')">
+  <div class="modal-panel cln-embed-panel" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(16,201,133,.2);border-color:var(--green)">🧪</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id">FEUILLE SOURCE · ENR HSE 13</div>
+        <div class="modal-hdr-name">Suivi de l'application des pesticides</div>
+        <div class="cln-embed-actions">
+          <a id="pestiNewTab" class="cln-embed-newtab" href="#" target="_blank" rel="noopener noreferrer">↗ Ouvrir la feuille</a>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('pestiModal')">✕</button>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;padding:14px 16px">
+      <!-- KPI -->
+      <div class="pests-kpi-grid" id="pestiKpis"></div>
+
+      <!-- Filtres : Produit -->
+      <div class="pests-types-header" style="margin-top:4px">
+        <span class="pests-types-bullet">🧴</span>
+        <span class="pests-types-title">Filtrer par produit</span>
+      </div>
+      <div class="pests-mini-tabs" id="pestiProdChips" style="margin-bottom:10px"></div>
+
+      <!-- Filtres : Cible -->
+      <div class="pests-types-header">
+        <span class="pests-types-bullet">🎯</span>
+        <span class="pests-types-title">Filtrer par cible</span>
+      </div>
+      <div class="pests-mini-tabs" id="pestiCibleChips" style="margin-bottom:10px"></div>
+
+      <!-- Filtres : Méthode -->
+      <div class="pests-types-header">
+        <span class="pests-types-bullet">🛠️</span>
+        <span class="pests-types-title">Filtrer par méthode</span>
+      </div>
+      <div class="pests-mini-tabs" id="pestiMethChips" style="margin-bottom:10px"></div>
+
+      <!-- Recherche + tableau -->
+      <div class="pests-search-bar">
+        <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+        <input type="text" class="pests-search-input" id="pestiSearch"
+               placeholder="Rechercher (produit, localisation, méthode…)" oninput="pestiSet('q',this.value)">
+        <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="pestiReset()">↺ Reset</button>
+        <span class="pests-stat-pill" id="pestiStat">— applications</span>
+      </div>
+      <div class="pests-table-wrap">
+        <table class="pests-table" id="pestiTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Désignation pesticide</th>
+              <th>Localisation</th>
+              <th>Cible</th>
+              <th>Concentration</th>
+              <th>Quantité</th>
+              <th>Méthode</th>
+            </tr>
+          </thead>
+          <tbody id="pestiBody"></tbody>
+        </table>
+      </div>
+      <div class="pests-empty" id="pestiEmpty" style="display:none;margin-top:8px">
+        Aucune application de pesticide ne correspond aux filtres.
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ════════════════════════════════════════════════════════════
 var D=null, viewMode='mois', pyrMode='ytd', envMode='conso';
@@ -4991,7 +5061,7 @@ function goVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','pestiModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -6252,19 +6322,138 @@ function openProcedureEmbed(url, title){
   openCleaningEmbed(url, title || 'Procédure HSE', 'PROCÉDURE HSE', '📄');
 }
 
-// ── EMBED PESTICIDES — feuille « Suivi de l'application des pesticides (ENR HSE 13) » ──
-// Ouvre UNIQUEMENT la feuille pesticides DANS le dashboard (viewer intégré),
-// sans redirection externe et sans la barre d'onglets du classeur (single=true).
+// ══ PESTICIDES — vue native (boutons + tableau, thème dashboard) ══════
+// Convertit le contenu de la feuille « Suivi de l'application des
+// pesticides (ENR HSE 13) » en KPI, filtres cliquables et tableau,
+// affichés dans un modal interne — sans iframe ni redirection externe.
+var pestiState = { prod:'all', cible:'all', meth:'all', q:'' };
+var PESTI_FALLBACK_URL =
+  'https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1032733378#gid=1032733378';
+
 function openPesticidesSource(){
-  var SHEET = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
-  var GID   = '1032733378';
-  var url      = 'https://docs.google.com/spreadsheets/d/' + SHEET + '/edit?gid=' + GID + '#gid=' + GID;
-  // Affiche une seule feuille : widget=true masque la barre d'outils,
-  // single=true masque la liste des onglets, rm=minimal allège le chrome.
-  var embedUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET +
-                 '/preview?widget=true&headers=false&chrome=false&rm=minimal&single=true&gid=' + GID;
-  openCleaningEmbed(url, "Suivi de l'application des pesticides (ENR HSE 13)",
-                    'FEUILLE SOURCE', '🧪', embedUrl);
+  var nt = document.getElementById('pestiNewTab');
+  if (nt) nt.href = (D && D.pesticidesSourceUrl) ? D.pesticidesSourceUrl : PESTI_FALLBACK_URL;
+  pestiState = { prod:'all', cible:'all', meth:'all', q:'' };
+  var si = document.getElementById('pestiSearch'); if (si) si.value = '';
+  renderPesticidesView();
+  openModal('pestiModal');
+}
+function pestiReset(){
+  pestiState = { prod:'all', cible:'all', meth:'all', q:'' };
+  var si = document.getElementById('pestiSearch'); if (si) si.value = '';
+  renderPesticidesView();
+}
+function pestiSet(key, val){ pestiState[key] = val; renderPesticidesView(); }
+
+function pestiData(){ return (D && Array.isArray(D.pesticides)) ? D.pesticides : []; }
+
+function pestiDistinct(field){
+  var seen = {}, out = [];
+  pestiData().forEach(function(e){
+    var v = (e[field] || '').trim();
+    if (v && !seen[v]) { seen[v] = 1; out.push(v); }
+  });
+  out.sort(function(a,b){ return a.localeCompare(b,'fr'); });
+  return out;
+}
+function pestiFiltered(){
+  var q = (pestiState.q || '').trim().toLowerCase();
+  return pestiData().filter(function(e){
+    if (pestiState.prod  !== 'all' && (e.produit||'')      !== pestiState.prod)  return false;
+    if (pestiState.cible !== 'all' && (e.cible||'')        !== pestiState.cible) return false;
+    if (pestiState.meth  !== 'all' && (e.methode||'')      !== pestiState.meth)  return false;
+    if (q){
+      var hay = [e.date,e.produit,e.localisation,e.cible,e.concentration,e.quantite,e.methode]
+                .join(' ').toLowerCase();
+      if (hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+}
+function pestiChip(key, val, label, on){
+  return '<span class="tag-filter-chip'+(on?' on':'')+'"'
+    + (on ? ' style="background:var(--p2)"' : '')
+    + ' data-v="'+escAttr(val)+'" onclick="pestiSet(\''+key+'\',this.dataset.v)">'
+    + esc(label)+'</span>';
+}
+function pestiRenderChips(containerId, key, values){
+  var el = document.getElementById(containerId); if (!el) return;
+  var cur = pestiState[key];
+  var html = pestiChip(key, 'all', 'Tous', cur==='all');
+  values.forEach(function(v){ html += pestiChip(key, v, v, cur===v); });
+  el.innerHTML = html;
+}
+
+function renderPesticidesView(){
+  var all = pestiData();
+
+  // ── KPI ──
+  var kpiEl = document.getElementById('pestiKpis');
+  if (kpiEl){
+    if (!all.length){
+      kpiEl.innerHTML = '<div class="pests-kpi k-b"><div class="pests-kpi-lbl">Données</div>'
+        + '<div class="pests-kpi-val">0</div><div class="pests-kpi-sub">feuille vide ou non déployée</div></div>';
+    } else {
+      var nbProd  = pestiDistinct('produit').length;
+      var nbLoc   = pestiDistinct('localisation').length;
+      var nbCible = pestiDistinct('cible').length;
+      // Dernière application = date ISO max
+      var maxIso = '', maxLabel = '';
+      all.forEach(function(e){ if (e.dateIso && e.dateIso > maxIso){ maxIso = e.dateIso; maxLabel = e.date; } });
+      // Applications cette année
+      var yNow = String(new Date().getFullYear());
+      var thisYear = all.filter(function(e){ return (e.dateIso||'').slice(0,4) === yNow; }).length;
+      function kpi(lbl,val,cls,sub){
+        return '<div class="pests-kpi '+cls+'"><div class="pests-kpi-lbl">'+esc(lbl)+'</div>'
+          + '<div class="pests-kpi-val">'+val+'</div>'
+          + '<div class="pests-kpi-sub">'+esc(sub||'')+'</div></div>';
+      }
+      kpiEl.innerHTML =
+        kpi('Total applications', all.length, 'k-t', 'enregistrements')
+      + kpi('Cette année', thisYear, 'k-b', yNow)
+      + kpi('Produits utilisés', nbProd, 'k-g', 'désignations distinctes')
+      + kpi('Cibles traitées', nbCible, 'k-a', 'types de nuisibles')
+      + kpi('Localisations', nbLoc, 'k-o', 'zones traitées')
+      + kpi('Dernière application', maxLabel||'—', 'k-b', maxLabel?'date la plus récente':'aucune date');
+    }
+  }
+
+  // ── Chips de filtre ──
+  pestiRenderChips('pestiProdChips',  'prod',  pestiDistinct('produit'));
+  pestiRenderChips('pestiCibleChips', 'cible', pestiDistinct('cible'));
+  pestiRenderChips('pestiMethChips',  'meth',  pestiDistinct('methode'));
+
+  // ── Tableau (trié par date décroissante) ──
+  var rows = pestiFiltered().slice().sort(function(a,b){
+    var ai = a.dateIso || '', bi = b.dateIso || '';
+    if (ai && bi) return bi < ai ? -1 : (bi > ai ? 1 : 0);
+    if (ai) return -1;
+    if (bi) return 1;
+    return 0;
+  });
+  var body  = document.getElementById('pestiBody');
+  var empty = document.getElementById('pestiEmpty');
+  var stat  = document.getElementById('pestiStat');
+  if (stat) stat.textContent = rows.length + ' / ' + all.length + ' applications';
+  if (body){
+    if (!rows.length){
+      body.innerHTML = '';
+      if (empty) empty.style.display = 'block';
+    } else {
+      if (empty) empty.style.display = 'none';
+      body.innerHTML = rows.map(function(e){
+        return '<tr>'
+          + '<td style="white-space:nowrap">'+esc(e.date||'—')+'</td>'
+          + '<td><strong>'+esc(e.produit||'—')+'</strong></td>'
+          + '<td>'+esc(e.localisation||'—')+'</td>'
+          + '<td>'+esc(e.cible||'—')+'</td>'
+          + '<td>'+esc(e.concentration||'—')+'</td>'
+          + '<td>'+esc(e.quantite||'—')+'</td>'
+          + '<td>'+esc(e.methode||'—')+'</td>'
+          + '</tr>';
+      }).join('');
+    }
+  }
 }
 
 function clearClnFilters(){
