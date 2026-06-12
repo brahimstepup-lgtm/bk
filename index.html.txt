@@ -1722,6 +1722,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab on" onclick="goTab('dash',this)">📊 Vue Globale</button>
   <button class="tab"    onclick="goTab('inc',this)">⚠️ Incidents</button>
   <button class="tab"    onclick="goTab('tags',this)">🏷️ TAGs</button>
+  <button class="tab"    onclick="goTab('risk',this);renderRisk()">🛡️ Analyse Risques</button>
   <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
@@ -1939,6 +1940,24 @@ html.light .pests-search-input{background:#edf2f7}
         <tbody id="tagBody"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ═══ ANALYSE DES RISQUES ═══ -->
+<div id="risk" class="page">
+  <div class="tsum" id="riskSum"></div>
+  <div class="kpi-grid" id="riskKpi"></div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition par statut</div><div class="cw" style="height:210px"><canvas id="riskStatutC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition par gravité</div><div class="cw" style="height:210px"><canvas id="riskGraviteC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top zones à risque</div><div class="cw" style="height:230px"><canvas id="riskZoneC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top types de danger</div><div class="cw" style="height:230px"><canvas id="riskTypeC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top responsables · TAGs ouverts</div><div class="cw" style="height:230px"><canvas id="riskRespC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Évolution mensuelle · créés vs clôturés</div><div class="cw" style="height:230px"><canvas id="riskMonthC"></canvas></div></div>
   </div>
 </div>
 
@@ -5244,6 +5263,67 @@ function mkChart(id,type,labels,datasets,opts){
   if(charts[id]) charts[id].destroy();
   try{ charts[id]=new Chart(document.getElementById(id),{type:type,data:{labels:labels,datasets:datasets},options:opts||BASE}); }catch(e){}
 }
+// ══ ANALYSE DES RISQUES (à partir des TAGs) ═══════════════════
+function renderRisk(){
+  if(!D||!D.tags){return;}
+  var tags=D.tags, total=tags.length;
+  function isOpen(t){var s=(t.statut||'').toLowerCase();return s.indexOf('ouvert')>-1||s.indexOf('open')>-1;}
+  var openN=tags.filter(isOpen).length, closedN=total-openN;
+  var cloPct=total>0?Math.round(closedN/total*100):0;
+  function gravNum(t){var n=parseFloat((''+(t.gravite==null?'':t.gravite)).replace(',','.'));return isNaN(n)?null:n;}
+  var hi=tags.filter(function(t){var g=gravNum(t);return g!=null&&g>=3;}).length;
+
+  var kp=document.getElementById('riskKpi');
+  if(kp) kp.innerHTML=[
+    kpiCard('Total risques',total,'b','TAGs identifiés','k-b',null,null),
+    kpiCard('Ouverts',openN,'r','à traiter','k-r',total>0?Math.round(openN/total*100):0,C.red),
+    kpiCard('Clôturés',closedN,'g','traités','k-g',cloPct,C.green),
+    kpiCard('Taux clôture',fmtNum(cloPct)+'%','g','obj. 95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red),
+    kpiCard('Gravité élevée',hi,'a','gravité ≥ 3','k-a',total>0?Math.round(hi/total*100):0,C.amber)
+  ].join('');
+
+  var hbar=Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}});
+  function topN(field,alt,limit){
+    var m={};
+    tags.forEach(function(t){var v=((t[field]||(alt?t[alt]:'')||'')+'').trim();if(v){v=v.substring(0,24);m[v]=(m[v]||0)+1;}});
+    var ks=Object.keys(m).sort(function(a,b){return m[b]-m[a];}).slice(0,limit);
+    return {ks:ks,vals:ks.map(function(k){return m[k];})};
+  }
+
+  // 1) Répartition par statut
+  mkChart('riskStatutC','doughnut',['Clôturés','Ouverts'],[{data:[closedN,openN],backgroundColor:[C.green,C.red],borderWidth:0,hoverOffset:4}],
+    {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:10},boxWidth:10}}},cutout:'58%'});
+
+  // 2) Répartition par gravité
+  var grav={};
+  tags.forEach(function(t){var g=(t.gravite!=null&&(''+t.gravite).trim()!=='')?(''+t.gravite).trim():'Non défini';grav[g]=(grav[g]||0)+1;});
+  var gk=Object.keys(grav).sort(function(a,b){var na=parseFloat(a),nb=parseFloat(b);if(isNaN(na)&&isNaN(nb))return a<b?-1:1;if(isNaN(na))return 1;if(isNaN(nb))return -1;return na-nb;});
+  var gcol=gk.map(function(k){var n=parseFloat(k);return isNaN(n)?C.p3:(n>=4?C.red:n>=3?C.orange:n>=2?C.amber:C.green);});
+  mkChart('riskGraviteC','bar',gk,[{data:gk.map(function(k){return grav[k];}),backgroundColor:gcol,borderRadius:4}],BASE);
+
+  // 3) Top zones / 4) Top types
+  var z=topN('zone','emplacement',8);
+  mkChart('riskZoneC','bar',z.ks,[{data:z.vals,backgroundColor:'rgba(13,168,210,.78)',borderRadius:4}],hbar);
+  var ty=topN('type',null,8);
+  mkChart('riskTypeC','bar',ty.ks,[{data:ty.vals,backgroundColor:'rgba(245,166,35,.82)',borderRadius:4}],hbar);
+
+  // 5) Top responsables (TAGs ouverts)
+  var rm={};
+  tags.filter(isOpen).forEach(function(t){var v=((t.responsable||'')+'').trim();if(v){v=v.substring(0,20);rm[v]=(rm[v]||0)+1;}});
+  var rk=Object.keys(rm).sort(function(a,b){return rm[b]-rm[a];}).slice(0,8);
+  mkChart('riskRespC','bar',rk,[{data:rk.map(function(k){return rm[k];}),backgroundColor:'rgba(232,68,90,.78)',borderRadius:4}],hbar);
+
+  // 6) Évolution mensuelle (créés vs clôturés)
+  var created=[0,0,0,0,0,0,0,0,0,0,0,0], closed=[0,0,0,0,0,0,0,0,0,0,0,0];
+  tags.forEach(function(t){if(t.isoDate&&(''+t.isoDate).length>=7){var mo=parseInt((''+t.isoDate).substring(5,7),10)-1;if(mo>=0&&mo<12){created[mo]++;if(!isOpen(t))closed[mo]++;}}});
+  mkChart('riskMonthC','line',ML,[
+    {label:'Créés',data:created,borderColor:C.p4,backgroundColor:'rgba(13,168,210,.15)',fill:true,tension:.35,borderWidth:2,pointRadius:2},
+    {label:'Clôturés',data:closed,borderColor:C.green,backgroundColor:'rgba(16,201,133,.12)',fill:true,tension:.35,borderWidth:2,pointRadius:2}
+  ],Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}}));
+
+  var sum=document.getElementById('riskSum');
+  if(sum) sum.innerHTML='🛡️ <strong>'+total+'</strong> risques (TAGs) · <strong style="color:#e8445a">'+openN+'</strong> ouverts · <strong style="color:#10c985">'+closedN+'</strong> clôturés ('+cloPct+'%) · gravité élevée : <strong style="color:#f5a623">'+hi+'</strong>';
+}
 function kpiCard(lbl,val,color,sub,cls,pct,bc){
   var bar='';
   var dv=(typeof val==='number')?fmtNum(val):val;
@@ -6680,6 +6760,7 @@ function openCleanModal(c){
 // ══ RENDU PRINCIPAL ═══════════════════════════════════════════
 function render(data){
   D=data; var m=data.metrics;
+  try{renderRisk();}catch(e){}
 
   // ── Synchronisation « Résol. TAGs » (Vue Globale) avec
   // « Clôture » (page TAGs, filtre YTD 2026) ──
