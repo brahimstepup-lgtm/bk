@@ -1964,6 +1964,17 @@ html.light .pests-search-input{background:#edf2f7}
     <div id="riskMatrix" style="overflow:auto;padding:8px 4px"></div>
   </div>
   <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Niveau de risque par ligne de production (avant)</div>
+    <div class="cw" style="height:480px"><canvas id="riskLigneC"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Détail par ligne de production</div>
+    <div class="tblw"><table>
+      <thead><tr><th>Ligne</th><th>Total</th><th>Acceptable</th><th>Marginal</th><th>Significatif</th><th>Très Fort</th><th>Prioritaires</th><th>Score moyen</th></tr></thead>
+      <tbody id="riskLigneBody"></tbody>
+    </table></div>
+  </div>
+  <div class="card">
     <div class="ct"><span class="ct-dot"></span>Lignes critiques (≥ Significatif)
       <span id="riskLinesCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
     </div>
@@ -5345,6 +5356,26 @@ function _renderRiskAll(){
   barFrom('riskTypeC', d.risques, 'rgba(245,166,35,.85)');
   barFrom('riskLieuC', d.lieux, 'rgba(139,92,246,.8)');
   barFrom('riskDangC', d.dangers, 'rgba(20,184,166,.85)');
+
+  // Par ligne de production (col Local) — barres empilées + table
+  var lg=d.lignes||[];
+  var lglabels=lg.map(function(x){return x.name.length>22?x.name.substring(0,22)+'…':x.name;});
+  mkChart('riskLigneC','bar',lglabels,[
+    {label:'Acceptable',data:lg.map(function(x){return x.niv[0];}),backgroundColor:'#10c985'},
+    {label:'Marginal',data:lg.map(function(x){return x.niv[1];}),backgroundColor:'#f5a623'},
+    {label:'Significatif',data:lg.map(function(x){return x.niv[2];}),backgroundColor:'#f97316'},
+    {label:'Très Fort',data:lg.map(function(x){return x.niv[3];}),backgroundColor:'#e8445a'},
+    {label:'Inacceptable',data:lg.map(function(x){return x.niv[4];}),backgroundColor:'#b3123a'}
+  ],Object.assign({},BASE,{indexAxis:'y',plugins:{legend:{display:true,labels:{color:C.txt,font:{size:9},boxWidth:9}}},scales:{x:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt}},y:{stacked:true,grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+  var hh='';
+  lg.forEach(function(x){
+    hh+='<tr><td style="font-weight:600">'+esc(x.name)+'</td><td style="text-align:center;font-weight:700">'+x.total+'</td>'
+      +'<td style="text-align:center">'+x.niv[0]+'</td><td style="text-align:center">'+x.niv[1]+'</td><td style="text-align:center">'+x.niv[2]+'</td>'
+      +'<td style="text-align:center;color:'+(x.niv[3]?'#e8445a':'var(--text3)')+';font-weight:'+(x.niv[3]?'700':'400')+'">'+x.niv[3]+'</td>'
+      +'<td style="text-align:center;color:'+(x.prio?'#e8445a':'var(--text3)')+';font-weight:700">'+x.prio+'</td>'
+      +'<td style="text-align:center">'+x.avg+'</td></tr>';
+  });
+  var lb=document.getElementById('riskLigneBody'); if(lb) lb.innerHTML=hh;
 
   _renderRiskMatrix();
   renderRiskLines();
