@@ -10928,7 +10928,8 @@ function flyMapDefaultFloorIdx(){
 var FLY_ZONE_MIN = 4.5, FLY_ZONE_MAX = 13;
 function hexA(hex,a){ hex=String(hex||'#94a3b8').replace('#',''); var n=parseInt(hex,16);
   return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
-// Type d'insecte DOMINANT par n° de fly-killer (feuille FK) → {key,color,label,total}
+// Tous les types d'insectes présents par n° de fly-killer (feuille FK)
+//   → { types:[{key,color,label,count} … tri décroissant], total, top }
 function flyInsectByNum(){
   var out={}; var s=(D&&D.pests&&D.pests.fk)?D.pests.fk:null;
   if(!s||!s.entries||!s.entries.length) return out;
@@ -10944,17 +10945,20 @@ function flyInsectByNum(){
     types.forEach(function(t){ var v=flyCellNum(raw[t.colIdx]); if(v>0) agg[num][t.key]=(agg[num][t.key]||0)+v; });
   });
   Object.keys(agg).forEach(function(num){
-    var best=null,bv=0,tot=0;
-    Object.keys(agg[num]).forEach(function(k){ tot+=agg[num][k]; if(agg[num][k]>bv){bv=agg[num][k];best=k;} });
-    if(best){ var def=FLY_TYPES_DEF.filter(function(d){return d.key===best;})[0]||{};
-      out[num]={key:best,color:def.color||'#94a3b8',label:def.label||best,total:tot}; }
+    var arr=[], tot=0;
+    Object.keys(agg[num]).forEach(function(k){
+      var def=FLY_TYPES_DEF.filter(function(d){return d.key===k;})[0]||{};
+      arr.push({key:k,color:def.color||'#94a3b8',label:def.label||k,count:agg[num][k]}); tot+=agg[num][k];
+    });
+    arr.sort(function(a,b){ return b.count-a.count; });   // décroissant : grand cercle d'abord
+    if(arr.length) out[num]={types:arr,total:tot,top:arr[0]};
   });
   return out;
 }
 // Légende des couleurs « zone de présence » (types réellement présents)
 function flyRenderInsectLegend(insMap){
   var el=document.getElementById('flyInsLegend'); if(!el) return;
-  var present={}; Object.keys(insMap||{}).forEach(function(n){ present[insMap[n].key]=1; });
+  var present={}; Object.keys(insMap||{}).forEach(function(n){ (insMap[n].types||[]).forEach(function(ty){ present[ty.key]=1; }); });
   var defs=FLY_TYPES_DEF.filter(function(d){ return present[d.key]; });
   el.innerHTML = defs.length ? ('<span class="flymap-ins-lbl">⭕ Zone de présence — couleur = type dominant · taille = nb de captures :</span>'
     + defs.map(function(d){ return '<span class="flymap-ins-leg"><i style="background:'+hexA(d.color,0.18)
@@ -10989,22 +10993,26 @@ function renderFlyMap(){
     }
   }
   var pts=flyMapPointsForFloor(floor.zone);
-  var insMap=flyInsectByNum();   // n° → type d'insecte dominant (couleur de la zone)
-  var maxTot=1; Object.keys(insMap).forEach(function(n){ if(insMap[n].total>maxTot) maxTot=insMap[n].total; });
+  var insMap=flyInsectByNum();   // n° → tous les types présents (cercles concentriques)
+  // échelle des rayons : capture max d'UN type sur l'ensemble des appareils
+  var maxType=1; Object.keys(insMap).forEach(function(n){ insMap[n].types.forEach(function(ty){ if(ty.count>maxType) maxType=ty.count; }); });
   wrap.innerHTML=pts.map(function(p,idx){
     var t=PEST_MAP_TYPES[p.type]||{}; var icon=FLY_ICONS[t.icon]||FLY_ICONS.glue;
     var ins=insMap[String(parseInt(p.num,10))];
-    // Cercle seulement si captures ET appareil NON retiré ; diamètre ∝ √(captures)
-    var zone='';
+    // Un cercle PAR type d'insecte présent (sauf appareils retirés) ; diamètre ∝ √(captures du type)
+    var zones='';
     if(ins && p.type!=='fk_removed'){
-      var diam=(FLY_ZONE_MIN+(FLY_ZONE_MAX-FLY_ZONE_MIN)*Math.sqrt(ins.total)/Math.sqrt(maxTot)).toFixed(1);
-      zone='<div class="flymap-zone" style="left:'+p.x+'%;top:'+p.y+'%;width:'+diam+'%;'
-        + 'background:'+hexA(ins.color,0.13)+';border-color:'+ins.color+'"'
-        + ' title="Zone de présence — '+esc(ins.label)+' ('+ins.total+' capture(s))"></div>';
+      ins.types.forEach(function(ty){   // trié décroissant → grand cercle dessous, petits dessus
+        var diam=(FLY_ZONE_MIN+(FLY_ZONE_MAX-FLY_ZONE_MIN)*Math.sqrt(ty.count)/Math.sqrt(maxType)).toFixed(1);
+        zones+='<div class="flymap-zone" style="left:'+p.x+'%;top:'+p.y+'%;width:'+diam+'%;'
+          + 'background:'+hexA(ty.color,0.10)+';border-color:'+ty.color+'"'
+          + ' title="'+esc(ty.label)+' : '+ty.count+' capture(s)"></div>';
+      });
     }
-    return zone + '<button type="button" id="flypt-'+idx+'" class="flymap-pt"'
+    var tip=ins?(' · '+ins.types.map(function(ty){return ty.label+':'+ty.count;}).join(', ')):'';
+    return zones + '<button type="button" id="flypt-'+idx+'" class="flymap-pt"'
       + ' style="left:'+p.x+'%;top:'+p.y+'%"'
-      + ' title="'+esc((t.label||'Fly-killer')+' — N° '+p.num+(ins?(' · présence: '+ins.label):''))+'"'
+      + ' title="'+esc((t.label||'Fly-killer')+' — N° '+p.num+tip)+'"'
       + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(p.type)+'\')">'
       + icon + '<span class="flymap-num">'+esc(String(p.num))+'</span></button>';
   }).join('');
