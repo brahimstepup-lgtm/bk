@@ -1943,21 +1943,41 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
-<!-- ═══ ANALYSE DES RISQUES ═══ -->
+<!-- ═══ ANALYSE DES RISQUES (registre EvRP) ═══ -->
 <div id="risk" class="page">
-  <div class="tsum" id="riskSum"></div>
+  <div class="tsum" id="riskSum">⏳ Ouvrez l'onglet pour charger l'analyse…</div>
   <div class="kpi-grid" id="riskKpi"></div>
   <div class="row2">
-    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition par statut</div><div class="cw" style="height:210px"><canvas id="riskStatutC"></canvas></div></div>
-    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition par gravité</div><div class="cw" style="height:210px"><canvas id="riskGraviteC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Niveau de risque · avant vs après actions</div><div class="cw" style="height:235px"><canvas id="riskLevelC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition actuelle (avant)</div><div class="cw" style="height:235px"><canvas id="riskDoughC"></canvas></div></div>
   </div>
   <div class="row2">
-    <div class="card"><div class="ct"><span class="ct-dot"></span>Top zones à risque</div><div class="cw" style="height:230px"><canvas id="riskZoneC"></canvas></div></div>
-    <div class="card"><div class="ct"><span class="ct-dot"></span>Top types de danger</div><div class="cw" style="height:230px"><canvas id="riskTypeC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Risques par famille (Top 12)</div><div class="cw" style="height:300px"><canvas id="riskFamC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top 10 des risques (conséquences)</div><div class="cw" style="height:300px"><canvas id="riskTypeC"></canvas></div></div>
   </div>
   <div class="row2">
-    <div class="card"><div class="ct"><span class="ct-dot"></span>Top responsables · TAGs ouverts</div><div class="cw" style="height:230px"><canvas id="riskRespC"></canvas></div></div>
-    <div class="card"><div class="ct"><span class="ct-dot"></span>Évolution mensuelle · créés vs clôturés</div><div class="cw" style="height:230px"><canvas id="riskMonthC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top 10 des lieux</div><div class="cw" style="height:265px"><canvas id="riskLieuC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top 10 des dangers</div><div class="cw" style="height:265px"><canvas id="riskDangC"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Matrice Fréquence × Gravité — nombre de risques (avant)</div>
+    <div id="riskMatrix" style="overflow:auto;padding:8px 4px"></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Lignes critiques (≥ Significatif)
+      <span id="riskLinesCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+    </div>
+    <div style="padding:6px 0">
+      <input type="text" id="riskFilter" class="tag-search-input" placeholder="Filtrer : lieu, zone, tâche, danger, risque, famille, service…" oninput="renderRiskLines()" style="width:100%">
+    </div>
+    <div class="tblw">
+      <table>
+        <thead><tr>
+          <th>N°</th><th>Direction</th><th>Service</th><th>Lieu</th><th>Zone/Machine</th><th>Tâche</th><th>Danger</th><th>Risque</th><th>Famille</th><th>F</th><th>P</th><th>G</th><th>Score</th><th>Niveau avant</th><th>Niveau après</th>
+        </tr></thead>
+        <tbody id="riskBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -5263,66 +5283,126 @@ function mkChart(id,type,labels,datasets,opts){
   if(charts[id]) charts[id].destroy();
   try{ charts[id]=new Chart(document.getElementById(id),{type:type,data:{labels:labels,datasets:datasets},options:opts||BASE}); }catch(e){}
 }
-// ══ ANALYSE DES RISQUES (à partir des TAGs) ═══════════════════
+// ══ ANALYSE DES RISQUES (registre EvRP — fichier source) ══════
+// Charge à la demande l'analyse ligne par ligne via le backend
+// (getRiskAnalysisForClient) puis met en cache dans _riskData.
+var _riskData=null, _riskLoading=false;
 function renderRisk(){
-  if(!D||!D.tags){return;}
-  var tags=D.tags, total=tags.length;
-  function isOpen(t){var s=(t.statut||'').toLowerCase();return s.indexOf('ouvert')>-1||s.indexOf('open')>-1;}
-  var openN=tags.filter(isOpen).length, closedN=total-openN;
-  var cloPct=total>0?Math.round(closedN/total*100):0;
-  function gravNum(t){var n=parseFloat((''+(t.gravite==null?'':t.gravite)).replace(',','.'));return isNaN(n)?null:n;}
-  var hi=tags.filter(function(t){var g=gravNum(t);return g!=null&&g>=3;}).length;
+  if(_riskData){ _renderRiskAll(); return; }
+  if(_riskLoading) return;
+  _riskLoading=true;
+  var sum=document.getElementById('riskSum');
+  if(sum) sum.innerHTML='⏳ Chargement de l\'analyse des risques (registre EvRP)…';
+  google.script.run
+    .withSuccessHandler(function(res){
+      _riskLoading=false;
+      if(!res||!res.ok){ if(sum) sum.innerHTML='⚠️ '+esc((res&&res.error)||'Erreur de chargement.'); return; }
+      _riskData=res; _renderRiskAll();
+    })
+    .withFailureHandler(function(err){
+      _riskLoading=false;
+      if(sum) sum.innerHTML='⚠️ Erreur réseau : '+esc((err&&err.message)||String(err));
+    })
+    .getRiskAnalysisForClient();
+}
 
+function _renderRiskAll(){
+  var d=_riskData; if(!d) return;
+  var N=d.total, k=d.kpis;
+  var pctAcc=N?Math.round(d.avant[0]/N*100):0;
   var kp=document.getElementById('riskKpi');
   if(kp) kp.innerHTML=[
-    kpiCard('Total risques',total,'b','TAGs identifiés','k-b',null,null),
-    kpiCard('Ouverts',openN,'r','à traiter','k-r',total>0?Math.round(openN/total*100):0,C.red),
-    kpiCard('Clôturés',closedN,'g','traités','k-g',cloPct,C.green),
-    kpiCard('Taux clôture',fmtNum(cloPct)+'%','g','obj. 95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red),
-    kpiCard('Gravité élevée',hi,'a','gravité ≥ 3','k-a',total>0?Math.round(hi/total*100):0,C.amber)
+    kpiCard('Évaluations',N,'b','lignes du registre','k-b',null,null),
+    kpiCard('Prioritaires',k.prioAvant,'r','Très Fort (avant)','k-r',N?Math.round(k.prioAvant/N*100):0,C.red),
+    kpiCard('Prioritaires après',k.prioApres,'g','après actions','k-g',100,C.green),
+    kpiCard('À traiter',k.sigAvant,'a','≥ Significatif','k-a',N?Math.round(k.sigAvant/N*100):0,C.amber),
+    kpiCard('Score moyen',k.avgAvant+' → '+k.avgApres,'g','avant → après','k-g',null,null)
   ].join('');
 
-  var hbar=Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}});
-  function topN(field,alt,limit){
-    var m={};
-    tags.forEach(function(t){var v=((t[field]||(alt?t[alt]:'')||'')+'').trim();if(v){v=v.substring(0,24);m[v]=(m[v]||0)+1;}});
-    var ks=Object.keys(m).sort(function(a,b){return m[b]-m[a];}).slice(0,limit);
-    return {ks:ks,vals:ks.map(function(k){return m[k];})};
-  }
+  var sum=document.getElementById('riskSum');
+  if(sum) sum.innerHTML='🛡️ <strong>'+N+'</strong> évaluations · Acceptable <strong style="color:#10c985">'+pctAcc+'%</strong>'
+    +' · prioritaires (Très Fort) <strong style="color:#e8445a">'+k.prioAvant+'</strong> → <strong style="color:#10c985">'+k.prioApres+'</strong> après actions'
+    +' · score moyen <strong>'+k.avgAvant+'→'+k.avgApres+'</strong> · source : onglet '+esc(d.sheet);
 
-  // 1) Répartition par statut
-  mkChart('riskStatutC','doughnut',['Clôturés','Ouverts'],[{data:[closedN,openN],backgroundColor:[C.green,C.red],borderWidth:0,hoverOffset:4}],
-    {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:10},boxWidth:10}}},cutout:'58%'});
+  var LV=['Acceptable','Marginal','Significatif','Très Fort','Inacceptable'];
+  var LCOL=['#10c985','#f5a623','#f97316','#e8445a','#b3123a'];
 
-  // 2) Répartition par gravité
-  var grav={};
-  tags.forEach(function(t){var g=(t.gravite!=null&&(''+t.gravite).trim()!=='')?(''+t.gravite).trim():'Non défini';grav[g]=(grav[g]||0)+1;});
-  var gk=Object.keys(grav).sort(function(a,b){var na=parseFloat(a),nb=parseFloat(b);if(isNaN(na)&&isNaN(nb))return a<b?-1:1;if(isNaN(na))return 1;if(isNaN(nb))return -1;return na-nb;});
-  var gcol=gk.map(function(k){var n=parseFloat(k);return isNaN(n)?C.p3:(n>=4?C.red:n>=3?C.orange:n>=2?C.amber:C.green);});
-  mkChart('riskGraviteC','bar',gk,[{data:gk.map(function(k){return grav[k];}),backgroundColor:gcol,borderRadius:4}],BASE);
-
-  // 3) Top zones / 4) Top types
-  var z=topN('zone','emplacement',8);
-  mkChart('riskZoneC','bar',z.ks,[{data:z.vals,backgroundColor:'rgba(13,168,210,.78)',borderRadius:4}],hbar);
-  var ty=topN('type',null,8);
-  mkChart('riskTypeC','bar',ty.ks,[{data:ty.vals,backgroundColor:'rgba(245,166,35,.82)',borderRadius:4}],hbar);
-
-  // 5) Top responsables (TAGs ouverts)
-  var rm={};
-  tags.filter(isOpen).forEach(function(t){var v=((t.responsable||'')+'').trim();if(v){v=v.substring(0,20);rm[v]=(rm[v]||0)+1;}});
-  var rk=Object.keys(rm).sort(function(a,b){return rm[b]-rm[a];}).slice(0,8);
-  mkChart('riskRespC','bar',rk,[{data:rk.map(function(k){return rm[k];}),backgroundColor:'rgba(232,68,90,.78)',borderRadius:4}],hbar);
-
-  // 6) Évolution mensuelle (créés vs clôturés)
-  var created=[0,0,0,0,0,0,0,0,0,0,0,0], closed=[0,0,0,0,0,0,0,0,0,0,0,0];
-  tags.forEach(function(t){if(t.isoDate&&(''+t.isoDate).length>=7){var mo=parseInt((''+t.isoDate).substring(5,7),10)-1;if(mo>=0&&mo<12){created[mo]++;if(!isOpen(t))closed[mo]++;}}});
-  mkChart('riskMonthC','line',ML,[
-    {label:'Créés',data:created,borderColor:C.p4,backgroundColor:'rgba(13,168,210,.15)',fill:true,tension:.35,borderWidth:2,pointRadius:2},
-    {label:'Clôturés',data:closed,borderColor:C.green,backgroundColor:'rgba(16,201,133,.12)',fill:true,tension:.35,borderWidth:2,pointRadius:2}
+  mkChart('riskLevelC','bar',LV,[
+    {label:'Avant',data:d.avant,backgroundColor:'rgba(232,68,90,.78)',borderRadius:4},
+    {label:'Après',data:d.apres,backgroundColor:'rgba(16,201,133,.78)',borderRadius:4}
   ],Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}}));
 
-  var sum=document.getElementById('riskSum');
-  if(sum) sum.innerHTML='🛡️ <strong>'+total+'</strong> risques (TAGs) · <strong style="color:#e8445a">'+openN+'</strong> ouverts · <strong style="color:#10c985">'+closedN+'</strong> clôturés ('+cloPct+'%) · gravité élevée : <strong style="color:#f5a623">'+hi+'</strong>';
+  mkChart('riskDoughC','doughnut',LV,[{data:d.avant,backgroundColor:LCOL,borderWidth:0,hoverOffset:4}],
+    {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:9}}},cutout:'55%'});
+
+  var hbar=Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}});
+  function barFrom(id,arr,color){
+    if(!arr) return;
+    var labels=arr.map(function(x){return x.name.length>26?x.name.substring(0,26)+'…':x.name;});
+    mkChart(id,'bar',labels,[{data:arr.map(function(x){return x.count;}),backgroundColor:color,borderRadius:4}],hbar);
+  }
+  barFrom('riskFamC', d.familles, 'rgba(13,168,210,.8)');
+  barFrom('riskTypeC', d.risques, 'rgba(245,166,35,.85)');
+  barFrom('riskLieuC', d.lieux, 'rgba(139,92,246,.8)');
+  barFrom('riskDangC', d.dangers, 'rgba(20,184,166,.85)');
+
+  _renderRiskMatrix();
+  renderRiskLines();
+}
+
+function _renderRiskMatrix(){
+  var d=_riskData, mx=d&&d.matrix; if(!mx) return;
+  var maxc=1;
+  mx.F.forEach(function(f){ mx.G.forEach(function(g){ var v=mx.cells[f+'x'+g]||0; if(v>maxc)maxc=v; }); });
+  var h='<table style="border-collapse:collapse;font-size:11px;width:100%;text-align:center;min-width:380px">';
+  h+='<thead><tr><th style="padding:6px;color:var(--text3)">Fréq. \\ Gravité</th>';
+  mx.G.forEach(function(g){ h+='<th style="padding:6px;color:var(--text2)">'+g+'</th>'; });
+  h+='<th style="padding:6px;color:var(--text2)">Total</th></tr></thead><tbody>';
+  mx.F.forEach(function(f){
+    h+='<tr><td style="padding:6px;font-weight:700;color:var(--p4)">'+f+'</td>';
+    var tot=0;
+    mx.G.forEach(function(g){
+      var v=mx.cells[f+'x'+g]||0; tot+=v;
+      var t=v/maxc, gg=Math.round(255-150*t);
+      var bg=v?('rgb(255,'+gg+','+gg+')'):'transparent';
+      h+='<td style="padding:6px;background:'+bg+';color:'+(t>0.55?'#fff':'var(--text2)')+';border:1px solid rgba(255,255,255,.06)">'+v+'</td>';
+    });
+    h+='<td style="padding:6px;font-weight:700">'+tot+'</td></tr>';
+  });
+  h+='<tr><td style="padding:6px;font-weight:700">Total</td>';
+  var gt=0;
+  mx.G.forEach(function(g){ var s=0; mx.F.forEach(function(f){ s+=mx.cells[f+'x'+g]||0; }); gt+=s; h+='<td style="padding:6px;font-weight:700">'+s+'</td>'; });
+  h+='<td style="padding:6px;font-weight:700">'+gt+'</td></tr></tbody></table>';
+  h+='<div style="font-size:9px;color:var(--text3);margin-top:6px">Fréquence : 2 = 1–5/mois … 5 = plusieurs/équipe · Gravité : 5 = soins bénins … 20 = accident mortel</div>';
+  var box=document.getElementById('riskMatrix'); if(box) box.innerHTML=h;
+}
+
+function renderRiskLines(){
+  var d=_riskData; if(!d) return;
+  var fEl=document.getElementById('riskFilter');
+  var q=((fEl&&fEl.value)||'').toLowerCase().trim();
+  var rows=d.lines||[];
+  if(q) rows=rows.filter(function(x){
+    return (x.lieu+' '+x.zone+' '+x.tache+' '+x.danger+' '+x.risque+' '+x.fam+' '+x.dir+' '+x.serv).toLowerCase().indexOf(q)>-1;
+  });
+  var cnt=document.getElementById('riskLinesCount');
+  if(cnt) cnt.textContent=rows.length+' affichées · '+d.critCount+' critiques'+(d.critCount>(d.lines||[]).length?' (max '+(d.lines||[]).length+' chargées)':'');
+  var CAP=300, show=rows.slice(0,CAP);
+  var LVB={'1- Acceptable':'#10c985','2- Marginal':'#f5a623','3- Significatif':'#f97316','4- Très Fort':'#e8445a','5- Inacceptable':'#b3123a'};
+  var h='';
+  show.forEach(function(x){
+    var bc=LVB[x.c0]||'var(--text3)', ac=LVB[x.c1]||'var(--text3)';
+    h+='<tr><td>'+esc(x.num)+'</td><td>'+esc(x.dir)+'</td><td>'+esc(x.serv)+'</td><td>'+esc(x.lieu)+'</td>'
+      +'<td>'+esc(x.zone)+'</td><td>'+esc(x.tache)+'</td><td>'+esc(x.danger)+'</td><td>'+esc(x.risque)+'</td>'
+      +'<td style="font-size:9px">'+esc(x.fam)+'</td>'
+      +'<td style="text-align:center">'+(x.F==null?'':x.F)+'</td><td style="text-align:center">'+(x.P==null?'':x.P)+'</td><td style="text-align:center">'+(x.G==null?'':x.G)+'</td>'
+      +'<td style="text-align:center;font-weight:700">'+(x.s0==null?'':x.s0)+'</td>'
+      +'<td><span style="color:'+bc+';font-weight:600">'+esc(x.c0)+'</span></td>'
+      +'<td><span style="color:'+ac+';font-weight:600">'+esc(x.c1)+'</span></td></tr>';
+  });
+  if(show.length===0) h='<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:18px">Aucune ligne pour ce filtre</td></tr>';
+  else if(rows.length>CAP) h+='<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:10px">… '+(rows.length-CAP)+' lignes supplémentaires — affinez le filtre</td></tr>';
+  var tb=document.getElementById('riskBody'); if(tb) tb.innerHTML=h;
 }
 function kpiCard(lbl,val,color,sub,cls,pct,bc){
   var bar='';
@@ -6760,7 +6840,6 @@ function openCleanModal(c){
 // ══ RENDU PRINCIPAL ═══════════════════════════════════════════
 function render(data){
   D=data; var m=data.metrics;
-  try{renderRisk();}catch(e){}
 
   // ── Synchronisation « Résol. TAGs » (Vue Globale) avec
   // « Clôture » (page TAGs, filtre YTD 2026) ──
