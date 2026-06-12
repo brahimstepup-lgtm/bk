@@ -5359,7 +5359,7 @@ function _renderRiskAll(){
 
   // Par ligne de production (col Local) — barres empilées + table
   var lg=d.lignes||[];
-  var lglabels=lg.map(function(x){return x.name.length>22?x.name.substring(0,22)+'…':x.name;});
+  var lglabels=lg.map(function(x){return x.name.length>30?x.name.substring(0,30)+'…':x.name;});
   mkChart('riskLigneC','bar',lglabels,[
     {label:'Acceptable',data:lg.map(function(x){return x.niv[0];}),backgroundColor:'#10c985'},
     {label:'Marginal',data:lg.map(function(x){return x.niv[1];}),backgroundColor:'#f5a623'},

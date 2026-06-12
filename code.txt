@@ -4272,7 +4272,7 @@ function getRiskAnalysis() {
         num: safeText(row[iNum]), dir: safeText(row[iDir]), serv: safeText(row[iServ]),
         lieu: safeText(row[iLieu]), zone: safeText(row[iZone]), tache: safeText(row[iTac]),
         danger: safeText(row[iDan]), risque: safeText(row[iRis]), fam: safeText(row[iFam]),
-        ligne: _ligne(safeText(row[iLoc])),
+        ligne: _ligne(safeText(row[iLoc])), local: safeText(row[iLoc]),
         F: toNum(row[iF]), P: toNum(row[iP]), G: toNum(row[iG]),
         s0: toNum(row[iS0]), c0: c0, s1: toNum(row[iS1]), c1: _riskLevel(row[iC1])
       });
@@ -4299,18 +4299,21 @@ function getRiskAnalysis() {
     var crit = rows.filter(function(x){ return sig(x.c0); })
       .sort(function(a,b){ return (b.s0||0)-(a.s0||0); });
 
-    // Agrégat par ligne de production (col Local, renommée via LINE_MAP)
+    // Agrégat par ligne de production (col Local). Le libellé conserve le
+    // code d'origine : « Nom (CODE) » quand un renommage LINE_MAP s'applique.
     var lmap = {};
     rows.forEach(function(x){
       var key = x.ligne || '—';
-      if (!lmap[key]) lmap[key] = { name:key, total:0, niv:[0,0,0,0,0], prio:0, sig:0, _ss:0, _sn:0 };
+      if (!lmap[key]) lmap[key] = { name:key, code:(x.local||''), total:0, niv:[0,0,0,0,0], prio:0, sig:0, _ss:0, _sn:0 };
       var o = lmap[key]; o.total++;
       var ix = ORDER.indexOf(x.c0); if (ix >= 0) o.niv[ix]++;
       if (prio(x.c0)) o.prio++; if (sig(x.c0)) o.sig++;
       if (typeof x.s0 === 'number') { o._ss += x.s0; o._sn++; }
     });
     var lignes = Object.keys(lmap).map(function(k){
-      var o = lmap[k]; o.avg = o._sn ? Math.round(o._ss/o._sn*10)/10 : 0; delete o._ss; delete o._sn; return o;
+      var o = lmap[k]; o.avg = o._sn ? Math.round(o._ss/o._sn*10)/10 : 0;
+      if (o.code && normalize(o.code) !== normalize(o.name)) o.name = o.name + ' (' + o.code + ')';
+      delete o.code; delete o._ss; delete o._sn; return o;
     }).sort(function(a,b){ return b.total - a.total; });
 
     return {
