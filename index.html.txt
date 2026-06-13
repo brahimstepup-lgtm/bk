@@ -2825,6 +2825,14 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
   </div>
 
+  <!-- ══ Taux de couverture par thème (anneaux) ══ -->
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>📊 Taux de couverture par thème
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">employés couverts / effectif ciblé (base Employees_DB)</span>
+    </div>
+    <div id="sensibCoverageGrid" style="display:flex;flex-wrap:wrap;gap:12px;padding:8px 0"></div>
+  </div>
+
   <!-- ══ BRIQUE 1.5 : CAMPAGNE DE SENSIBILISATION ══ -->
   <div class="card" style="margin-bottom:14px">
     <div class="ct" style="justify-content:space-between">
@@ -4277,6 +4285,7 @@ function _sensibRedraw(){
   buildSensibKpis();
   buildSensibProgressBars();
   buildSensibCharts();
+  buildSensibCoverage();
   buildSensibLeaderboard();
   renderSensib();
   sensibBuildCampaignUI();
@@ -4567,6 +4576,7 @@ function initSensib(d){
   buildSensibKpis();
   buildSensibProgressBars();
   buildSensibCharts();
+  buildSensibCoverage();
   buildSensibLeaderboard();
   renderSensib();
 }
@@ -4640,6 +4650,70 @@ function buildSensibCharts(){
   mkBar('sensibHazardC',hK,hK.map(function(k){return hazards[k];}),'hazard');
   var dK=Object.keys(depts).sort(function(a,b){return depts[b]-depts[a];}).slice(0,8);
   mkBar('sensibDeptC',dK,dK.map(function(k){return depts[k];}),'dept');
+}
+
+// ── Taux de couverture par thème (anneaux) ───────────────────
+// Couverts = employés distincts (par nom) ayant suivi le thème.
+// Effectif ciblé = nb d'employés des postes ciblés (Employees_DB) ;
+// par défaut = effectif total. Postes ciblés configurables ci-dessous.
+var SENSIB_THEME_TARGET={ 'stockage de produit chimique':['magasin','cariste','manutention','gestionnaire des stock'] };
+function _normTxt(s){
+  s=(s||'').toString().toLowerCase();
+  return s.replace(/[àáâ]/g,'a').replace(/[éèê]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ùû]/g,'u').replace(/ç/g,'c').replace(/\s+/g,' ').trim();
+}
+function buildSensibCoverage(){
+  var grid=document.getElementById('sensibCoverageGrid'); if(!grid) return;
+  Object.keys(_sensibCharts).forEach(function(k){ if(k.indexOf('cov')===0){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } });
+
+  var posteCount={}, total=0;
+  (_sensibEmployees||[]).forEach(function(e){ var p=(e.department||'').trim(); if(p){ posteCount[p]=(posteCount[p]||0)+1; total++; } });
+  if(!total) total=(_sensibEmployees||[]).length;
+  function headcount(kws){ var n=0; Object.keys(posteCount).forEach(function(p){ var np=_normTxt(p); if(kws.some(function(k){return np.indexOf(k)>-1;})) n+=posteCount[p]; }); return n; }
+
+  var themes={};
+  (_sensibData||[]).forEach(function(r){
+    var th=(r.theme||'').trim(); if(!th) return;
+    if(!themes[th]) themes[th]={};
+    var nm=(r.name||'').trim().toLowerCase(); if(!nm) nm='∅'+Object.keys(themes[th]).length;
+    themes[th][nm]=(r.department||'');
+  });
+
+  var cov=Object.keys(themes).map(function(th){
+    var key=_normTxt(th), kws=null;
+    Object.keys(SENSIB_THEME_TARGET).forEach(function(tk){ if(key.indexOf(tk)>-1) kws=SENSIB_THEME_TARGET[tk]; });
+    var names=themes[th], covered, target, scope, postesLbl;
+    if(kws){
+      target=headcount(kws);
+      covered=Object.keys(names).filter(function(nm){ var np=_normTxt(names[nm]); return kws.some(function(k){return np.indexOf(k)>-1;}); }).length;
+      postesLbl=Object.keys(posteCount).filter(function(p){ var np=_normTxt(p); return kws.some(function(k){return np.indexOf(k)>-1;}); }).join(', ');
+      scope='postes ciblés';
+    } else {
+      target=total; covered=Object.keys(names).length; scope='effectif total'; postesLbl="Tout l'effectif";
+    }
+    var denom=target>0?target:covered;
+    return { theme:th, covered:covered, target:target, pct:denom>0?Math.round(covered/denom*100):0, scope:scope, postes:postesLbl };
+  }).sort(function(a,b){ return b.covered-a.covered; });
+
+  if(!cov.length){ grid.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucune donnée de couverture par thème.</div>'; return; }
+
+  grid.innerHTML=cov.map(function(c,i){
+    var col=c.pct>=80?'#10c985':c.pct>=50?'#f5a623':'#e8445a';
+    return '<div style="background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;width:168px;display:flex;flex-direction:column;align-items:center;gap:4px">'
+      +'<div style="font-size:10.5px;font-weight:600;text-align:center;min-height:28px;line-height:1.2" title="'+escH(c.theme)+'">'+escH(c.theme.length>42?c.theme.substring(0,42)+'…':c.theme)+'</div>'
+      +'<div style="position:relative;width:108px;height:108px"><canvas id="sensibCovC'+i+'"></canvas>'
+      +'<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:18px;font-weight:700;color:'+col+'">'+c.pct+'%</div></div>'
+      +'<div style="font-size:11px;color:var(--text2)"><strong>'+c.covered+'</strong> / '+c.target+'</div>'
+      +'<div style="font-size:8.5px;color:var(--text3);text-align:center" title="'+escH(c.postes)+'">'+escH(c.scope)+'</div>'
+      +'</div>';
+  }).join('');
+
+  cov.forEach(function(c,i){
+    var el=document.getElementById('sensibCovC'+i); if(!el) return;
+    var col=c.pct>=80?'#10c985':c.pct>=50?'#f5a623':'#e8445a';
+    _sensibCharts['cov'+i]=new Chart(el,{type:'doughnut',
+      data:{labels:['Couverts','Non couverts'],datasets:[{data:[c.covered,Math.max(c.target-c.covered,0)],backgroundColor:[col,'rgba(140,140,140,.18)'],borderWidth:0,hoverOffset:3}]},
+      options:{responsive:true,maintainAspectRatio:false,cutout:'72%',plugins:{legend:{display:false},tooltip:{enabled:true}}}});
+  });
 }
 
 // ── Brique 3 : Leaderboard formateurs ─────────────────────────
