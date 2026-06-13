@@ -1945,6 +1945,9 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ ANALYSE DES RISQUES (registre EvRP) ═══ -->
 <div id="risk" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button class="btn" onclick="openRiskSource()" style="font-size:11px;padding:6px 12px">📊 Ouvrir le fichier source</button>
+  </div>
   <div class="tsum" id="riskSum">⏳ Ouvrez l'onglet pour charger l'analyse…</div>
   <div class="kpi-grid" id="riskKpi"></div>
   <div class="row2">
@@ -5298,6 +5301,8 @@ function mkChart(id,type,labels,datasets,opts){
 // Charge à la demande l'analyse ligne par ligne via le backend
 // (getRiskAnalysisForClient) puis met en cache dans _riskData.
 var _riskData=null, _riskLoading=false;
+var RISK_SOURCE_URL='https://docs.google.com/spreadsheets/d/1_xbWzaV6HwT941mq_cvTjmH71QiM701haIa3fU-j3o0/edit?gid=1546767603';
+function openRiskSource(){ openCleaningEmbed(RISK_SOURCE_URL,'Évaluation des risques — fichier source','CLASSEUR SOURCE','📊'); }
 function renderRisk(){
   if(_riskData){ _renderRiskAll(); return; }
   if(_riskLoading) return;
