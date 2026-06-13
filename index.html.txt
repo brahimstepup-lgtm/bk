@@ -2981,7 +2981,8 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
       <div>
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Thème / Sujet</div>
-        <input type="text" id="sensibFormTheme" class="tag-search-input" placeholder="Ex: Utilisation EPI" style="width:100%">
+        <input type="text" id="sensibFormTheme" class="tag-search-input" list="sensibThemeOptions" placeholder="Choisir un thème ou en saisir un nouveau…" style="width:100%" autocomplete="off">
+        <datalist id="sensibThemeOptions"></datalist>
       </div>
       <div>
         <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Formateur HSE *</div>
@@ -4282,6 +4283,7 @@ function sensibLoadOnDemand(){
 }
 function _sensibRedraw(){
   buildSensibFilters();
+  buildSensibThemeOptions();
   buildSensibKpis();
   buildSensibProgressBars();
   buildSensibCharts();
@@ -4574,6 +4576,7 @@ function initSensib(d){
   var meta=document.getElementById('sensibSourceMeta');
   if(meta) meta.textContent=_sensibData.length+' session(s)';
   buildSensibFilters();
+  buildSensibThemeOptions();
   buildSensibKpis();
   buildSensibProgressBars();
   buildSensibCharts();
@@ -4915,6 +4918,16 @@ function buildSensibFilters(){
   fillSel('sensibFilterHazard',hazards);
   fillSel('sensibFilterDept',depts);
   fillSel('sensibFilterTrainer',trainers);
+}
+
+// Options du champ « Thème » (liste déroulante + saisie libre).
+function buildSensibThemeOptions(){
+  var dl=document.getElementById('sensibThemeOptions'); if(!dl) return;
+  var seen={}, opts=[];
+  (typeof SENSIB_THEMES!=='undefined'?SENSIB_THEMES:[]).forEach(function(t){ var k=_normTxt(t.label); if(k&&!seen[k]){ seen[k]=1; opts.push(t.label); } });
+  (_sensibData||[]).forEach(function(r){ var th=(r.theme||'').trim(); if(th){ var k=_normTxt(th); if(!seen[k]){ seen[k]=1; opts.push(th); } } });
+  opts.sort(function(a,b){ return a.localeCompare(b); });
+  dl.innerHTML=opts.map(function(o){ return '<option value="'+escH(o)+'"></option>'; }).join('');
 }
 
 // ── Liaison nom ↔ matricule (Employees_DB) + correction des noms ──
