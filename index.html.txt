@@ -4656,7 +4656,15 @@ function buildSensibCharts(){
 // Couverts = employés distincts (par nom) ayant suivi le thème.
 // Effectif ciblé = nb d'employés des postes ciblés (Employees_DB) ;
 // par défaut = effectif total. Postes ciblés configurables ci-dessous.
-var SENSIB_THEME_TARGET={ 'stockage de produit chimique':['magasin','cariste','manutention','gestionnaire des stock'] };
+var SENSIB_THEME_TARGET={
+  'stockage de produit chimique':['magasin','cariste','manutention','gestionnaire des stock'],
+  'risque mecanique':['operateur','uom','mainten'],
+  'consignation electrique':['nettoyage','mainten'],
+  'application des tag':['operateur','uom','agent de production','mainten','chef de ligne','chef de quart','preparateur','atelier preparation','ligne brovind'],
+  'tag de securite':['operateur','uom','agent de production','mainten','chef de ligne','chef de quart','preparateur','atelier preparation','ligne brovind'],
+  'air comprime':['operateur','uom','agent de production','mainten','preparateur','atelier preparation','ligne brovind','chef de ligne','chef de quart'],
+  'circulation chariot':['cariste','manutention','magasin']
+};
 function _normTxt(s){
   s=(s||'').toString().toLowerCase();
   return s.replace(/[àáâ]/g,'a').replace(/[éèê]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ùû]/g,'u').replace(/ç/g,'c').replace(/\s+/g,' ').trim();
@@ -4679,19 +4687,16 @@ function buildSensibCoverage(){
   });
 
   var cov=Object.keys(themes).map(function(th){
-    var key=_normTxt(th), kws=null;
-    Object.keys(SENSIB_THEME_TARGET).forEach(function(tk){ if(key.indexOf(tk)>-1) kws=SENSIB_THEME_TARGET[tk]; });
-    var names=themes[th], covered, target, scope, postesLbl;
+    var key=_normTxt(th), kws=null, bl=-1;
+    Object.keys(SENSIB_THEME_TARGET).forEach(function(tk){ if(key.indexOf(tk)>-1 && tk.length>bl){ kws=SENSIB_THEME_TARGET[tk]; bl=tk.length; } });
+    var covered=Object.keys(themes[th]).length, target, scope, postesLbl;
     if(kws){
-      target=headcount(kws);
-      covered=Object.keys(names).filter(function(nm){ var np=_normTxt(names[nm]); return kws.some(function(k){return np.indexOf(k)>-1;}); }).length;
+      target=headcount(kws); scope='postes ciblés';
       postesLbl=Object.keys(posteCount).filter(function(p){ var np=_normTxt(p); return kws.some(function(k){return np.indexOf(k)>-1;}); }).join(', ');
-      scope='postes ciblés';
-    } else {
-      target=total; covered=Object.keys(names).length; scope='effectif total'; postesLbl="Tout l'effectif";
-    }
+    } else { target=total; scope='effectif total'; postesLbl="Tout l'effectif"; }
     var denom=target>0?target:covered;
-    return { theme:th, covered:covered, target:target, pct:denom>0?Math.round(covered/denom*100):0, scope:scope, postes:postesLbl };
+    var pct=denom>0?Math.min(100,Math.round(covered/denom*100)):0;
+    return { theme:th, covered:covered, target:target, pct:pct, scope:scope, postes:postesLbl };
   }).sort(function(a,b){ return b.covered-a.covered; });
 
   if(!cov.length){ grid.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucune donnée de couverture par thème.</div>'; return; }
