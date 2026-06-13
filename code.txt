@@ -4216,13 +4216,9 @@ var RISK_SOURCE_ID = '1_xbWzaV6HwT941mq_cvTjmH71QiM701haIa3fU-j3o0';
 
 // Renommage des codes « Local » (= ligne de production) en noms de
 // ligne. Clés normalisées (minuscules, sans accents). À compléter.
-var LINE_MAP = {
-  'hollow':'Ligne Kulp',
-  'ebenshtrat 01':'Ligne Kids',
-  'ebenshtrat 02':'Ligne D22',
-  'fox-01':'Ligne D33',
-  'fox-02':'Ligne D44'
-};
+// Renommage désactivé : chaque code « Local » est une ligne distincte
+// (Kulp ≠ HOLLOW, etc.). Ajouter ici des paires 'code':'Nom' au besoin.
+var LINE_MAP = {};
 function _ligne(local) {
   var s = (local == null ? '' : String(local)).trim();
   return LINE_MAP[normalize(s)] || s || '—';
