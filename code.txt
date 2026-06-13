@@ -4205,3 +4205,133 @@ function decrementEpiStock(designation, qty) {
 }
 
 function getEpiDotationsForClient() { return readEpiDotations(); }
+
+// ══════════════════════════════════════════════════════════════
+// ANALYSE DES RISQUES — registre EvRP (classeur source externe)
+// Lit l'onglet « ANALYSE DONNEES » du fichier d'évaluation des
+// risques (1 ligne = 1 évaluation) et renvoie agrégats + lignes
+// pour la section « Analyse Risques ». Appelé à la demande.
+// ══════════════════════════════════════════════════════════════
+var RISK_SOURCE_ID = '1_xbWzaV6HwT941mq_cvTjmH71QiM701haIa3fU-j3o0';
+
+// Renommage des codes « Local » (= ligne de production) en noms de
+// ligne. Clés normalisées (minuscules, sans accents). À compléter.
+var LINE_MAP = {
+  'hollow':'Ligne Kulp',
+  'ebenshtrat 01':'Ligne Kids',
+  'ebenshtrat 02':'Ligne D22',
+  'fox-01':'Ligne D33',
+  'fox-02':'Ligne D44'
+};
+function _ligne(local) {
+  var s = (local == null ? '' : String(local)).trim();
+  return LINE_MAP[normalize(s)] || s || '—';
+}
+
+function _riskLevel(v) {
+  if (v === null || v === undefined) return '';
+  var s = String(v).trim();
+  var n = s.replace(/[^0-9]/g, '');
+  var map = { '1':'1- Acceptable', '2':'2- Marginal', '3':'3- Significatif',
+              '4':'4- Très Fort', '5':'5- Inacceptable' };
+  return (n && map[n]) ? map[n] : s;
+}
+
+function getRiskAnalysis() {
+  var ORDER = ['1- Acceptable','2- Marginal','3- Significatif','4- Très Fort','5- Inacceptable'];
+  try {
+    var ss = SpreadsheetApp.openById(RISK_SOURCE_ID);
+    var sh = findSheetByKeywords(ss, ['analysedonnees','analyse donnees','analyse données','analyse']);
+    if (!sh) return { ok:false, error:'Onglet « ANALYSE DONNEES » introuvable dans le classeur source.' };
+    var values = sh.getDataRange().getValues();
+
+    // Localise la ligne d'en-tête (contient « classement » ou « taux risk »)
+    var hRow = -1;
+    for (var i = 0; i < Math.min(values.length, 15); i++) {
+      var joined = values[i].join('|').toLowerCase();
+      if (joined.indexOf('classement') > -1 || joined.indexOf('taux risk') > -1) { hRow = i; break; }
+    }
+    if (hRow < 0) hRow = 4;
+
+    var H = values[hRow].map(function(x){ return normalize(String(x)); });
+    function col(def, kw) { for (var c = 0; c < H.length; c++) if (kw.test(H[c])) return c; return def; }
+    var iNum  = col(0,/numero|^n°|^#$/),  iDir  = col(3,/direction/),     iServ = col(4,/service/),
+        iLieu = col(5,/^lieu/),  iLoc = col(6,/^local/),  iZone = col(7,/zone|machine/),  iTac = col(8,/tache/),
+        iDan  = col(9,/danger/),          iRis  = col(10,/^risk|risque/), iFam  = col(11,/famille/),
+        iF    = col(13,/frequenc/),       iP    = col(14,/probab/),       iG    = col(15,/gravit/),
+        iS0   = col(25,/fact.?risk0|taux.*fact.*0/), iC0 = col(26,/classement.*0/),
+        iS1   = col(28,/fact.?risk1|taux.*fact.*1/), iC1 = col(29,/classement.*1/);
+
+    var rows = [];
+    for (var r = hRow + 1; r < values.length; r++) {
+      var row = values[r];
+      if (isNull(row[iNum]) && isNull(row[iC0])) continue;
+      var c0 = _riskLevel(row[iC0]);
+      if (ORDER.indexOf(c0) < 0 && isNull(row[iNum])) continue;
+      rows.push({
+        num: safeText(row[iNum]), dir: safeText(row[iDir]), serv: safeText(row[iServ]),
+        lieu: safeText(row[iLieu]), zone: safeText(row[iZone]), tache: safeText(row[iTac]),
+        danger: safeText(row[iDan]), risque: safeText(row[iRis]), fam: safeText(row[iFam]),
+        ligne: _ligne(safeText(row[iLoc])), local: safeText(row[iLoc]),
+        F: toNum(row[iF]), P: toNum(row[iP]), G: toNum(row[iG]),
+        s0: toNum(row[iS0]), c0: c0, s1: toNum(row[iS1]), c1: _riskLevel(row[iC1])
+      });
+    }
+
+    var N = rows.length;
+    function dist(key){ var a=[0,0,0,0,0]; rows.forEach(function(x){ var k=ORDER.indexOf(x[key]); if(k>=0)a[k]++; }); return a; }
+    function topCount(key, lim){
+      var m={}; rows.forEach(function(x){ var v=(x[key]||'').toString().trim(); if(v) m[v]=(m[v]||0)+1; });
+      return Object.keys(m).map(function(k){ return {name:k, count:m[k]}; })
+        .sort(function(a,b){ return b.count-a.count; }).slice(0, lim||10);
+    }
+    var prio = function(c){ return c==='4- Très Fort' || c==='5- Inacceptable'; };
+    var sigSet = ['3- Significatif','4- Très Fort','5- Inacceptable'];
+    var sig = function(c){ return sigSet.indexOf(c) > -1; };
+
+    var s0sum=0,s0n=0,s1sum=0,s1n=0;
+    rows.forEach(function(x){ if(typeof x.s0==='number'){s0sum+=x.s0;s0n++;} if(typeof x.s1==='number'){s1sum+=x.s1;s1n++;} });
+
+    var Fv=[2,3,4,5], Gv=[5,10,15,20], cells={};
+    Fv.forEach(function(f){ Gv.forEach(function(g){ cells[f+'x'+g]=0; }); });
+    rows.forEach(function(x){ if(Fv.indexOf(x.F)>-1 && Gv.indexOf(x.G)>-1) cells[x.F+'x'+x.G]++; });
+
+    var crit = rows.filter(function(x){ return sig(x.c0); })
+      .sort(function(a,b){ return (b.s0||0)-(a.s0||0); });
+
+    // Agrégat par ligne de production (col Local). Le libellé conserve le
+    // code d'origine : « Nom (CODE) » quand un renommage LINE_MAP s'applique.
+    var lmap = {};
+    rows.forEach(function(x){
+      var key = x.ligne || '—';
+      if (!lmap[key]) lmap[key] = { name:key, code:(x.local||''), total:0, niv:[0,0,0,0,0], prio:0, sig:0, _ss:0, _sn:0 };
+      var o = lmap[key]; o.total++;
+      var ix = ORDER.indexOf(x.c0); if (ix >= 0) o.niv[ix]++;
+      if (prio(x.c0)) o.prio++; if (sig(x.c0)) o.sig++;
+      if (typeof x.s0 === 'number') { o._ss += x.s0; o._sn++; }
+    });
+    var lignes = Object.keys(lmap).map(function(k){
+      var o = lmap[k]; o.avg = o._sn ? Math.round(o._ss/o._sn*10)/10 : 0;
+      if (o.code && normalize(o.code) !== normalize(o.name)) o.name = o.name + ' (' + o.code + ')';
+      delete o.code; delete o._ss; delete o._sn; return o;
+    }).sort(function(a,b){ return b.total - a.total; });
+
+    return {
+      ok:true, total:N, sheet: sh.getName(), order: ORDER,
+      avant: dist('c0'), apres: dist('c1'),
+      kpis: { prioAvant: rows.filter(function(x){return prio(x.c0);}).length,
+              prioApres: rows.filter(function(x){return prio(x.c1);}).length,
+              sigAvant:  rows.filter(function(x){return sig(x.c0);}).length,
+              avgAvant:  s0n ? Math.round(s0sum/s0n*10)/10 : 0,
+              avgApres:  s1n ? Math.round(s1sum/s1n*10)/10 : 0 },
+      familles: topCount('fam',12), risques: topCount('risque',10),
+      lieux: topCount('lieu',10),  zones: topCount('zone',10),
+      taches: topCount('tache',10), dangers: topCount('danger',10),
+      matrix: { F:Fv, G:Gv, cells:cells }, lignes: lignes,
+      critCount: crit.length, lines: crit.slice(0, 600)
+    };
+  } catch(e) {
+    return { ok:false, error: e.toString() };
+  }
+}
+function getRiskAnalysisForClient() { return getRiskAnalysis(); }

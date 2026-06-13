@@ -1722,6 +1722,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab on" onclick="goTab('dash',this)">📊 Vue Globale</button>
   <button class="tab"    onclick="goTab('inc',this)">⚠️ Incidents</button>
   <button class="tab"    onclick="goTab('tags',this)">🏷️ TAGs</button>
+  <button class="tab"    onclick="goTab('risk',this);renderRisk()">🛡️ Analyse Risques</button>
   <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
@@ -1937,6 +1938,55 @@ html.light .pests-search-input{background:#edf2f7}
           </tr>
         </thead>
         <tbody id="tagBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ANALYSE DES RISQUES (registre EvRP) ═══ -->
+<div id="risk" class="page">
+  <div class="tsum" id="riskSum">⏳ Ouvrez l'onglet pour charger l'analyse…</div>
+  <div class="kpi-grid" id="riskKpi"></div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Niveau de risque · avant vs après actions</div><div class="cw" style="height:235px"><canvas id="riskLevelC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition actuelle (avant)</div><div class="cw" style="height:235px"><canvas id="riskDoughC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Risques par famille (Top 12)</div><div class="cw" style="height:300px"><canvas id="riskFamC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top 10 des risques (conséquences)</div><div class="cw" style="height:300px"><canvas id="riskTypeC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top 10 des lieux</div><div class="cw" style="height:265px"><canvas id="riskLieuC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top 10 des dangers</div><div class="cw" style="height:265px"><canvas id="riskDangC"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Matrice Fréquence × Gravité — nombre de risques (avant)</div>
+    <div id="riskMatrix" style="overflow:auto;padding:8px 4px"></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Niveau de risque par ligne de production (avant)</div>
+    <div class="cw" style="height:480px"><canvas id="riskLigneC"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Détail par ligne de production</div>
+    <div class="tblw"><table>
+      <thead><tr><th>Ligne</th><th>Total</th><th>Acceptable</th><th>Marginal</th><th>Significatif</th><th>Très Fort</th><th>Prioritaires</th><th>Score moyen</th></tr></thead>
+      <tbody id="riskLigneBody"></tbody>
+    </table></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Lignes critiques (≥ Significatif)
+      <span id="riskLinesCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+    </div>
+    <div style="padding:6px 0">
+      <input type="text" id="riskFilter" class="tag-search-input" placeholder="Filtrer : lieu, zone, tâche, danger, risque, famille, service…" oninput="renderRiskLines()" style="width:100%">
+    </div>
+    <div class="tblw">
+      <table>
+        <thead><tr>
+          <th>N°</th><th>Direction</th><th>Service</th><th>Lieu</th><th>Zone/Machine</th><th>Tâche</th><th>Danger</th><th>Risque</th><th>Famille</th><th>F</th><th>P</th><th>G</th><th>Score</th><th>Niveau avant</th><th>Niveau après</th>
+        </tr></thead>
+        <tbody id="riskBody"></tbody>
       </table>
     </div>
   </div>
@@ -5243,6 +5293,147 @@ document.addEventListener('click',function(e){
 function mkChart(id,type,labels,datasets,opts){
   if(charts[id]) charts[id].destroy();
   try{ charts[id]=new Chart(document.getElementById(id),{type:type,data:{labels:labels,datasets:datasets},options:opts||BASE}); }catch(e){}
+}
+// ══ ANALYSE DES RISQUES (registre EvRP — fichier source) ══════
+// Charge à la demande l'analyse ligne par ligne via le backend
+// (getRiskAnalysisForClient) puis met en cache dans _riskData.
+var _riskData=null, _riskLoading=false;
+function renderRisk(){
+  if(_riskData){ _renderRiskAll(); return; }
+  if(_riskLoading) return;
+  _riskLoading=true;
+  var sum=document.getElementById('riskSum');
+  if(sum) sum.innerHTML='⏳ Chargement de l\'analyse des risques (registre EvRP)…';
+  google.script.run
+    .withSuccessHandler(function(res){
+      _riskLoading=false;
+      if(!res||!res.ok){ if(sum) sum.innerHTML='⚠️ '+esc((res&&res.error)||'Erreur de chargement.'); return; }
+      _riskData=res; _renderRiskAll();
+    })
+    .withFailureHandler(function(err){
+      _riskLoading=false;
+      if(sum) sum.innerHTML='⚠️ Erreur réseau : '+esc((err&&err.message)||String(err));
+    })
+    .getRiskAnalysisForClient();
+}
+
+function _renderRiskAll(){
+  var d=_riskData; if(!d) return;
+  var N=d.total, k=d.kpis;
+  var pctAcc=N?Math.round(d.avant[0]/N*100):0;
+  var kp=document.getElementById('riskKpi');
+  if(kp) kp.innerHTML=[
+    kpiCard('Évaluations',N,'b','lignes du registre','k-b',null,null),
+    kpiCard('Prioritaires',k.prioAvant,'r','Très Fort (avant)','k-r',N?Math.round(k.prioAvant/N*100):0,C.red),
+    kpiCard('Prioritaires après',k.prioApres,'g','après actions','k-g',100,C.green),
+    kpiCard('À traiter',k.sigAvant,'a','≥ Significatif','k-a',N?Math.round(k.sigAvant/N*100):0,C.amber),
+    kpiCard('Score moyen',k.avgAvant+' → '+k.avgApres,'g','avant → après','k-g',null,null)
+  ].join('');
+
+  var sum=document.getElementById('riskSum');
+  if(sum) sum.innerHTML='🛡️ <strong>'+N+'</strong> évaluations · Acceptable <strong style="color:#10c985">'+pctAcc+'%</strong>'
+    +' · prioritaires (Très Fort) <strong style="color:#e8445a">'+k.prioAvant+'</strong> → <strong style="color:#10c985">'+k.prioApres+'</strong> après actions'
+    +' · score moyen <strong>'+k.avgAvant+'→'+k.avgApres+'</strong> · source : onglet '+esc(d.sheet);
+
+  var LV=['Acceptable','Marginal','Significatif','Très Fort','Inacceptable'];
+  var LCOL=['#10c985','#f5a623','#f97316','#e8445a','#b3123a'];
+
+  mkChart('riskLevelC','bar',LV,[
+    {label:'Avant',data:d.avant,backgroundColor:'rgba(232,68,90,.78)',borderRadius:4},
+    {label:'Après',data:d.apres,backgroundColor:'rgba(16,201,133,.78)',borderRadius:4}
+  ],Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}}));
+
+  mkChart('riskDoughC','doughnut',LV,[{data:d.avant,backgroundColor:LCOL,borderWidth:0,hoverOffset:4}],
+    {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:9}}},cutout:'55%'});
+
+  var hbar=Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}});
+  function barFrom(id,arr,color){
+    if(!arr) return;
+    var labels=arr.map(function(x){return x.name.length>26?x.name.substring(0,26)+'…':x.name;});
+    mkChart(id,'bar',labels,[{data:arr.map(function(x){return x.count;}),backgroundColor:color,borderRadius:4}],hbar);
+  }
+  barFrom('riskFamC', d.familles, 'rgba(13,168,210,.8)');
+  barFrom('riskTypeC', d.risques, 'rgba(245,166,35,.85)');
+  barFrom('riskLieuC', d.lieux, 'rgba(139,92,246,.8)');
+  barFrom('riskDangC', d.dangers, 'rgba(20,184,166,.85)');
+
+  // Par ligne de production (col Local) — barres empilées + table
+  var lg=d.lignes||[];
+  var lglabels=lg.map(function(x){return x.name.length>30?x.name.substring(0,30)+'…':x.name;});
+  mkChart('riskLigneC','bar',lglabels,[
+    {label:'Acceptable',data:lg.map(function(x){return x.niv[0];}),backgroundColor:'#10c985'},
+    {label:'Marginal',data:lg.map(function(x){return x.niv[1];}),backgroundColor:'#f5a623'},
+    {label:'Significatif',data:lg.map(function(x){return x.niv[2];}),backgroundColor:'#f97316'},
+    {label:'Très Fort',data:lg.map(function(x){return x.niv[3];}),backgroundColor:'#e8445a'},
+    {label:'Inacceptable',data:lg.map(function(x){return x.niv[4];}),backgroundColor:'#b3123a'}
+  ],Object.assign({},BASE,{indexAxis:'y',plugins:{legend:{display:true,labels:{color:C.txt,font:{size:9},boxWidth:9}}},scales:{x:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt}},y:{stacked:true,grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+  var hh='';
+  lg.forEach(function(x){
+    hh+='<tr><td style="font-weight:600">'+esc(x.name)+'</td><td style="text-align:center;font-weight:700">'+x.total+'</td>'
+      +'<td style="text-align:center">'+x.niv[0]+'</td><td style="text-align:center">'+x.niv[1]+'</td><td style="text-align:center">'+x.niv[2]+'</td>'
+      +'<td style="text-align:center;color:'+(x.niv[3]?'#e8445a':'var(--text3)')+';font-weight:'+(x.niv[3]?'700':'400')+'">'+x.niv[3]+'</td>'
+      +'<td style="text-align:center;color:'+(x.prio?'#e8445a':'var(--text3)')+';font-weight:700">'+x.prio+'</td>'
+      +'<td style="text-align:center">'+x.avg+'</td></tr>';
+  });
+  var lb=document.getElementById('riskLigneBody'); if(lb) lb.innerHTML=hh;
+
+  _renderRiskMatrix();
+  renderRiskLines();
+}
+
+function _renderRiskMatrix(){
+  var d=_riskData, mx=d&&d.matrix; if(!mx) return;
+  var maxc=1;
+  mx.F.forEach(function(f){ mx.G.forEach(function(g){ var v=mx.cells[f+'x'+g]||0; if(v>maxc)maxc=v; }); });
+  var h='<table style="border-collapse:collapse;font-size:11px;width:100%;text-align:center;min-width:380px">';
+  h+='<thead><tr><th style="padding:6px;color:var(--text3)">Fréq. \\ Gravité</th>';
+  mx.G.forEach(function(g){ h+='<th style="padding:6px;color:var(--text2)">'+g+'</th>'; });
+  h+='<th style="padding:6px;color:var(--text2)">Total</th></tr></thead><tbody>';
+  mx.F.forEach(function(f){
+    h+='<tr><td style="padding:6px;font-weight:700;color:var(--p4)">'+f+'</td>';
+    var tot=0;
+    mx.G.forEach(function(g){
+      var v=mx.cells[f+'x'+g]||0; tot+=v;
+      var t=v/maxc, gg=Math.round(255-150*t);
+      var bg=v?('rgb(255,'+gg+','+gg+')'):'transparent';
+      h+='<td style="padding:6px;background:'+bg+';color:'+(t>0.55?'#fff':'var(--text2)')+';border:1px solid rgba(255,255,255,.06)">'+v+'</td>';
+    });
+    h+='<td style="padding:6px;font-weight:700">'+tot+'</td></tr>';
+  });
+  h+='<tr><td style="padding:6px;font-weight:700">Total</td>';
+  var gt=0;
+  mx.G.forEach(function(g){ var s=0; mx.F.forEach(function(f){ s+=mx.cells[f+'x'+g]||0; }); gt+=s; h+='<td style="padding:6px;font-weight:700">'+s+'</td>'; });
+  h+='<td style="padding:6px;font-weight:700">'+gt+'</td></tr></tbody></table>';
+  h+='<div style="font-size:9px;color:var(--text3);margin-top:6px">Fréquence : 2 = 1–5/mois … 5 = plusieurs/équipe · Gravité : 5 = soins bénins … 20 = accident mortel</div>';
+  var box=document.getElementById('riskMatrix'); if(box) box.innerHTML=h;
+}
+
+function renderRiskLines(){
+  var d=_riskData; if(!d) return;
+  var fEl=document.getElementById('riskFilter');
+  var q=((fEl&&fEl.value)||'').toLowerCase().trim();
+  var rows=d.lines||[];
+  if(q) rows=rows.filter(function(x){
+    return (x.lieu+' '+x.zone+' '+x.tache+' '+x.danger+' '+x.risque+' '+x.fam+' '+x.dir+' '+x.serv).toLowerCase().indexOf(q)>-1;
+  });
+  var cnt=document.getElementById('riskLinesCount');
+  if(cnt) cnt.textContent=rows.length+' affichées · '+d.critCount+' critiques'+(d.critCount>(d.lines||[]).length?' (max '+(d.lines||[]).length+' chargées)':'');
+  var CAP=300, show=rows.slice(0,CAP);
+  var LVB={'1- Acceptable':'#10c985','2- Marginal':'#f5a623','3- Significatif':'#f97316','4- Très Fort':'#e8445a','5- Inacceptable':'#b3123a'};
+  var h='';
+  show.forEach(function(x){
+    var bc=LVB[x.c0]||'var(--text3)', ac=LVB[x.c1]||'var(--text3)';
+    h+='<tr><td>'+esc(x.num)+'</td><td>'+esc(x.dir)+'</td><td>'+esc(x.serv)+'</td><td>'+esc(x.lieu)+'</td>'
+      +'<td>'+esc(x.zone)+'</td><td>'+esc(x.tache)+'</td><td>'+esc(x.danger)+'</td><td>'+esc(x.risque)+'</td>'
+      +'<td style="font-size:9px">'+esc(x.fam)+'</td>'
+      +'<td style="text-align:center">'+(x.F==null?'':x.F)+'</td><td style="text-align:center">'+(x.P==null?'':x.P)+'</td><td style="text-align:center">'+(x.G==null?'':x.G)+'</td>'
+      +'<td style="text-align:center;font-weight:700">'+(x.s0==null?'':x.s0)+'</td>'
+      +'<td><span style="color:'+bc+';font-weight:600">'+esc(x.c0)+'</span></td>'
+      +'<td><span style="color:'+ac+';font-weight:600">'+esc(x.c1)+'</span></td></tr>';
+  });
+  if(show.length===0) h='<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:18px">Aucune ligne pour ce filtre</td></tr>';
+  else if(rows.length>CAP) h+='<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:10px">… '+(rows.length-CAP)+' lignes supplémentaires — affinez le filtre</td></tr>';
+  var tb=document.getElementById('riskBody'); if(tb) tb.innerHTML=h;
 }
 function kpiCard(lbl,val,color,sub,cls,pct,bc){
   var bar='';
