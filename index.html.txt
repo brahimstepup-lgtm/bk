@@ -4657,15 +4657,21 @@ function buildSensibCharts(){
 // Couverts = employés distincts (par nom) ayant suivi le thème.
 // Effectif ciblé = nb d'employés des postes ciblés (Employees_DB) ;
 // par défaut = effectif total. Postes ciblés configurables ci-dessous.
-var SENSIB_THEME_TARGET={
-  'stockage de produit chimique':['magasin','cariste','manutention','gestionnaire des stock'],
-  'risque mecanique':['operateur','uom','mainten'],
-  'consignation electrique':['nettoyage','mainten'],
-  'application des tag':['operateur','uom','agent de production','mainten','chef de ligne','chef de quart','preparateur','atelier preparation','ligne brovind'],
-  'tag de securite':['operateur','uom','agent de production','mainten','chef de ligne','chef de quart','preparateur','atelier preparation','ligne brovind'],
-  'air comprime':['operateur','uom','agent de production','mainten','preparateur','atelier preparation','ligne brovind','chef de ligne','chef de quart'],
-  'circulation chariot':['cariste','manutention','magasin']
-};
+// Thèmes canoniques : les variantes d'un même sujet sont fusionnées
+// (kw = sous-chaînes normalisées ; target = postes ciblés, null = tout
+// l'effectif). L'ordre fixe la priorité de correspondance.
+var SENSIB_THEMES=[
+  {label:'TAG de sécurité', kw:['tag de securite','application des tag','consignation'],
+   target:['operateur','uom','agent de production','mainten','chef de ligne','chef de quart','preparateur','atelier preparation','ligne brovind','nettoyage']},
+  {label:'Air comprimé', kw:['air comprime'],
+   target:['operateur','uom','agent de production','mainten','preparateur','atelier preparation','ligne brovind','chef de ligne','chef de quart']},
+  {label:'Risques mécaniques', kw:['risque mecanique'], target:['operateur','uom','mainten']},
+  {label:'Stockage de produit chimique', kw:['stockage de produit chimique','stockage produit'],
+   target:['magasin','cariste','manutention','gestionnaire des stock']},
+  {label:'Circulation chariot élévateur', kw:['chariot'], target:['cariste','manutention','magasin']},
+  {label:'Utilisation des extincteurs', kw:['extincteur'], target:null},
+  {label:'EPI + risques professionnels', kw:['epi'], target:null}
+];
 function _normTxt(s){
   s=(s||'').toString().toLowerCase();
   return s.replace(/[àáâ]/g,'a').replace(/[éèê]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ùû]/g,'u').replace(/ç/g,'c').replace(/\s+/g,' ').trim();
@@ -4679,25 +4685,27 @@ function buildSensibCoverage(){
   if(!total) total=(_sensibEmployees||[]).length;
   function headcount(kws){ var n=0; Object.keys(posteCount).forEach(function(p){ var np=_normTxt(p); if(kws.some(function(k){return np.indexOf(k)>-1;})) n+=posteCount[p]; }); return n; }
 
-  var themes={};
+  function _grp(th){ var k=_normTxt(th);
+    for(var i=0;i<SENSIB_THEMES.length;i++){ if(SENSIB_THEMES[i].kw.some(function(x){return k.indexOf(x)>-1;})) return SENSIB_THEMES[i]; }
+    return {label:th.trim(), target:null}; }
+  var groups={};
   (_sensibData||[]).forEach(function(r){
     var th=(r.theme||'').trim(); if(!th) return;
-    if(!themes[th]) themes[th]={};
-    var nm=(r.name||'').trim().toLowerCase(); if(!nm) nm='∅'+Object.keys(themes[th]).length;
-    themes[th][nm]=(r.department||'');
+    var g=_grp(th);
+    if(!groups[g.label]) groups[g.label]={target:g.target, names:{}};
+    var nm=(r.name||'').trim().toLowerCase(); if(!nm) nm='∅'+Object.keys(groups[g.label].names).length;
+    groups[g.label].names[nm]=1;
   });
 
-  var cov=Object.keys(themes).map(function(th){
-    var key=_normTxt(th), kws=null, bl=-1;
-    Object.keys(SENSIB_THEME_TARGET).forEach(function(tk){ if(key.indexOf(tk)>-1 && tk.length>bl){ kws=SENSIB_THEME_TARGET[tk]; bl=tk.length; } });
-    var covered=Object.keys(themes[th]).length, target, scope, postesLbl;
-    if(kws){
-      target=headcount(kws); scope='postes ciblés';
-      postesLbl=Object.keys(posteCount).filter(function(p){ var np=_normTxt(p); return kws.some(function(k){return np.indexOf(k)>-1;}); }).join(', ');
+  var cov=Object.keys(groups).map(function(label){
+    var g=groups[label], covered=Object.keys(g.names).length, target, scope, postesLbl;
+    if(g.target){
+      target=headcount(g.target); scope='postes ciblés';
+      postesLbl=Object.keys(posteCount).filter(function(p){ var np=_normTxt(p); return g.target.some(function(k){return np.indexOf(k)>-1;}); }).join(', ');
     } else { target=total; scope='effectif total'; postesLbl="Tout l'effectif"; }
     var denom=target>0?target:covered;
     var pct=denom>0?Math.min(100,Math.round(covered/denom*100)):0;
-    return { theme:th, covered:covered, target:target, pct:pct, scope:scope, postes:postesLbl };
+    return { theme:label, covered:covered, target:target, pct:pct, scope:scope, postes:postesLbl };
   }).sort(function(a,b){ return b.covered-a.covered; });
 
   if(!cov.length){ grid.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucune donnée de couverture par thème.</div>'; return; }
