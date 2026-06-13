@@ -4567,6 +4567,7 @@ function sensibBuildCampaignUI(){
 function initSensib(d){
   _sensibData      = d.sensibilisation || [];
   _sensibEmployees = d.sensibilisationEmployees || [];
+  _sensibEmpIndex=null; _sensibNameCache={};
   _sensibTargets   = d.sensibilisationTargets || [];
   var srcLink=document.getElementById('sensibSourceLink');
   if(srcLink&&d.sensibilisationSourceUrl) srcLink.href=d.sensibilisationSourceUrl;
@@ -4908,6 +4909,47 @@ function buildSensibFilters(){
   fillSel('sensibFilterTrainer',trainers);
 }
 
+// ── Liaison nom ↔ matricule (Employees_DB) + correction des noms ──
+// Le registre des sessions n'a pas de matricule : on rapproche le nom
+// du participant avec Employees_DB (correspondance exacte par jeton
+// trié, sinon approchée ≥ 0.90 partageant un nom de famille).
+var _sensibEmpIndex=null, _sensibNameCache={};
+function _sNorm(s){ return (s||'').toString().toLowerCase()
+  .replace(/[àáâä]/g,'a').replace(/[éèêë]/g,'e').replace(/[îï]/g,'i').replace(/[ôö]/g,'o').replace(/[ùûü]/g,'u').replace(/ç/g,'c')
+  .replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim(); }
+function _sKey(s){ return _sNorm(s).split(' ').filter(Boolean).sort().join(' '); }
+function _lev(a,b){ var m=a.length,n=b.length; if(!m)return n; if(!n)return m; var prev=[],cur=[],i,j;
+  for(j=0;j<=n;j++)prev[j]=j;
+  for(i=1;i<=m;i++){ cur[0]=i; for(j=1;j<=n;j++){ var c=a.charCodeAt(i-1)===b.charCodeAt(j-1)?0:1; cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+c); } for(j=0;j<=n;j++)prev[j]=cur[j]; }
+  return prev[n]; }
+function _sRatio(a,b){ var L=Math.max(a.length,b.length); return L?1-_lev(a,b)/L:1; }
+function sensibBuildEmpIndex(){
+  var byKey={}, tokIdx={};
+  (_sensibEmployees||[]).forEach(function(e){
+    var nm=(e.name||'').trim(); if(!nm) return;
+    var mat=(e.matricule||'').toString().trim(), k=_sKey(nm);
+    var o={key:k, mat:mat, name:nm};
+    if(!byKey[k]) byKey[k]={mat:mat,name:nm};
+    _sNorm(nm).split(' ').filter(function(t){return t.length>=4;}).forEach(function(t){ (tokIdx[t]=tokIdx[t]||[]).push(o); });
+  });
+  _sensibEmpIndex={byKey:byKey, tokIdx:tokIdx};
+}
+function sensibResolveName(name){
+  if(!name) return null;
+  if(name in _sensibNameCache) return _sensibNameCache[name];
+  if(!_sensibEmpIndex) sensibBuildEmpIndex();
+  var k=_sKey(name), res=null, bk=_sensibEmpIndex.byKey[k];
+  if(bk){ res={matricule:bk.mat, name:bk.name, exact:true}; }
+  else {
+    var seen={}, best=null, bs=0;
+    _sNorm(name).split(' ').filter(function(t){return t.length>=4;}).forEach(function(t){
+      (_sensibEmpIndex.tokIdx[t]||[]).forEach(function(o){ if(seen[o.key])return; seen[o.key]=1; var s=_sRatio(k,o.key); if(s>bs){bs=s;best=o;} });
+    });
+    if(best && bs>=0.90) res={matricule:best.mat, name:best.name, exact:false};
+  }
+  _sensibNameCache[name]=res; return res;
+}
+
 function renderSensib(){
   var q=(document.getElementById('sensibSearch')||{}).value||'';
   var fh=(document.getElementById('sensibFilterHazard')||{}).value||'all';
@@ -4935,10 +4977,11 @@ function renderSensib(){
   tb.innerHTML=rows.map(function(r){
     var statusCol=r.status==='Absent'?'var(--red)':'var(--green)';
     var linkCell=sensibPjButton(r.attendanceUrl);
+    var rsv=sensibResolveName(r.name);
     return '<tr>'
       +'<td style="font-family:JetBrains Mono,monospace;font-size:10px;color:var(--text3)">'+escH(r.timestamp)+'</td>'
-      +'<td style="font-family:JetBrains Mono,monospace;font-size:11px">'+escH(r.matricule)+'</td>'
-      +'<td style="font-weight:500">'+escH(r.name)+'</td>'
+      +'<td style="font-family:JetBrains Mono,monospace;font-size:11px">'+((rsv&&rsv.matricule)?escH(rsv.matricule):(r.matricule?escH(r.matricule):'<span style=\'color:var(--text3)\'>—</span>'))+'</td>'
+      +'<td style="font-weight:500">'+escH((rsv&&rsv.name)?rsv.name:r.name)+((rsv&&!rsv.exact)?' <span title="rapproch&#233; auto." style="color:var(--amber);font-size:9px">&#8776;</span>':'')+'</td>'
       +'<td style="font-size:11px;color:var(--text2)">'+escH(r.department)+'</td>'
       +'<td><span class="rbadge" style="background:rgba(245,166,35,.15);color:var(--amber);border:1px solid rgba(245,166,35,.3)">'+escH(r.hazard||'—')+'</span></td>'
       +'<td style="font-size:10px;color:var(--text2)">'+escH(r.theme||'—')+'</td>'
