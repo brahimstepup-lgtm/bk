@@ -3039,9 +3039,9 @@ html.light .pests-search-input{background:#edf2f7}
          ondragleave="this.style.borderColor='var(--border)'"
          ondrop="sensibHandleDrop(event)">
       <div style="font-size:22px;margin-bottom:4px">📎</div>
-      <div style="font-size:11px;color:var(--text2);font-weight:500">Téléverser la feuille d'émargement <span style="color:var(--red)">*</span></div>
+      <div style="font-size:11px;color:var(--text2);font-weight:500">Téléverser la feuille d'émargement <span style="color:var(--text3);font-weight:400">(facultatif)</span></div>
       <div style="font-size:10px;color:var(--text3);margin-top:2px">JPG, PNG ou PDF — une seule photo pour tous les participants<br>
-        <span style="color:var(--amber);font-size:9px;font-weight:600">Obligatoire — le lien Drive sera généré automatiquement</span></div>
+        <span style="color:var(--text3);font-size:9px;font-weight:600">Optionnel — le lien Drive sera généré automatiquement si un fichier est fourni</span></div>
       <input type="file" id="sensibFileInput" accept="image/jpeg,image/png,application/pdf" style="display:none" onchange="sensibHandleFile(this)">
     </div>
     <div id="sensibFilePreview" style="display:none;margin-bottom:10px;font-size:10px;color:var(--green);padding:6px 10px;background:rgba(16,201,133,.1);border-radius:6px;border:1px solid rgba(16,201,133,.3)"></div>
@@ -4989,7 +4989,6 @@ function sensibSubmitForm(){
   var dateVal=document.getElementById('sensibFormDate').value;
   if(!hazard||!trainer||!dateVal){ sensibShowMsg('Veuillez remplir les champs obligatoires : date, type de risque et formateur.','err'); return; }
   if(!_sensibParticipants.length){ sensibShowMsg('Ajoutez au moins un participant avant d\'enregistrer.','err'); return; }
-  if(!_sensibFile){ sensibShowMsg('⚠️ La feuille d\'émargement (photo / PDF) est obligatoire.','err'); return; }
   var btn=document.getElementById('sensibSubmitBtn');
   btn.disabled=true; btn.textContent='Enregistrement…';
   var commonData={
@@ -5019,7 +5018,8 @@ function sensibSubmitForm(){
     }
     saveNext();
   }
-  // PJ obligatoire — upload bloquant
+  // PJ facultative — si aucun fichier, enregistrement direct sans upload
+  if(!_sensibFile){ saveAllParticipants(''); return; }
   var reader=new FileReader();
   reader.onload=function(ev){
     var b64=ev.target.result.split(',')[1];
