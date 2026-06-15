@@ -1723,6 +1723,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('inc',this)">⚠️ Incidents</button>
   <button class="tab"    onclick="goTab('tags',this)">🏷️ TAGs</button>
   <button class="tab"    onclick="goTab('risk',this);renderRisk()">🛡️ Analyse Risques</button>
+  <button class="tab"    onclick="goTab('actions',this);renderActions()">📋 Plan d'actions</button>
   <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
@@ -1990,6 +1991,43 @@ html.light .pests-search-input{background:#edf2f7}
           <th>N°</th><th>Direction</th><th>Service</th><th>Lieu</th><th>Zone/Machine</th><th>Tâche</th><th>Danger</th><th>Risque</th><th>Famille</th><th>F</th><th>P</th><th>G</th><th>Score</th><th>Niveau avant</th><th>Niveau après</th>
         </tr></thead>
         <tbody id="riskBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PLAN D'ACTIONS GLOBAL ═══ -->
+<div id="actions" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button class="btn" onclick="openActionsSource()" style="font-size:11px;padding:6px 12px">📊 Ouvrir le fichier source</button>
+  </div>
+  <div class="tsum" id="actSum">⏳ Ouvrez l'onglet pour charger le plan d'actions global…</div>
+  <div class="kpi-grid" id="actKpi"></div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition par statut</div><div class="cw" style="height:250px"><canvas id="actStatutC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Avancement par source</div><div class="cw" style="height:250px"><canvas id="actSourceC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Charge par responsable (Top 12)</div><div class="cw" style="height:330px"><canvas id="actRespC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Top 10 des sites / lieux</div><div class="cw" style="height:330px"><canvas id="actSiteC"></canvas></div></div>
+  </div>
+  <div class="row2">
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Actions par catégorie / type</div><div class="cw" style="height:300px"><canvas id="actCatC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition par priorité / gravité</div><div class="cw" style="height:300px"><canvas id="actPrioC"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot"></span>Détail des actions
+      <span id="actCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:6px 0">
+      <select class="kpi-sel" id="actFStatut" onchange="renderActionsTable()"><option value="">Tous les statuts</option></select>
+      <select class="kpi-sel" id="actFSource" onchange="renderActionsTable()"><option value="">Toutes les sources</option></select>
+      <input type="text" id="actFilter" class="tag-search-input" placeholder="Filtrer : lieu, action, responsable, description…" oninput="renderActionsTable()" style="flex:1;min-width:200px">
+    </div>
+    <div class="tblw">
+      <table>
+        <thead><tr><th>ID</th><th>Source</th><th>Site / Lieu</th><th>Catégorie</th><th>Problème</th><th>Action corrective</th><th>Responsable</th><th>Priorité</th><th>Créée</th><th>Échéance</th><th>Clôture</th><th>Statut</th></tr></thead>
+        <tbody id="actBody"></tbody>
       </table>
     </div>
   </div>
@@ -5439,6 +5477,107 @@ function renderRiskLines(){
   if(show.length===0) h='<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:18px">Aucune ligne pour ce filtre</td></tr>';
   else if(rows.length>CAP) h+='<tr><td colspan="15" style="text-align:center;color:var(--text3);padding:10px">… '+(rows.length-CAP)+' lignes supplémentaires — affinez le filtre</td></tr>';
   var tb=document.getElementById('riskBody'); if(tb) tb.innerHTML=h;
+}
+
+// ══ PLAN D'ACTIONS GLOBAL (classeur consolidé — fichier source) ══
+// Charge à la demande le plan d'actions via getActionPlanForClient
+// puis met en cache dans _actData. Données non modifiées : les statuts
+// affichés sont ceux du classeur source.
+var _actData=null, _actLoading=false;
+var ACTIONS_SOURCE_URL='https://docs.google.com/spreadsheets/d/1SI9RssYHEIAJ2djA8wfX1aQyVIoIR7auylmzkJBZ1f4/edit?gid=1664347988';
+var ACT_STATUT_COL={'Clôturé / Terminé':'#10c985','En cours':'#0da8d2','En retard':'#e8445a','Non démarré':'#f5a623','Non renseigné':'#7c8b99'};
+function openActionsSource(){ openCleaningEmbed(ACTIONS_SOURCE_URL,'Plan d\'actions global — fichier source','CLASSEUR SOURCE','📋'); }
+function renderActions(){
+  if(_actData){ _renderActionsAll(); return; }
+  if(_actLoading) return;
+  _actLoading=true;
+  var sum=document.getElementById('actSum');
+  if(sum) sum.innerHTML='⏳ Chargement du plan d\'actions global…';
+  google.script.run
+    .withSuccessHandler(function(res){
+      _actLoading=false;
+      if(!res||!res.ok){ if(sum) sum.innerHTML='⚠️ '+esc((res&&res.error)||'Erreur de chargement.'); return; }
+      _actData=res; _renderActionsAll();
+    })
+    .withFailureHandler(function(err){
+      _actLoading=false;
+      if(sum) sum.innerHTML='⚠️ Erreur réseau : '+esc((err&&err.message)||String(err));
+    })
+    .getActionPlanForClient();
+}
+function _renderActionsAll(){
+  var d=_actData; if(!d) return;
+  var N=d.total, k=d.kpis;
+  var kp=document.getElementById('actKpi');
+  if(kp) kp.innerHTML=[
+    kpiCard('Actions',N,'b','plan d\'actions global','k-b',null,null),
+    kpiCard('Clôturées',k.clot,'g','terminées','k-g',k.tauxClot,C.green),
+    kpiCard('En cours',k.enCours,'b','en traitement','k-b',null,null),
+    kpiCard('En retard',k.enRetard,'r','échéance dépassée','k-r',k.enRetardPct,C.red),
+    kpiCard('Priorité élevée',k.prioElevee,'a','High / Gravité 3','k-a',null,null)
+  ].join('');
+
+  var sum=document.getElementById('actSum');
+  if(sum) sum.innerHTML='📋 <strong>'+N+'</strong> actions · clôturées <strong style="color:#10c985">'+k.tauxClot+'%</strong> ('+k.clot+')'
+    +' · en cours <strong style="color:#0da8d2">'+k.enCours+'</strong> · en retard <strong style="color:#e8445a">'+k.enRetard+'</strong>'
+    +' · non démarrées <strong style="color:#f5a623">'+k.nonDemarre+'</strong> · source : onglet '+esc(d.sheet);
+
+  var scol=d.statutOrder.map(function(s){return ACT_STATUT_COL[s]||'#7c8b99';});
+  mkChart('actStatutC','doughnut',d.statutOrder,[{data:d.statutCounts,backgroundColor:scol,borderWidth:0,hoverOffset:4}],
+    {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:9}}},cutout:'55%'});
+
+  var bs=d.bySource||[];
+  var blabels=bs.map(function(x){return x.name.length>24?x.name.substring(0,24)+'…':x.name;});
+  mkChart('actSourceC','bar',blabels, d.statutOrder.map(function(s,ix){
+    return {label:s,data:bs.map(function(x){return x.niv[ix];}),backgroundColor:ACT_STATUT_COL[s]||'#7c8b99'};
+  }), Object.assign({},BASE,{indexAxis:'y',plugins:{legend:{display:true,labels:{color:C.txt,font:{size:8},boxWidth:8}}},scales:{x:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt}},y:{stacked:true,grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+
+  var hbar=Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}});
+  function barFrom(id,arr,color){
+    if(!arr) return;
+    var labels=arr.map(function(x){return x.name.length>26?x.name.substring(0,26)+'…':x.name;});
+    mkChart(id,'bar',labels,[{data:arr.map(function(x){return x.count;}),backgroundColor:color,borderRadius:4}],hbar);
+  }
+  barFrom('actRespC', d.responsables, 'rgba(13,168,210,.8)');
+  barFrom('actSiteC', d.sites, 'rgba(139,92,246,.8)');
+  barFrom('actCatC', d.categories, 'rgba(245,166,35,.85)');
+
+  var pcol=['#e8445a','#f5a623','#10c985','#7c8b99'];
+  mkChart('actPrioC','bar',d.prioOrder,[{data:d.prioCounts,backgroundColor:pcol,borderRadius:4}],BASE);
+
+  var fs=document.getElementById('actFStatut');
+  if(fs && fs.options.length<=1) d.statutOrder.forEach(function(s){ var o=document.createElement('option'); o.value=s; o.textContent=s; fs.appendChild(o); });
+  var fsrc=document.getElementById('actFSource');
+  if(fsrc && fsrc.options.length<=1) bs.forEach(function(x){ var o=document.createElement('option'); o.value=x.name; o.textContent=x.name; fsrc.appendChild(o); });
+  renderActionsTable();
+}
+function renderActionsTable(){
+  var d=_actData; if(!d) return;
+  var q=((document.getElementById('actFilter')||{}).value||'').toLowerCase().trim();
+  var fst=(document.getElementById('actFStatut')||{}).value||'';
+  var fsr=(document.getElementById('actFSource')||{}).value||'';
+  var rows=(d.entries||[]).filter(function(x){
+    if(fst && x.statut!==fst) return false;
+    if(fsr && x.source!==fsr) return false;
+    if(q && (x.id+' '+x.source+' '+x.site+' '+x.cat+' '+x.desc+' '+x.action+' '+x.resp+' '+x.prioRaw+' '+x.statut).toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+  var cnt=document.getElementById('actCount'); if(cnt) cnt.textContent=rows.length+' / '+d.total+' actions';
+  var CAP=400, show=rows.slice(0,CAP);
+  var h='';
+  show.forEach(function(x){
+    var sc=ACT_STATUT_COL[x.statut]||'var(--text3)';
+    h+='<tr><td>'+esc(x.id)+'</td><td style="font-size:9px">'+esc(x.source)+'</td><td>'+esc(x.site)+'</td>'
+      +'<td style="font-size:9px">'+esc(x.cat)+'</td><td>'+esc(x.desc)+'</td><td>'+esc(x.action)+'</td>'
+      +'<td>'+esc(x.resp)+'</td><td style="text-align:center">'+esc(x.prioRaw)+'</td>'
+      +'<td style="text-align:center;font-size:9px;white-space:nowrap">'+esc(x.dCrea)+'</td>'
+      +'<td style="text-align:center;font-size:9px;white-space:nowrap">'+esc(x.dEch)+'</td>'
+      +'<td style="text-align:center;font-size:9px;white-space:nowrap">'+esc(x.dClot)+'</td>'
+      +'<td><span style="color:'+sc+';font-weight:600;white-space:nowrap">'+esc(x.statut)+'</span></td></tr>';
+  });
+  if(show.length===0) h='<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:18px">Aucune action pour ce filtre</td></tr>';
+  else if(rows.length>CAP) h+='<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:10px">… '+(rows.length-CAP)+' actions supplémentaires — affinez le filtre</td></tr>';
+  var tb=document.getElementById('actBody'); if(tb) tb.innerHTML=h;
 }
 function kpiCard(lbl,val,color,sub,cls,pct,bc){
   var bar='';

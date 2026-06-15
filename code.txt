@@ -4331,3 +4331,135 @@ function getRiskAnalysis() {
   }
 }
 function getRiskAnalysisForClient() { return getRiskAnalysis(); }
+
+// ══════════════════════════════════════════════════════════════
+// PLAN D'ACTIONS GLOBAL — classeur consolidé externe
+// Lit l'onglet de synthèse (Source, Action corrective, Responsable,
+// Statut…) du classeur « Plan d'actions » et renvoie des agrégats
+// (par statut, source, responsable, lieu, catégorie, priorité) +
+// le détail des actions. Appelé à la demande. Données NON modifiées.
+// ══════════════════════════════════════════════════════════════
+var ACTIONS_SOURCE_ID = '1SI9RssYHEIAJ2djA8wfX1aQyVIoIR7auylmzkJBZ1f4';
+
+// Normalise un statut hétérogène vers 5 catégories canoniques.
+function _apStatut(raw) {
+  var s = normalize(raw);
+  if (!s) return 'Non renseigné';
+  if (s.indexOf('clotur') > -1 || s.indexOf('termin') > -1) return 'Clôturé / Terminé';
+  if (s.indexOf('cours')  > -1) return 'En cours';
+  if (s.indexOf('retard') > -1) return 'En retard';
+  if (s.indexOf('demarr') > -1) return 'Non démarré';
+  return 'Non renseigné';
+}
+// Normalise priorité (Low/Med/High) OU gravité (1/2/3) → 3 niveaux.
+function _apPrio(raw) {
+  var s = normalize(raw);
+  if (!s) return '';
+  if (s.indexOf('gravite') > -1) {
+    if (/3/.test(s)) return 'Élevée';
+    if (/2/.test(s)) return 'Moyenne';
+    if (/1/.test(s)) return 'Faible';
+    return 'Autre';
+  }
+  if (s.indexOf('high') > -1 || s.indexOf('elev') > -1 || s.indexOf('haut') > -1) return 'Élevée';
+  if (s.indexOf('med')  > -1 || s.indexOf('moy')  > -1) return 'Moyenne';
+  if (s.indexOf('low')  > -1 || s.indexOf('faible') > -1 || s.indexOf('bas') > -1) return 'Faible';
+  return 'Autre';
+}
+// Retire un préfixe numéroté (« 1. », « 2 - ») du libellé de source.
+function _apSource(raw) {
+  var s = safeText(raw);
+  return s.replace(/^\s*\d+\s*[.\-)]\s*/, '').trim() || '—';
+}
+
+function getActionPlan() {
+  var STATUT_ORDER = ['Clôturé / Terminé','En cours','En retard','Non démarré','Non renseigné'];
+  try {
+    var ss = SpreadsheetApp.openById(ACTIONS_SOURCE_ID);
+    // Cherche l'onglet consolidé : en-tête contenant « action corrective »
+    // ET « statut ». En cas d'ambiguïté on garde l'onglet le plus complet.
+    var sheets = ss.getSheets(), sh = null, hRow = -1, bestScore = 0;
+    var KEYS = ['action corrective','statut','source','responsable','description'];
+    for (var si = 0; si < sheets.length; si++) {
+      var vv = sheets[si].getDataRange().getValues();
+      for (var i = 0; i < Math.min(vv.length, 12); i++) {
+        var jn = vv[i].map(function(x){ return normalize(String(x)); }).join('|');
+        if (jn.indexOf('action corrective') > -1 && jn.indexOf('statut') > -1) {
+          var score = 0; KEYS.forEach(function(kw){ if (jn.indexOf(kw) > -1) score++; });
+          if (score > bestScore) { bestScore = score; sh = sheets[si]; hRow = i; }
+          break;
+        }
+      }
+    }
+    if (!sh) return { ok:false, error:'Onglet « Plan d\'actions » introuvable dans le classeur source.' };
+    var values = sh.getDataRange().getValues();
+
+    var H = values[hRow].map(function(x){ return normalize(String(x)); });
+    function col(def, re) { for (var c = 0; c < H.length; c++) if (re.test(H[c])) return c; return def; }
+    var iId   = col(0,/^id$|numero|^n°/), iSrc  = col(1,/^source$/),
+        iRef  = col(2,/ref/),             iSite = col(3,/site|lieu/),
+        iCat  = col(4,/categorie|type/),  iDesc = col(5,/description|probleme/),
+        iAct  = col(6,/action/),          iResp = col(7,/responsable/),
+        iPrio = col(8,/priorite|gravite/),iCrea = col(9,/creation/),
+        iEch  = col(10,/echeance/),       iClot = col(11,/cloture/),
+        iStat = col(12,/^statut$/);
+
+    var entries = [];
+    for (var r = hRow + 1; r < values.length; r++) {
+      var row = values[r];
+      var act = safeText(row[iAct]), desc = safeText(row[iDesc]);
+      // Ignore les lignes vides et les tableaux de synthèse en pied de
+      // page (pas d'action corrective ni de description).
+      if (isNull(act) && isNull(desc)) continue;
+      entries.push({
+        id: safeText(row[iId]), source: _apSource(row[iSrc]), ref: safeText(row[iRef]),
+        site: safeText(row[iSite]) || '—', cat: safeText(row[iCat]) || '—',
+        desc: desc, action: act, resp: safeText(row[iResp]) || '—',
+        prioRaw: safeText(row[iPrio]), prio: _apPrio(row[iPrio]),
+        dCrea: safeText(row[iCrea]), dEch: safeText(row[iEch]), dClot: safeText(row[iClot]),
+        statut: _apStatut(safeText(row[iStat]))
+      });
+    }
+
+    var N = entries.length;
+    function topCount(key, lim) {
+      var m = {}; entries.forEach(function(x){ var v = (x[key]||'').toString().trim(); if (v && v !== '—') m[v] = (m[v]||0)+1; });
+      return Object.keys(m).map(function(k){ return {name:k, count:m[k]}; })
+        .sort(function(a,b){ return b.count - a.count; }).slice(0, lim||10);
+    }
+    var statutCounts = STATUT_ORDER.map(function(s){ return entries.filter(function(x){ return x.statut === s; }).length; });
+
+    // Avancement par source (barres empilées par statut)
+    var smap = {};
+    entries.forEach(function(x){
+      if (!smap[x.source]) smap[x.source] = { name:x.source, total:0, niv:[0,0,0,0,0] };
+      var o = smap[x.source]; o.total++;
+      var ix = STATUT_ORDER.indexOf(x.statut); if (ix >= 0) o.niv[ix]++;
+    });
+    var bySource = Object.keys(smap).map(function(k){ return smap[k]; })
+      .sort(function(a,b){ return b.total - a.total; });
+
+    var PRIO_ORDER = ['Élevée','Moyenne','Faible','Autre'];
+    var prioCounts = PRIO_ORDER.map(function(p){ return entries.filter(function(x){ return x.prio === p; }).length; });
+
+    return {
+      ok:true, total:N, sheet: sh.getName(),
+      statutOrder: STATUT_ORDER, statutCounts: statutCounts,
+      prioOrder: PRIO_ORDER, prioCounts: prioCounts,
+      bySource: bySource,
+      responsables: topCount('resp', 12),
+      sites: topCount('site', 10),
+      categories: topCount('cat', 10),
+      kpis: {
+        clot: statutCounts[0], tauxClot: N ? Math.round(statutCounts[0]/N*100) : 0,
+        enCours: statutCounts[1], enRetard: statutCounts[2],
+        enRetardPct: N ? Math.round(statutCounts[2]/N*100) : 0,
+        nonDemarre: statutCounts[3], prioElevee: prioCounts[0]
+      },
+      entries: entries.slice(0, 1000)
+    };
+  } catch(e) {
+    return { ok:false, error: e.toString() };
+  }
+}
+function getActionPlanForClient() { return getActionPlan(); }
