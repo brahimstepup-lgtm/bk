@@ -3243,6 +3243,20 @@ html.light .pests-search-input{background:#edf2f7}
          style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--p4);font-size:11px;text-decoration:none">↗ Ouvrir la feuille</a>
     </div>
   </div>
+  <!-- Graphiques : évolution mensuelle -->
+  <div id="dechetsChartsWrap" class="row2" style="display:none">
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>
+        <span id="dechetsEvoTitle">Évolution mensuelle</span></div>
+      <div class="cw" style="height:210px"><canvas id="dechetsEvoC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>
+        <span id="dechetsTypeTitle">Évolution mensuelle par type</span></div>
+      <div class="cw" style="height:210px"><canvas id="dechetsTypeC"></canvas></div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="ct">
       <span class="ct-dot" style="background:var(--green)"></span>
@@ -5337,6 +5351,9 @@ function dechetsRender(){
   var cnt = document.getElementById('dechetsCount');
   if (cnt) cnt.textContent = filtered.length + ' / ' + rows.length;
 
+  // Graphiques d'évolution mensuelle (basés sur les lignes filtrées)
+  dechetsRenderCharts(headers, filtered);
+
   var colspan = headers.length + 1 + (hasLink ? 1 : 0);
   var tb = document.getElementById('dechetsBody');
   if (!tb) return;
@@ -5374,6 +5391,162 @@ function dechetsRender(){
     html += '</tr>';
   });
   tb.innerHTML = html;
+}
+
+// ── Parse une date FR/ISO en {y, m} (m = 0..11) ; null si invalide ──
+function dechetsParseYM(v){
+  if (v == null) return null;
+  var s = String(v).trim();
+  if (!s) return null;
+  // ISO yyyy-mm-dd ou yyyy/mm/dd
+  var m = s.match(/(\d{4})[-\/.](\d{1,2})(?:[-\/.]\d{1,2})?/);
+  if (m){ var mo = parseInt(m[2],10); if (mo>=1&&mo<=12) return { y:parseInt(m[1],10), m:mo-1 }; }
+  // FR dd/mm/yyyy ou dd-mm-yyyy (année sur 2 ou 4 chiffres)
+  m = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);
+  if (m){
+    var mo2 = parseInt(m[2],10);
+    var y2  = parseInt(m[3],10); if (y2 < 100) y2 += 2000;
+    if (mo2>=1&&mo2<=12) return { y:y2, m:mo2-1 };
+  }
+  // mm/yyyy
+  m = s.match(/^(\d{1,2})[-\/.](\d{4})$/);
+  if (m){ var mo3 = parseInt(m[1],10); if (mo3>=1&&mo3<=12) return { y:parseInt(m[2],10), m:mo3-1 }; }
+  // Dernier recours : Date.parse
+  var d = new Date(s);
+  if (!isNaN(d.getTime())) return { y:d.getFullYear(), m:d.getMonth() };
+  return null;
+}
+// Convertit une cellule en nombre (gère « 12,5 », « 1 200 kg », etc.)
+function dechetsToNum(v){
+  if (v == null) return null;
+  var s = String(v).replace(/\s/g,'').replace(',', '.').replace(/[^0-9.\-]/g,'');
+  if (s === '' || s === '-' || s === '.') return null;
+  var n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+// ── GRAPHIQUES DÉCHETS : évolution mensuelle ────────────────────
+function dechetsRenderCharts(headers, rows){
+  var wrap = document.getElementById('dechetsChartsWrap');
+  headers = headers || [];
+  rows = rows || [];
+
+  // Détection des colonnes utiles
+  var dateCol = -1, qtyCol = -1, typeCol = -1, qtyHdr = '';
+  for (var c = 0; c < headers.length; c++){
+    var h = String(headers[c] || '').toLowerCase();
+    if (!h) continue;
+    if (dateCol < 0 && h.indexOf('date') > -1) dateCol = c;
+    if (qtyCol < 0 && (h.indexOf('quant') > -1 || h.indexOf('qte') > -1 ||
+        h.indexOf('poids') > -1 || h.indexOf('masse') > -1 || h.indexOf('volume') > -1 ||
+        h.indexOf('tonn') > -1 || h.indexOf('kg') > -1 || h.indexOf('nombre') > -1)) { qtyCol = c; qtyHdr = headers[c]; }
+    if (typeCol < 0 && (h.indexOf('type') > -1 || h.indexOf('nature') > -1 ||
+        h.indexOf('categ') > -1 || h.indexOf('catég') > -1 || h.indexOf('famille') > -1 ||
+        h.indexOf('designation') > -1 || h.indexOf('désignation') > -1 ||
+        (h.indexOf('dechet') > -1 && h.indexOf('date') < 0))) typeCol = c;
+  }
+
+  function destroy(id){ if (charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+  // Sans colonne date, pas d'évolution mensuelle possible
+  if (dateCol < 0){
+    if (wrap) wrap.style.display = 'none';
+    destroy('dechetsEvoC'); destroy('dechetsTypeC');
+    return;
+  }
+  if (wrap) wrap.style.display = '';
+
+  var useQty = qtyCol >= 0;
+  var evoTitle = document.getElementById('dechetsEvoTitle');
+  if (evoTitle) evoTitle.textContent = useQty
+    ? 'Évolution mensuelle — ' + (qtyHdr || 'quantité')
+    : 'Évolution mensuelle — nombre de lignes';
+
+  // Agrégation par mois chronologique (clé yyyy-mm)
+  var totals = {};                 // key -> somme/quantité
+  var byType = {};                 // type -> { key -> valeur }
+  var typeTotals = {};             // type -> total (pour le top N)
+  rows.forEach(function(r){
+    var cells = r.cells || [];
+    var ym = dechetsParseYM(cells[dateCol]);
+    if (!ym) return;
+    var key = ym.y + '-' + ('0' + (ym.m + 1)).slice(-2);
+    var val = useQty ? dechetsToNum(cells[qtyCol]) : 1;
+    if (val == null) val = useQty ? 0 : 1;
+    totals[key] = (totals[key] || 0) + val;
+    if (typeCol >= 0){
+      var t = String(cells[typeCol] || '').trim() || '— Non spécifié —';
+      if (!byType[t]) byType[t] = {};
+      byType[t][key] = (byType[t][key] || 0) + val;
+      typeTotals[t] = (typeTotals[t] || 0) + val;
+    }
+  });
+
+  var keys = Object.keys(totals).sort();
+  var labels = keys.map(function(k){
+    var p = k.split('-'); return ML[parseInt(p[1],10) - 1] + ' ' + p[0].slice(-2);
+  });
+
+  // ── Graphe 1 : évolution mensuelle totale (barres) ──
+  destroy('dechetsEvoC');
+  var cv1 = document.getElementById('dechetsEvoC');
+  if (cv1 && keys.length){
+    try {
+      charts['dechetsEvoC'] = new Chart(cv1, {
+        type:'bar',
+        data:{ labels:labels, datasets:[{
+          label: useQty ? (qtyHdr || 'Quantité') : 'Lignes',
+          data: keys.map(function(k){ return totals[k]; }),
+          backgroundColor:C.green, borderColor:C.teal, borderWidth:1, borderRadius:4
+        }]},
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:false} },
+          scales:{
+            x:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:10}}},
+            y:{grid:{color:C.grid},ticks:{color:C.txt,font:{size:10}},beginAtZero:true}
+          }
+        }
+      });
+    } catch(e){}
+  }
+
+  // ── Graphe 2 : évolution mensuelle par type (barres empilées) ──
+  destroy('dechetsTypeC');
+  var card2 = document.getElementById('dechetsTypeC');
+  var titleEl = document.getElementById('dechetsTypeTitle');
+  if (typeCol >= 0 && keys.length){
+    if (card2 && card2.closest('.card')) card2.closest('.card').style.display = '';
+    var topTypes = Object.keys(typeTotals)
+      .sort(function(a,b){ return typeTotals[b] - typeTotals[a]; }).slice(0, 6);
+    var palette = [C.p4, C.amber, C.green, C.red, C.purple, C.teal, C.orange];
+    var datasets = topTypes.map(function(t, i){
+      return {
+        label: t.length > 22 ? t.slice(0,20) + '…' : t,
+        data: keys.map(function(k){ return (byType[t] && byType[t][k]) || 0; }),
+        backgroundColor: palette[i % palette.length],
+        borderWidth:0
+      };
+    });
+    if (titleEl) titleEl.textContent = 'Évolution mensuelle par type (Top ' + topTypes.length + ')';
+    try {
+      charts['dechetsTypeC'] = new Chart(card2, {
+        type:'bar',
+        data:{ labels:labels, datasets:datasets },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{display:true, position:'bottom', labels:{color:C.txt, font:{size:9}, boxWidth:8}} },
+          scales:{
+            x:{stacked:true, grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}}},
+            y:{stacked:true, grid:{color:C.grid}, ticks:{color:C.txt, font:{size:10}}, beginAtZero:true}
+          }
+        }
+      });
+    } catch(e){}
+  } else {
+    // Pas de colonne type → masquer la 2e carte
+    if (card2 && card2.closest('.card')) card2.closest('.card').style.display = 'none';
+  }
 }
 
 // ══ NAVIGATION ════════════════════════════════════════════════
