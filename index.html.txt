@@ -1735,6 +1735,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('pests',this)">🐀 Nuisibles</button>
   <button class="tab"    onclick="goTab('sensib',this);sensibLoadOnDemand();">🎓 Sensibilisation</button>
   <button class="tab"    onclick="goTab('chimiques',this);chimiquesLoadOnDemand();">⚗️ Produits Chimiques</button>
+  <button class="tab"    onclick="goTab('dechets',this);dechetsLoadOnDemand();">♻️ Déchets</button>
 </div>
 
 <!-- ═══ VUE GLOBALE ═══ -->
@@ -3212,6 +3213,46 @@ html.light .pests-search-input{background:#edf2f7}
           </tr>
         </thead>
         <tbody id="chimiquesBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ DÉCHETS ═══ -->
+<div id="dechets" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <span><span class="ct-dot" style="background:#3ca55c"></span>♻️ Fiche de suivi des déchets</span>
+      <span id="dechetsSourceMeta" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">Chargement…</span>
+    </div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin:8px 0 0">
+      Données extraites de la feuille <em style="color:var(--text3)">« Fiche de suivi dechets »</em>
+      du classeur source. Cliquez sur l'icône <strong>📎</strong> d'une ligne pour afficher le
+      document associé <strong>directement dans le dashboard</strong>.
+    </p>
+    <div id="dechetsKpiRow" style="display:flex;gap:12px;flex-wrap:wrap;margin:14px 0 4px"></div>
+  </div>
+  <div class="card" style="margin-bottom:12px;padding:12px 16px">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input id="dechetsSearch" type="text" placeholder="🔍 Rechercher dans le suivi des déchets…"
+             oninput="dechetsRender()"
+             style="flex:1;min-width:200px;padding:7px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px">
+      <button onclick="dechetsResetFilters()"
+              style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:11px;cursor:pointer">↺ Reset</button>
+      <a id="dechetsSourceLink" href="#" target="_blank" rel="noopener"
+         style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--p4);font-size:11px;text-decoration:none">↗ Ouvrir la feuille</a>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct">
+      <span class="ct-dot" style="background:var(--green)"></span>
+      Suivi des déchets
+      <span id="dechetsCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:6px">—</span>
+    </div>
+    <div class="tblw">
+      <table id="dechetsTable">
+        <thead><tr id="dechetsHead"></tr></thead>
+        <tbody id="dechetsBody"></tbody>
       </table>
     </div>
   </div>
@@ -5227,6 +5268,112 @@ function chimiquesViewFds(url) {
     var fr = document.getElementById('sensibPjFrame');
     if (ov && fr) { fr.src = url; ov.style.display = 'flex'; }
   }
+}
+
+// ══ DÉCHETS ════════════════════════════════════════════════════
+var _dechetsData = null;
+function dechetsLoadOnDemand(){
+  if (_dechetsData) { dechetsRender(); return; }
+  var meta = document.getElementById('dechetsSourceMeta');
+  if (meta) meta.textContent = '⏳ Chargement…';
+  google.script.run
+    .withSuccessHandler(function(r){
+      _dechetsData = r || { headers:[], rows:[] };
+      var link = document.getElementById('dechetsSourceLink');
+      if (link && _dechetsData.sourceUrl) link.href = _dechetsData.sourceUrl;
+      if (meta) {
+        if (_dechetsData.error) meta.textContent = '❌ ' + _dechetsData.error;
+        else meta.textContent = 'Source : ' + (_dechetsData.sheetName || 'Fiche de suivi dechets')
+          + ' · ' + (_dechetsData.rows ? _dechetsData.rows.length : 0) + ' ligne(s)';
+      }
+      dechetsRender();
+    })
+    .withFailureHandler(function(e){
+      if (meta) meta.textContent = '❌ Erreur : ' + (e && e.message ? e.message : e);
+    })
+    .getDechetsForClient();
+}
+function dechetsResetFilters(){
+  var s = document.getElementById('dechetsSearch'); if (s) s.value = '';
+  dechetsRender();
+}
+function dechetsRender(){
+  var D2 = _dechetsData || { headers:[], rows:[] };
+  var headers = D2.headers || [];
+  var rows = D2.rows || [];
+  var hasLink = rows.some(function(r){ return r && r.url; });
+
+  // Entêtes dynamiques
+  var head = document.getElementById('dechetsHead');
+  if (head){
+    var hh = '<th style="width:34px">#</th>';
+    headers.forEach(function(h){ hh += '<th>' + escH(h || '—') + '</th>'; });
+    if (hasLink) hh += '<th style="width:70px;text-align:center">Doc</th>';
+    head.innerHTML = hh;
+  }
+
+  // KPI
+  var kpiRow = document.getElementById('dechetsKpiRow');
+  if (kpiRow){
+    var withDoc = rows.filter(function(r){ return r && r.url; }).length;
+    kpiRow.innerHTML = [
+      {label:'Lignes', val:rows.length, color:'var(--p4)'},
+      {label:'Colonnes', val:headers.length, color:'var(--green)'},
+      {label:'Documents liés', val:withDoc, color:withDoc>0?'var(--green)':'var(--text3)'}
+    ].map(function(k){
+      return '<div style="flex:1;min-width:120px;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px 16px;text-align:center">'
+        +'<div style="font-size:20px;font-weight:700;color:'+k.color+'">'+k.val+'</div>'
+        +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+k.label+'</div>'
+        +'</div>';
+    }).join('');
+  }
+
+  // Filtre recherche plein texte
+  var search = ((document.getElementById('dechetsSearch')||{}).value||'').toLowerCase();
+  var filtered = rows.filter(function(r){
+    if (!search) return true;
+    return (r.cells||[]).join(' ').toLowerCase().indexOf(search) > -1;
+  });
+  var cnt = document.getElementById('dechetsCount');
+  if (cnt) cnt.textContent = filtered.length + ' / ' + rows.length;
+
+  var colspan = headers.length + 1 + (hasLink ? 1 : 0);
+  var tb = document.getElementById('dechetsBody');
+  if (!tb) return;
+  if (D2.error){
+    tb.innerHTML = '<tr><td colspan="'+colspan+'" style="text-align:center;color:var(--red);padding:20px">'+escH(D2.error)+'</td></tr>';
+    return;
+  }
+  if (!filtered.length){
+    tb.innerHTML = '<tr><td colspan="'+colspan+'" style="text-align:center;color:var(--text3);padding:20px">Aucune ligne trouvée</td></tr>';
+    return;
+  }
+  var html = '';
+  filtered.forEach(function(r, idx){
+    html += '<tr>';
+    html += '<td style="color:var(--text3);font-family:\'JetBrains Mono\',monospace;font-size:10px">'+(idx+1)+'</td>';
+    headers.forEach(function(h, ci){
+      var v = (r.cells && r.cells[ci] != null) ? r.cells[ci] : '';
+      html += '<td style="font-size:11px;color:var(--text2)">'+escH(v || '')+'</td>';
+    });
+    if (hasLink){
+      if (r.url){
+        var id = sensibDriveFileId(r.url);
+        if (id){
+          html += '<td style="text-align:center"><button onclick="sensibViewPj(\''+escH(id)+'\')" '
+            +'style="background:rgba(74,144,226,.15);color:var(--p4);border:1px solid rgba(74,144,226,.35);'
+            +'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600" title="Afficher le document">📎</button></td>';
+        } else {
+          html += '<td style="text-align:center"><a href="'+escH(r.url)+'" target="_blank" rel="noopener" '
+            +'style="color:var(--p4);text-decoration:none;font-size:13px" title="Ouvrir le lien">🔗</a></td>';
+        }
+      } else {
+        html += '<td style="text-align:center;color:var(--text3)">—</td>';
+      }
+    }
+    html += '</tr>';
+  });
+  tb.innerHTML = html;
 }
 
 // ══ NAVIGATION ════════════════════════════════════════════════
