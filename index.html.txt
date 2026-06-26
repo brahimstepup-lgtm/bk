@@ -3424,6 +3424,14 @@ html.light .pests-search-input{background:#edf2f7}
     </a>
   </div>
 
+  <!-- ─── BARRE ACTIONS NUISIBLES ─── -->
+  <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+    <button class="btn" style="background:var(--p2);color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openRapportTendanceNuisibles()">
+      📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
+    </button>
+  </div>
+
   <!-- ─── SECTION 1 : INSECTES VOLANTS (FK) ─── -->
   <div class="pests-section flying" id="pestsFlyingSection">
     <div class="pests-section-head">
@@ -3900,6 +3908,36 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 </div><!-- /main -->
+
+<!-- ═══ MODAL RAPPORT DE TENDANCE NUISIBLES (Enr hse 23) ═══ -->
+<div class="modal-bg" id="pestRapportModal" style="display:none" onclick="if(event.target===this)closeModal('pestRapportModal')">
+  <div class="modal-panel" style="max-width:860px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(14,165,233,.18);border-color:rgba(14,165,233,.5);color:#0ea5e9">📈</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-family:'JetBrains Mono',monospace;letter-spacing:.05em">ENR HSE 23</div>
+        <div class="modal-hdr-name">Rapport de tendance — Suivi nuisibles</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          Période :
+          <select id="pestRapportPeriod" style="font-size:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 6px;cursor:pointer"
+                  onchange="renderRapportTendanceNuisibles()">
+            <option value="all">Toutes</option>
+            <option value="90">90 derniers jours</option>
+            <option value="180">6 derniers mois</option>
+            <option value="365" selected>12 derniers mois</option>
+            <option value="ytd">Année en cours</option>
+          </select>
+          &nbsp;
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printRapportTendanceNuisibles()">🖨️ Imprimer / PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('pestRapportModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="pestRapportBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération du rapport…</div></div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ MODAL DÉTAIL DISPOSITIF (cartographie) ═══ -->
 <div class="modal-bg" id="dispoModal" style="display:none" onclick="if(event.target===this)closeModal('dispoModal')">
@@ -10925,6 +10963,243 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RAPPORT DE TENDANCE NUISIBLES — Enr hse 23
+   ══════════════════════════════════════════════════════════════ */
+
+function openRapportTendanceNuisibles(){
+  var modal=document.getElementById('pestRapportModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderRapportTendanceNuisibles();
+}
+
+function renderRapportTendanceNuisibles(){
+  var body=document.getElementById('pestRapportBody');
+  if(!body) return;
+  if(!D||!D.pests){
+    body.innerHTML='<div class="pests-empty">Données nuisibles non disponibles.</div>';
+    return;
+  }
+  var periodVal=(document.getElementById('pestRapportPeriod')||{}).value||'365';
+  var fromIso=rodentPeriodStartIso(periodVal);
+  var periodLbl=rodentPeriodLabel(periodVal);
+  var today=new Date();
+  var todayStr=today.getDate().toString().padStart(2,'0')+'/'+(today.getMonth()+1).toString().padStart(2,'0')+'/'+today.getFullYear();
+
+  // ── Filtrer chaque source ──────────────────────────────────
+  var fkAll  =(D.pests.fk   &&D.pests.fk.entries  )||[];
+  var ratAll =(D.pests.rat  &&D.pests.rat.entries  )||[];
+  var mechAll=(D.pests.mech &&D.pests.mech.entries )||[];
+  var glueAll=(D.pests.glue &&D.pests.glue.entries )||[];
+
+  function filterPeriod(entries){
+    if(!fromIso) return entries;
+    return entries.filter(function(e){ return e.isoDate && e.isoDate>=fromIso; });
+  }
+  var fk  =filterPeriod(fkAll);
+  var rat =filterPeriod(ratAll);
+  var mech=filterPeriod(mechAll);
+  var glue=filterPeriod(glueAll);
+
+  // ── Helpers ────────────────────────────────────────────────
+  function topZones(entries, n){
+    var cnt={};
+    entries.forEach(function(e){
+      var z=(e.zone||'—').trim()||'—';
+      cnt[z]=(cnt[z]||0)+1;
+    });
+    return Object.keys(cnt).map(function(z){ return {zone:z,count:cnt[z]}; })
+      .sort(function(a,b){ return b.count-a.count; }).slice(0,n);
+  }
+
+  function souCount(entries, origin){
+    return entries.filter(function(e){
+      return origin==='outdoor' ? rodentCodeOutdoor(e.statut)==='SOU'
+                                : rodentCodeIndoor(e.statut)==='SOU';
+    }).length;
+  }
+
+  function buildMonthTrend(entries){
+    var byM={};
+    entries.forEach(function(e){
+      if(!e.isoDate) return;
+      var ym=e.isoDate.substring(0,7);
+      byM[ym]=(byM[ym]||0)+1;
+    });
+    var yms=Object.keys(byM).sort();
+    return yms.map(function(ym){ return {ym:ym, count:byM[ym]}; });
+  }
+
+  function trendArrow(trend){
+    if(trend.length<2) return '<span style="color:var(--text3)">—</span>';
+    var last3=trend.slice(-3);
+    var prev3=trend.slice(-6,-3);
+    var sumLast=last3.reduce(function(a,b){return a+b.count;},0);
+    var sumPrev=prev3.reduce(function(a,b){return a+b.count;},0);
+    if(sumPrev===0) return '<span style="color:var(--text3)">—</span>';
+    var pct=Math.round((sumLast-sumPrev)/sumPrev*100);
+    if(pct>10) return '<span style="color:var(--red)">▲ +'+pct+'%</span>';
+    if(pct<-10) return '<span style="color:var(--green)">▼ '+pct+'%</span>';
+    return '<span style="color:var(--amber)">→ '+pct+'%</span>';
+  }
+
+  function monthTrendRows(trend){
+    if(trend.length===0) return '<tr><td colspan="2" style="text-align:center;color:var(--text3);padding:6px">Aucune donnée</td></tr>';
+    return trend.map(function(m){
+      var p=m.ym.split('-');
+      var lbl=(ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0];
+      return '<tr><td>'+esc(lbl)+'</td><td style="text-align:right;font-weight:600">'+m.count+'</td></tr>';
+    }).join('');
+  }
+
+  function sectionCard(icon, title, color, entries, souFn, origin){
+    var total=entries.length;
+    var souC=souFn?souFn(entries,origin):null;
+    var trend=buildMonthTrend(entries);
+    var arrow=trendArrow(trend);
+    var zones=topZones(entries,5);
+    var html='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">';
+    html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+    html+='<span style="font-size:18px">'+icon+'</span>';
+    html+='<div style="flex:1"><div style="font-weight:700;font-size:13px;color:var(--text)">'+esc(title)+'</div>';
+    if(souC!==null) html+='<div style="font-size:10px;color:var(--text3)">Captures (SOU) : <b style="color:'+color+'">'+souC+'</b></div>';
+    html+='</div>';
+    html+='<div style="text-align:right"><div style="font-size:20px;font-weight:700;color:'+color+'">'+total+'</div>';
+    html+='<div style="font-size:9px;color:var(--text3)">enregistrements</div></div>';
+    html+='</div>';
+
+    html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+
+    // Tendance mensuelle
+    html+='<div>';
+    html+='<div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Évolution mensuelle '+arrow+'</div>';
+    html+='<table style="width:100%;font-size:11px;border-collapse:collapse">';
+    html+='<thead><tr style="border-bottom:1px solid var(--border)"><th style="text-align:left;padding:3px 6px;color:var(--text3);font-weight:500">Mois</th><th style="text-align:right;padding:3px 6px;color:var(--text3);font-weight:500">Visites</th></tr></thead>';
+    html+='<tbody>'+monthTrendRows(trend.slice(-6))+'</tbody>';
+    html+='</table>';
+    html+='</div>';
+
+    // Top zones
+    html+='<div>';
+    html+='<div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">Top zones</div>';
+    if(zones.length===0){
+      html+='<div style="color:var(--text3);font-size:11px;padding:4px">—</div>';
+    } else {
+      var maxZ=zones[0].count;
+      zones.forEach(function(z){
+        var pct=maxZ>0?Math.round(z.count/maxZ*100):0;
+        html+='<div style="margin-bottom:5px">';
+        html+='<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px"><span style="color:var(--text)">'+esc(z.zone)+'</span><span style="color:'+color+';font-weight:600">'+z.count+'</span></div>';
+        html+='<div style="height:3px;background:var(--bg3);border-radius:2px"><div style="height:3px;width:'+pct+'%;background:'+color+';border-radius:2px"></div></div>';
+        html+='</div>';
+      });
+    }
+    html+='</div>';
+
+    html+='</div>';
+    html+='</div>';
+    return html;
+  }
+
+  // ── Bilan global ───────────────────────────────────────────
+  var souExt=souCount(rat,'outdoor');
+  var souInt=souCount(mech,'indoor')+souCount(glue,'indoor');
+  var totalCaptures=souExt+souInt;
+  var totalRecords=fk.length+rat.length+mech.length+glue.length;
+
+  // ── Construction HTML du rapport ──────────────────────────
+  var h='';
+
+  // En-tête officiel
+  h+='<div id="pestRapportPrint">';
+  h+='<div style="display:flex;align-items:flex-start;justify-content:space-between;border-bottom:2px solid var(--p2);padding-bottom:12px;margin-bottom:16px;gap:12px">';
+  h+='<div>';
+  h+='<div style="font-size:18px;font-weight:800;color:var(--text)">Rapport de tendance — Suivi nuisibles</div>';
+  h+='<div style="font-size:11px;color:var(--text3);margin-top:4px">Période : <b style="color:var(--p3)">'+esc(periodLbl)+'</b> &nbsp;·&nbsp; Généré le : <b>'+todayStr+'</b></div>';
+  h+='</div>';
+  h+='<div style="text-align:right;flex-shrink:0">';
+  h+='<div style="font-size:10px;font-family:\'JetBrains Mono\',monospace;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:4px 10px;color:var(--text3)">Réf. document</div>';
+  h+='<div style="font-size:14px;font-weight:700;font-family:\'JetBrains Mono\',monospace;color:var(--p2);margin-top:2px">ENR HSE 23</div>';
+  h+='</div>';
+  h+='</div>';
+
+  // KPIs globaux
+  h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">';
+  function kpi(label,val,sub,color){
+    return '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">'
+      +'<div style="font-size:10px;color:var(--text3);margin-bottom:4px">'+label+'</div>'
+      +'<div style="font-size:20px;font-weight:700;color:'+(color||'var(--text)')+'">'+val+'</div>'
+      +'<div style="font-size:9px;color:var(--text3);margin-top:2px">'+sub+'</div>'
+      +'</div>';
+  }
+  h+=kpi('Enregistrements',totalRecords,'toutes sources','var(--p3)');
+  h+=kpi('Captures rongeurs (SOU)',totalCaptures,'extérieur + intérieur','#e8445a');
+  h+=kpi('SOU extérieur',souExt,'boîtes raticide','#f97316');
+  h+=kpi('SOU intérieur',souInt,'mécanique + colles','#0da8d2');
+  h+='</div>';
+
+  // Sections par catégorie
+  h+=sectionCard('🦟','Insectes volants (FK)','#14b8a6',fk,null,null);
+  h+=sectionCard('🌳','Rongeurs — Voie extérieure (raticide)','#f97316',rat,souCount,'outdoor');
+  h+=sectionCard('🏭','Rongeurs — Intérieur (pièges mécaniques)','#0da8d2',mech,souCount,'indoor');
+  h+=sectionCard('🟡','Rongeurs — Intérieur (boîtes à colles)','#f5a623',glue,souCount,'indoor');
+
+  // Analyse de tendance synthétique
+  h+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px">';
+  h+='<div style="font-weight:700;font-size:12px;color:var(--text);margin-bottom:10px">📋 Synthèse de tendance</div>';
+
+  function analyseTrend(label, entries){
+    var trend=buildMonthTrend(entries);
+    if(trend.length<2) return '<li style="margin-bottom:4px"><b>'+esc(label)+' :</b> données insuffisantes pour analyse</li>';
+    var arrow=trendArrow(trend);
+    var last=trend[trend.length-1];
+    var p=last.ym.split('-');
+    var lastMonth=(ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0];
+    return '<li style="margin-bottom:6px"><b>'+esc(label)+' :</b> '+arrow
+      +' &nbsp;— dernier mois renseigné : <em>'+lastMonth+'</em> ('+last.count+' enregistrements)</li>';
+  }
+
+  h+='<ul style="margin:0;padding-left:16px;font-size:11px;color:var(--text)">';
+  h+=analyseTrend('Insectes volants',fk);
+  h+=analyseTrend('Rongeurs extérieurs (raticide)',rat);
+  h+=analyseTrend('Rongeurs intérieurs (mécanique)',mech);
+  h+=analyseTrend('Rongeurs intérieurs (colles)',glue);
+  h+='</ul>';
+  h+='<div style="font-size:9px;color:var(--text3);margin-top:10px;border-top:1px solid var(--border);padding-top:8px">';
+  h+='Légende tendance : <span style="color:var(--red)">▲ Hausse &gt;10%</span> &nbsp;';
+  h+='<span style="color:var(--amber)">→ Stable ±10%</span> &nbsp;';
+  h+='<span style="color:var(--green)">▼ Baisse &gt;10%</span> &nbsp;';
+  h+='(comparaison des 3 derniers mois vs les 3 précédents)';
+  h+='</div>';
+  h+='</div>';
+
+  // Pied de page
+  h+='<div style="font-size:9px;color:var(--text3);text-align:center;border-top:1px solid var(--border);padding-top:10px;margin-top:4px">';
+  h+='Document : <b style="font-family:\'JetBrains Mono\',monospace">ENR HSE 23</b> &nbsp;·&nbsp; Rapport de tendance nuisibles &nbsp;·&nbsp; '+todayStr;
+  h+='</div>';
+
+  h+='</div>'; // pestRapportPrint
+
+  body.innerHTML=h;
+}
+
+function printRapportTendanceNuisibles(){
+  var el=document.getElementById('pestRapportPrint');
+  if(!el){ window.print(); return; }
+  var w=window.open('','_blank','width=900,height=700');
+  if(!w) return;
+  var styles='<style>body{font-family:system-ui,sans-serif;background:#fff;color:#111;padding:24px;font-size:12px}'
+    +'.spin{display:none}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'th,td{padding:4px 8px;border-bottom:1px solid #e0e0e0}'
+    +'</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport tendance nuisibles — ENR HSE 23</title>'+styles+'</head><body>'+el.innerHTML+'</body></html>');
+  w.document.close();
+  w.focus();
+  w.print();
 }
 
 /* ══════════════════════════════════════════════════════════════
