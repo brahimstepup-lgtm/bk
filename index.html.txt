@@ -11392,30 +11392,44 @@ function renderRapportTendanceNuisibles(){
   h+='</tr>';
   h+='</table>';
 
-  // Graphique SVG rongeurs global (ext vs int)
-  var rodGlobalTrend=(function(){
+  // Graphique SVG rongeurs global — captures SOU uniquement (ext vs int)
+  var rodGlobalSou=(function(){
     var byM={};
-    function push(e, area){
-      if(!e.isoDate) return;
+    rat.forEach(function(e){
+      if(!e.isoDate||rodentCodeOutdoor(e.statut)!=='SOU') return;
       var ym=e.isoDate.substring(0,7);
       if(!byM[ym]) byM[ym]={out:0,ind:0};
-      byM[ym][area]++;
-    }
-    rat.forEach(function(e){push(e,'out');});
-    mech.forEach(function(e){push(e,'ind');});
-    glue.forEach(function(e){push(e,'ind');});
+      byM[ym].out++;
+    });
+    mech.forEach(function(e){
+      if(!e.isoDate||rodentCodeIndoor(e.statut)!=='SOU') return;
+      var ym=e.isoDate.substring(0,7);
+      if(!byM[ym]) byM[ym]={out:0,ind:0};
+      byM[ym].ind++;
+    });
+    glue.forEach(function(e){
+      if(!e.isoDate||rodentCodeIndoor(e.statut)!=='SOU') return;
+      var ym=e.isoDate.substring(0,7);
+      if(!byM[ym]) byM[ym]={out:0,ind:0};
+      byM[ym].ind++;
+    });
     var yms=Object.keys(byM).sort();
     return {
-      ext:  yms.map(function(ym){return{ym:ym,v:byM[ym].out};}),
-      ind:  yms.map(function(ym){return{ym:ym,v:byM[ym].ind};})
+      yms: yms,
+      ext: yms.map(function(ym){return{ym:ym,v:byM[ym].out};}),
+      ind: yms.map(function(ym){return{ym:ym,v:byM[ym].ind};})
     };
   })();
   h+='<div style="border:1.5px solid #b0b0b0;border-top:none;padding:10px;background:#fafcfd;margin-bottom:12px">';
-  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:6px">Évolution mensuelle — Voie extérieure vs Intérieur usine</div>';
-  h+=svgLineChart([
-    {label:'Voie extérieure',color:'#f97316',values:rodGlobalTrend.ext},
-    {label:'Intérieur usine', color:'#0da8d2',values:rodGlobalTrend.ind}
-  ],{w:700,h:130});
+  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:6px">Évolution mensuelle — Captures SOU : Voie extérieure vs Intérieur usine</div>';
+  if(!rodGlobalSou.yms.length){
+    h+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:700;color:#bbb">0 capture</div>';
+  } else {
+    h+=svgLineChart([
+      {label:'Voie extérieure (SOU)',color:'#f97316',values:rodGlobalSou.ext},
+      {label:'Intérieur usine (SOU)', color:'#0da8d2',values:rodGlobalSou.ind}
+    ],{w:700,h:130});
+  }
   h+='</div>';
 
   // ── Tableaux par source rongeurs (évolution + top zones) ───
