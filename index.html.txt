@@ -11050,12 +11050,15 @@ function svgBarChart(series, opts){
   return svg;
 }
 
-// ── SVG line chart ────────────────────────────────────────────
+// ── SVG line chart (multi-séries) ────────────────────────────
 function svgLineChart(series, opts){
   opts=opts||{};
-  var W=opts.w||520, H=opts.h||120;
-  var padL=28, padR=8, padT=12, padB=36;
-  var cW=W-padL-padR, cH=H-padT-padB;
+  // Réserve de la place pour la légende en bas (14px par ligne de légende)
+  var legendRows=Math.ceil((series.length||1)/4);
+  var legH=legendRows*14+4;
+  var W=opts.w||520, H=(opts.h||120)+legH;
+  var padL=32, padR=12, padT=14, padB=26;
+  var cW=W-padL-padR, cH=H-padT-padB-legH;
 
   var ymSet={};
   series.forEach(function(s){ s.values.forEach(function(d){ ymSet[d.ym]=1; }); });
@@ -11063,55 +11066,71 @@ function svgLineChart(series, opts){
   if(!yms.length) return '<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucune donnée</div>';
 
   var maxV=0;
-  series.forEach(function(s){ s.values.forEach(function(d){ if(yms.indexOf(d.ym)>-1&&d.v>maxV) maxV=d.v; }); });
+  series.forEach(function(s){
+    s.values.forEach(function(d){ if(yms.indexOf(d.ym)>-1&&d.v>maxV) maxV=d.v; });
+  });
   if(maxV===0) maxV=1;
 
+  // Fond doux
   var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H
-    +'" viewBox="0 0 '+W+' '+H+'" style="display:block;max-width:100%">';
+    +'" viewBox="0 0 '+W+' '+H+'" style="display:block;max-width:100%;background:#f8fbfd;border-radius:4px">';
 
-  svg+='<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
-  svg+='<line x1="'+padL+'" y1="'+(padT+cH)+'" x2="'+(padL+cW)+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
-
-  [0.25,0.5,0.75,1].forEach(function(f){
+  // Grille horizontale
+  [0,0.25,0.5,0.75,1].forEach(function(f){
     var y=padT+cH-f*cH;
-    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(padL+cW)+'" y2="'+y+'" stroke="#e8e8e8" stroke-width="1" stroke-dasharray="3,3"/>';
-    svg+='<text x="'+(padL-3)+'" y="'+(y+3)+'" text-anchor="end" font-size="8" fill="#aaa">'+Math.round(maxV*f)+'</text>';
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(padL+cW)+'" y2="'+y
+      +'" stroke="'+(f===0?'#ccc':'#e4edf2')+'" stroke-width="'+(f===0?1.5:1)+'"/>';
+    if(f>0) svg+='<text x="'+(padL-4)+'" y="'+(y+3)+'" text-anchor="end" font-size="8" fill="#9bb">'+Math.round(maxV*f)+'</text>';
+  });
+  // Axe Y
+  svg+='<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1.5"/>';
+
+  // Grille verticale légère
+  yms.forEach(function(ym,i){
+    var x=padL+(yms.length>1?i/(yms.length-1):0.5)*cW;
+    svg+='<line x1="'+x.toFixed(1)+'" y1="'+padT+'" x2="'+x.toFixed(1)+'" y2="'+(padT+cH)+'" stroke="#e4edf2" stroke-width="1"/>';
   });
 
+  // Lignes + points
   series.forEach(function(s){
     var pts=yms.map(function(ym,i){
       var dv=s.values.find(function(d){return d.ym===ym;})||{v:0};
-      var x=padL+(i/(yms.length-1||1))*cW;
+      var xr=yms.length>1?i/(yms.length-1):0.5;
+      var x=padL+xr*cW;
       var y=padT+cH-((dv.v||0)/maxV)*cH;
       return {x:x,y:y,v:dv.v||0};
     });
-    // Ligne
-    var d=pts.map(function(p,i){return (i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1);}).join(' ');
-    svg+='<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="2"/>';
-    // Points + valeurs
+    // Ligne principale
+    var d=pts.map(function(p,i){return(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1);}).join(' ');
+    svg+='<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="2" stroke-linejoin="round"/>';
+    // Points (tous) + label si valeur > 0
     pts.forEach(function(p){
+      svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5" fill="'+s.color+'" stroke="#fff" stroke-width="1"/>';
       if(p.v>0){
-        svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3" fill="'+s.color+'"/>';
-        svg+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-5).toFixed(1)+'" text-anchor="middle" font-size="7.5" fill="'+s.color+'" font-weight="600">'+p.v+'</text>';
+        // décale légèrement vers le haut pour éviter chevauchement
+        svg+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-7).toFixed(1)+'" text-anchor="middle" font-size="7.5" fill="'+s.color+'" font-weight="700">'+p.v+'</text>';
       }
     });
   });
 
+  // Labels des mois (axe X)
   yms.forEach(function(ym,i){
     var p=ym.split('-');
-    var x=padL+(i/(yms.length-1||1))*cW;
-    svg+='<text x="'+x.toFixed(1)+'" y="'+(padT+cH+12)+'" text-anchor="middle" font-size="8" fill="#666">'+(ML[parseInt(p[1],10)-1]||('M'+p[1]))+'</text>';
-    svg+='<text x="'+x.toFixed(1)+'" y="'+(padT+cH+22)+'" text-anchor="middle" font-size="7" fill="#aaa">'+p[0].slice(2)+'</text>';
+    var xr=yms.length>1?i/(yms.length-1):0.5;
+    var x=padL+xr*cW;
+    svg+='<text x="'+x.toFixed(1)+'" y="'+(padT+cH+11)+'" text-anchor="middle" font-size="8.5" fill="#555" font-weight="500">'+(ML[parseInt(p[1],10)-1]||('M'+p[1]))+'</text>';
   });
 
-  if(series.length>1){
-    var lx=padL;
-    series.forEach(function(s){
-      svg+='<line x1="'+lx+'" y1="'+(H-5)+'" x2="'+(lx+12)+'" y2="'+(H-5)+'" stroke="'+s.color+'" stroke-width="2"/>';
-      svg+='<text x="'+(lx+15)+'" y="'+(H-2)+'" font-size="8" fill="#555">'+esc(s.label)+'</text>';
-      lx+=15+s.label.length*5+10;
-    });
-  }
+  // Légende centrée en bas
+  var totalLegW=series.reduce(function(acc,s){return acc+s.label.length*5.5+22;},0);
+  var lx=(W-totalLegW)/2;
+  var ly=H-legH+4;
+  series.forEach(function(s){
+    svg+='<rect x="'+lx.toFixed(1)+'" y="'+(ly+1)+'" width="14" height="8" fill="'+s.color+'" rx="2"/>';
+    svg+='<text x="'+(lx+17).toFixed(1)+'" y="'+(ly+8.5)+'" font-size="8.5" fill="#444">'+esc(s.label)+'</text>';
+    lx+=s.label.length*5.5+22;
+  });
+
   svg+='</svg>';
   return svg;
 }
@@ -11311,18 +11330,18 @@ function renderRapportTendanceNuisibles(){
   });
   var fkYms=Object.keys(fkAllYms).sort().slice(-9);
 
-  // Graphique en barres groupées par type
-  var fkChartSeries=fkTypes.map(function(t){
+  // Graphique lignes multi-types (identique au dashboard "Évolution mensuelle — tous types confondus")
+  var fkLineSeries=fkTypes.map(function(t){
     return {
-      label: t.label,
+      label: t.icon+' '+t.label,
       color: t.color,
       values: fkYms.map(function(ym){ return {ym:ym, v:(fkStatsByKey[t.key].byMonth[ym])||0}; })
     };
   });
   h+='<div style="border:1.5px solid #b0b0b0;border-top:none;padding:10px;background:#fafcfd;margin-bottom:0">';
-  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0a7a9a;margin-bottom:6px">Évolution mensuelle des captures par type d\'insecte</div>';
-  if(fkChartSeries.length>0){
-    h+=svgBarChart(fkChartSeries,{w:700,h:150});
+  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0a7a9a;margin-bottom:6px">Évolution mensuelle — tous types confondus</div>';
+  if(fkLineSeries.length>0){
+    h+=svgLineChart(fkLineSeries,{w:700,h:160});
   } else {
     h+='<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucun type détecté</div>';
   }
