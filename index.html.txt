@@ -10969,6 +10969,153 @@ function renderPests(){
    RAPPORT DE TENDANCE NUISIBLES — Enr hse 23
    ══════════════════════════════════════════════════════════════ */
 
+// ── SVG bar chart inline (pas de dépendance Chart.js) ─────────
+function svgBarChart(series, opts){
+  // series = [{label, values:[{ym, v}], color}]
+  // opts   = {w, h, title}
+  opts=opts||{};
+  var W=opts.w||520, H=opts.h||140;
+  var padL=28, padR=8, padT=12, padB=36;
+  var cW=W-padL-padR, cH=H-padT-padB;
+
+  // Collecter tous les mois
+  var ymSet={};
+  series.forEach(function(s){ s.values.forEach(function(d){ ymSet[d.ym]=1; }); });
+  var yms=Object.keys(ymSet).sort().slice(-9);
+  if(!yms.length) return '<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucune donnée</div>';
+
+  // Valeur max
+  var maxV=0;
+  series.forEach(function(s){
+    s.values.forEach(function(d){
+      if(yms.indexOf(d.ym)>-1&&d.v>maxV) maxV=d.v;
+    });
+  });
+  if(maxV===0) maxV=1;
+
+  var nBars=yms.length;
+  var groupW=cW/nBars;
+  var barW=Math.max(2, Math.floor(groupW/series.length)-2);
+  var groupPad=(groupW - barW*series.length)/2;
+
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H
+    +'" viewBox="0 0 '+W+' '+H+'" style="display:block;max-width:100%">';
+
+  // Axes
+  svg+='<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
+  svg+='<line x1="'+padL+'" y1="'+(padT+cH)+'" x2="'+(padL+cW)+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
+
+  // Grille horizontale (3 lignes)
+  [0.25,0.5,0.75,1].forEach(function(f){
+    var y=padT+cH-f*cH;
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(padL+cW)+'" y2="'+y+'" stroke="#e8e8e8" stroke-width="1" stroke-dasharray="3,3"/>';
+    svg+='<text x="'+(padL-3)+'" y="'+(y+3)+'" text-anchor="end" font-size="8" fill="#aaa">'+Math.round(maxV*f)+'</text>';
+  });
+
+  // Barres
+  yms.forEach(function(ym, gi){
+    var gx=padL+gi*groupW+groupPad;
+    series.forEach(function(s, si){
+      var dv=s.values.find(function(d){return d.ym===ym;})||{v:0};
+      var v=dv.v||0;
+      var bh=Math.round((v/maxV)*cH);
+      var bx=gx+si*barW;
+      var by=padT+cH-bh;
+      if(v>0){
+        svg+='<rect x="'+bx+'" y="'+by+'" width="'+(barW-1)+'" height="'+bh
+          +'" fill="'+s.color+'" rx="1"/>';
+        if(bh>14){
+          svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(by+10)+'" text-anchor="middle" font-size="7" fill="#fff" font-weight="600">'+v+'</text>';
+        }
+      }
+    });
+    // Label mois
+    var p=ym.split('-');
+    var lbl=(ML[parseInt(p[1],10)-1]||('M'+p[1]));
+    svg+='<text x="'+(padL+gi*groupW+groupW/2)+'" y="'+(padT+cH+12)+'" text-anchor="middle" font-size="8" fill="#666">'+lbl+'</text>';
+    svg+='<text x="'+(padL+gi*groupW+groupW/2)+'" y="'+(padT+cH+22)+'" text-anchor="middle" font-size="7" fill="#aaa">'+p[0].slice(2)+'</text>';
+  });
+
+  // Légende
+  if(series.length>1){
+    var lx=padL;
+    series.forEach(function(s){
+      svg+='<rect x="'+lx+'" y="'+(H-8)+'" width="8" height="6" fill="'+s.color+'" rx="1"/>';
+      svg+='<text x="'+(lx+10)+'" y="'+(H-3)+'" font-size="8" fill="#555">'+esc(s.label)+'</text>';
+      lx+=10+s.label.length*5+8;
+    });
+  }
+
+  svg+='</svg>';
+  return svg;
+}
+
+// ── SVG line chart ────────────────────────────────────────────
+function svgLineChart(series, opts){
+  opts=opts||{};
+  var W=opts.w||520, H=opts.h||120;
+  var padL=28, padR=8, padT=12, padB=36;
+  var cW=W-padL-padR, cH=H-padT-padB;
+
+  var ymSet={};
+  series.forEach(function(s){ s.values.forEach(function(d){ ymSet[d.ym]=1; }); });
+  var yms=Object.keys(ymSet).sort().slice(-9);
+  if(!yms.length) return '<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucune donnée</div>';
+
+  var maxV=0;
+  series.forEach(function(s){ s.values.forEach(function(d){ if(yms.indexOf(d.ym)>-1&&d.v>maxV) maxV=d.v; }); });
+  if(maxV===0) maxV=1;
+
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H
+    +'" viewBox="0 0 '+W+' '+H+'" style="display:block;max-width:100%">';
+
+  svg+='<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
+  svg+='<line x1="'+padL+'" y1="'+(padT+cH)+'" x2="'+(padL+cW)+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
+
+  [0.25,0.5,0.75,1].forEach(function(f){
+    var y=padT+cH-f*cH;
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(padL+cW)+'" y2="'+y+'" stroke="#e8e8e8" stroke-width="1" stroke-dasharray="3,3"/>';
+    svg+='<text x="'+(padL-3)+'" y="'+(y+3)+'" text-anchor="end" font-size="8" fill="#aaa">'+Math.round(maxV*f)+'</text>';
+  });
+
+  series.forEach(function(s){
+    var pts=yms.map(function(ym,i){
+      var dv=s.values.find(function(d){return d.ym===ym;})||{v:0};
+      var x=padL+(i/(yms.length-1||1))*cW;
+      var y=padT+cH-((dv.v||0)/maxV)*cH;
+      return {x:x,y:y,v:dv.v||0};
+    });
+    // Ligne
+    var d=pts.map(function(p,i){return (i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1);}).join(' ');
+    svg+='<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="2"/>';
+    // Points + valeurs
+    pts.forEach(function(p){
+      if(p.v>0){
+        svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3" fill="'+s.color+'"/>';
+        svg+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-5).toFixed(1)+'" text-anchor="middle" font-size="7.5" fill="'+s.color+'" font-weight="600">'+p.v+'</text>';
+      }
+    });
+  });
+
+  yms.forEach(function(ym,i){
+    var p=ym.split('-');
+    var x=padL+(i/(yms.length-1||1))*cW;
+    svg+='<text x="'+x.toFixed(1)+'" y="'+(padT+cH+12)+'" text-anchor="middle" font-size="8" fill="#666">'+(ML[parseInt(p[1],10)-1]||('M'+p[1]))+'</text>';
+    svg+='<text x="'+x.toFixed(1)+'" y="'+(padT+cH+22)+'" text-anchor="middle" font-size="7" fill="#aaa">'+p[0].slice(2)+'</text>';
+  });
+
+  if(series.length>1){
+    var lx=padL;
+    series.forEach(function(s){
+      svg+='<line x1="'+lx+'" y1="'+(H-5)+'" x2="'+(lx+12)+'" y2="'+(H-5)+'" stroke="'+s.color+'" stroke-width="2"/>';
+      svg+='<text x="'+(lx+15)+'" y="'+(H-2)+'" font-size="8" fill="#555">'+esc(s.label)+'</text>';
+      lx+=15+s.label.length*5+10;
+    });
+  }
+  svg+='</svg>';
+  return svg;
+}
+
 function openRapportTendanceNuisibles(){
   var modal=document.getElementById('pestRapportModal');
   if(!modal) return;
@@ -10991,10 +11138,12 @@ function renderRapportTendanceNuisibles(){
   var mm=(today.getMonth()+1).toString().padStart(2,'0');
   var yyyy=today.getFullYear();
   var todayStr=dd+'/'+mm+'/'+yyyy;
-  var logoSrc=(document.getElementById('logoImg')||{}).src||'';
+  // Logo : priorité D.logoUrl, sinon src de l'img du header
+  var logoSrc=(D&&D.logoUrl)||'';
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
   var logoHtml=logoSrc
-    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">'
-    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO 3</div>';
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
 
   // ── Filtrer chaque source ──────────────────────────────────
   function filterPeriod(entries){
@@ -11155,7 +11304,31 @@ function renderRapportTendanceNuisibles(){
   h+='</tr>';
   h+='</table>';
 
-  // Tableau évolution mensuelle FK par type
+  // Graphique SVG + tableau évolution mensuelle FK
+  var fkAllYms={};
+  fkTypes.forEach(function(t){
+    Object.keys(fkStatsByKey[t.key].byMonth).forEach(function(ym){ fkAllYms[ym]=1; });
+  });
+  var fkYms=Object.keys(fkAllYms).sort().slice(-9);
+
+  // Graphique en barres groupées par type
+  var fkChartSeries=fkTypes.map(function(t){
+    return {
+      label: t.label,
+      color: t.color,
+      values: fkYms.map(function(ym){ return {ym:ym, v:(fkStatsByKey[t.key].byMonth[ym])||0}; })
+    };
+  });
+  h+='<div style="border:1.5px solid #b0b0b0;border-top:none;padding:10px;background:#fafcfd;margin-bottom:0">';
+  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0a7a9a;margin-bottom:6px">Évolution mensuelle des captures par type d\'insecte</div>';
+  if(fkChartSeries.length>0){
+    h+=svgBarChart(fkChartSeries,{w:700,h:150});
+  } else {
+    h+='<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucun type détecté</div>';
+  }
+  h+='</div>';
+
+  // Tableau chiffré en dessous du graphique
   h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:12px">';
   h+='<thead><tr style="background:#e8f4f8">';
   h+='<th style="'+tdBase+';font-size:10px;font-weight:600;text-transform:uppercase;color:#444;border-top:none">Mois</th>';
@@ -11164,14 +11337,7 @@ function renderRapportTendanceNuisibles(){
   });
   h+='<th style="'+tdBase+';font-size:10px;font-weight:600;text-align:right;border-top:none">Total</th>';
   h+='</tr></thead><tbody>';
-
-  // Collecter tous les mois présents sur la période
-  var fkAllYms={};
-  fkTypes.forEach(function(t){
-    Object.keys(fkStatsByKey[t.key].byMonth).forEach(function(ym){ fkAllYms[ym]=1; });
-  });
-  var fkYms=Object.keys(fkAllYms).sort().slice(-8);
-  if(fkYms.length===0){
+  if(!fkYms.length){
     h+='<tr><td colspan="'+(fkTypes.length+2)+'" style="'+tdBase+';text-align:center;color:#999">Aucune donnée sur la période</td></tr>';
   } else {
     fkYms.forEach(function(ym,i){
@@ -11182,21 +11348,15 @@ function renderRapportTendanceNuisibles(){
       h+='<tr style="background:'+bg+'">';
       h+='<td style="'+tdBase+';font-weight:500">'+lbl+'</td>';
       fkTypes.forEach(function(t){
-        var v=(fkStatsByKey[t.key].byMonth[ym])||0;
-        rowTotal+=v;
+        var v=(fkStatsByKey[t.key].byMonth[ym])||0; rowTotal+=v;
         h+='<td style="'+tdBase+';text-align:right;color:'+(v>0?t.color:'#bbb')+';font-weight:'+(v>0?'700':'400')+'">'+v+'</td>';
       });
       h+='<td style="'+tdBase+';text-align:right;font-weight:700;color:#0a7a9a">'+rowTotal+'</td>';
       h+='</tr>';
     });
-    // Ligne totaux
-    h+='<tr style="background:#e8f4f8;font-weight:700">';
-    h+='<td style="'+tdBase+'">TOTAL</td>';
-    fkTypes.forEach(function(t){
-      h+='<td style="'+tdBase+';text-align:right;color:'+t.color+'">'+fkStatsByKey[t.key].total+'</td>';
-    });
-    h+='<td style="'+tdBase+';text-align:right;color:#0a7a9a">'+fkGrandTotal+'</td>';
-    h+='</tr>';
+    h+='<tr style="background:#e8f4f8;font-weight:700"><td style="'+tdBase+'">TOTAL</td>';
+    fkTypes.forEach(function(t){ h+='<td style="'+tdBase+';text-align:right;color:'+t.color+'">'+fkStatsByKey[t.key].total+'</td>'; });
+    h+='<td style="'+tdBase+';text-align:right;color:#0a7a9a">'+fkGrandTotal+'</td></tr>';
   }
   h+='</tbody></table>';
 
@@ -11213,19 +11373,71 @@ function renderRapportTendanceNuisibles(){
   h+='</tr>';
   h+='</table>';
 
+  // Graphique SVG rongeurs global (ext vs int)
+  var rodGlobalTrend=(function(){
+    var byM={};
+    function push(e, area){
+      if(!e.isoDate) return;
+      var ym=e.isoDate.substring(0,7);
+      if(!byM[ym]) byM[ym]={out:0,ind:0};
+      byM[ym][area]++;
+    }
+    rat.forEach(function(e){push(e,'out');});
+    mech.forEach(function(e){push(e,'ind');});
+    glue.forEach(function(e){push(e,'ind');});
+    var yms=Object.keys(byM).sort();
+    return {
+      ext:  yms.map(function(ym){return{ym:ym,v:byM[ym].out};}),
+      ind:  yms.map(function(ym){return{ym:ym,v:byM[ym].ind};})
+    };
+  })();
+  h+='<div style="border:1.5px solid #b0b0b0;border-top:none;padding:10px;background:#fafcfd;margin-bottom:12px">';
+  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:6px">Évolution mensuelle — Voie extérieure vs Intérieur usine</div>';
+  h+=svgLineChart([
+    {label:'Voie extérieure',color:'#f97316',values:rodGlobalTrend.ext},
+    {label:'Intérieur usine', color:'#0da8d2',values:rodGlobalTrend.ind}
+  ],{w:700,h:130});
+  h+='</div>';
+
   // ── Tableaux par source rongeurs (évolution + top zones) ───
   function rodentSection(sectionTitle, color, entries, origin, souFn){
     var trend=buildMonthTrend(entries);
     var arrow=trendArrow(trend);
     var souC=souFn?souFn(entries,origin):null;
-    var r='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">';
-    // Évolution mensuelle
-    r+='<div>';
-    r+='<div style="background:'+color+';color:#fff;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.05em;border-radius:5px 5px 0 0">'+esc(sectionTitle)+' — Évolution mensuelle '+arrow+'</div>';
-    r+='<table style="width:100%;border-collapse:collapse;border:1px solid #d0d0d0;border-top:none;font-size:10.5px">';
-    r+='<thead><tr style="background:#f5f7f8"><th style="padding:3px 8px;border:1px solid #d0d0d0;color:#555;font-weight:500;text-align:left">Mois</th>'
-      +'<th style="padding:3px 8px;border:1px solid #d0d0d0;text-align:right">Visites</th>'
-      +(souFn?'<th style="padding:3px 8px;border:1px solid #d0d0d0;text-align:right;color:'+color+'">SOU</th>':'')
+
+    // Graphique SVG : visites + SOU par mois
+    var chartSeries=[{label:'Visites', color:color+'88',
+      values:trend.map(function(m){return{ym:m.ym,v:m.count};})}];
+    if(souFn){
+      var souByMonth={};
+      entries.forEach(function(e){
+        if(!e.isoDate) return;
+        var ok=(origin==='outdoor')?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU';
+        if(ok){ var ym=e.isoDate.substring(0,7); souByMonth[ym]=(souByMonth[ym]||0)+1; }
+      });
+      chartSeries.push({label:'Captures SOU', color:color,
+        values:trend.map(function(m){return{ym:m.ym,v:souByMonth[m.ym]||0};})} );
+    }
+
+    var r='<div style="margin-bottom:14px">';
+    // Graphique pleine largeur
+    r+='<div style="background:'+color+';color:#fff;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.05em;border-radius:5px 5px 0 0">';
+    r+=esc(sectionTitle)+' &nbsp; '+arrow;
+    if(souC!==null) r+=' &nbsp; <span style="font-weight:400;opacity:.85">SOU total : '+souC+'</span>';
+    r+='</div>';
+    r+='<div style="border:1px solid #d0d0d0;border-top:none;padding:8px;background:#fafcfd">';
+    r+=svgBarChart(chartSeries,{w:680,h:130});
+    r+='</div>';
+
+    // Grille tableau + zones côte à côte
+    r+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #d0d0d0;border-top:none">';
+    // Tableau chiffré
+    r+='<div style="border-right:1px solid #d0d0d0;padding:0">';
+    r+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+    r+='<thead><tr style="background:#f5f7f8">'
+      +'<th style="padding:3px 8px;border-bottom:1px solid #d0d0d0;color:#555;font-weight:500;text-align:left">Mois</th>'
+      +'<th style="padding:3px 8px;border-bottom:1px solid #d0d0d0;text-align:right">Visites</th>'
+      +(souFn?'<th style="padding:3px 8px;border-bottom:1px solid #d0d0d0;text-align:right;color:'+color+'">SOU</th>':'')
       +'</tr></thead><tbody>';
     var months6=trend.slice(-6);
     if(!months6.length){
@@ -11239,27 +11451,20 @@ function renderRapportTendanceNuisibles(){
             (origin==='outdoor'?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU');
         }).length:null;
         r+='<tr style="background:'+(i%2===0?'#fff':'#f9fbfc')+'">'
-          +'<td style="padding:3px 8px;border:1px solid #e8e8e8">'+lbl+'</td>'
-          +'<td style="padding:3px 8px;border:1px solid #e8e8e8;text-align:right;font-weight:600">'+m.count+'</td>'
-          +(souFn?'<td style="padding:3px 8px;border:1px solid #e8e8e8;text-align:right;font-weight:700;color:'+(souM>0?color:'#bbb')+'">'+souM+'</td>':'')
+          +'<td style="padding:3px 8px;border-bottom:1px solid #f0f0f0">'+lbl+'</td>'
+          +'<td style="padding:3px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">'+m.count+'</td>'
+          +(souFn?'<td style="padding:3px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:700;color:'+(souM>0?color:'#bbb')+'">'+souM+'</td>':'')
           +'</tr>';
       });
     }
-    r+='</tbody></table>';
-    r+='</div>';
+    r+='</tbody></table></div>';
     // Top zones
-    r+='<div>';
-    r+='<div style="background:'+color+';color:#fff;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.05em;border-radius:5px 5px 0 0">'+esc(sectionTitle)+' — Top zones</div>';
-    r+='<div style="border:1px solid #d0d0d0;border-top:none;padding:8px 10px;min-height:40px">';
+    r+='<div style="padding:8px 10px">';
+    r+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:6px">Top zones</div>';
     r+=zoneBarsPrint(entries, color);
     r+='</div>';
-    if(souC!==null){
-      r+='<div style="background:#f5f7f8;border:1px solid #d0d0d0;border-top:none;padding:4px 10px;font-size:10px">';
-      r+='Captures SOU totales : <b style="color:'+color+'">'+souC+'</b>';
-      r+='</div>';
-    }
-    r+='</div>';
-    r+='</div>';
+    r+='</div>'; // grille
+    r+='</div>'; // section
     return r;
   }
 
