@@ -11515,12 +11515,30 @@ function renderRapportTendanceNuisibles(){
   h+='<thead><tr style="background:#e8f4f8">';
   h+='<th style="padding:4px 8px;border:1px solid #d0d0d0;text-align:left">Source</th>';
   h+='<th style="padding:4px 8px;border:1px solid #d0d0d0;text-align:center">Tendance</th>';
-  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0;text-align:right">Enreg.</th>';
-  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0">Dernier mois actif</th>';
+  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0;text-align:right">Captures SOU</th>';
+  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0">Dernier mois actif (SOU)</th>';
   h+='</tr></thead><tbody>';
 
-  function synthRow(label, icon, entries, color){
-    var trend=buildMonthTrend(entries);
+  // Helpers SOU par mois pour tendance et dernier mois
+  function souTrend(entries, origin){
+    var byM={};
+    entries.forEach(function(e){
+      if(!e.isoDate) return;
+      var ok=(origin==='outdoor')?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU';
+      if(ok){ var ym=e.isoDate.substring(0,7); byM[ym]=(byM[ym]||0)+1; }
+    });
+    return Object.keys(byM).sort().map(function(ym){return{ym:ym,count:byM[ym]};});
+  }
+
+  function synthRowFK(label, icon, entries, color){
+    // FK : tendance sur captures totales (sum sur tous types), pas les visites
+    var capByM={};
+    fkTypes.forEach(function(t){
+      Object.keys(fkStatsByKey[t.key].byMonth).forEach(function(ym){
+        capByM[ym]=(capByM[ym]||0)+(fkStatsByKey[t.key].byMonth[ym]||0);
+      });
+    });
+    var trend=Object.keys(capByM).sort().map(function(ym){return{ym:ym,count:capByM[ym]};});
     var arrow=trend.length>=2?trendArrow(trend):'<span style="color:#999">—</span>';
     var last=trend.length?trend[trend.length-1]:null;
     var lastLbl='—';
@@ -11528,15 +11546,32 @@ function renderRapportTendanceNuisibles(){
     return '<tr>'
       +'<td style="padding:4px 8px;border:1px solid #e8e8e8"><span style="font-size:13px">'+icon+'</span> <b>'+esc(label)+'</b></td>'
       +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:center">'+arrow+'</td>'
-      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:right;font-weight:700;color:'+color+'">'+entries.length+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:right;font-weight:700;color:'+color+'">'+fkGrandTotal+'</td>'
       +'<td style="padding:4px 8px;border:1px solid #e8e8e8;color:#555">'+lastLbl+'</td>'
       +'</tr>';
   }
 
-  h+=synthRow('Insectes volants (FK)','🦟',fk,'#14b8a6');
-  h+=synthRow('Rongeurs — Voie extérieure','🌳',rat,'#f97316');
-  h+=synthRow('Rongeurs — Pièges mécaniques','🏭',mech,'#0da8d2');
-  h+=synthRow('Rongeurs — Boîtes à colles','🟡',glue,'#f5a623');
+  function synthRowSOU(label, icon, entries, origin, color){
+    var trend=souTrend(entries, origin);
+    var arrow=trend.length>=2?trendArrow(trend):'<span style="color:#999">—</span>';
+    var totalSou=trend.reduce(function(a,b){return a+b.count;},0);
+    var last=trend.length?trend[trend.length-1]:null;
+    var lastLbl=totalSou===0
+      ? '<b style="color:#10c985">0 capture</b>'
+      : last?(function(){var p=last.ym.split('-');return (ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0]+' ('+last.count+' SOU)';})()
+      : '—';
+    return '<tr>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8"><span style="font-size:13px">'+icon+'</span> <b>'+esc(label)+'</b></td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:center">'+(totalSou===0?'<b style="color:#10c985">✓ Aucune</b>':arrow)+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:right;font-weight:800;color:'+(totalSou===0?'#10c985':color)+'">'+(totalSou===0?'0':totalSou)+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;color:#555">'+lastLbl+'</td>'
+      +'</tr>';
+  }
+
+  h+=synthRowFK('Insectes volants (FK)','🦟',fk,'#14b8a6');
+  h+=synthRowSOU('Rongeurs — Voie extérieure','🌳',rat,'outdoor','#f97316');
+  h+=synthRowSOU('Rongeurs — Pièges mécaniques','🏭',mech,'indoor','#0da8d2');
+  h+=synthRowSOU('Rongeurs — Boîtes à colles','🟡',glue,'indoor','#f5a623');
   h+='</tbody></table>';
   h+='<div style="font-size:9px;color:#888;margin-top:8px;padding-top:6px;border-top:1px solid #e0e0e0">';
   h+='Légende : <b style="color:#e8445a">▲ Hausse &gt;10%</b> &nbsp; <b style="color:#f5a623">→ Stable ±10%</b> &nbsp; <b style="color:#10c985">▼ Baisse &gt;10%</b>';
