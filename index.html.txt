@@ -11024,9 +11024,9 @@ function svgBarChart(series, opts){
       if(v>0){
         svg+='<rect x="'+bx+'" y="'+by+'" width="'+(barW-1)+'" height="'+bh
           +'" fill="'+s.color+'" rx="1"/>';
-        if(bh>14){
-          svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(by+10)+'" text-anchor="middle" font-size="7" fill="#fff" font-weight="600">'+v+'</text>';
-        }
+        svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(by-3)+'" text-anchor="middle" font-size="7.5" fill="'+s.color+'" font-weight="700">'+v+'</text>';
+      } else if(opts&&opts.zeroLabel){
+        svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(padT+cH-4)+'" text-anchor="middle" font-size="7.5" fill="#bbb" font-style="italic">0</text>';
       }
     });
     // Label mois
@@ -11424,28 +11424,31 @@ function renderRapportTendanceNuisibles(){
     var arrow=trendArrow(trend);
     var souC=souFn?souFn(entries,origin):null;
 
-    // Graphique SVG : visites + SOU par mois
-    var chartSeries=[{label:'Visites', color:color+'88',
-      values:trend.map(function(m){return{ym:m.ym,v:m.count};})}];
+    // Graphique SVG : uniquement les captures SOU par mois
+    var souByMonth={};
     if(souFn){
-      var souByMonth={};
       entries.forEach(function(e){
         if(!e.isoDate) return;
         var ok=(origin==='outdoor')?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU';
         if(ok){ var ym=e.isoDate.substring(0,7); souByMonth[ym]=(souByMonth[ym]||0)+1; }
       });
-      chartSeries.push({label:'Captures SOU', color:color,
-        values:trend.map(function(m){return{ym:m.ym,v:souByMonth[m.ym]||0};})} );
     }
+    // S'assurer que tous les mois du trend apparaissent (y compris avec 0)
+    var souSeries=[{label:'Captures SOU', color:color,
+      values:trend.map(function(m){return{ym:m.ym,v:souByMonth[m.ym]||0};})}];
+    var allZero=souSeries[0].values.every(function(d){return d.v===0;});
 
     var r='<div style="margin-bottom:14px">';
-    // Graphique pleine largeur
     r+='<div style="background:'+color+';color:#fff;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.05em;border-radius:5px 5px 0 0">';
     r+=esc(sectionTitle)+' &nbsp; '+arrow;
     if(souC!==null) r+=' &nbsp; <span style="font-weight:400;opacity:.85">SOU total : '+souC+'</span>';
     r+='</div>';
     r+='<div style="border:1px solid #d0d0d0;border-top:none;padding:8px;background:#fafcfd">';
-    r+=svgBarChart(chartSeries,{w:680,h:130});
+    if(allZero||!trend.length){
+      r+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:700;color:#bbb">0 capture</div>';
+    } else {
+      r+=svgBarChart(souSeries,{w:680,h:130,zeroLabel:'0 capture'});
+    }
     r+='</div>';
 
     // Grille tableau + zones côte à côte
