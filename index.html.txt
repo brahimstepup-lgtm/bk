@@ -11026,7 +11026,7 @@ function svgBarChart(series, opts){
           +'" fill="'+s.color+'" rx="1"/>';
         svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(by-3)+'" text-anchor="middle" font-size="7.5" fill="'+s.color+'" font-weight="700">'+v+'</text>';
       } else if(opts&&opts.zeroLabel){
-        svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(padT+cH-4)+'" text-anchor="middle" font-size="7.5" fill="#bbb" font-style="italic">0</text>';
+        svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(padT+cH-4)+'" text-anchor="middle" font-size="7.5" fill="#10c985" font-weight="700">0</text>';
       }
     });
     // Label mois
@@ -11423,7 +11423,7 @@ function renderRapportTendanceNuisibles(){
   h+='<div style="border:1.5px solid #b0b0b0;border-top:none;padding:10px;background:#fafcfd;margin-bottom:12px">';
   h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:6px">Évolution mensuelle — Captures SOU : Voie extérieure vs Intérieur usine</div>';
   if(!rodGlobalSou.yms.length){
-    h+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:700;color:#bbb">0 capture</div>';
+    h+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:800;color:#10c985">0 capture</div>';
   } else {
     h+=svgLineChart([
       {label:'Voie extérieure (SOU)',color:'#f97316',values:rodGlobalSou.ext},
@@ -11459,7 +11459,7 @@ function renderRapportTendanceNuisibles(){
     r+='</div>';
     r+='<div style="border:1px solid #d0d0d0;border-top:none;padding:8px;background:#fafcfd">';
     if(allZero||!trend.length){
-      r+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:700;color:#bbb">0 capture</div>';
+      r+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:800;color:#10c985">0 capture</div>';
     } else {
       r+=svgBarChart(souSeries,{w:680,h:130,zeroLabel:'0 capture'});
     }
