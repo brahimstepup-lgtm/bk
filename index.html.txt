@@ -3489,11 +3489,10 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="openListeProduitsChimiques()">
       🧪 Liste des produits chimiques <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE-22</span>
     </button>
-    <a href="https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1221571474#gid=1221571474"
-       target="_blank" rel="noopener noreferrer"
-       class="btn" style="background:#475569;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px;text-decoration:none">
+    <button class="btn" style="background:#475569;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openFichesTechniques()">
       📄 Fiches techniques
-    </a>
+    </button>
     <button class="btn" style="background:var(--p2);color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
@@ -4023,6 +4022,29 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
     <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="recensementNuisiblesBody">
       <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération du recensement…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
+<div class="modal-bg" id="fichesTechniquesModal" style="display:none" onclick="if(event.target===this)closeModal('fichesTechniquesModal')">
+  <div class="modal-panel" style="max-width:98vw;width:98vw;height:92vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+    <div class="modal-top" style="flex-shrink:0">
+      <div class="modal-badge" style="background:rgba(71,85,105,.18);border-color:rgba(71,85,105,.5);color:#475569">📄</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name">Fiches techniques</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">Source : Google Sheet — onglet FICHES TECHNIQUES</div>
+      </div>
+      <a href="https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1221571474#gid=1221571474"
+         target="_blank" rel="noopener noreferrer"
+         class="btn" style="font-size:10px;padding:3px 10px;text-decoration:none;color:inherit;flex-shrink:0">↗ Ouvrir dans Sheets</a>
+      <button class="modal-close" onclick="closeModal('fichesTechniquesModal')">✕</button>
+    </div>
+    <div style="flex:1;overflow:hidden;border-top:1px solid var(--border)">
+      <iframe id="fichesTechniquesIframe"
+              src=""
+              style="width:100%;height:100%;border:none;display:block"
+              allowfullscreen></iframe>
     </div>
   </div>
 </div>
@@ -12194,6 +12216,16 @@ var REF_COLORS = {
   'FT'  : { bg:'#f0fdf4', border:'#22c55e', text:'#15803d' },
   'MSDS': { bg:'#fff7ed', border:'#f97316', text:'#c2410c' }
 };
+
+function openFichesTechniques(){
+  var modal=document.getElementById('fichesTechniquesModal');
+  if(!modal) return;
+  var iframe=document.getElementById('fichesTechniquesIframe');
+  if(iframe && !iframe.src){
+    iframe.src='https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1221571474&rm=minimal';
+  }
+  modal.style.display='flex';
+}
 
 function openListeProduitsChimiques(){
   var modal=document.getElementById('listeProduitsChimiquesModal');
