@@ -4056,12 +4056,14 @@ html.light .pests-search-input{background:#edf2f7}
         <div class="modal-hdr-name" id="ficheViewerName">Fiche technique</div>
         <div style="font-size:10px;color:var(--text3);margin-top:2px" id="ficheViewerSub"></div>
       </div>
+      <button class="btn" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="rotateFicheViewer(-90)" title="Tourner à gauche">↺</button>
+      <button class="btn" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="rotateFicheViewer(90)"  title="Tourner à droite">↻</button>
       <a id="ficheViewerExtLink" href="#" target="_blank" rel="noopener noreferrer"
          class="btn" style="font-size:10px;padding:3px 10px;text-decoration:none;color:inherit;flex-shrink:0">↗ Ouvrir</a>
       <button class="modal-close" onclick="closeModal('ficheViewerModal')">✕</button>
     </div>
-    <div style="flex:1;overflow:hidden;border-top:1px solid var(--border)">
-      <iframe id="ficheViewerIframe" src="" style="width:100%;height:100%;border:none;display:block" allowfullscreen></iframe>
+    <div style="flex:1;overflow:hidden;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;background:#1e293b" id="ficheViewerWrap">
+      <iframe id="ficheViewerIframe" src="" style="width:100%;height:100%;border:none;display:block;transform-origin:center center;transition:transform .3s" allowfullscreen></iframe>
     </div>
   </div>
 </div>
@@ -12255,15 +12257,38 @@ function toPreviewUrl(url){
   return url;
 }
 
+var _ficheRotation=0;
+
+function rotateFicheViewer(deg){
+  _ficheRotation=(_ficheRotation+deg+360)%360;
+  var iframe=document.getElementById('ficheViewerIframe');
+  var wrap=document.getElementById('ficheViewerWrap');
+  if(!iframe||!wrap) return;
+  var r=_ficheRotation;
+  // En portrait (90/270°) on échange largeur/hauteur pour que ça remplisse bien
+  if(r===90||r===270){
+    var wh=wrap.clientHeight, ww=wrap.clientWidth;
+    var scale=Math.min(ww/wh, wh/ww)*0.98;
+    iframe.style.transform='rotate('+r+'deg) scale('+scale+')';
+    iframe.style.width=wh+'px';
+    iframe.style.height=ww+'px';
+  } else {
+    iframe.style.transform='rotate('+r+'deg)';
+    iframe.style.width='100%';
+    iframe.style.height='100%';
+  }
+}
+
 function openFicheViewer(nom, badge, url){
   var modal=document.getElementById('ficheViewerModal');
   if(!modal) return;
+  _ficheRotation=0;
   document.getElementById('ficheViewerName').textContent=nom||'Fiche technique';
   document.getElementById('ficheViewerSub').textContent=badge?badge:'';
   var extLink=document.getElementById('ficheViewerExtLink');
   if(extLink){ extLink.href=url||'#'; extLink.style.display=url?'':'none'; }
   var iframe=document.getElementById('ficheViewerIframe');
-  if(iframe){ iframe.src=toPreviewUrl(url); }
+  if(iframe){ iframe.style.transform=''; iframe.style.width='100%'; iframe.style.height='100%'; iframe.src=toPreviewUrl(url); }
   modal.style.display='flex';
 }
 
