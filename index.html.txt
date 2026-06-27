@@ -3481,6 +3481,10 @@ html.light .pests-search-input{background:#edf2f7}
 
   <!-- ─── BARRE ACTIONS NUISIBLES ─── -->
   <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+    <button class="btn" style="background:#16a34a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openRecensementNuisibles()">
+      📋 Recensement des nuisibles <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE-21</span>
+    </button>
     <button class="btn" style="background:var(--p2);color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
@@ -3990,6 +3994,26 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
     <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="pestRapportBody">
       <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération du rapport…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL RECENSEMENT DES NUISIBLES (ENR-HSE-21) ═══ -->
+<div class="modal-bg" id="recensementNuisiblesModal" style="display:none" onclick="if(event.target===this)closeModal('recensementNuisiblesModal')">
+  <div class="modal-panel" style="max-width:900px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(22,163,74,.18);border-color:rgba(22,163,74,.5);color:#16a34a">📋</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-family:'JetBrains Mono',monospace;letter-spacing:.05em">ENR-HSE-21</div>
+        <div class="modal-hdr-name">Recensement des nuisibles</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printRecensementNuisibles()">🖨️ Imprimer / PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('recensementNuisiblesModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="recensementNuisiblesBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération du recensement…</div></div>
     </div>
   </div>
 </div>
@@ -11928,6 +11952,195 @@ function printRapportTendanceNuisibles(){
     +'}'
     +'</style>';
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport de tendance nuisibles — ENR-HSE 23</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RECENSEMENT DES NUISIBLES — ENR-HSE-21
+   ══════════════════════════════════════════════════════════════ */
+
+function openRecensementNuisibles(){
+  var modal=document.getElementById('recensementNuisiblesModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderRecensementNuisibles();
+}
+
+function renderRecensementNuisibles(){
+  var body=document.getElementById('recensementNuisiblesBody');
+  if(!body) return;
+  if(!D||!D.pests){
+    body.innerHTML='<div class="pests-empty">Données nuisibles non disponibles.</div>';
+    return;
+  }
+  var today=new Date();
+  var dd=today.getDate().toString().padStart(2,'0');
+  var mm=(today.getMonth()+1).toString().padStart(2,'0');
+  var yyyy=today.getFullYear();
+  var todayStr=dd+'/'+mm+'/'+yyyy;
+  var logoSrc=(D&&D.logoUrl)||'';
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+
+  var tdBase='padding:5px 8px;border:1px solid #d0d0d0;font-size:10.5px';
+  var h='';
+
+  // ── En-tête officiel ──────────────────────────────────────────
+  h+='<div id="recensementNuisiblesPrint">';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:0">';
+  h+='<tr>';
+  h+='<td style="'+tdBase+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+tdBase+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Recensement des nuisibles</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Inventaire des dispositifs de lutte antiparasitaire</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#16a34a">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+tdBase+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#16a34a;letter-spacing:.05em">ENR-HSE-21</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='</table>';
+  h+='</td>';
+  h+='</tr>';
+  h+='</table>';
+
+  // Helper : construire le recensement d'une catégorie
+  // Renvoie pour chaque emplacement unique : {zone, lastDate, lastStatut, count}
+  function buildCensus(section, coder){
+    var byZone={};
+    var entries=(section&&section.entries)||[];
+    entries.forEach(function(e){
+      var z=String(e.zone||'').trim()||'(sans emplacement)';
+      if(!byZone[z]||(!byZone[z].isoDate&&e.isoDate)||(e.isoDate&&byZone[z].isoDate&&e.isoDate>byZone[z].isoDate)){
+        byZone[z]={zone:z, lastDate:e.date||'—', isoDate:e.isoDate||'', lastStatut:e.statut||'—', count:0};
+      }
+      byZone[z].count++;
+    });
+    var rows=Object.keys(byZone).map(function(z){ return byZone[z]; });
+    rows.sort(function(a,b){ return a.zone.localeCompare(b.zone,undefined,{numeric:true}); });
+    return rows;
+  }
+
+  // Helper : tableau HTML pour une catégorie
+  function categoryTable(title, color, section, coder, statutColorFn){
+    var rows=buildCensus(section, coder);
+    var entries=(section&&section.entries)||[];
+    var t='<div style="background:'+color+';color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0;border-top:none">▸ '+title+' — '+rows.length+' emplacement(s) · '+entries.length+' visite(s)</div>';
+    t+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:12px">';
+    t+='<thead><tr style="background:#f5f7f8">';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none">#</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none">Emplacement / N°</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none;text-align:center">Nb visites</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none;text-align:center">Dernière visite</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none;text-align:center">Dernier statut</th>';
+    t+='</tr></thead><tbody>';
+    if(!rows.length){
+      t+='<tr><td colspan="5" style="'+tdBase+';text-align:center;color:#999">Aucune donnée disponible</td></tr>';
+    } else {
+      rows.forEach(function(r,i){
+        var bg=i%2===0?'#fff':'#f9fbfc';
+        var statColor=statutColorFn?statutColorFn(r.lastStatut):'#444';
+        t+='<tr style="background:'+bg+'">';
+        t+='<td style="'+tdBase+';color:#999;font-size:10px">'+(i+1)+'</td>';
+        t+='<td style="'+tdBase+';font-weight:600">'+esc(r.zone)+'</td>';
+        t+='<td style="'+tdBase+';text-align:center">'+r.count+'</td>';
+        t+='<td style="'+tdBase+';text-align:center;font-family:monospace">'+esc(r.lastDate)+'</td>';
+        t+='<td style="'+tdBase+';text-align:center;font-weight:700;color:'+statColor+'">'+esc(r.lastStatut)+'</td>';
+        t+='</tr>';
+      });
+    }
+    t+='</tbody></table>';
+    return t;
+  }
+
+  function outdoorStatutColor(s){
+    var c=rodentCodeOutdoor(s);
+    if(c==='SOU') return '#dc2626';
+    if(c==='EBR'||c==='CON') return '#f97316';
+    if(c==='INAC') return '#9ca3af';
+    return '#444';
+  }
+  function indoorStatutColor(s){
+    var c=rodentCodeIndoor(s);
+    if(c==='SOU') return '#dc2626';
+    if(c==='INAC') return '#9ca3af';
+    return '#444';
+  }
+  function flyStatutColor(){ return '#0a7a9a'; }
+
+  // ── Résumé global ─────────────────────────────────────────────
+  var ratEntries=(D.pests.rat&&D.pests.rat.entries)||[];
+  var mechEntries=(D.pests.mech&&D.pests.mech.entries)||[];
+  var glueEntries=(D.pests.glue&&D.pests.glue.entries)||[];
+  var fkEntries=(D.pests.fk&&D.pests.fk.entries)||[];
+  var ratZones=buildCensus(D.pests.rat);
+  var mechZones=buildCensus(D.pests.mech);
+  var glueZones=buildCensus(D.pests.glue);
+  var fkZones=buildCensus(D.pests.fk);
+  var totalDevices=ratZones.length+mechZones.length+glueZones.length+fkZones.length;
+  var totalVisits=ratEntries.length+mechEntries.length+glueEntries.length+fkEntries.length;
+  var souExt=ratEntries.filter(function(e){return rodentCodeOutdoor(e.statut)==='SOU';}).length;
+  var souInt=mechEntries.filter(function(e){return rodentCodeIndoor(e.statut)==='SOU';}).length
+            +glueEntries.filter(function(e){return rodentCodeIndoor(e.statut)==='SOU';}).length;
+
+  function kpiBox(lbl,val,sub,col){
+    return '<td style="'+tdBase+';text-align:center;border-top:none;padding:10px 8px">'
+      +'<div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:3px">'+lbl+'</div>'
+      +'<div style="font-size:20px;font-weight:800;color:'+(col||'#16a34a')+'">'+val+'</div>'
+      +'<div style="font-size:9px;color:#888;margin-top:2px">'+sub+'</div>'
+      +'</td>';
+  }
+
+  h+='<div style="background:#166534;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0;margin-top:0">▸ SYNTHÈSE GLOBALE</div>';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:12px">';
+  h+='<tr style="background:#f5f7f8">';
+  h+=kpiBox('Dispositifs recensés',totalDevices,'emplacements distincts','#16a34a');
+  h+=kpiBox('Visites enregistrées',totalVisits,'toutes sources','#0a7a9a');
+  h+=kpiBox('Captures SOU ext.',souExt,'boîtes à raticide','#dc2626');
+  h+=kpiBox('Captures SOU int.',souInt,'mécanique + colles','#dc2626');
+  h+=kpiBox('Fly-killers suivis',fkZones.length,'insectes volants','#14b8a6');
+  h+='</tr>';
+  h+='</table>';
+
+  // ── Tables par catégorie ───────────────────────────────────────
+  h+=categoryTable('BOÎTES À RATICIDE (voie extérieure)','#c2410c',D.pests.rat,rodentCodeOutdoor,outdoorStatutColor);
+  h+=categoryTable('PIÈGES MÉCANIQUES (intérieur)','#0369a1',D.pests.mech,rodentCodeIndoor,indoorStatutColor);
+  h+=categoryTable('BOÎTES À COLLES (intérieur)','#0e7490',D.pests.glue,rodentCodeIndoor,indoorStatutColor);
+  h+=categoryTable('INSECTES VOLANTS — FLY-KILLERS','#0a7a9a',D.pests.fk,null,flyStatutColor);
+
+  h+='</div>'; // fin recensementNuisiblesPrint
+
+  body.innerHTML=h;
+}
+
+function printRecensementNuisibles(){
+  var el=document.getElementById('recensementNuisiblesPrint');
+  if(!el){ window.print(); return; }
+  var w=window.open('','_blank','width=960,height=800');
+  if(!w) return;
+  var styles='<style>'
+    +'*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:11px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'th,td{padding:4px 8px;border:1px solid #d0d0d0;font-size:10.5px;vertical-align:top}'
+    +'@media print{'
+    +'  body{padding:10px 14px}'
+    +'  @page{margin:1cm;size:A4}'
+    +'}'
+    +'</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recensement des nuisibles — ENR-HSE-21</title>'+styles+'</head><body>');
   w.document.write(el.innerHTML);
   w.document.write('</body></html>');
   w.document.close();
