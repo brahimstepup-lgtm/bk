@@ -11993,7 +11993,7 @@ function renderRecensementNuisibles(){
 
   // ── En-tête officiel ──────────────────────────────────────────
   h+='<div id="recensementNuisiblesPrint">';
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:0">';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px">';
   h+='<tr>';
   h+='<td style="'+tdBase+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
   h+='<td style="'+tdBase+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
@@ -12016,48 +12016,47 @@ function renderRecensementNuisibles(){
   h+='</tr>';
   h+='</table>';
 
-  // Helper : construire le recensement d'une catégorie
-  // Renvoie pour chaque emplacement unique : {zone, lastDate, lastStatut, count}
-  function buildCensus(section, coder){
+  // Helper : pour chaque emplacement unique, conserver la visite la plus récente
+  function buildCensus(section){
     var byZone={};
     var entries=(section&&section.entries)||[];
     entries.forEach(function(e){
       var z=String(e.zone||'').trim()||'(sans emplacement)';
-      if(!byZone[z]||(!byZone[z].isoDate&&e.isoDate)||(e.isoDate&&byZone[z].isoDate&&e.isoDate>byZone[z].isoDate)){
-        byZone[z]={zone:z, lastDate:e.date||'—', isoDate:e.isoDate||'', lastStatut:e.statut||'—', count:0};
+      if(!byZone[z]
+         ||(!byZone[z].isoDate && e.isoDate)
+         ||(e.isoDate && byZone[z].isoDate && e.isoDate > byZone[z].isoDate)){
+        byZone[z]={zone:z, lastDate:e.date||'—', isoDate:e.isoDate||'', lastStatut:e.statut||'—'};
       }
-      byZone[z].count++;
     });
     var rows=Object.keys(byZone).map(function(z){ return byZone[z]; });
     rows.sort(function(a,b){ return a.zone.localeCompare(b.zone,undefined,{numeric:true}); });
     return rows;
   }
 
-  // Helper : tableau HTML pour une catégorie
-  function categoryTable(title, color, section, coder, statutColorFn){
-    var rows=buildCensus(section, coder);
-    var entries=(section&&section.entries)||[];
-    var t='<div style="background:'+color+';color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0;border-top:none">▸ '+title+' — '+rows.length+' emplacement(s) · '+entries.length+' visite(s)</div>';
-    t+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:12px">';
+  // Helper : tableau d'inventaire pour une catégorie
+  function categoryTable(title, color, section){
+    var rows=buildCensus(section);
+    var t='<div style="background:'+color+';color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0">'
+        +'▸ '+title+' &nbsp;<span style="font-weight:400;opacity:.85">'+rows.length+' dispositif(s) recensé(s)</span></div>';
+    t+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:14px">';
     t+='<thead><tr style="background:#f5f7f8">';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none">#</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none">Emplacement / N°</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none;text-align:center">Nb visites</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none;text-align:center">Dernière visite</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;border-top:none;text-align:center">Dernier statut</th>';
+    t+='<th style="'+tdBase+';width:32px;font-size:10px;font-weight:700;text-transform:uppercase;color:#444">#</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Emplacement / N° dispositif</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:120px">Dernière inspection</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:110px">Statut</th>';
+    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;width:140px">Observations</th>';
     t+='</tr></thead><tbody>';
     if(!rows.length){
-      t+='<tr><td colspan="5" style="'+tdBase+';text-align:center;color:#999">Aucune donnée disponible</td></tr>';
+      t+='<tr><td colspan="5" style="'+tdBase+';text-align:center;color:#999;padding:12px">Aucune donnée disponible</td></tr>';
     } else {
       rows.forEach(function(r,i){
         var bg=i%2===0?'#fff':'#f9fbfc';
-        var statColor=statutColorFn?statutColorFn(r.lastStatut):'#444';
         t+='<tr style="background:'+bg+'">';
-        t+='<td style="'+tdBase+';color:#999;font-size:10px">'+(i+1)+'</td>';
+        t+='<td style="'+tdBase+';color:#aaa;font-size:10px;text-align:center">'+(i+1)+'</td>';
         t+='<td style="'+tdBase+';font-weight:600">'+esc(r.zone)+'</td>';
-        t+='<td style="'+tdBase+';text-align:center">'+r.count+'</td>';
-        t+='<td style="'+tdBase+';text-align:center;font-family:monospace">'+esc(r.lastDate)+'</td>';
-        t+='<td style="'+tdBase+';text-align:center;font-weight:700;color:'+statColor+'">'+esc(r.lastStatut)+'</td>';
+        t+='<td style="'+tdBase+';text-align:center;font-family:monospace;font-size:10px">'+esc(r.lastDate)+'</td>';
+        t+='<td style="'+tdBase+';text-align:center;font-weight:700">'+esc(r.lastStatut)+'</td>';
+        t+='<td style="'+tdBase+'"></td>';
         t+='</tr>';
       });
     }
@@ -12065,60 +12064,29 @@ function renderRecensementNuisibles(){
     return t;
   }
 
-  function outdoorStatutColor(s){
-    var c=rodentCodeOutdoor(s);
-    if(c==='SOU') return '#dc2626';
-    if(c==='EBR'||c==='CON') return '#f97316';
-    if(c==='INAC') return '#9ca3af';
-    return '#444';
-  }
-  function indoorStatutColor(s){
-    var c=rodentCodeIndoor(s);
-    if(c==='SOU') return '#dc2626';
-    if(c==='INAC') return '#9ca3af';
-    return '#444';
-  }
-  function flyStatutColor(){ return '#0a7a9a'; }
+  // ── Tableaux d'inventaire par catégorie ───────────────────────
+  h+=categoryTable('BOÎTES À RATICIDE — Voie extérieure','#c2410c',D.pests.rat);
+  h+=categoryTable('PIÈGES MÉCANIQUES — Intérieur usine','#0369a1',D.pests.mech);
+  h+=categoryTable('BOÎTES À COLLES — Intérieur usine','#0e7490',D.pests.glue);
+  h+=categoryTable('INSECTES VOLANTS — Fly-killers','#0a7a9a',D.pests.fk);
 
-  // ── Résumé global ─────────────────────────────────────────────
-  var ratEntries=(D.pests.rat&&D.pests.rat.entries)||[];
-  var mechEntries=(D.pests.mech&&D.pests.mech.entries)||[];
-  var glueEntries=(D.pests.glue&&D.pests.glue.entries)||[];
-  var fkEntries=(D.pests.fk&&D.pests.fk.entries)||[];
-  var ratZones=buildCensus(D.pests.rat);
-  var mechZones=buildCensus(D.pests.mech);
-  var glueZones=buildCensus(D.pests.glue);
-  var fkZones=buildCensus(D.pests.fk);
-  var totalDevices=ratZones.length+mechZones.length+glueZones.length+fkZones.length;
-  var totalVisits=ratEntries.length+mechEntries.length+glueEntries.length+fkEntries.length;
-  var souExt=ratEntries.filter(function(e){return rodentCodeOutdoor(e.statut)==='SOU';}).length;
-  var souInt=mechEntries.filter(function(e){return rodentCodeIndoor(e.statut)==='SOU';}).length
-            +glueEntries.filter(function(e){return rodentCodeIndoor(e.statut)==='SOU';}).length;
-
-  function kpiBox(lbl,val,sub,col){
-    return '<td style="'+tdBase+';text-align:center;border-top:none;padding:10px 8px">'
-      +'<div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:3px">'+lbl+'</div>'
-      +'<div style="font-size:20px;font-weight:800;color:'+(col||'#16a34a')+'">'+val+'</div>'
-      +'<div style="font-size:9px;color:#888;margin-top:2px">'+sub+'</div>'
-      +'</td>';
-  }
-
-  h+='<div style="background:#166534;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0;margin-top:0">▸ SYNTHÈSE GLOBALE</div>';
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:12px">';
-  h+='<tr style="background:#f5f7f8">';
-  h+=kpiBox('Dispositifs recensés',totalDevices,'emplacements distincts','#16a34a');
-  h+=kpiBox('Visites enregistrées',totalVisits,'toutes sources','#0a7a9a');
-  h+=kpiBox('Captures SOU ext.',souExt,'boîtes à raticide','#dc2626');
-  h+=kpiBox('Captures SOU int.',souInt,'mécanique + colles','#dc2626');
-  h+=kpiBox('Fly-killers suivis',fkZones.length,'insectes volants','#14b8a6');
+  // ── Visa / Signatures ─────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-top:8px">';
+  h+='<tr>';
+  h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
+  h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">Établi par</div>';
+  h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+  h+='</td>';
+  h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
+  h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">Vérifié par</div>';
+  h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+  h+='</td>';
+  h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
+  h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">Approuvé par</div>';
+  h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+  h+='</td>';
   h+='</tr>';
   h+='</table>';
-
-  // ── Tables par catégorie ───────────────────────────────────────
-  h+=categoryTable('BOÎTES À RATICIDE (voie extérieure)','#c2410c',D.pests.rat,rodentCodeOutdoor,outdoorStatutColor);
-  h+=categoryTable('PIÈGES MÉCANIQUES (intérieur)','#0369a1',D.pests.mech,rodentCodeIndoor,indoorStatutColor);
-  h+=categoryTable('BOÎTES À COLLES (intérieur)','#0e7490',D.pests.glue,rodentCodeIndoor,indoorStatutColor);
-  h+=categoryTable('INSECTES VOLANTS — FLY-KILLERS','#0a7a9a',D.pests.fk,null,flyStatutColor);
 
   h+='</div>'; // fin recensementNuisiblesPrint
 
