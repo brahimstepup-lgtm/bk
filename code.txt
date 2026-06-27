@@ -52,6 +52,10 @@ var PERMITS_SHEET_NAME = 'Gestion des Permis de Travail';
 var CONTRACTS_SHEET_GID  = 2050763956;
 var CONTRACTS_SHEET_NAME = 'Suivi des Contrats et Liens Drive';
 
+// ── FICHES TECHNIQUES (gid=1221571474) ──────────────────────────
+var FICHES_TECH_SHEET_GID  = 1221571474;
+var FICHES_TECH_SHEET_NAME = 'FICHES TECHNIQUES';
+
 // ── EPI (feuille "Gestion du Stock des EPI...", gid=1205310896) ──
 // Lecture intégrale (entêtes + lignes brutes) pour exposer toutes les
 // colonnes de la feuille au client, avec détection souple des champs
@@ -1426,6 +1430,137 @@ function readEPI(ss) {
   return { entries: entries, headers: rawHeaders, sheetName: sheetName };
 }
 
+// ══════════════════════════════════════════════════════════════
+// FICHES TECHNIQUES (gid=1221571474)
+// Lit toutes les lignes de l'onglet. Détecte automatiquement les
+// colonnes (nom, type, produit, lien/url, observations…).
+// Extrait les hyperliens (=HYPERLINK ou RichText) pour exposer
+// un champ « url » utilisable côté client.
+// ══════════════════════════════════════════════════════════════
+function readFichesTechniques(ss) {
+  var entries = [], headers = [], sheetName = FICHES_TECH_SHEET_NAME;
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === FICHES_TECH_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      var target = normalize(FICHES_TECH_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('fiche') > -1 && n.indexOf('tech') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) { Logger.log('FichesTechniques sheet NOT found'); return { entries: entries, headers: headers, sheetName: sheetName }; }
+    sheetName = sh.getName();
+    Logger.log('FichesTechniques sheet: ' + sheetName);
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null, formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e) { rich = null; }
+    try { formulas = range.getFormulas();       } catch(e) { formulas = null; }
+    if (!data || data.length < 1) return { entries: entries, headers: headers, sheetName: sheetName };
+
+    // Helper : extrait l'URL d'une cellule (formule HYPERLINK ou RichText)
+    function cellUrl(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs) for (var k = 0; k < runs.length; k++) {
+            var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+            if (ru) return String(ru).trim();
+          }
+        } catch(e) {}
+      }
+      var v = String((data[rIdx] || [])[cIdx] || '').trim();
+      if (/^https?:\/\//i.test(v)) return v;
+      return '';
+    }
+
+    // Lire les en-têtes (première ligne)
+    var hdrRow = data[0];
+    headers = hdrRow.map(function(h){ return String(h||'').trim(); });
+
+    // Détecter la colonne de nom (première colonne contenant du texte non-URL)
+    var iNom = -1;
+    for (var ci = 0; ci < headers.length; ci++) {
+      var hn = normalize(headers[ci]);
+      if (!/^https?/i.test(headers[ci]) && headers[ci] !== '') { iNom = ci; break; }
+    }
+    if (iNom < 0) iNom = 0;
+
+    // Pour chaque ligne de données : nom = cellule iNom, url = première URL trouvée dans la ligne
+    // type = déduit du header de la colonne contenant l'URL
+    for (var r = 1; r < data.length; r++) {
+      var row = data[r];
+      var nom = String(row[iNom]||'').trim();
+      if (!nom) continue;
+
+      // Scanner toutes les cellules pour trouver l'URL ET le type associé
+      var url = '', typeVal = '';
+      for (var c = 0; c < row.length; c++) {
+        if (c === iNom) continue;
+        var u = cellUrl(r, c);
+        if (u && !url) {
+          url = u;
+          // Déduire le type depuis le header de cette colonne
+          var hLabel = normalize(headers[c]||'');
+          if      (hLabel.indexOf('msds')>-1)                              typeVal='MSDS';
+          else if (hLabel.indexOf('fds')>-1)                               typeVal='FDS';
+          else if (hLabel.indexOf('ft')>-1||hLabel.indexOf('fiche')>-1)   typeVal='FT';
+          else                                                              typeVal='FT';
+        }
+      }
+      // Si valeur texte directe ressemble à un type, l'utiliser
+      for (var c2 = 0; c2 < row.length; c2++) {
+        if (c2 === iNom) continue;
+        var v = String(row[c2]||'').trim().toUpperCase();
+        if (!typeVal && (v==='FDS'||v==='FT'||v==='MSDS')) { typeVal=v; break; }
+      }
+
+      // Autres colonnes texte (observations, infos supplémentaires)
+      var extras = [];
+      for (var c3 = 0; c3 < row.length; c3++) {
+        if (c3 === iNom) continue;
+        var tv = String(row[c3]||'').trim();
+        if (tv && !/^https?/i.test(tv) && tv.toUpperCase()!==typeVal) extras.push(tv);
+      }
+
+      entries.push({
+        nom:     nom,
+        type:    typeVal || 'FT',
+        produit: '',
+        ref:     '',
+        obs:     extras.join(' — '),
+        url:     url,
+        raw:     row.map(function(c){ return String(c||'').trim(); })
+      });
+    }
+  } catch(e) {
+    Logger.log('readFichesTechniques error: ' + e.message);
+  }
+  return { entries: entries, headers: headers, sheetName: sheetName };
+}
+
 function readContracts(ss) {
   var entries = [];
   try {
@@ -2677,6 +2812,14 @@ function getData() {
   out.pests = pests;   // { fk, rat, mech, glue } — chacun = { entries, headers, sheetName, meta }
   out.pestsSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
                        '/edit?gid=1333145847#gid=1333145847';
+
+  // ── FICHES TECHNIQUES (produits nuisibles) ──────────────────
+  var ft = readFichesTechniques(ss);
+  out.fichesTechniques = ft.entries || [];
+  out.fichesTechniquesHeaders = ft.headers || [];
+  out.fichesTechniquesSheetName = ft.sheetName || FICHES_TECH_SHEET_NAME;
+  out.fichesTechniquesSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                                  '/edit?gid=' + FICHES_TECH_SHEET_GID + '#gid=' + FICHES_TECH_SHEET_GID;
 
   // ── CARTOGRAPHIE NUISIBLES (3 plans : étage -1 / étage 0 / étage 1) ──
   out.cartoNuisibles = readCartoNuisibles(ss);   // [{ zone, url, fileId, rawUrl }, …]

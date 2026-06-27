@@ -3481,6 +3481,18 @@ html.light .pests-search-input{background:#edf2f7}
 
   <!-- ─── BARRE ACTIONS NUISIBLES ─── -->
   <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+    <button class="btn" style="background:#16a34a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openRecensementNuisibles()">
+      📋 Recensement des nuisibles <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE-21</span>
+    </button>
+    <button class="btn" style="background:#0369a1;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openListeProduitsChimiques()">
+      🧪 Liste des produits chimiques <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE-22</span>
+    </button>
+    <button class="btn" style="background:#475569;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openFichesTechniques()">
+      📄 Fiches techniques
+    </button>
     <button class="btn" style="background:var(--p2);color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
@@ -3990,6 +4002,89 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
     <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="pestRapportBody">
       <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération du rapport…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL RECENSEMENT DES NUISIBLES (ENR-HSE-21) ═══ -->
+<div class="modal-bg" id="recensementNuisiblesModal" style="display:none" onclick="if(event.target===this)closeModal('recensementNuisiblesModal')">
+  <div class="modal-panel" style="max-width:900px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(22,163,74,.18);border-color:rgba(22,163,74,.5);color:#16a34a">📋</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-family:'JetBrains Mono',monospace;letter-spacing:.05em">ENR-HSE-21</div>
+        <div class="modal-hdr-name">Recensement des nuisibles</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printRecensementNuisibles()">🖨️ Imprimer / PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('recensementNuisiblesModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="recensementNuisiblesBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération du recensement…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
+<!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
+<!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
+<div class="modal-bg" id="fichesTechniquesModal" style="display:none" onclick="if(event.target===this)closeModal('fichesTechniquesModal')">
+  <div class="modal-panel" style="max-width:720px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(71,85,105,.18);border-color:rgba(71,85,105,.5);color:#475569">📄</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name">Fiches techniques</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printFichesTechniques()">🖨️ Imprimer / PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('fichesTechniquesModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="fichesTechniquesBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL VISIONNEUSE FICHE TECHNIQUE (interne) ═══ -->
+<div class="modal-bg" id="ficheViewerModal" style="display:none;z-index:10010" onclick="if(event.target===this)closeModal('ficheViewerModal')">
+  <div class="modal-panel" style="max-width:98vw;width:98vw;height:92vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+    <div class="modal-top" style="flex-shrink:0">
+      <div class="modal-badge" style="background:rgba(71,85,105,.18);border-color:rgba(71,85,105,.5);color:#475569">📄</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name" id="ficheViewerName">Fiche technique</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px" id="ficheViewerSub"></div>
+      </div>
+      <button class="btn" style="font-size:12px;padding:3px 12px;flex-shrink:0" onclick="rotateFicheViewer()" title="Tourner le document">↻ Tourner</button>
+      <a id="ficheViewerExtLink" href="#" target="_blank" rel="noopener noreferrer"
+         class="btn" style="font-size:10px;padding:3px 10px;text-decoration:none;color:inherit;flex-shrink:0">↗ Ouvrir</a>
+      <button class="modal-close" onclick="closeModal('ficheViewerModal')">✕</button>
+    </div>
+    <div style="flex:1;overflow:hidden;border-top:1px solid var(--border);background:#1e293b;position:relative" id="ficheViewerWrap">
+      <div id="ficheViewerRotWrap" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;transition:transform .3s ease">
+        <iframe id="ficheViewerIframe" src="" style="border:none;display:block" allowfullscreen></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL LISTE PRODUITS CHIMIQUES (ENR-HSE-22) ═══ -->
+<div class="modal-bg" id="listeProduitsChimiquesModal" style="display:none" onclick="if(event.target===this)closeModal('listeProduitsChimiquesModal')">
+  <div class="modal-panel" style="max-width:900px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(3,105,161,.18);border-color:rgba(3,105,161,.5);color:#0369a1">🧪</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-family:'JetBrains Mono',monospace;letter-spacing:.05em">ENR-HSE-22</div>
+        <div class="modal-hdr-name">Liste des produits chimiques</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printListeProduitsChimiques()">🖨️ Imprimer / PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('listeProduitsChimiquesModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="listeProduitsChimiquesBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération…</div></div>
     </div>
   </div>
 </div>
@@ -11928,6 +12023,489 @@ function printRapportTendanceNuisibles(){
     +'}'
     +'</style>';
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport de tendance nuisibles — ENR-HSE 23</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RECENSEMENT DES NUISIBLES — ENR-HSE-21
+   ══════════════════════════════════════════════════════════════ */
+
+function openRecensementNuisibles(){
+  var modal=document.getElementById('recensementNuisiblesModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderRecensementNuisibles();
+}
+
+function renderRecensementNuisibles(){
+  var body=document.getElementById('recensementNuisiblesBody');
+  if(!body) return;
+  var today=new Date();
+  var dd=today.getDate().toString().padStart(2,'0');
+  var mm=(today.getMonth()+1).toString().padStart(2,'0');
+  var yyyy=today.getFullYear();
+  var todayStr=dd+'/'+mm+'/'+yyyy;
+  var logoSrc=(D&&D.logoUrl)||'';
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+
+  var tdBase='padding:6px 10px;border:1px solid #d0d0d0;font-size:10.5px';
+  var h='';
+  h+='<div id="recensementNuisiblesPrint">';
+
+  // ── En-tête officiel ──────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<tr>';
+  h+='<td style="'+tdBase+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+tdBase+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Recensement des nuisibles</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Types de nuisibles surveillés et moyens de traitement</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#16a34a">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+tdBase+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#16a34a;letter-spacing:.05em">ENR-HSE-21</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='</table>';
+  h+='</td>';
+  h+='</tr>';
+  h+='</table>';
+
+  // ── Catalogue des types de nuisibles ─────────────────────────
+  var NUISIBLES_CATALOG = [
+    {
+      icon:'🐀🐭', nom:'Rongeurs (Rats & Souris)', couleur:'#dc2626', bg:'#fef2f2',
+      description:'Rongeurs causant des dommages matériels (câbles, structures, emballages) et des risques sanitaires (leptospirose, salmonellose). Les souris s\'infiltrent dès 6 mm, les rats creusent des terriers en extérieur.',
+      traitements:[{icon:'☠️',label:'Boîte à raticide'},{icon:'🪤',label:'Piège mécanique'},{icon:'📦',label:'Boîte à colle'}]
+    },
+    {
+      icon:'🪰', nom:'Mouches', couleur:'#14b8a6', bg:'#f0fdfa',
+      description:'Insectes vecteurs de maladies (salmonelle, E. coli). Prolifèrent dans les zones humides et près des déchets organiques. Risque majeur en agroalimentaire.',
+      traitements:[{icon:'⚡',label:'Fly-killer UV'},{icon:'🍯',label:'Piège à colle (FK)'}]
+    },
+    {
+      icon:'🦟', nom:'Moustiques', couleur:'#0ea5e9', bg:'#f0f9ff',
+      description:'Insectes piqueurs actifs au crépuscule et la nuit. Zones à risque : eaux stagnantes, fosses, espaces verts humides. Vecteurs potentiels de maladies.',
+      traitements:[{icon:'⚡',label:'Fly-killer UV'},{icon:'🚿',label:'Suppression des gîtes'}]
+    },
+    {
+      icon:'🐝', nom:'Abeilles / Guêpes', couleur:'#f5a623', bg:'#fffbeb',
+      description:'Insectes sociaux pouvant établir des nids dans les structures (toits, murs). Les guêpes sont agressives en fin d\'été. Risque d\'allergie sévère pour le personnel.',
+      traitements:[{icon:'💨',label:'Traitement des nids'},{icon:'🕸️',label:'Piège à guêpes'}]
+    },
+    {
+      icon:'🦋', nom:'Mite', couleur:'#a855f7', bg:'#faf5ff',
+      description:'Lépidoptères nocturnes dont les larves (teignes) contaminent les matières premières, textiles et produits stockés. Détectées tardivement, leur infestation peut être étendue.',
+      traitements:[{icon:'🧲',label:'Piège à phéromone'},{icon:'⚡',label:'Fly-killer UV'}]
+    },
+    {
+      icon:'🐛', nom:'Autres insectes', couleur:'#94a3b8', bg:'#f8fafc',
+      description:'Blattes, coléoptères, fourmis et autres arthropodes pouvant contaminer les zones de production. Présence souvent liée à l\'hygiène des locaux et aux fissures de bâtiment.',
+      traitements:[{icon:'💊',label:'Gel insecticide'},{icon:'🧹',label:'Nettoyage / Hygiène'}]
+    }
+  ];
+
+  // Helper : dessiner un dispositif de traitement en SVG minimaliste
+  function traitementSvg(icon){
+    var svgs = {
+      '☠️': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="14" width="40" height="26" rx="4" fill="#fecaca" stroke="#dc2626" stroke-width="1.5"/><rect x="10" y="20" width="28" height="14" rx="2" fill="#fff" stroke="#dc2626" stroke-width="1"/><text x="24" y="31" text-anchor="middle" font-size="14" fill="#dc2626">☠</text><rect x="18" y="8" width="12" height="8" rx="2" fill="#dc2626"/><rect x="21" y="4" width="6" height="6" rx="1" fill="#dc2626"/></svg>',
+      '🪤': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="30" width="36" height="10" rx="2" fill="#fed7aa" stroke="#f97316" stroke-width="1.5"/><rect x="10" y="24" width="12" height="8" rx="1" fill="#fdba74" stroke="#f97316" stroke-width="1"/><rect x="26" y="24" width="12" height="8" rx="1" fill="#fdba74" stroke="#f97316" stroke-width="1"/><line x1="10" y1="24" x2="24" y2="16" stroke="#f97316" stroke-width="1.5"/><line x1="38" y1="24" x2="24" y2="16" stroke="#f97316" stroke-width="1.5"/><circle cx="24" cy="14" r="3" fill="#f97316"/></svg>',
+      '📦': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="16" width="36" height="26" rx="2" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/><rect x="6" y="16" width="36" height="8" rx="2" fill="#fbbf24" stroke="#d97706" stroke-width="1.5"/><line x1="24" y1="16" x2="24" y2="42" stroke="#d97706" stroke-width="1"/><line x1="6" y1="28" x2="42" y2="28" stroke="#d97706" stroke-width="0.8" stroke-dasharray="3,2"/></svg>',
+      '⚡': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="6" width="28" height="36" rx="4" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5"/><ellipse cx="24" cy="14" rx="8" ry="5" fill="#7dd3fc" stroke="#0ea5e9" stroke-width="1"/><line x1="16" y1="22" x2="32" y2="22" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="2,2"/><line x1="16" y1="26" x2="32" y2="26" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="2,2"/><line x1="16" y1="30" x2="32" y2="30" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="2,2"/><text x="24" y="38" text-anchor="middle" font-size="10" fill="#0369a1" font-weight="700">UV</text></svg>',
+      '🍯': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="18" width="32" height="22" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/><rect x="12" y="22" width="24" height="14" rx="2" fill="#fde68a"/><rect x="14" y="12" width="20" height="8" rx="2" fill="#fbbf24" stroke="#f59e0b" stroke-width="1"/><line x1="8" y1="28" x2="40" y2="28" stroke="#f59e0b" stroke-width="0.8" stroke-dasharray="2,2"/></svg>',
+      '🚿': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="12" y="6" width="8" height="24" rx="2" fill="#bae6fd" stroke="#0ea5e9" stroke-width="1.5"/><rect x="6" y="30" width="36" height="12" rx="3" fill="#7dd3fc" stroke="#0284c7" stroke-width="1.5"/><circle cx="28" cy="20" r="3" fill="#0ea5e9"/><circle cx="34" cy="24" r="2.5" fill="#0ea5e9"/><circle cx="32" cy="16" r="2" fill="#38bdf8"/></svg>',
+      '💨': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="8" width="12" height="28" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/><rect x="14" y="32" width="20" height="6" rx="3" fill="#6ee7b7" stroke="#059669" stroke-width="1"/><path d="M10 20 Q6 22 10 24" stroke="#10b981" stroke-width="1.5" fill="none"/><path d="M6 18 Q2 21 6 24" stroke="#10b981" stroke-width="1" fill="none"/><path d="M38 20 Q42 22 38 24" stroke="#10b981" stroke-width="1.5" fill="none"/><path d="M42 18 Q46 21 42 24" stroke="#10b981" stroke-width="1" fill="none"/></svg>',
+      '🕸️': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="24" cy="30" rx="14" ry="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/><ellipse cx="24" cy="30" rx="8" ry="4" fill="#fde047" stroke="#ca8a04" stroke-width="1"/><rect x="20" y="10" width="8" height="22" rx="2" fill="#fde047" stroke="#ca8a04" stroke-width="1"/><rect x="16" y="6" width="16" height="6" rx="3" fill="#ca8a04"/></svg>',
+      '🌡️': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="6" width="8" height="28" rx="4" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"/><circle cx="24" cy="36" r="7" fill="#ef4444" stroke="#dc2626" stroke-width="1.5"/><rect x="22" y="10" width="4" height="20" rx="2" fill="#fca5a5"/><rect x="22" y="22" width="4" height="10" rx="1" fill="#ef4444"/></svg>',
+      '💊': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="18" width="36" height="12" rx="6" fill="#e9d5ff" stroke="#9333ea" stroke-width="1.5"/><rect x="6" y="18" width="18" height="12" rx="6" fill="#a855f7" stroke="#9333ea" stroke-width="1.5"/><line x1="24" y1="18" x2="24" y2="30" stroke="#9333ea" stroke-width="1.5"/><rect x="10" y="34" width="10" height="6" rx="2" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1"/><rect x="28" y="34" width="10" height="6" rx="2" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1"/></svg>',
+      '🧹': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="21" y="6" width="6" height="26" rx="2" fill="#d1d5db" stroke="#6b7280" stroke-width="1.5"/><rect x="10" y="30" width="28" height="10" rx="3" fill="#9ca3af" stroke="#6b7280" stroke-width="1.5"/><line x1="12" y1="42" x2="16" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="18" y1="42" x2="20" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="24" y1="42" x2="24" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="30" y1="42" x2="28" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="36" y1="42" x2="32" y2="40" stroke="#6b7280" stroke-width="1.5"/></svg>',
+      '🧲': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="18" width="32" height="20" rx="4" fill="#f3e8ff" stroke="#9333ea" stroke-width="1.5"/><rect x="14" y="24" width="20" height="8" rx="2" fill="#e9d5ff" stroke="#a855f7" stroke-width="1"/><circle cx="24" cy="28" r="3" fill="#a855f7"/><path d="M16 10 Q24 6 32 10" stroke="#a855f7" stroke-width="1.5" fill="none" stroke-dasharray="2,2"/><path d="M18 7 Q24 3 30 7" stroke="#c084fc" stroke-width="1" fill="none" stroke-dasharray="2,2"/><text x="24" y="30" text-anchor="middle" font-size="7" fill="#7c3aed" font-weight="700">PHÉ</text></svg>'
+    };
+    return svgs[icon]||('<div style="font-size:32px;line-height:48px;text-align:center">'+icon+'</div>');
+  }
+
+  // ── Tableau principal ─────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<thead><tr style="background:#1e293b;color:#fff">';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;width:170px;text-align:left">Type de nuisible</th>';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;text-align:left">Description</th>';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;width:220px;text-align:left">Moyens de traitement</th>';
+  h+='</tr></thead><tbody>';
+
+  NUISIBLES_CATALOG.forEach(function(n, i){
+    var bg = i%2===0 ? '#fff' : '#f8fafc';
+    h+='<tr style="background:'+bg+';vertical-align:top">';
+
+    // Colonne 1 : nom seul (sans emoji)
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;text-align:center;vertical-align:middle;padding:14px 8px">';
+    h+='<div style="font-size:12px;font-weight:800;color:'+n.couleur+';letter-spacing:.02em">'+n.nom+'</div>';
+    h+='</td>';
+
+    // Colonne 2 : description
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;font-size:10px;color:#444;line-height:1.6">'+n.description+'</td>';
+
+    // Colonne 3 : traitements avec SVG
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;padding:10px 8px">';
+    h+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    n.traitements.forEach(function(t){
+      h+='<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 12px;background:'+n.bg+';border-radius:6px;border:1px solid #e5e7eb;min-width:90px">';
+      h+='<div style="width:48px;height:48px">'+traitementSvg(t.icon)+'</div>';
+      h+='<div style="font-size:9.5px;font-weight:700;color:'+n.couleur+';text-align:center;line-height:1.3">'+t.label+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+    h+='</td>';
+
+    h+='</tr>';
+  });
+
+  h+='</tbody></table>';
+
+  // ── Visa / Signatures ─────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+  h+='<tr>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px;border:1px solid #d0d0d0">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+    h+='</td>';
+  });
+  h+='</tr>';
+  h+='</table>';
+
+  h+='</div>';
+  body.innerHTML=h;
+}
+
+function printRecensementNuisibles(){
+  var el=document.getElementById('recensementNuisiblesPrint');
+  if(!el){ window.print(); return; }
+  var w=window.open('','_blank','width=960,height=800');
+  if(!w) return;
+  var styles='<style>'
+    +'*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:11px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'th,td{padding:4px 8px;border:1px solid #d0d0d0;font-size:10.5px;vertical-align:top}'
+    +'@media print{'
+    +'  body{padding:10px 14px}'
+    +'  @page{margin:1cm;size:A4}'
+    +'}'
+    +'</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recensement des nuisibles — ENR-HSE-21</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   LISTE DES PRODUITS CHIMIQUES — ENR-HSE-22
+   ══════════════════════════════════════════════════════════════ */
+
+var PRODUITS_CHIMIQUES = [
+  // FDS = Fiche de Données de Sécurité
+  { ref:'FDS', nom:'GOLIATHGEL',       type:'Insecticide (gel)',   cible:'Blattes / Cafards',         usage:'Traitement en crack & crevice — intérieur',          stockage:'Local produits — armoire fermée' },
+  { ref:'FDS', nom:'DEMAND',           type:'Insecticide (EC)',    cible:'Insectes rampants & volants',usage:'Pulvérisation sur surfaces — intérieur / extérieur',  stockage:'Local produits — armoire fermée' },
+  { ref:'FDS', nom:'TORNADO-FORTE EC', type:'Insecticide (EC)',    cible:'Insectes volants & rampants',usage:'Traitement par nébulisation ou pulvérisation',        stockage:'Local produits — armoire fermée' },
+  // FT = Fiche Technique
+  { ref:'FT',  nom:'DEMAND',           type:'Insecticide (EC)',    cible:'Insectes rampants & volants',usage:'Pulvérisation résiduelle — surfaces lisses et poreuses',stockage:'Local produits — armoire fermée' },
+  { ref:'FT',  nom:'GOLIATH GEL',      type:'Insecticide (gel)',   cible:'Blattes / Cafards',         usage:'Application en points — cuisine, sanitaires, locaux techniques',stockage:'Local produits — armoire fermée' },
+  { ref:'FT',  nom:'KLERAT',           type:'Rodenticide (cire)',  cible:'Rats & Souris',             usage:'Boîtes à appâts sécurisées — voie extérieure',       stockage:'Local produits — armoire sécurisée' },
+  { ref:'FT',  nom:'TORNADO FORTE',    type:'Insecticide (EC)',    cible:'Insectes volants & rampants',usage:'Traitement préventif et curatif',                     stockage:'Local produits — armoire fermée' },
+  // MSDS = Material Safety Data Sheet
+  { ref:'MSDS',nom:'KLERAT Appât',     type:'Rodenticide (appât)', cible:'Rats & Souris',             usage:'Boîtes à raticide extérieures — appât en sachet',    stockage:'Local produits — armoire sécurisée' },
+  { ref:'MSDS',nom:'KLERAT Bloc',      type:'Rodenticide (bloc)',  cible:'Rats & Souris',             usage:'Boîtes à raticide extérieures — bloc paraffiné',     stockage:'Local produits — armoire sécurisée' }
+];
+
+var REF_COLORS = {
+  'FDS' : { bg:'#eff6ff', border:'#3b82f6', text:'#1d4ed8' },
+  'FT'  : { bg:'#f0fdf4', border:'#22c55e', text:'#15803d' },
+  'MSDS': { bg:'#fff7ed', border:'#f97316', text:'#c2410c' }
+};
+
+function openFichesTechniques(){
+  var modal=document.getElementById('fichesTechniquesModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderFichesTechniques();
+}
+
+// Convertit une URL Google Drive/Docs en URL prévisualisable dans un iframe
+function toPreviewUrl(url){
+  if(!url) return '';
+  // Google Drive file : /view ou /edit → /preview
+  var mDrive=url.match(/drive\.google\.com\/file\/d\/([^\/\?#]+)/);
+  if(mDrive) return 'https://drive.google.com/file/d/'+mDrive[1]+'/preview';
+  // Google Docs/Sheets/Slides : remplacer /edit par /preview
+  var mDocs=url.match(/(https:\/\/docs\.google\.com\/[^?#]+)\/(edit|view|pub)(\?.*)?/);
+  if(mDocs) return mDocs[1]+'/preview';
+  // Déjà une URL prévisualisable
+  if(url.indexOf('/preview')>-1) return url;
+  return url;
+}
+
+var _ficheRotation=0;
+
+function rotateFicheViewer(){
+  _ficheRotation=(_ficheRotation+90)%360;
+  _applyFicheRotation();
+}
+
+function _applyFicheRotation(){
+  var wrap=document.getElementById('ficheViewerWrap');
+  var rotWrap=document.getElementById('ficheViewerRotWrap');
+  var iframe=document.getElementById('ficheViewerIframe');
+  if(!wrap||!rotWrap||!iframe) return;
+  var r=_ficheRotation;
+  var ww=wrap.clientWidth, wh=wrap.clientHeight;
+  if(r===90||r===270){
+    // En paysage→portrait : iframe prend les dimensions inversées puis on tourne
+    iframe.style.width=wh+'px';
+    iframe.style.height=ww+'px';
+  } else {
+    iframe.style.width=ww+'px';
+    iframe.style.height=wh+'px';
+  }
+  rotWrap.style.transform='rotate('+r+'deg)';
+}
+
+function openFicheViewer(nom, badge, url){
+  var modal=document.getElementById('ficheViewerModal');
+  if(!modal) return;
+  _ficheRotation=0;
+  document.getElementById('ficheViewerName').textContent=nom||'Fiche technique';
+  document.getElementById('ficheViewerSub').textContent=badge?badge:'';
+  var extLink=document.getElementById('ficheViewerExtLink');
+  if(extLink){ extLink.href=url||'#'; extLink.style.display=url?'':'none'; }
+  var rotWrap=document.getElementById('ficheViewerRotWrap');
+  if(rotWrap){ rotWrap.style.transform=''; }
+  var iframe=document.getElementById('ficheViewerIframe');
+  if(iframe){ iframe.style.width='100%'; iframe.style.height='100%'; iframe.src=toPreviewUrl(url); }
+  modal.style.display='flex';
+  // Appliquer dimensions initiales après rendu
+  setTimeout(_applyFicheRotation, 50);
+}
+
+function renderFichesTechniques(){
+  var el=document.getElementById('fichesTechniquesBody');
+  if(!el) return;
+  var rows=((D||{}).fichesTechniques)||[];
+  var srcUrl=((D||{}).fichesTechniquesSourceUrl)||'';
+  if(!rows.length){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text3)">Aucune fiche technique disponible.</div>';
+    return;
+  }
+  var h='<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+  h+='<span style="font-size:12px;color:var(--text3)">'+rows.length+' fiche(s) référencée(s)</span>';
+  if(srcUrl) h+='<a href="'+srcUrl+'" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--accent);text-decoration:none">↗ Ouvrir dans Sheets</a>';
+  h+='</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px">';
+  rows.forEach(function(r){
+    // Badge : priorité type > ref > 'FT'
+    var badge=r.type||r.ref||'FT';
+    // Couleur du badge selon type
+    var badgeBg='#fef9c3', badgeBorder='#fde68a', badgeColor='#92400e';
+    var bl=badge.toUpperCase();
+    if(bl==='FDS'){badgeBg='#dbeafe';badgeBorder='#93c5fd';badgeColor='#1e40af';}
+    else if(bl==='MSDS'){badgeBg='#fce7f3';badgeBorder='#f9a8d4';badgeColor='#9d174d';}
+    var inner='<div style="display:flex;align-items:center;gap:12px;flex:1">';
+    inner+='<div style="width:46px;height:46px;min-width:46px;border-radius:10px;background:'+badgeBg+';border:1.5px solid '+badgeBorder+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:'+badgeColor+';letter-spacing:.03em;text-align:center;line-height:1.2">'+badge+'</div>';
+    inner+='<div style="flex:1">';
+    inner+='<div style="font-weight:700;font-size:13px;color:#3730a3;line-height:1.3;word-break:break-word">'+(r.nom||'—')+'</div>';
+    inner+='<div style="font-size:11px;color:var(--text3);margin-top:3px">Voir la fiche</div>';
+    inner+='</div></div>';
+    if(r.url){
+      var safeNom=(r.nom||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var safeBadge=badge.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var safeUrl=(r.url||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var onclick="openFicheViewer('"+safeNom+"','"+safeBadge+"','"+safeUrl+"');return false;";
+      h+='<a href="'+r.url+'" onclick="'+onclick+'" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);text-decoration:none;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.10)\'" onmouseout="this.style.boxShadow=\'none\'">';
+      h+=inner;
+      h+='<span style="font-size:16px;color:var(--text3);flex-shrink:0">↗</span>';
+      h+='</a>';
+    } else {
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);opacity:.7">';
+      h+=inner;
+      h+='</div>';
+    }
+  });
+  h+='</div>';
+  el.innerHTML=h;
+}
+
+function printFichesTechniques(){
+  var rows=((D||{}).fichesTechniques)||[];
+  var srcUrl=((D||{}).fichesTechniquesSourceUrl)||'';
+  var today=new Date().toLocaleDateString('fr-FR');
+  var w=window.open('','_blank');
+  if(!w) return;
+  var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiches Techniques</title>';
+  h+='<style>@page{size:A4 landscape;margin:15mm}body{font-family:Arial,sans-serif;font-size:11pt;color:#111;margin:0}';
+  h+='h2{font-size:14pt;margin:0 0 4px}p{font-size:9pt;color:#555;margin:0 0 12px}';
+  h+='table{width:100%;border-collapse:collapse;font-size:10pt}';
+  h+='thead tr{background:#0f172a;color:#fff}th{padding:8px 10px;text-align:left;font-weight:600}';
+  h+='tbody tr:nth-child(even){background:#f1f5f9}td{padding:7px 10px;border-bottom:1px solid #e2e8f0}';
+  h+='.ref{display:inline-block;background:#0369a1;color:#fff;border-radius:4px;padding:2px 7px;font-size:9pt;font-weight:700}';
+  h+='.footer{margin-top:14px;font-size:8pt;color:#94a3b8;display:flex;justify-content:space-between}';
+  h+='a{color:#0369a1}@media print{a[href]:after{content:none}}</style></head><body>';
+  h+='<h2>Fiches Techniques — Produits Nuisibles</h2>';
+  h+='<p>Imprimé le '+today+(srcUrl?' — Source : '+srcUrl:'')+'</p>';
+  h+='<table><thead><tr><th>Réf.</th><th>Nom</th><th>Type</th><th>Produit / Cible</th><th>Observations</th><th>Lien</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    h+='<tr>';
+    h+='<td><span class="ref">'+(r.ref||'—')+'</span></td>';
+    h+='<td style="font-weight:600">'+(r.nom||'—')+'</td>';
+    h+='<td>'+(r.type||'—')+'</td>';
+    h+='<td>'+(r.produit||'—')+'</td>';
+    h+='<td style="font-size:9pt;color:#475569">'+(r.obs||'—')+'</td>';
+    h+='<td>'+(r.url?'<a href="'+r.url+'">↗ Voir</a>':'—')+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div class="footer"><span>SOBCO 3 — HSE Dashboard</span><span>'+today+'</span></div>';
+  h+='</body></html>';
+  w.document.write(h);
+  w.document.close();
+  w.focus();
+  setTimeout(function(){w.print();},400);
+}
+
+function openListeProduitsChimiques(){
+  var modal=document.getElementById('listeProduitsChimiquesModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderListeProduitsChimiques();
+}
+
+function renderListeProduitsChimiques(){
+  var body=document.getElementById('listeProduitsChimiquesBody');
+  if(!body) return;
+  var today=new Date();
+  var dd=today.getDate().toString().padStart(2,'0');
+  var mm=(today.getMonth()+1).toString().padStart(2,'0');
+  var yyyy=today.getFullYear();
+  var todayStr=dd+'/'+mm+'/'+yyyy;
+  var logoSrc=(D&&D.logoUrl)||'';
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var h='<div id="listeProduitsChimiquesPrint">';
+
+  // ── En-tête ───────────────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<tr>';
+  h+='<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Liste des produits chimiques</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Produits de lutte antiparasitaire — fiches techniques et de sécurité</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+td+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE-22</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='</table></td></tr></table>';
+
+  // ── Légende types de documents ─────────────────────────────────
+  h+='<div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">';
+  [['FDS','Fiche de Données de Sécurité'],['FT','Fiche Technique'],['MSDS','Material Safety Data Sheet']].forEach(function(p){
+    var c=REF_COLORS[p[0]];
+    h+='<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;border:1px solid '+c.border+';background:'+c.bg+'">';
+    h+='<span style="font-weight:800;font-family:monospace;color:'+c.text+';font-size:10px">'+p[0]+'</span>';
+    h+='<span style="font-size:9.5px;color:#555">'+p[1]+'</span>';
+    h+='</div>';
+  });
+  h+='</div>';
+
+  // ── Tableau des produits ───────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<thead><tr style="background:#0c4a6e;color:#fff">';
+  h+='<th style="'+td+';width:30px;font-weight:700;text-transform:uppercase;font-size:9px;text-align:center;color:#fff">#</th>';
+  h+='<th style="'+td+';width:55px;font-weight:700;text-transform:uppercase;font-size:9px;color:#fff">Réf. doc.</th>';
+  h+='<th style="'+td+';font-weight:700;text-transform:uppercase;font-size:9px;color:#fff">Nom du produit</th>';
+  h+='<th style="'+td+';width:130px;font-weight:700;text-transform:uppercase;font-size:9px;color:#fff">Type / Forme</th>';
+  h+='<th style="'+td+';width:140px;font-weight:700;text-transform:uppercase;font-size:9px;color:#fff">Nuisible cible</th>';
+  h+='<th style="'+td+';font-weight:700;text-transform:uppercase;font-size:9px;color:#fff">Mode d\'utilisation</th>';
+  h+='<th style="'+td+';width:140px;font-weight:700;text-transform:uppercase;font-size:9px;color:#fff">Stockage</th>';
+  h+='</tr></thead><tbody>';
+
+  PRODUITS_CHIMIQUES.forEach(function(p, i){
+    var c=REF_COLORS[p.ref]||{bg:'#f8fafc',border:'#d0d0d0',text:'#444'};
+    var bg=i%2===0?'#fff':'#f8fafc';
+    h+='<tr style="background:'+bg+'">';
+    h+='<td style="'+td+';text-align:center;color:#aaa">'+(i+1)+'</td>';
+    h+='<td style="'+td+';text-align:center">';
+    h+='<span style="display:inline-block;padding:2px 6px;border-radius:3px;background:'+c.bg+';border:1px solid '+c.border+';color:'+c.text+';font-weight:800;font-family:monospace;font-size:9px;white-space:nowrap">'+p.ref+'</span>';
+    h+='</td>';
+    h+='<td style="'+td+';font-weight:700;color:#1e293b">'+esc(p.nom)+'</td>';
+    h+='<td style="'+td+';color:#555">'+esc(p.type)+'</td>';
+    h+='<td style="'+td+';color:#555">'+esc(p.cible)+'</td>';
+    h+='<td style="'+td+';color:#444">'+esc(p.usage)+'</td>';
+    h+='<td style="'+td+';color:#555">'+esc(p.stockage)+'</td>';
+    h+='</tr>';
+  });
+
+  h+='</tbody></table>';
+
+  // ── Note réglementaire ────────────────────────────────────────
+  h+='<div style="background:#fefce8;border:1px solid #fde047;border-radius:4px;padding:8px 12px;font-size:9.5px;color:#78350f;margin-bottom:14px">';
+  h+='⚠️ <strong>Note :</strong> Tous les produits listés doivent être accompagnés de leur Fiche de Données de Sécurité (FDS) et conservés dans un local ventilé, fermé à clé, conformément à la réglementation en vigueur. Les EPI appropriés doivent être portés lors de toute manipulation.';
+  h+='</div>';
+
+  // ── Signatures ────────────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+  h+='<tr>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="'+td+';width:33%;text-align:center;padding:18px 8px">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+    h+='</td>';
+  });
+  h+='</tr></table>';
+
+  h+='</div>';
+  body.innerHTML=h;
+}
+
+function printListeProduitsChimiques(){
+  var el=document.getElementById('listeProduitsChimiquesPrint');
+  if(!el){ window.print(); return; }
+  var w=window.open('','_blank','width=1050,height=800');
+  if(!w) return;
+  var styles='<style>'
+    +'*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'th,td{padding:5px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top}'
+    +'@media print{'
+    +'  body{padding:10px 14px}'
+    +'  @page{margin:1cm;size:A4 landscape}'
+    +'}'
+    +'</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Liste des produits chimiques — ENR-HSE-22</title>'+styles+'</head><body>');
   w.document.write(el.innerHTML);
   w.document.write('</body></html>');
   w.document.close();
