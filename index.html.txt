@@ -11973,10 +11973,6 @@ function openRecensementNuisibles(){
 function renderRecensementNuisibles(){
   var body=document.getElementById('recensementNuisiblesBody');
   if(!body) return;
-  if(!D||!D.pests){
-    body.innerHTML='<div class="pests-empty">Données nuisibles non disponibles.</div>';
-    return;
-  }
   var today=new Date();
   var dd=today.getDate().toString().padStart(2,'0');
   var mm=(today.getMonth()+1).toString().padStart(2,'0');
@@ -11988,9 +11984,8 @@ function renderRecensementNuisibles(){
     ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
     :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
 
-  var tdBase='padding:5px 8px;border:1px solid #d0d0d0;font-size:10.5px';
+  var tdBase='padding:6px 10px;border:1px solid #d0d0d0;font-size:10.5px';
   var h='';
-
   h+='<div id="recensementNuisiblesPrint">';
 
   // ── En-tête officiel ──────────────────────────────────────────
@@ -11999,7 +11994,7 @@ function renderRecensementNuisibles(){
   h+='<td style="'+tdBase+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
   h+='<td style="'+tdBase+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
   h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Recensement des nuisibles</div>';
-  h+='<div style="font-size:11px;color:#444;margin-top:3px">Enregistrement des types de nuisibles détectés</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Types de nuisibles surveillés et moyens de traitement</div>';
   h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#16a34a">'+todayStr+'</span></div>';
   h+='</td>';
   h+='<td style="'+tdBase+';width:190px;padding:0;vertical-align:top">';
@@ -12017,129 +12012,130 @@ function renderRecensementNuisibles(){
   h+='</tr>';
   h+='</table>';
 
-  // ── Section RONGEURS ──────────────────────────────────────────
-  // Pour chaque zone avec au moins une capture SOU, on note la source, le nb
-  // de captures et la date de dernière détection.
-  var ratEntries =(D.pests.rat &&D.pests.rat.entries )||[];
-  var mechEntries=(D.pests.mech&&D.pests.mech.entries)||[];
-  var glueEntries=(D.pests.glue&&D.pests.glue.entries)||[];
+  // ── Catalogue des types de nuisibles ─────────────────────────
+  // Chaque entrée : icon, nom, description, traitements[]
+  // Un traitement : { icon, label, svg (dessin minimaliste) }
+  var NUISIBLES_CATALOG = [
+    {
+      icon:'🐀', nom:'Rats', couleur:'#dc2626', bg:'#fef2f2',
+      description:'Rongeurs de grande taille causant des dommages matériels (câbles, structures) et des risques sanitaires (leptospirose, salmonellose). Actifs la nuit, terriers en extérieur.',
+      traitements:[
+        { icon:'☠️', label:'Boîte à raticide', desc:'Appât rodenticide sécurisé, positionné en voie extérieure le long des murs et clôtures.' },
+        { icon:'🪤', label:'Piège mécanique', desc:'Piège à capture instantanée, placé en intérieur usine aux points de passage identifiés.' }
+      ]
+    },
+    {
+      icon:'🐭', nom:'Souris', couleur:'#f97316', bg:'#fff7ed',
+      description:'Rongeurs de petite taille s\'infiltrant par les moindres fissures (dès 6 mm). Contamination des aliments, dégâts électriques, reproduction rapide.',
+      traitements:[
+        { icon:'📦', label:'Boîte à colle', desc:'Plaque adhésive en intérieur, efficace dans les zones inaccessibles aux pièges mécaniques.' },
+        { icon:'🪤', label:'Piège mécanique', desc:'Piège à détente, placé le long des murs et dans les zones de stockage.' }
+      ]
+    },
+    {
+      icon:'🪰', nom:'Mouches', couleur:'#14b8a6', bg:'#f0fdfa',
+      description:'Insectes vecteurs de maladies (salmonelle, E.coli). Prolifèrent dans les zones humides et près des déchets organiques. Risque majeur en agroalimentaire.',
+      traitements:[
+        { icon:'⚡', label:'Fly-killer UV', desc:'Piège lumineux à UV attirant et électrocutant les insectes volants — installé loin des postes de travail et des denrées.' },
+        { icon:'🍯', label:'Piège à colle (FK)', desc:'Plaque adhésive intégrée au fly-killer, capture sans électrocution pour les zones sensibles.' }
+      ]
+    },
+    {
+      icon:'🦟', nom:'Moustiques', couleur:'#0ea5e9', bg:'#f0f9ff',
+      description:'Insectes piqueurs actifs au crépuscule et la nuit. Zones à risque : eaux stagnantes, fosses, espaces verts humides. Vecteurs potentiels de maladies.',
+      traitements:[
+        { icon:'⚡', label:'Fly-killer UV', desc:'Lampe UV attractive placée en hauteur dans les zones d\'entrée et les espaces extérieurs couverts.' },
+        { icon:'🚿', label:'Suppression des gîtes', desc:'Élimination des eaux stagnantes, vidange des bacs, traitement des fossés — action préventive essentielle.' }
+      ]
+    },
+    {
+      icon:'🐝', nom:'Abeilles / Guêpes', couleur:'#f5a623', bg:'#fffbeb',
+      description:'Insectes sociaux pouvant établir des nids dans les structures (toits, murs). Les guêpes sont agressives en fin d\'été. Risque d\'allergie sévère pour le personnel.',
+      traitements:[
+        { icon:'💨', label:'Traitement des nids', desc:'Application d\'insecticide en poudre ou en aérosol directement dans le nid, de nuit, par prestataire agréé.' },
+        { icon:'🕸️', label:'Piège à guêpes', desc:'Flacon attractif à base de liquide sucré, positionné à l\'écart des zones de travail.' }
+      ]
+    },
+    {
+      icon:'🦋', nom:'Papillons de nuit', couleur:'#a855f7', bg:'#faf5ff',
+      description:'Lépidoptères nocturnes attirés par les lumières artificielles. Les larves (chenilles) peuvent contaminer les matières premières et produits stockés.',
+      traitements:[
+        { icon:'⚡', label:'Fly-killer UV', desc:'Piège lumineux UV capturant les adultes avant ponte. Efficace en zones de stockage et en entrées d\'atelier.' },
+        { icon:'🌡️', label:'Traitement thermique', desc:'Traitement à la chaleur des stocks contaminés ou application d\'insecticide homologué sur les zones de ponte.' }
+      ]
+    },
+    {
+      icon:'🐛', nom:'Autres insectes', couleur:'#94a3b8', bg:'#f8fafc',
+      description:'Blattes, coléoptères, fourmis et autres arthropodes pouvant contaminer les zones de production. Présence souvent liée à l\'hygiène des locaux.',
+      traitements:[
+        { icon:'💊', label:'Gel insecticide', desc:'Application en points de crack & crevice (fissures, joints, derrière équipements) — agit par ingestion.' },
+        { icon:'🧹', label:'Nettoyage / Hygiène', desc:'Nettoyage rigoureux des zones de stockage, colmatage des fissures, gestion des déchets — prévention prioritaire.' }
+      ]
+    }
+  ];
 
-  // Construire la liste des lignes rongeurs par zone × source
-  var rongeursRows=[];
-  function collectRongeurs(entries, sourceLabel, coder){
-    var byZone={};
-    entries.forEach(function(e){
-      var code=coder(e.statut);
-      if(code!=='SOU') return; // uniquement captures confirmées
-      var z=String(e.zone||'').trim()||'(sans emplacement)';
-      if(!byZone[z]) byZone[z]={zone:z, source:sourceLabel, count:0, lastDate:'', isoDate:''};
-      byZone[z].count++;
-      if(!byZone[z].isoDate||(e.isoDate&&e.isoDate>byZone[z].isoDate)){
-        byZone[z].lastDate=e.date||'—'; byZone[z].isoDate=e.isoDate||'';
-      }
-    });
-    Object.keys(byZone).forEach(function(z){ rongeursRows.push(byZone[z]); });
+  // Helper : dessiner un dispositif de traitement en SVG minimaliste
+  function traitementSvg(icon){
+    var svgs = {
+      '☠️': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="14" width="40" height="26" rx="4" fill="#fecaca" stroke="#dc2626" stroke-width="1.5"/><rect x="10" y="20" width="28" height="14" rx="2" fill="#fff" stroke="#dc2626" stroke-width="1"/><text x="24" y="31" text-anchor="middle" font-size="14" fill="#dc2626">☠</text><rect x="18" y="8" width="12" height="8" rx="2" fill="#dc2626"/><rect x="21" y="4" width="6" height="6" rx="1" fill="#dc2626"/></svg>',
+      '🪤': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="30" width="36" height="10" rx="2" fill="#fed7aa" stroke="#f97316" stroke-width="1.5"/><rect x="10" y="24" width="12" height="8" rx="1" fill="#fdba74" stroke="#f97316" stroke-width="1"/><rect x="26" y="24" width="12" height="8" rx="1" fill="#fdba74" stroke="#f97316" stroke-width="1"/><line x1="10" y1="24" x2="24" y2="16" stroke="#f97316" stroke-width="1.5"/><line x1="38" y1="24" x2="24" y2="16" stroke="#f97316" stroke-width="1.5"/><circle cx="24" cy="14" r="3" fill="#f97316"/></svg>',
+      '📦': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="16" width="36" height="26" rx="2" fill="#fde68a" stroke="#d97706" stroke-width="1.5"/><rect x="6" y="16" width="36" height="8" rx="2" fill="#fbbf24" stroke="#d97706" stroke-width="1.5"/><line x1="24" y1="16" x2="24" y2="42" stroke="#d97706" stroke-width="1"/><line x1="6" y1="28" x2="42" y2="28" stroke="#d97706" stroke-width="0.8" stroke-dasharray="3,2"/></svg>',
+      '⚡': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="10" y="6" width="28" height="36" rx="4" fill="#e0f2fe" stroke="#0ea5e9" stroke-width="1.5"/><ellipse cx="24" cy="14" rx="8" ry="5" fill="#7dd3fc" stroke="#0ea5e9" stroke-width="1"/><line x1="16" y1="22" x2="32" y2="22" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="2,2"/><line x1="16" y1="26" x2="32" y2="26" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="2,2"/><line x1="16" y1="30" x2="32" y2="30" stroke="#0ea5e9" stroke-width="1" stroke-dasharray="2,2"/><text x="24" y="38" text-anchor="middle" font-size="10" fill="#0369a1" font-weight="700">UV</text></svg>',
+      '🍯': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="18" width="32" height="22" rx="4" fill="#fef3c7" stroke="#f59e0b" stroke-width="1.5"/><rect x="12" y="22" width="24" height="14" rx="2" fill="#fde68a"/><rect x="14" y="12" width="20" height="8" rx="2" fill="#fbbf24" stroke="#f59e0b" stroke-width="1"/><line x1="8" y1="28" x2="40" y2="28" stroke="#f59e0b" stroke-width="0.8" stroke-dasharray="2,2"/></svg>',
+      '🚿': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="12" y="6" width="8" height="24" rx="2" fill="#bae6fd" stroke="#0ea5e9" stroke-width="1.5"/><rect x="6" y="30" width="36" height="12" rx="3" fill="#7dd3fc" stroke="#0284c7" stroke-width="1.5"/><circle cx="28" cy="20" r="3" fill="#0ea5e9"/><circle cx="34" cy="24" r="2.5" fill="#0ea5e9"/><circle cx="32" cy="16" r="2" fill="#38bdf8"/></svg>',
+      '💨': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="8" width="12" height="28" rx="6" fill="#d1fae5" stroke="#10b981" stroke-width="1.5"/><rect x="14" y="32" width="20" height="6" rx="3" fill="#6ee7b7" stroke="#059669" stroke-width="1"/><path d="M10 20 Q6 22 10 24" stroke="#10b981" stroke-width="1.5" fill="none"/><path d="M6 18 Q2 21 6 24" stroke="#10b981" stroke-width="1" fill="none"/><path d="M38 20 Q42 22 38 24" stroke="#10b981" stroke-width="1.5" fill="none"/><path d="M42 18 Q46 21 42 24" stroke="#10b981" stroke-width="1" fill="none"/></svg>',
+      '🕸️': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="24" cy="30" rx="14" ry="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.5"/><ellipse cx="24" cy="30" rx="8" ry="4" fill="#fde047" stroke="#ca8a04" stroke-width="1"/><rect x="20" y="10" width="8" height="22" rx="2" fill="#fde047" stroke="#ca8a04" stroke-width="1"/><rect x="16" y="6" width="16" height="6" rx="3" fill="#ca8a04"/></svg>',
+      '🌡️': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="6" width="8" height="28" rx="4" fill="#fee2e2" stroke="#ef4444" stroke-width="1.5"/><circle cx="24" cy="36" r="7" fill="#ef4444" stroke="#dc2626" stroke-width="1.5"/><rect x="22" y="10" width="4" height="20" rx="2" fill="#fca5a5"/><rect x="22" y="22" width="4" height="10" rx="1" fill="#ef4444"/></svg>',
+      '💊': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="18" width="36" height="12" rx="6" fill="#e9d5ff" stroke="#9333ea" stroke-width="1.5"/><rect x="6" y="18" width="18" height="12" rx="6" fill="#a855f7" stroke="#9333ea" stroke-width="1.5"/><line x1="24" y1="18" x2="24" y2="30" stroke="#9333ea" stroke-width="1.5"/><rect x="10" y="34" width="10" height="6" rx="2" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1"/><rect x="28" y="34" width="10" height="6" rx="2" fill="#c4b5fd" stroke="#7c3aed" stroke-width="1"/></svg>',
+      '🧹': '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="21" y="6" width="6" height="26" rx="2" fill="#d1d5db" stroke="#6b7280" stroke-width="1.5"/><rect x="10" y="30" width="28" height="10" rx="3" fill="#9ca3af" stroke="#6b7280" stroke-width="1.5"/><line x1="12" y1="42" x2="16" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="18" y1="42" x2="20" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="24" y1="42" x2="24" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="30" y1="42" x2="28" y2="40" stroke="#6b7280" stroke-width="1.5"/><line x1="36" y1="42" x2="32" y2="40" stroke="#6b7280" stroke-width="1.5"/></svg>'
+    };
+    return svgs[icon]||('<div style="font-size:32px;line-height:48px;text-align:center">'+icon+'</div>');
   }
-  collectRongeurs(ratEntries,  'Boîte raticide (ext.)', rodentCodeOutdoor);
-  collectRongeurs(mechEntries, 'Piège mécanique (int.)', rodentCodeIndoor);
-  collectRongeurs(glueEntries, 'Boîte à colle (int.)',  rodentCodeIndoor);
-  rongeursRows.sort(function(a,b){ return a.zone.localeCompare(b.zone,undefined,{numeric:true}); });
 
-  h+='<div style="background:#7f1d1d;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0">'
-    +'🐀 RONGEURS &nbsp;<span style="font-weight:400;opacity:.85">'+rongeursRows.length+' zone(s) avec capture confirmée (SOU)</span></div>';
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:16px">';
-  h+='<thead><tr style="background:#fef2f2">';
-  h+='<th style="'+tdBase+';width:28px;font-size:10px;font-weight:700;text-transform:uppercase;color:#444">#</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Zone / Emplacement</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Source de détection</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:80px">Nb captures</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:115px">Dernière détection</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;width:130px">Observations</th>';
+  // ── Tableau principal ─────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<thead><tr style="background:#1e293b;color:#fff">';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;width:160px;text-align:left">Type de nuisible</th>';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;text-align:left">Description</th>';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;width:340px;text-align:left">Moyens de traitement</th>';
   h+='</tr></thead><tbody>';
-  if(!rongeursRows.length){
-    h+='<tr><td colspan="6" style="'+tdBase+';text-align:center;color:#999;padding:12px">Aucune capture de rongeur enregistrée</td></tr>';
-  } else {
-    rongeursRows.forEach(function(r,i){
-      var bg=i%2===0?'#fff':'#fff8f8';
-      h+='<tr style="background:'+bg+'">';
-      h+='<td style="'+tdBase+';color:#aaa;font-size:10px;text-align:center">'+(i+1)+'</td>';
-      h+='<td style="'+tdBase+';font-weight:600">'+esc(r.zone)+'</td>';
-      h+='<td style="'+tdBase+';color:#666">'+esc(r.source)+'</td>';
-      h+='<td style="'+tdBase+';text-align:center;font-weight:700;color:#dc2626">'+r.count+'</td>';
-      h+='<td style="'+tdBase+';text-align:center;font-family:monospace;font-size:10px">'+esc(r.lastDate)+'</td>';
-      h+='<td style="'+tdBase+'"></td>';
-      h+='</tr>';
-    });
-  }
-  h+='</tbody></table>';
 
-  // ── Section INSECTES VOLANTS (par type détecté) ───────────────
-  var fkEntries=(D.pests.fk&&D.pests.fk.entries)||[];
-  var fkHeaders=(D.pests.fk&&D.pests.fk.headers)||[];
-  var fkTypes=flyDetectTypes(fkHeaders);
-  var fkIdxMap=flyBuildIdxMap(fkHeaders);
-  if(fkIdxMap.num<0) fkIdxMap.num=flyFindCol(fkHeaders,'numero');
+  NUISIBLES_CATALOG.forEach(function(n, i){
+    var bg = i%2===0 ? '#fff' : '#f8fafc';
+    h+='<tr style="background:'+bg+';vertical-align:top">';
 
-  // Pour chaque type d'insecte détecté, construire les lignes par zone
-  var flyRows=[];
-  fkTypes.forEach(function(typeDef){
-    var stats=flyComputeStats(fkEntries, typeDef, fkIdxMap);
-    var byZone=stats.byZone; // zone → total captures
-    // Trouver la dernière date de capture par zone
-    var lastDateByZone={};
-    stats.rows.forEach(function(r){
-      var z=r.zone||'(sans emplacement)';
-      if(!lastDateByZone[z]||(r.isoDate&&r.isoDate>lastDateByZone[z].isoDate)){
-        lastDateByZone[z]={date:r.date||r.isoDate||'—', isoDate:r.isoDate||''};
-      }
+    // Colonne 1 : type
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;text-align:center;vertical-align:middle;padding:14px 8px">';
+    h+='<div style="font-size:30px;line-height:1">'+n.icon+'</div>';
+    h+='<div style="font-size:12px;font-weight:800;color:'+n.couleur+';margin-top:6px;letter-spacing:.02em">'+n.nom+'</div>';
+    h+='</td>';
+
+    // Colonne 2 : description
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;font-size:10px;color:#444;line-height:1.6">'+n.description+'</td>';
+
+    // Colonne 3 : traitements avec SVG
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;padding:10px 8px">';
+    n.traitements.forEach(function(t){
+      h+='<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:8px;padding:6px 8px;background:'+n.bg+';border-radius:5px;border:1px solid #e5e7eb">';
+      h+='<div style="flex-shrink:0;width:48px;height:48px">'+traitementSvg(t.icon)+'</div>';
+      h+='<div style="flex:1">';
+      h+='<div style="font-size:10px;font-weight:700;color:'+n.couleur+';margin-bottom:2px">'+t.label+'</div>';
+      h+='<div style="font-size:9.5px;color:#555;line-height:1.5">'+t.desc+'</div>';
+      h+='</div>';
+      h+='</div>';
     });
-    Object.keys(byZone).forEach(function(z){
-      var ld=lastDateByZone[z]||{};
-      flyRows.push({
-        icon:typeDef.icon, label:typeDef.label, color:typeDef.color,
-        zone:z, count:byZone[z],
-        lastDate:ld.date||'—'
-      });
-    });
-  });
-  flyRows.sort(function(a,b){
-    if(a.label!==b.label) return a.label.localeCompare(b.label);
-    return a.zone.localeCompare(b.zone,undefined,{numeric:true});
+    h+='</td>';
+
+    h+='</tr>';
   });
 
-  h+='<div style="background:#0a7a9a;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0">'
-    +'🦟 INSECTES VOLANTS &nbsp;<span style="font-weight:400;opacity:.85">'+flyRows.length+' zone(s) avec capture détectée</span></div>';
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:16px">';
-  h+='<thead><tr style="background:#f0f9ff">';
-  h+='<th style="'+tdBase+';width:28px;font-size:10px;font-weight:700;text-transform:uppercase;color:#444">#</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Type de nuisible</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Zone / Emplacement</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:90px">Nb captures</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:115px">Dernière détection</th>';
-  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;width:130px">Observations</th>';
-  h+='</tr></thead><tbody>';
-  if(!flyRows.length){
-    h+='<tr><td colspan="6" style="'+tdBase+';text-align:center;color:#999;padding:12px">Aucune capture d\'insecte volant enregistrée</td></tr>';
-  } else {
-    flyRows.forEach(function(r,i){
-      var bg=i%2===0?'#fff':'#f0f9ff';
-      h+='<tr style="background:'+bg+'">';
-      h+='<td style="'+tdBase+';color:#aaa;font-size:10px;text-align:center">'+(i+1)+'</td>';
-      h+='<td style="'+tdBase+';font-weight:700;color:'+r.color+'">'+r.icon+' '+esc(r.label)+'</td>';
-      h+='<td style="'+tdBase+';font-weight:600">'+esc(r.zone)+'</td>';
-      h+='<td style="'+tdBase+';text-align:center;font-weight:700;color:'+r.color+'">'+r.count+'</td>';
-      h+='<td style="'+tdBase+';text-align:center;font-family:monospace;font-size:10px">'+esc(r.lastDate)+'</td>';
-      h+='<td style="'+tdBase+'"></td>';
-      h+='</tr>';
-    });
-  }
   h+='</tbody></table>';
 
   // ── Visa / Signatures ─────────────────────────────────────────
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-top:6px">';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
   h+='<tr>';
   ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
-    h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
+    h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px;border:1px solid #d0d0d0">';
     h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">'+lbl+'</div>';
     h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
     h+='</td>';
@@ -12147,7 +12143,7 @@ function renderRecensementNuisibles(){
   h+='</tr>';
   h+='</table>';
 
-  h+='</div>'; // fin recensementNuisiblesPrint
+  h+='</div>';
   body.innerHTML=h;
 }
 
