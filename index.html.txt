@@ -12015,53 +12015,34 @@ function renderRecensementNuisibles(){
   // ── Catalogue des types de nuisibles ─────────────────────────
   var NUISIBLES_CATALOG = [
     {
-      icon:'🐀', nom:'Rats', couleur:'#dc2626', bg:'#fef2f2',
-      traitements:[
-        { icon:'☠️', label:'Boîte à raticide' },
-        { icon:'🪤', label:'Piège mécanique' }
-      ]
-    },
-    {
-      icon:'🐭', nom:'Souris', couleur:'#f97316', bg:'#fff7ed',
-      traitements:[
-        { icon:'📦', label:'Boîte à colle' },
-        { icon:'🪤', label:'Piège mécanique' }
-      ]
+      icon:'🐀🐭', nom:'Rongeurs (Rats & Souris)', couleur:'#dc2626', bg:'#fef2f2',
+      description:'Rongeurs causant des dommages matériels (câbles, structures, emballages) et des risques sanitaires (leptospirose, salmonellose). Les souris s\'infiltrent dès 6 mm, les rats creusent des terriers en extérieur.',
+      traitements:['Boîte à raticide','Piège mécanique','Boîte à colle']
     },
     {
       icon:'🪰', nom:'Mouches', couleur:'#14b8a6', bg:'#f0fdfa',
-      traitements:[
-        { icon:'⚡', label:'Fly-killer UV' },
-        { icon:'🍯', label:'Piège à colle (FK)' }
-      ]
+      description:'Insectes vecteurs de maladies (salmonelle, E. coli). Prolifèrent dans les zones humides et près des déchets organiques. Risque majeur en agroalimentaire.',
+      traitements:['Fly-killer UV','Piège à colle (FK)']
     },
     {
       icon:'🦟', nom:'Moustiques', couleur:'#0ea5e9', bg:'#f0f9ff',
-      traitements:[
-        { icon:'⚡', label:'Fly-killer UV' },
-        { icon:'🚿', label:'Suppression des gîtes' }
-      ]
+      description:'Insectes piqueurs actifs au crépuscule et la nuit. Zones à risque : eaux stagnantes, fosses, espaces verts humides. Vecteurs potentiels de maladies.',
+      traitements:['Fly-killer UV','Suppression des gîtes']
     },
     {
       icon:'🐝', nom:'Abeilles / Guêpes', couleur:'#f5a623', bg:'#fffbeb',
-      traitements:[
-        { icon:'💨', label:'Traitement des nids' },
-        { icon:'🕸️', label:'Piège à guêpes' }
-      ]
+      description:'Insectes sociaux pouvant établir des nids dans les structures (toits, murs). Les guêpes sont agressives en fin d\'été. Risque d\'allergie sévère pour le personnel.',
+      traitements:['Traitement des nids','Piège à guêpes']
     },
     {
       icon:'🦋', nom:'Mite', couleur:'#a855f7', bg:'#faf5ff',
-      traitements:[
-        { icon:'🧲', label:'Piège à phéromone' },
-        { icon:'⚡', label:'Fly-killer UV' }
-      ]
+      description:'Lépidoptères nocturnes dont les larves (teignes) contaminent les matières premières, textiles et produits stockés. Détectées tardivement, leur infestation peut être étendue.',
+      traitements:['Piège à phéromone','Fly-killer UV']
     },
     {
       icon:'🐛', nom:'Autres insectes', couleur:'#94a3b8', bg:'#f8fafc',
-      traitements:[
-        { icon:'💊', label:'Gel insecticide' },
-        { icon:'🧹', label:'Nettoyage / Hygiène' }
-      ]
+      description:'Blattes, coléoptères, fourmis et autres arthropodes pouvant contaminer les zones de production. Présence souvent liée à l\'hygiène des locaux et aux fissures de bâtiment.',
+      traitements:['Gel insecticide','Nettoyage / Hygiène']
     }
   ];
 
@@ -12087,30 +12068,29 @@ function renderRecensementNuisibles(){
   // ── Tableau principal ─────────────────────────────────────────
   h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
   h+='<thead><tr style="background:#1e293b;color:#fff">';
-  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;width:160px;text-align:left">Type de nuisible</th>';
-  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;text-align:left">Moyens de traitement</th>';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;width:170px;text-align:left">Type de nuisible</th>';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;text-align:left">Description</th>';
+  h+='<th style="padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid #334155;width:220px;text-align:left">Moyens de traitement</th>';
   h+='</tr></thead><tbody>';
 
   NUISIBLES_CATALOG.forEach(function(n, i){
     var bg = i%2===0 ? '#fff' : '#f8fafc';
     h+='<tr style="background:'+bg+';vertical-align:top">';
 
-    // Colonne 1 : nom uniquement
+    // Colonne 1 : nom
     h+='<td style="'+tdBase+';border:1px solid #d0d0d0;text-align:center;vertical-align:middle;padding:14px 8px">';
-    h+='<div style="font-size:30px;line-height:1">'+n.icon+'</div>';
-    h+='<div style="font-size:12px;font-weight:800;color:'+n.couleur+';margin-top:6px;letter-spacing:.02em">'+n.nom+'</div>';
+    h+='<div style="font-size:26px;line-height:1">'+n.icon+'</div>';
+    h+='<div style="font-size:11px;font-weight:800;color:'+n.couleur+';margin-top:6px;letter-spacing:.02em">'+n.nom+'</div>';
     h+='</td>';
 
-    // Colonne 2 : traitements avec SVG
-    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;padding:10px 8px">';
-    h+='<div style="display:flex;flex-wrap:wrap;gap:8px">';
+    // Colonne 2 : description
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;font-size:10px;color:#444;line-height:1.6">'+n.description+'</td>';
+
+    // Colonne 3 : traitements en liste texte (sans image)
+    h+='<td style="'+tdBase+';border:1px solid #d0d0d0;padding:10px 10px;vertical-align:middle">';
     n.traitements.forEach(function(t){
-      h+='<div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 12px;background:'+n.bg+';border-radius:6px;border:1px solid #e5e7eb;min-width:90px">';
-      h+='<div style="width:48px;height:48px">'+traitementSvg(t.icon)+'</div>';
-      h+='<div style="font-size:9.5px;font-weight:700;color:'+n.couleur+';text-align:center;line-height:1.3">'+t.label+'</div>';
-      h+='</div>';
+      h+='<div style="padding:4px 8px;margin-bottom:5px;background:'+n.bg+';border-left:3px solid '+n.couleur+';border-radius:3px;font-size:10px;font-weight:600;color:'+n.couleur+'">'+t+'</div>';
     });
-    h+='</div>';
     h+='</td>';
 
     h+='</tr>';
