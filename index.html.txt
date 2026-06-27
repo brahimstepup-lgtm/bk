@@ -3424,6 +3424,14 @@ html.light .pests-search-input{background:#edf2f7}
     </a>
   </div>
 
+  <!-- ─── BARRE ACTIONS NUISIBLES ─── -->
+  <div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:4px;flex-wrap:wrap">
+    <button class="btn" style="background:var(--p2);color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openRapportTendanceNuisibles()">
+      📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
+    </button>
+  </div>
+
   <!-- ─── SECTION 1 : INSECTES VOLANTS (FK) ─── -->
   <div class="pests-section flying" id="pestsFlyingSection">
     <div class="pests-section-head">
@@ -3900,6 +3908,36 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 </div><!-- /main -->
+
+<!-- ═══ MODAL RAPPORT DE TENDANCE NUISIBLES (Enr hse 23) ═══ -->
+<div class="modal-bg" id="pestRapportModal" style="display:none" onclick="if(event.target===this)closeModal('pestRapportModal')">
+  <div class="modal-panel" style="max-width:860px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(14,165,233,.18);border-color:rgba(14,165,233,.5);color:#0ea5e9">📈</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-family:'JetBrains Mono',monospace;letter-spacing:.05em">ENR HSE 23</div>
+        <div class="modal-hdr-name">Rapport de tendance — Suivi nuisibles</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          Période :
+          <select id="pestRapportPeriod" style="font-size:10px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:2px 6px;cursor:pointer"
+                  onchange="renderRapportTendanceNuisibles()">
+            <option value="all">Toutes</option>
+            <option value="90">90 derniers jours</option>
+            <option value="180">6 derniers mois</option>
+            <option value="365" selected>12 derniers mois</option>
+            <option value="ytd">Année en cours</option>
+          </select>
+          &nbsp;
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printRapportTendanceNuisibles()">🖨️ Imprimer / PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('pestRapportModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="pestRapportBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération du rapport…</div></div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ MODAL DÉTAIL DISPOSITIF (cartographie) ═══ -->
 <div class="modal-bg" id="dispoModal" style="display:none" onclick="if(event.target===this)closeModal('dispoModal')">
@@ -10925,6 +10963,656 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RAPPORT DE TENDANCE NUISIBLES — Enr hse 23
+   ══════════════════════════════════════════════════════════════ */
+
+// ── SVG bar chart inline (pas de dépendance Chart.js) ─────────
+function svgBarChart(series, opts){
+  // series = [{label, values:[{ym, v}], color}]
+  // opts   = {w, h, title}
+  opts=opts||{};
+  var W=opts.w||520, H=opts.h||140;
+  var padL=28, padR=8, padT=12, padB=36;
+  var cW=W-padL-padR, cH=H-padT-padB;
+
+  // Collecter tous les mois
+  var ymSet={};
+  series.forEach(function(s){ s.values.forEach(function(d){ ymSet[d.ym]=1; }); });
+  var yms=Object.keys(ymSet).sort().slice(-9);
+  if(!yms.length) return '<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucune donnée</div>';
+
+  // Valeur max
+  var maxV=0;
+  series.forEach(function(s){
+    s.values.forEach(function(d){
+      if(yms.indexOf(d.ym)>-1&&d.v>maxV) maxV=d.v;
+    });
+  });
+  if(maxV===0) maxV=1;
+
+  var nBars=yms.length;
+  var groupW=cW/nBars;
+  var barW=Math.max(2, Math.floor(groupW/series.length)-2);
+  var groupPad=(groupW - barW*series.length)/2;
+
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H
+    +'" viewBox="0 0 '+W+' '+H+'" style="display:block;max-width:100%">';
+
+  // Axes
+  svg+='<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
+  svg+='<line x1="'+padL+'" y1="'+(padT+cH)+'" x2="'+(padL+cW)+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1"/>';
+
+  // Grille horizontale (3 lignes)
+  [0.25,0.5,0.75,1].forEach(function(f){
+    var y=padT+cH-f*cH;
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(padL+cW)+'" y2="'+y+'" stroke="#e8e8e8" stroke-width="1" stroke-dasharray="3,3"/>';
+    svg+='<text x="'+(padL-3)+'" y="'+(y+3)+'" text-anchor="end" font-size="8" fill="#aaa">'+Math.round(maxV*f)+'</text>';
+  });
+
+  // Barres
+  yms.forEach(function(ym, gi){
+    var gx=padL+gi*groupW+groupPad;
+    series.forEach(function(s, si){
+      var dv=s.values.find(function(d){return d.ym===ym;})||{v:0};
+      var v=dv.v||0;
+      var bh=Math.round((v/maxV)*cH);
+      var bx=gx+si*barW;
+      var by=padT+cH-bh;
+      if(v>0){
+        svg+='<rect x="'+bx+'" y="'+by+'" width="'+(barW-1)+'" height="'+bh
+          +'" fill="'+s.color+'" rx="1"/>';
+        svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(by-3)+'" text-anchor="middle" font-size="7.5" fill="'+s.color+'" font-weight="700">'+v+'</text>';
+      } else if(opts&&opts.zeroLabel){
+        svg+='<text x="'+(bx+(barW-1)/2)+'" y="'+(padT+cH-4)+'" text-anchor="middle" font-size="7.5" fill="#10c985" font-weight="700">0</text>';
+      }
+    });
+    // Label mois
+    var p=ym.split('-');
+    var lbl=(ML[parseInt(p[1],10)-1]||('M'+p[1]));
+    svg+='<text x="'+(padL+gi*groupW+groupW/2)+'" y="'+(padT+cH+12)+'" text-anchor="middle" font-size="8" fill="#666">'+lbl+'</text>';
+    svg+='<text x="'+(padL+gi*groupW+groupW/2)+'" y="'+(padT+cH+22)+'" text-anchor="middle" font-size="7" fill="#aaa">'+p[0].slice(2)+'</text>';
+  });
+
+  // Légende
+  if(series.length>1){
+    var lx=padL;
+    series.forEach(function(s){
+      svg+='<rect x="'+lx+'" y="'+(H-8)+'" width="8" height="6" fill="'+s.color+'" rx="1"/>';
+      svg+='<text x="'+(lx+10)+'" y="'+(H-3)+'" font-size="8" fill="#555">'+esc(s.label)+'</text>';
+      lx+=10+s.label.length*5+8;
+    });
+  }
+
+  svg+='</svg>';
+  return svg;
+}
+
+// ── SVG line chart (multi-séries) ────────────────────────────
+function svgLineChart(series, opts){
+  opts=opts||{};
+  // Réserve de la place pour la légende en bas (14px par ligne de légende)
+  var legendRows=Math.ceil((series.length||1)/4);
+  var legH=legendRows*14+4;
+  var W=opts.w||520, H=(opts.h||120)+legH;
+  var padL=32, padR=12, padT=14, padB=26;
+  var cW=W-padL-padR, cH=H-padT-padB-legH;
+
+  var ymSet={};
+  series.forEach(function(s){ s.values.forEach(function(d){ ymSet[d.ym]=1; }); });
+  var yms=Object.keys(ymSet).sort().slice(-9);
+  if(!yms.length) return '<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucune donnée</div>';
+
+  var maxV=0;
+  series.forEach(function(s){
+    s.values.forEach(function(d){ if(yms.indexOf(d.ym)>-1&&d.v>maxV) maxV=d.v; });
+  });
+  if(maxV===0) maxV=1;
+
+  // Fond doux
+  var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H
+    +'" viewBox="0 0 '+W+' '+H+'" style="display:block;max-width:100%;background:#f8fbfd;border-radius:4px">';
+
+  // Grille horizontale
+  [0,0.25,0.5,0.75,1].forEach(function(f){
+    var y=padT+cH-f*cH;
+    svg+='<line x1="'+padL+'" y1="'+y+'" x2="'+(padL+cW)+'" y2="'+y
+      +'" stroke="'+(f===0?'#ccc':'#e4edf2')+'" stroke-width="'+(f===0?1.5:1)+'"/>';
+    if(f>0) svg+='<text x="'+(padL-4)+'" y="'+(y+3)+'" text-anchor="end" font-size="8" fill="#9bb">'+Math.round(maxV*f)+'</text>';
+  });
+  // Axe Y
+  svg+='<line x1="'+padL+'" y1="'+padT+'" x2="'+padL+'" y2="'+(padT+cH)+'" stroke="#ccc" stroke-width="1.5"/>';
+
+  // Grille verticale légère
+  yms.forEach(function(ym,i){
+    var x=padL+(yms.length>1?i/(yms.length-1):0.5)*cW;
+    svg+='<line x1="'+x.toFixed(1)+'" y1="'+padT+'" x2="'+x.toFixed(1)+'" y2="'+(padT+cH)+'" stroke="#e4edf2" stroke-width="1"/>';
+  });
+
+  // Lignes + points
+  series.forEach(function(s){
+    var pts=yms.map(function(ym,i){
+      var dv=s.values.find(function(d){return d.ym===ym;})||{v:0};
+      var xr=yms.length>1?i/(yms.length-1):0.5;
+      var x=padL+xr*cW;
+      var y=padT+cH-((dv.v||0)/maxV)*cH;
+      return {x:x,y:y,v:dv.v||0};
+    });
+    // Ligne principale
+    var d=pts.map(function(p,i){return(i===0?'M':'L')+p.x.toFixed(1)+','+p.y.toFixed(1);}).join(' ');
+    svg+='<path d="'+d+'" fill="none" stroke="'+s.color+'" stroke-width="2" stroke-linejoin="round"/>';
+    // Points (tous) + label si valeur > 0
+    pts.forEach(function(p){
+      svg+='<circle cx="'+p.x.toFixed(1)+'" cy="'+p.y.toFixed(1)+'" r="3.5" fill="'+s.color+'" stroke="#fff" stroke-width="1"/>';
+      if(p.v>0){
+        // décale légèrement vers le haut pour éviter chevauchement
+        svg+='<text x="'+p.x.toFixed(1)+'" y="'+(p.y-7).toFixed(1)+'" text-anchor="middle" font-size="7.5" fill="'+s.color+'" font-weight="700">'+p.v+'</text>';
+      }
+    });
+  });
+
+  // Labels des mois (axe X)
+  yms.forEach(function(ym,i){
+    var p=ym.split('-');
+    var xr=yms.length>1?i/(yms.length-1):0.5;
+    var x=padL+xr*cW;
+    svg+='<text x="'+x.toFixed(1)+'" y="'+(padT+cH+11)+'" text-anchor="middle" font-size="8.5" fill="#555" font-weight="500">'+(ML[parseInt(p[1],10)-1]||('M'+p[1]))+'</text>';
+  });
+
+  // Légende centrée en bas
+  var totalLegW=series.reduce(function(acc,s){return acc+s.label.length*5.5+22;},0);
+  var lx=(W-totalLegW)/2;
+  var ly=H-legH+4;
+  series.forEach(function(s){
+    svg+='<rect x="'+lx.toFixed(1)+'" y="'+(ly+1)+'" width="14" height="8" fill="'+s.color+'" rx="2"/>';
+    svg+='<text x="'+(lx+17).toFixed(1)+'" y="'+(ly+8.5)+'" font-size="8.5" fill="#444">'+esc(s.label)+'</text>';
+    lx+=s.label.length*5.5+22;
+  });
+
+  svg+='</svg>';
+  return svg;
+}
+
+function openRapportTendanceNuisibles(){
+  var modal=document.getElementById('pestRapportModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderRapportTendanceNuisibles();
+}
+
+function renderRapportTendanceNuisibles(){
+  var body=document.getElementById('pestRapportBody');
+  if(!body) return;
+  if(!D||!D.pests){
+    body.innerHTML='<div class="pests-empty">Données nuisibles non disponibles.</div>';
+    return;
+  }
+  var periodVal=(document.getElementById('pestRapportPeriod')||{}).value||'365';
+  var fromIso=rodentPeriodStartIso(periodVal);
+  var periodLbl=rodentPeriodLabel(periodVal);
+  var today=new Date();
+  var dd=today.getDate().toString().padStart(2,'0');
+  var mm=(today.getMonth()+1).toString().padStart(2,'0');
+  var yyyy=today.getFullYear();
+  var todayStr=dd+'/'+mm+'/'+yyyy;
+  // Logo : priorité D.logoUrl, sinon src de l'img du header
+  var logoSrc=(D&&D.logoUrl)||'';
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+
+  // ── Filtrer chaque source ──────────────────────────────────
+  function filterPeriod(entries){
+    if(!fromIso) return entries;
+    return entries.filter(function(e){ return e.isoDate && e.isoDate>=fromIso; });
+  }
+  var fk  =filterPeriod((D.pests.fk  &&D.pests.fk.entries  )||[]);
+  var rat =filterPeriod((D.pests.rat &&D.pests.rat.entries  )||[]);
+  var mech=filterPeriod((D.pests.mech&&D.pests.mech.entries )||[]);
+  var glue=filterPeriod((D.pests.glue&&D.pests.glue.entries )||[]);
+
+  // ── Stats insectes volants (FK) via flyComputeStats ────────
+  var fkHeaders=(D.pests.fk&&D.pests.fk.headers)||[];
+  var fkTypes  =flyDetectTypes(fkHeaders);
+  var fkIdxMap =flyBuildIdxMap(fkHeaders);
+  if(fkIdxMap.num<0) fkIdxMap.num=flyFindCol(fkHeaders,'numero');
+  var fkStatsByKey={};
+  var fkGrandTotal=0;
+  var fkDominant=null;
+  fkTypes.forEach(function(t){
+    var st=flyComputeStats(fk,t,fkIdxMap);
+    fkStatsByKey[t.key]=st;
+    if(!fkDominant||st.total>fkStatsByKey[fkDominant.key].total) fkDominant=t;
+    fkGrandTotal+=st.total;
+  });
+  var fkTotalVisites=fk.length;
+  var fkWithCapture=0;
+  fkTypes.forEach(function(t){ fkWithCapture+=fkStatsByKey[t.key].withCapture; });
+  var fkZonesSet={};
+  fk.forEach(function(e){ if(e.zone) fkZonesSet[e.zone.trim()]=1; });
+  var fkZonesCount=Object.keys(fkZonesSet).length;
+  var fkThisMonth=TODAY_ISO.substring(0,7);
+  var fkCapturesThisMonth=0;
+  fkTypes.forEach(function(t){
+    var bm=fkStatsByKey[t.key].byMonth||{};
+    fkCapturesThisMonth+=(bm[fkThisMonth]||0);
+  });
+
+  // ── Helpers communs ────────────────────────────────────────
+  function topZones(entries, n){
+    var cnt={};
+    entries.forEach(function(e){ var z=(e.zone||'—').trim()||'—'; cnt[z]=(cnt[z]||0)+1; });
+    return Object.keys(cnt).map(function(z){return{zone:z,count:cnt[z]};})
+      .sort(function(a,b){return b.count-a.count;}).slice(0,n);
+  }
+  function souCount(entries, origin){
+    return entries.filter(function(e){
+      return origin==='outdoor'?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU';
+    }).length;
+  }
+  function buildMonthTrend(entries){
+    var byM={};
+    entries.forEach(function(e){
+      if(!e.isoDate) return;
+      var ym=e.isoDate.substring(0,7);
+      byM[ym]=(byM[ym]||0)+1;
+    });
+    return Object.keys(byM).sort().map(function(ym){return{ym:ym,count:byM[ym]};});
+  }
+  function trendArrow(trend){
+    if(trend.length<2) return '<span style="color:#999">—</span>';
+    var last3=trend.slice(-3), prev3=trend.slice(-6,-3);
+    var sumL=last3.reduce(function(a,b){return a+b.count;},0);
+    var sumP=prev3.reduce(function(a,b){return a+b.count;},0);
+    if(sumP===0) return '<span style="color:#999">—</span>';
+    var pct=Math.round((sumL-sumP)/sumP*100);
+    if(pct>10)  return '<span style="color:#e8445a;font-weight:700">▲ +'+pct+'%</span>';
+    if(pct<-10) return '<span style="color:#10c985;font-weight:700">▼ '+pct+'%</span>';
+    return '<span style="color:#f5a623;font-weight:700">→ '+pct+'%</span>';
+  }
+  function monthRows(trend){
+    if(!trend.length) return '<tr><td colspan="2" style="text-align:center;color:#999;padding:5px;font-size:10px">Aucune donnée</td></tr>';
+    return trend.slice(-6).map(function(m){
+      var p=m.ym.split('-');
+      var lbl=(ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0];
+      return '<tr><td style="padding:3px 6px;color:#555">'+lbl+'</td>'
+        +'<td style="padding:3px 6px;text-align:right;font-weight:600">'+m.count+'</td></tr>';
+    }).join('');
+  }
+  function zoneBarsPrint(entries, color){
+    var zones=topZones(entries,5);
+    if(!zones.length) return '<div style="color:#999;font-size:10px;padding:4px">—</div>';
+    var mx=zones[0].count;
+    return zones.map(function(z){
+      var pct=mx>0?Math.round(z.count/mx*100):0;
+      return '<div style="margin-bottom:5px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px">'
+        +'<span>'+esc(z.zone)+'</span><span style="color:'+color+';font-weight:600">'+z.count+'</span></div>'
+        +'<div style="height:4px;background:#e8eaed;border-radius:2px">'
+        +'<div style="height:4px;width:'+pct+'%;background:'+color+';border-radius:2px"></div></div>'
+        +'</div>';
+    }).join('');
+  }
+
+  // ── Rongeurs globaux ───────────────────────────────────────
+  var souExt=souCount(rat,'outdoor');
+  var souInt=souCount(mech,'indoor')+souCount(glue,'indoor');
+
+  // ── Styles inline pour l'impression ───────────────────────
+  var pstyle='font-family:system-ui,-apple-system,sans-serif;color:#111;background:#fff';
+  var tdBase='padding:5px 8px;border:1px solid #d0d0d0;font-size:11px;vertical-align:top';
+
+  // ══════════════════════════════════════════════════════════
+  // Début du HTML du rapport
+  // ══════════════════════════════════════════════════════════
+  var h='<div id="pestRapportPrint" style="'+pstyle+'">';
+
+  // ── En-tête document type "FICHE DE CONTRÔLE" ─────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:0">';
+  h+='<tr>';
+  // Cellule logo
+  h+='<td style="'+tdBase+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">';
+  h+=logoHtml;
+  h+='</td>';
+  // Cellule titre central
+  h+='<td style="'+tdBase+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Rapport de tendance</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Dispositifs de lutte contre les nuisibles</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">';
+  h+='Période : <span style="color:#0a7a9a">'+esc(periodLbl)+'</span>';
+  h+='</div>';
+  h+='</td>';
+  // Cellule référence (tableau)
+  h+='<td style="'+tdBase+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0a7a9a;letter-spacing:.05em">ENR-HSE 23</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='</table>';
+  h+='</td>';
+  h+='</tr>';
+  h+='</table>';
+
+  // ── Bandeau INSECTES VOLANTS (données tableau de bord) ─────
+  h+='<div style="background:#0a7a9a;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;margin-top:0;border:1.5px solid #b0b0b0;border-top:none">▸ INSECTES VOLANTS — FK</div>';
+
+  // KPIs FK (comme le tableau de bord)
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:0">';
+  h+='<tr style="background:#f5f7f8">';
+  function kpiCell(lbl,val,sub){
+    return '<td style="'+tdBase+';text-align:center;border-top:none">'
+      +'<div style="font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:3px">'+lbl+'</div>'
+      +'<div style="font-size:18px;font-weight:800;color:#0a7a9a">'+val+'</div>'
+      +'<div style="font-size:9px;color:#888;margin-top:2px">'+sub+'</div>'
+      +'</td>';
+  }
+  h+=kpiCell('Total visites',fkTotalVisites,fkWithCapture+' avec capture');
+  h+=kpiCell('Captures totales',fkGrandTotal,fkTypes.length+' types suivis');
+  h+=kpiCell('Captures ce mois',fkCapturesThisMonth,fkThisMonth);
+  h+=kpiCell('Zones surveillées',fkZonesCount,'emplacements distincts');
+  h+=kpiCell('Type dominant',fkDominant?(fkDominant.icon+' '+fkDominant.label):'—',
+             fkDominant?(fkStatsByKey[fkDominant.key].total+' captures'):'—');
+  h+='</tr>';
+  h+='</table>';
+
+  // Graphique SVG + tableau évolution mensuelle FK
+  var fkAllYms={};
+  fkTypes.forEach(function(t){
+    Object.keys(fkStatsByKey[t.key].byMonth).forEach(function(ym){ fkAllYms[ym]=1; });
+  });
+  var fkYms=Object.keys(fkAllYms).sort().slice(-9);
+
+  // Graphique lignes multi-types (identique au dashboard "Évolution mensuelle — tous types confondus")
+  var fkLineSeries=fkTypes.map(function(t){
+    return {
+      label: t.icon+' '+t.label,
+      color: t.color,
+      values: fkYms.map(function(ym){ return {ym:ym, v:(fkStatsByKey[t.key].byMonth[ym])||0}; })
+    };
+  });
+  h+='<div style="border:1.5px solid #b0b0b0;border-top:none;padding:10px;background:#fafcfd;margin-bottom:0">';
+  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#0a7a9a;margin-bottom:6px">Évolution mensuelle — tous types confondus</div>';
+  if(fkLineSeries.length>0){
+    h+=svgLineChart(fkLineSeries,{w:700,h:160});
+  } else {
+    h+='<div style="color:#aaa;font-size:10px;text-align:center;padding:12px">Aucun type détecté</div>';
+  }
+  h+='</div>';
+
+  // Tableau chiffré en dessous du graphique
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:12px">';
+  h+='<thead><tr style="background:#e8f4f8">';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:600;text-transform:uppercase;color:#444;border-top:none">Mois</th>';
+  fkTypes.forEach(function(t){
+    h+='<th style="'+tdBase+';font-size:10px;font-weight:600;text-align:right;color:'+t.color+';border-top:none">'+t.icon+' '+esc(t.label)+'</th>';
+  });
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:600;text-align:right;border-top:none">Total</th>';
+  h+='</tr></thead><tbody>';
+  if(!fkYms.length){
+    h+='<tr><td colspan="'+(fkTypes.length+2)+'" style="'+tdBase+';text-align:center;color:#999">Aucune donnée sur la période</td></tr>';
+  } else {
+    fkYms.forEach(function(ym,i){
+      var p=ym.split('-');
+      var lbl=(ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0];
+      var rowTotal=0;
+      var bg=i%2===0?'#fff':'#f9fbfc';
+      h+='<tr style="background:'+bg+'">';
+      h+='<td style="'+tdBase+';font-weight:500">'+lbl+'</td>';
+      fkTypes.forEach(function(t){
+        var v=(fkStatsByKey[t.key].byMonth[ym])||0; rowTotal+=v;
+        h+='<td style="'+tdBase+';text-align:right;color:'+(v>0?t.color:'#bbb')+';font-weight:'+(v>0?'700':'400')+'">'+v+'</td>';
+      });
+      h+='<td style="'+tdBase+';text-align:right;font-weight:700;color:#0a7a9a">'+rowTotal+'</td>';
+      h+='</tr>';
+    });
+    h+='<tr style="background:#e8f4f8;font-weight:700"><td style="'+tdBase+'">TOTAL</td>';
+    fkTypes.forEach(function(t){ h+='<td style="'+tdBase+';text-align:right;color:'+t.color+'">'+fkStatsByKey[t.key].total+'</td>'; });
+    h+='<td style="'+tdBase+';text-align:right;color:#0a7a9a">'+fkGrandTotal+'</td></tr>';
+  }
+  h+='</tbody></table>';
+
+  // ── Bandeau RONGEURS ───────────────────────────────────────
+  h+='<div style="background:#555;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0;border-bottom:none">▸ RONGEURS — BILAN GLOBAL (SOU)</div>';
+
+  // KPIs rongeurs
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px">';
+  h+='<tr style="background:#f5f7f8">';
+  h+=kpiCell('Total enregistrements',rat.length+mech.length+glue.length,'toutes sources');
+  h+=kpiCell('Captures SOU totales',souExt+souInt,'extérieur + intérieur');
+  h+=kpiCell('SOU voie extérieure',souExt,'boîtes à raticide');
+  h+=kpiCell('SOU intérieur usine',souInt,'mécanique + colles');
+  h+='</tr>';
+  h+='</table>';
+
+  // Graphique SVG rongeurs global — captures SOU uniquement (ext vs int)
+  var rodGlobalSou=(function(){
+    var byM={};
+    rat.forEach(function(e){
+      if(!e.isoDate||rodentCodeOutdoor(e.statut)!=='SOU') return;
+      var ym=e.isoDate.substring(0,7);
+      if(!byM[ym]) byM[ym]={out:0,ind:0};
+      byM[ym].out++;
+    });
+    mech.forEach(function(e){
+      if(!e.isoDate||rodentCodeIndoor(e.statut)!=='SOU') return;
+      var ym=e.isoDate.substring(0,7);
+      if(!byM[ym]) byM[ym]={out:0,ind:0};
+      byM[ym].ind++;
+    });
+    glue.forEach(function(e){
+      if(!e.isoDate||rodentCodeIndoor(e.statut)!=='SOU') return;
+      var ym=e.isoDate.substring(0,7);
+      if(!byM[ym]) byM[ym]={out:0,ind:0};
+      byM[ym].ind++;
+    });
+    var yms=Object.keys(byM).sort();
+    return {
+      yms: yms,
+      ext: yms.map(function(ym){return{ym:ym,v:byM[ym].out};}),
+      ind: yms.map(function(ym){return{ym:ym,v:byM[ym].ind};})
+    };
+  })();
+  h+='<div style="border:1.5px solid #b0b0b0;border-top:none;padding:10px;background:#fafcfd;margin-bottom:12px">';
+  h+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:6px">Évolution mensuelle — Captures SOU : Voie extérieure vs Intérieur usine</div>';
+  if(!rodGlobalSou.yms.length){
+    h+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:800;color:#10c985">0 capture</div>';
+  } else {
+    h+=svgLineChart([
+      {label:'Voie extérieure (SOU)',color:'#f97316',values:rodGlobalSou.ext},
+      {label:'Intérieur usine (SOU)', color:'#0da8d2',values:rodGlobalSou.ind}
+    ],{w:700,h:130});
+  }
+  h+='</div>';
+
+  // ── Tableaux par source rongeurs (évolution + top zones) ───
+  function rodentSection(sectionTitle, color, entries, origin, souFn){
+    var trend=buildMonthTrend(entries);
+    var arrow=trendArrow(trend);
+    var souC=souFn?souFn(entries,origin):null;
+
+    // Graphique SVG : uniquement les captures SOU par mois
+    var souByMonth={};
+    if(souFn){
+      entries.forEach(function(e){
+        if(!e.isoDate) return;
+        var ok=(origin==='outdoor')?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU';
+        if(ok){ var ym=e.isoDate.substring(0,7); souByMonth[ym]=(souByMonth[ym]||0)+1; }
+      });
+    }
+    // S'assurer que tous les mois du trend apparaissent (y compris avec 0)
+    var souSeries=[{label:'Captures SOU', color:color,
+      values:trend.map(function(m){return{ym:m.ym,v:souByMonth[m.ym]||0};})}];
+    var allZero=souSeries[0].values.every(function(d){return d.v===0;});
+
+    var r='<div style="margin-bottom:14px">';
+    r+='<div style="background:'+color+';color:#fff;padding:4px 10px;font-size:10px;font-weight:700;letter-spacing:.05em;border-radius:5px 5px 0 0">';
+    r+=esc(sectionTitle)+' &nbsp; '+arrow;
+    if(souC!==null) r+=' &nbsp; <span style="font-weight:400;opacity:.85">SOU total : '+souC+'</span>';
+    r+='</div>';
+    r+='<div style="border:1px solid #d0d0d0;border-top:none;padding:8px;background:#fafcfd">';
+    if(allZero||!trend.length){
+      r+='<div style="text-align:center;padding:22px 0;font-size:13px;font-weight:800;color:#10c985">0 capture</div>';
+    } else {
+      r+=svgBarChart(souSeries,{w:680,h:130,zeroLabel:'0 capture'});
+    }
+    r+='</div>';
+
+    // Grille tableau + zones côte à côte
+    r+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #d0d0d0;border-top:none">';
+    // Tableau chiffré
+    r+='<div style="border-right:1px solid #d0d0d0;padding:0">';
+    r+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+    r+='<thead><tr style="background:#f5f7f8">'
+      +'<th style="padding:3px 8px;border-bottom:1px solid #d0d0d0;color:#555;font-weight:500;text-align:left">Mois</th>'
+      +'<th style="padding:3px 8px;border-bottom:1px solid #d0d0d0;text-align:right">Visites</th>'
+      +(souFn?'<th style="padding:3px 8px;border-bottom:1px solid #d0d0d0;text-align:right;color:'+color+'">SOU</th>':'')
+      +'</tr></thead><tbody>';
+    var months6=trend.slice(-6);
+    if(!months6.length){
+      r+='<tr><td colspan="'+(souFn?3:2)+'" style="padding:5px;text-align:center;color:#999">Aucune donnée</td></tr>';
+    } else {
+      months6.forEach(function(m,i){
+        var p=m.ym.split('-');
+        var lbl=(ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0];
+        var souM=souFn?entries.filter(function(e){
+          return e.isoDate&&e.isoDate.substring(0,7)===m.ym&&
+            (origin==='outdoor'?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU');
+        }).length:null;
+        r+='<tr style="background:'+(i%2===0?'#fff':'#f9fbfc')+'">'
+          +'<td style="padding:3px 8px;border-bottom:1px solid #f0f0f0">'+lbl+'</td>'
+          +'<td style="padding:3px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600">'+m.count+'</td>'
+          +(souFn?'<td style="padding:3px 8px;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:700;color:'+(souM>0?color:'#bbb')+'">'+souM+'</td>':'')
+          +'</tr>';
+      });
+    }
+    r+='</tbody></table></div>';
+    // Top zones
+    r+='<div style="padding:8px 10px">';
+    r+='<div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#666;margin-bottom:6px">Top zones</div>';
+    r+=zoneBarsPrint(entries, color);
+    r+='</div>';
+    r+='</div>'; // grille
+    r+='</div>'; // section
+    return r;
+  }
+
+  h+=rodentSection('Voie extérieure (raticide)','#f97316',rat,'outdoor',souCount);
+  h+=rodentSection('Intérieur — pièges mécaniques','#0da8d2',mech,'indoor',souCount);
+  h+=rodentSection('Intérieur — boîtes à colles','#f5a623',glue,'indoor',souCount);
+
+  // ── Synthèse de tendance ───────────────────────────────────
+  h+='<div style="border:1.5px solid #b0b0b0;border-radius:5px;padding:12px;margin-bottom:12px">';
+  h+='<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;color:#0a7a9a">Synthèse de tendance</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:11px">';
+  h+='<thead><tr style="background:#e8f4f8">';
+  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0;text-align:left">Source</th>';
+  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0;text-align:center">Tendance</th>';
+  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0;text-align:right">Captures SOU</th>';
+  h+='<th style="padding:4px 8px;border:1px solid #d0d0d0">Dernier mois actif (SOU)</th>';
+  h+='</tr></thead><tbody>';
+
+  // Helpers SOU par mois pour tendance et dernier mois
+  function souTrend(entries, origin){
+    var byM={};
+    entries.forEach(function(e){
+      if(!e.isoDate) return;
+      var ok=(origin==='outdoor')?rodentCodeOutdoor(e.statut)==='SOU':rodentCodeIndoor(e.statut)==='SOU';
+      if(ok){ var ym=e.isoDate.substring(0,7); byM[ym]=(byM[ym]||0)+1; }
+    });
+    return Object.keys(byM).sort().map(function(ym){return{ym:ym,count:byM[ym]};});
+  }
+
+  function synthRowFK(label, icon, entries, color){
+    // FK : tendance sur captures totales (sum sur tous types), pas les visites
+    var capByM={};
+    fkTypes.forEach(function(t){
+      Object.keys(fkStatsByKey[t.key].byMonth).forEach(function(ym){
+        capByM[ym]=(capByM[ym]||0)+(fkStatsByKey[t.key].byMonth[ym]||0);
+      });
+    });
+    var trend=Object.keys(capByM).sort().map(function(ym){return{ym:ym,count:capByM[ym]};});
+    var arrow=trend.length>=2?trendArrow(trend):'<span style="color:#999">—</span>';
+    var last=trend.length?trend[trend.length-1]:null;
+    var lastLbl='—';
+    if(last){var p=last.ym.split('-');lastLbl=(ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0]+' ('+last.count+')';}
+    return '<tr>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8"><span style="font-size:13px">'+icon+'</span> <b>'+esc(label)+'</b></td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:center">'+arrow+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:right;font-weight:700;color:'+color+'">'+fkGrandTotal+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;color:#555">'+lastLbl+'</td>'
+      +'</tr>';
+  }
+
+  function synthRowSOU(label, icon, entries, origin, color){
+    var trend=souTrend(entries, origin);
+    var arrow=trend.length>=2?trendArrow(trend):'<span style="color:#999">—</span>';
+    var totalSou=trend.reduce(function(a,b){return a+b.count;},0);
+    var last=trend.length?trend[trend.length-1]:null;
+    var lastLbl=totalSou===0
+      ? '<b style="color:#10c985">0 capture</b>'
+      : last?(function(){var p=last.ym.split('-');return (ML[parseInt(p[1],10)-1]||'M'+p[1])+' '+p[0]+' ('+last.count+' SOU)';})()
+      : '—';
+    return '<tr>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8"><span style="font-size:13px">'+icon+'</span> <b>'+esc(label)+'</b></td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:center">'+(totalSou===0?'<b style="color:#10c985">✓ Aucune</b>':arrow)+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;text-align:right;font-weight:800;color:'+(totalSou===0?'#10c985':color)+'">'+(totalSou===0?'0':totalSou)+'</td>'
+      +'<td style="padding:4px 8px;border:1px solid #e8e8e8;color:#555">'+lastLbl+'</td>'
+      +'</tr>';
+  }
+
+  h+=synthRowFK('Insectes volants (FK)','🦟',fk,'#14b8a6');
+  h+=synthRowSOU('Rongeurs — Voie extérieure','🌳',rat,'outdoor','#f97316');
+  h+=synthRowSOU('Rongeurs — Pièges mécaniques','🏭',mech,'indoor','#0da8d2');
+  h+=synthRowSOU('Rongeurs — Boîtes à colles','🟡',glue,'indoor','#f5a623');
+  h+='</tbody></table>';
+  h+='<div style="font-size:9px;color:#888;margin-top:8px;padding-top:6px;border-top:1px solid #e0e0e0">';
+  h+='Légende : <b style="color:#e8445a">▲ Hausse &gt;10%</b> &nbsp; <b style="color:#f5a623">→ Stable ±10%</b> &nbsp; <b style="color:#10c985">▼ Baisse &gt;10%</b>';
+  h+=' &nbsp;(3 derniers mois vs 3 précédents)';
+  h+='</div>';
+  h+='</div>';
+
+  // ── Pied de page officiel ──────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1px solid #d0d0d0;font-size:9.5px;color:#666">';
+  h+='<tr>';
+  h+='<td style="padding:4px 10px;border-right:1px solid #d0d0d0">Document : <b style="font-family:monospace;color:#0a7a9a">ENR-HSE 23</b></td>';
+  h+='<td style="padding:4px 10px;border-right:1px solid #d0d0d0;text-align:center">Rapport de tendance — Suivi nuisibles</td>';
+  h+='<td style="padding:4px 10px;text-align:right">Généré le : <b>'+todayStr+'</b></td>';
+  h+='</tr>';
+  h+='</table>';
+
+  h+='</div>'; // pestRapportPrint
+  body.innerHTML=h;
+}
+
+function printRapportTendanceNuisibles(){
+  var el=document.getElementById('pestRapportPrint');
+  if(!el){ window.print(); return; }
+  var w=window.open('','_blank','width=920,height=750');
+  if(!w) return;
+  var styles='<style>'
+    +'*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:11px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'th,td{padding:4px 8px;border:1px solid #d0d0d0;font-size:10.5px;vertical-align:top}'
+    +'@media print{'
+    +'  body{padding:10px 14px}'
+    +'  @page{margin:1cm;size:A4}'
+    +'}'
+    +'</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport de tendance nuisibles — ENR-HSE 23</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(function(){ w.print(); }, 400);
 }
 
 /* ══════════════════════════════════════════════════════════════
