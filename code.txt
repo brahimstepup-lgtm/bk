@@ -4072,6 +4072,136 @@ function readChimiquesData() {
 
 function getChimiquesForClient() { return readChimiquesData(); }
 
+// ════════════════════════════════════════════════════════════
+// ── DÉCHETS (feuille "Fiche de suivi dechets", gid=465472655) ─
+// Lecture générique : ligne d'entête + lignes brutes, avec
+// extraction d'un éventuel lien (HYPERLINK / RichText / URL en
+// clair) par ligne pour ouvrir un document dans le dashboard.
+// Renvoie :
+//   { headers:[...], rows:[{ cells:[...], url:'' }, …],
+//     sheetName:'', sourceUrl:'', error:'' }
+// ════════════════════════════════════════════════════════════
+var DECHETS_SHEET_GID  = 465472655;
+var DECHETS_SHEET_NAME = 'Fiche de suivi dechets';
+
+function readDechetsData() {
+  var out = {
+    headers: [], rows: [], sheetName: '',
+    sourceUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+               '/edit?gid=' + DECHETS_SHEET_GID + '#gid=' + DECHETS_SHEET_GID,
+    error: ''
+  };
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+    var sh = null;
+
+    // 1. Cherche par GID
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getSheetId() === DECHETS_SHEET_GID) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon par nom exact
+    if (!sh) {
+      var target = normalize(DECHETS_SHEET_NAME);
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "dechet"
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()).indexOf('dechet') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) { out.error = 'Feuille « ' + DECHETS_SHEET_NAME + ' » introuvable'; return out; }
+    out.sheetName = sh.getName();
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null, formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e0) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(eF) { formulas = null; }
+    if (!data || data.length < 1) return out;
+
+    // ── Helper : extrait l'URL d'une cellule ──
+    function cellUrl(rIdx, cIdx) {
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      var v = data[rIdx][cIdx];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch(eU) {}
+      }
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
+
+    // ── Détection de la ligne d'entête : 1ère ligne avec >= 2 cellules ──
+    var hdrRow = -1;
+    for (var i = 0; i < Math.min(data.length, 8); i++) {
+      var nonEmpty = 0;
+      for (var c = 0; c < data[i].length; c++) {
+        if (!isNull(data[i][c]) && String(data[i][c]).trim() !== '') nonEmpty++;
+      }
+      if (nonEmpty >= 2) { hdrRow = i; break; }
+    }
+    if (hdrRow < 0) hdrRow = 0;
+
+    // Entêtes (on retire les colonnes vides en fin de ligne)
+    for (var c = 0; c < data[hdrRow].length; c++) {
+      out.headers.push(String(data[hdrRow][c] || '').replace(/[\n\r]+/g, ' ').trim());
+    }
+    while (out.headers.length && out.headers[out.headers.length - 1] === '') out.headers.pop();
+
+    // ── Lignes de données ──
+    for (var i = hdrRow + 1; i < data.length; i++) {
+      var row = data[i] || [];
+      var anyVal = false;
+      for (var c = 0; c < row.length; c++) {
+        if (!isNull(row[c]) && String(row[c]).trim() !== '') { anyVal = true; break; }
+      }
+      if (!anyVal) continue;
+
+      var cells = [];
+      for (var ci = 0; ci < out.headers.length; ci++) cells.push(safeText(row[ci]));
+
+      var url = '';
+      for (var ci = 0; ci < out.headers.length && !url; ci++) url = cellUrl(i, ci);
+
+      out.rows.push({ cells: cells, url: url });
+    }
+  } catch(e) {
+    out.error = e.toString();
+  }
+  return out;
+}
+
+function getDechetsForClient() { return readDechetsData(); }
+
 // ── Dotations EPI ─────────────────────────────────────────────
 var EPI_DOT_SHEET_NAME = 'EPI_Dotations';
 
