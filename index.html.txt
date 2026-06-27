@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SOBCO 3 – HSE Master Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -3422,6 +3423,15 @@ html.light .pests-search-input{background:#edf2f7}
            style="width:100%;height:auto;display:block"
            onerror="this.onerror=null;this.src='https://lh3.googleusercontent.com/d/1UWxJY2rrcVxn7cmLDIlx07AFAXaAryat=w2000';">
     </a>
+  </div>
+
+  <!-- ─── BOUTON EXPORT PDF ─── -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button class="btn" onclick="exportPestsPdf()"
+      style="display:flex;align-items:center;gap:6px;font-size:11px;padding:7px 14px;background:var(--p2);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Exporter PDF — ENR-HSE-21
+    </button>
   </div>
 
   <!-- ─── SECTION 1 : INSECTES VOLANTS (FK) ─── -->
@@ -12027,6 +12037,198 @@ function confirmDeleteUser(un,dn){if(!confirm('Supprimer "'+dn+'" (@'+un+') ?\nA
   if(s){try{currentUser=JSON.parse(s);onLoginSuccess();return;}catch(e){sessionStorage.removeItem('rbac_user');}}
   document.getElementById('loginPage').style.display='flex';
 })();
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   EXPORT PDF — ENR-HSE-21 Recensement des nuisibles
+   ══════════════════════════════════════════════════════════ */
+function exportPestsPdf(){
+  if(typeof window.jspdf === 'undefined'){
+    alert('La bibliothèque PDF est en cours de chargement, veuillez réessayer dans quelques secondes.');
+    return;
+  }
+  var jsPDF = window.jspdf.jsPDF;
+  var doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+
+  var pageW = 210, pageH = 297, margin = 14, contentW = pageW - margin * 2;
+  var y = margin;
+
+  /* ── Couleurs ── */
+  var C = { teal:[10,122,154], dark:[7,24,32], light:[230,242,248], grey:[100,120,130], red:[220,53,69], green:[25,135,84], amber:[255,152,0], border:[40,80,100] };
+
+  /* ── helpers ── */
+  function fmtDate(iso){ if(!iso) return '—'; var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+  function todayStr(){ var d=new Date(); return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+'/'+d.getFullYear(); }
+  function pageBreakIfNeeded(h){
+    if(y + h > pageH - margin){ doc.addPage(); y = margin; }
+  }
+
+  /* ── En-tête ── */
+  doc.setFillColor.apply(doc, C.teal); doc.rect(0, 0, pageW, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(15); doc.setFont('helvetica','bold');
+  doc.text('SOBCO 3 – HSE Master Dashboard', margin, 10);
+  doc.setFontSize(11); doc.setFont('helvetica','normal');
+  doc.text('Recensement des nuisibles', margin, 17);
+  doc.setFontSize(8);
+  doc.text('Réf. document : ENR-HSE-21', margin, 23);
+  doc.text('Date d\'édition : ' + todayStr(), pageW - margin, 23, {align:'right'});
+
+  y = 34;
+
+  /* ── Résumé global ── */
+  if(D && D.pests){
+    var sections = [
+      { key:'rat',  label:'Boîtes à raticide (extérieur)', icon:'🐀' },
+      { key:'mech', label:'Pièges mécaniques (intérieur)',  icon:'🪤' },
+      { key:'glue', label:'Boîtes à colles (intérieur)',   icon:'📦' },
+      { key:'fk',   label:'Insectes volants (fly-killers)',  icon:'🦟' }
+    ];
+
+    sections.forEach(function(sec){
+      var s = D.pests[sec.key];
+      if(!s || !s.entries || !s.entries.length) return;
+      var entries = s.entries;
+      var total = entries.length;
+
+      /* nombre de captures (SOU) */
+      var captures = entries.filter(function(e){
+        var st = String(e.statut||'').toUpperCase();
+        return st.indexOf('SOU')>-1 || st.indexOf('CAPTUR')>-1;
+      }).length;
+
+      /* plage de dates */
+      var dates = entries.map(function(e){return e.isoDate;}).filter(Boolean).sort();
+      var dateRange = dates.length ? fmtDate(dates[0]) + ' → ' + fmtDate(dates[dates.length-1]) : '—';
+
+      /* zones distinctes */
+      var zones = {};
+      entries.forEach(function(e){ if(e.zone) zones[e.zone]=1; });
+      var nbZones = Object.keys(zones).length;
+
+      /* conformité */
+      var ok = entries.filter(function(e){return pestStatutKind(e.statut)==='ok';}).length;
+      var pct = total>0 ? Math.round(ok/total*100) : null;
+
+      /* ── Titre section ── */
+      pageBreakIfNeeded(14);
+      doc.setFillColor.apply(doc, C.dark); doc.rect(margin, y, contentW, 9, 'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+      doc.text(sec.label, margin+3, y+6);
+      y += 12;
+
+      /* ── KPI boxes ── */
+      var kpis = [
+        {lbl:'Total', val:String(total)},
+        {lbl:'Captures (SOU)', val:String(captures)},
+        {lbl:'Emplacements', val:String(nbZones)},
+        {lbl:'Conformité', val: pct!==null ? pct+'%' : '—'}
+      ];
+      var bw = (contentW - 3*3) / 4, bh = 16;
+      pageBreakIfNeeded(bh+4);
+      kpis.forEach(function(k, i){
+        var bx = margin + i*(bw+3);
+        doc.setFillColor.apply(doc, C.light); doc.rect(bx, y, bw, bh, 'F');
+        doc.setDrawColor.apply(doc, C.border); doc.rect(bx, y, bw, bh, 'S');
+        doc.setTextColor.apply(doc, C.grey); doc.setFontSize(7); doc.setFont('helvetica','normal');
+        doc.text(k.lbl, bx+bw/2, y+5, {align:'center'});
+        doc.setTextColor.apply(doc, C.dark); doc.setFontSize(11); doc.setFont('helvetica','bold');
+        doc.text(k.val, bx+bw/2, y+12, {align:'center'});
+      });
+      y += bh + 4;
+
+      /* plage de dates */
+      doc.setTextColor.apply(doc, C.grey); doc.setFontSize(7); doc.setFont('helvetica','italic');
+      doc.text('Période : ' + dateRange, margin, y);
+      y += 5;
+
+      /* ── Tableau des 30 dernières entrées ── */
+      var headers = s.headers || [];
+      if(!headers.length && entries.length && entries[0].raw) headers = entries[0].raw.map(function(_,i){return 'Col '+(i+1);});
+
+      /* colonnes à afficher : date, zone, statut, action (les 4 premières significatives) */
+      var meta = s.meta || {};
+      var colsIdx = [];
+      if(meta.primaryDate>=0) colsIdx.push(meta.primaryDate);
+      if(meta.primaryZone>=0) colsIdx.push(meta.primaryZone);
+      if(meta.primaryStatut>=0) colsIdx.push(meta.primaryStatut);
+      if(meta.primaryAction>=0) colsIdx.push(meta.primaryAction);
+      /* fallback : on prend les 4 premières colonnes */
+      if(!colsIdx.length && headers.length){
+        colsIdx = headers.slice(0,4).map(function(_,i){return i;});
+      }
+      colsIdx = colsIdx.filter(function(v,i,a){return a.indexOf(v)===i && v>=0;});
+
+      var colLabels = colsIdx.map(function(i){return String(headers[i]||('C'+(i+1))).trim();});
+      var colW = colsIdx.length ? contentW / colsIdx.length : contentW;
+      var rowH = 6, headerH = 8;
+      var maxRows = 30;
+      var rows = entries.slice().sort(function(a,b){
+        var da=a.isoDate||'', db=b.isoDate||'';
+        return da<db?1:(da>db?-1:0);
+      }).slice(0, maxRows);
+
+      /* header tableau */
+      pageBreakIfNeeded(headerH + rowH * 3);
+      doc.setFillColor.apply(doc, C.teal);
+      doc.rect(margin, y, contentW, headerH, 'F');
+      doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont('helvetica','bold');
+      colLabels.forEach(function(lbl, ci){
+        doc.text(String(lbl).substring(0,20), margin + ci*colW + 2, y + 5.5);
+      });
+      y += headerH;
+
+      /* lignes */
+      rows.forEach(function(e, ri){
+        pageBreakIfNeeded(rowH + 2);
+        var bg = ri%2===0 ? [255,255,255] : [240,248,252];
+        doc.setFillColor.apply(doc, bg); doc.rect(margin, y, contentW, rowH, 'F');
+        doc.setTextColor.apply(doc, C.dark); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
+        colsIdx.forEach(function(idx, ci){
+          var val = '';
+          if(idx === meta.primaryDate) val = fmtDate(e.isoDate) || String(e.date||'');
+          else if(idx === meta.primaryZone) val = String(e.zone||'');
+          else if(idx === meta.primaryStatut) val = String(e.statut||'');
+          else if(idx === meta.primaryAction) val = String(e.action||'');
+          else if(e.raw && e.raw[idx]!==undefined) val = String(e.raw[idx]||'');
+          doc.text(String(val).substring(0,30), margin + ci*colW + 2, y + 4.2);
+        });
+        /* bordure basse */
+        doc.setDrawColor(220,235,240); doc.line(margin, y+rowH, margin+contentW, y+rowH);
+        y += rowH;
+      });
+
+      if(entries.length > maxRows){
+        doc.setTextColor.apply(doc, C.grey); doc.setFontSize(7); doc.setFont('helvetica','italic');
+        y += 2;
+        pageBreakIfNeeded(6);
+        doc.text('... ' + (entries.length - maxRows) + ' ligne(s) supplémentaire(s) non affichée(s)', margin, y);
+        y += 5;
+      }
+
+      y += 8;
+    });
+  } else {
+    doc.setTextColor.apply(doc, C.grey); doc.setFontSize(10);
+    doc.text('Aucune donnée nuisibles disponible.', margin, y);
+    y += 10;
+  }
+
+  /* ── Pied de page ── */
+  var totalPages = doc.getNumberOfPages();
+  for(var p=1; p<=totalPages; p++){
+    doc.setPage(p);
+    doc.setFillColor.apply(doc, C.dark); doc.rect(0, pageH-10, pageW, 10, 'F');
+    doc.setTextColor(150,190,210); doc.setFontSize(7); doc.setFont('helvetica','normal');
+    doc.text('ENR-HSE-21 — Recensement des nuisibles — SOBCO 3', margin, pageH-3.5);
+    doc.text('Page ' + p + ' / ' + totalPages, pageW-margin, pageH-3.5, {align:'right'});
+  }
+
+  /* ── Téléchargement ── */
+  var filename = 'ENR-HSE-21_Recensement-nuisibles_' + new Date().toISOString().slice(0,10) + '.pdf';
+  doc.save(filename);
+}
 </script>
 </body>
 </html>
