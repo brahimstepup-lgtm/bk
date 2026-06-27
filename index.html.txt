@@ -4027,24 +4027,21 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 <!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
+<!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
 <div class="modal-bg" id="fichesTechniquesModal" style="display:none" onclick="if(event.target===this)closeModal('fichesTechniquesModal')">
-  <div class="modal-panel" style="max-width:98vw;width:98vw;height:92vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
-    <div class="modal-top" style="flex-shrink:0">
+  <div class="modal-panel" style="max-width:960px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
       <div class="modal-badge" style="background:rgba(71,85,105,.18);border-color:rgba(71,85,105,.5);color:#475569">📄</div>
       <div class="modal-hdr-info">
         <div class="modal-hdr-name">Fiches techniques</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px">Source : Google Sheet — onglet FICHES TECHNIQUES</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printFichesTechniques()">🖨️ Imprimer / PDF</button>
+        </div>
       </div>
-      <a href="https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1221571474#gid=1221571474"
-         target="_blank" rel="noopener noreferrer"
-         class="btn" style="font-size:10px;padding:3px 10px;text-decoration:none;color:inherit;flex-shrink:0">↗ Ouvrir dans Sheets</a>
       <button class="modal-close" onclick="closeModal('fichesTechniquesModal')">✕</button>
     </div>
-    <div style="flex:1;overflow:hidden;border-top:1px solid var(--border)">
-      <iframe id="fichesTechniquesIframe"
-              src=""
-              style="width:100%;height:100%;border:none;display:block"
-              allowfullscreen></iframe>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="fichesTechniquesBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération…</div></div>
     </div>
   </div>
 </div>
@@ -12220,11 +12217,84 @@ var REF_COLORS = {
 function openFichesTechniques(){
   var modal=document.getElementById('fichesTechniquesModal');
   if(!modal) return;
-  var iframe=document.getElementById('fichesTechniquesIframe');
-  if(iframe && !iframe.src){
-    iframe.src='https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1221571474&rm=minimal';
-  }
   modal.style.display='flex';
+  renderFichesTechniques();
+}
+
+function renderFichesTechniques(){
+  var el=document.getElementById('fichesTechniquesBody');
+  if(!el) return;
+  var rows=((D||{}).fichesTechniques)||[];
+  var srcUrl=((D||{}).fichesTechniquesSourceUrl)||'';
+  if(!rows.length){
+    el.innerHTML='<div style="text-align:center;padding:32px;color:var(--text3)">Aucune fiche technique disponible.</div>';
+    return;
+  }
+  var h='<div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">';
+  h+='<span style="font-size:12px;color:var(--text3)">'+rows.length+' fiche(s)</span>';
+  if(srcUrl) h+='<a href="'+srcUrl+'" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--accent);text-decoration:none">↗ Ouvrir dans Sheets</a>';
+  h+='</div>';
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  h+='<thead><tr style="background:var(--card2);border-bottom:2px solid var(--border)">';
+  h+='<th style="padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap">Réf.</th>';
+  h+='<th style="padding:8px 10px;text-align:left;font-weight:600">Nom</th>';
+  h+='<th style="padding:8px 10px;text-align:left;font-weight:600">Type</th>';
+  h+='<th style="padding:8px 10px;text-align:left;font-weight:600">Produit / Cible</th>';
+  h+='<th style="padding:8px 10px;text-align:left;font-weight:600">Observations</th>';
+  h+='<th style="padding:8px 10px;text-align:center;font-weight:600">Lien</th>';
+  h+='</tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var bg=i%2===0?'background:var(--card)':'background:var(--card2)';
+    h+='<tr style="'+bg+';border-bottom:1px solid var(--border)">';
+    h+='<td style="padding:7px 10px;white-space:nowrap"><span style="background:#0369a1;color:#fff;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700">'+(r.ref||'—')+'</span></td>';
+    h+='<td style="padding:7px 10px;font-weight:600">'+(r.nom||'—')+'</td>';
+    h+='<td style="padding:7px 10px;color:var(--text2)">'+(r.type||'—')+'</td>';
+    h+='<td style="padding:7px 10px;color:var(--text2)">'+(r.produit||'—')+'</td>';
+    h+='<td style="padding:7px 10px;color:var(--text3);font-size:11px">'+(r.obs||'—')+'</td>';
+    h+='<td style="padding:7px 10px;text-align:center">';
+    if(r.url) h+='<a href="'+r.url+'" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-size:11px;text-decoration:none">↗ Voir</a>';
+    else h+='<span style="color:var(--text3)">—</span>';
+    h+='</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  el.innerHTML=h;
+}
+
+function printFichesTechniques(){
+  var rows=((D||{}).fichesTechniques)||[];
+  var srcUrl=((D||{}).fichesTechniquesSourceUrl)||'';
+  var today=new Date().toLocaleDateString('fr-FR');
+  var w=window.open('','_blank');
+  if(!w) return;
+  var h='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fiches Techniques</title>';
+  h+='<style>@page{size:A4 landscape;margin:15mm}body{font-family:Arial,sans-serif;font-size:11pt;color:#111;margin:0}';
+  h+='h2{font-size:14pt;margin:0 0 4px}p{font-size:9pt;color:#555;margin:0 0 12px}';
+  h+='table{width:100%;border-collapse:collapse;font-size:10pt}';
+  h+='thead tr{background:#0f172a;color:#fff}th{padding:8px 10px;text-align:left;font-weight:600}';
+  h+='tbody tr:nth-child(even){background:#f1f5f9}td{padding:7px 10px;border-bottom:1px solid #e2e8f0}';
+  h+='.ref{display:inline-block;background:#0369a1;color:#fff;border-radius:4px;padding:2px 7px;font-size:9pt;font-weight:700}';
+  h+='.footer{margin-top:14px;font-size:8pt;color:#94a3b8;display:flex;justify-content:space-between}';
+  h+='a{color:#0369a1}@media print{a[href]:after{content:none}}</style></head><body>';
+  h+='<h2>Fiches Techniques — Produits Nuisibles</h2>';
+  h+='<p>Imprimé le '+today+(srcUrl?' — Source : '+srcUrl:'')+'</p>';
+  h+='<table><thead><tr><th>Réf.</th><th>Nom</th><th>Type</th><th>Produit / Cible</th><th>Observations</th><th>Lien</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    h+='<tr>';
+    h+='<td><span class="ref">'+(r.ref||'—')+'</span></td>';
+    h+='<td style="font-weight:600">'+(r.nom||'—')+'</td>';
+    h+='<td>'+(r.type||'—')+'</td>';
+    h+='<td>'+(r.produit||'—')+'</td>';
+    h+='<td style="font-size:9pt;color:#475569">'+(r.obs||'—')+'</td>';
+    h+='<td>'+(r.url?'<a href="'+r.url+'">↗ Voir</a>':'—')+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div class="footer"><span>SOBCO 3 — HSE Dashboard</span><span>'+today+'</span></div>';
+  h+='</body></html>';
+  w.document.write(h);
+  w.document.close();
+  w.focus();
+  setTimeout(function(){w.print();},400);
 }
 
 function openListeProduitsChimiques(){
