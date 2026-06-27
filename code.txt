@@ -1502,15 +1502,16 @@ function readFichesTechniques(ss) {
     var iNom=-1, iType=-1, iProduit=-1, iRef=-1, iUrl=-1, iObs=-1;
     headers.forEach(function(h, i){
       var n = normalize(h);
-      if(iNom<0    && (n.indexOf('nom')>-1||n.indexOf('libelle')>-1||n.indexOf('document')>-1)) iNom=i;
-      if(iType<0   && (n.indexOf('type')>-1||n.indexOf('categor')>-1||n.indexOf('ref')>-1)) iType=i;
-      if(iProduit<0&& (n.indexOf('produit')>-1||n.indexOf('article')>-1||n.indexOf('chimique')>-1)) iProduit=i;
-      if(iRef<0    && (n.indexOf('reference')>-1||n.indexOf('numero')>-1||n.indexOf('code')>-1)) iRef=i;
-      if(iUrl<0    && (n.indexOf('lien')>-1||n.indexOf('url')>-1||n.indexOf('fds')>-1||n.indexOf('fiche')>-1||n.indexOf('document')>-1||n.indexOf('drive')>-1)) iUrl=i;
+      if(iNom<0    && (n==='nom'||n==='libelle'||n==='designation'||n==='document'||n==='produit'||n.indexOf('nom')===0)) iNom=i;
+      if(iType<0   && (n==='type'||n==='categorie'||n==='categor'||n.indexOf('type')===0)) iType=i;
+      if(iProduit<0&& (n.indexOf('produit')>-1||n.indexOf('chimique')>-1||n.indexOf('article')>-1)) iProduit=i;
+      if(iRef<0    && (n==='ref'||n==='reference'||n==='numero'||n==='code'||n.indexOf('ref')===0||n.indexOf('numero')===0)) iRef=i;
+      if(iUrl<0    && (n.indexOf('lien')>-1||n.indexOf('url')>-1||n.indexOf('drive')>-1||n.indexOf('fds')===0||n.indexOf('fiche')===0||n.indexOf('document')===0)) iUrl=i;
       if(iObs<0    && (n.indexOf('obs')>-1||n.indexOf('remarque')>-1||n.indexOf('comment')>-1||n.indexOf('note')>-1)) iObs=i;
     });
-    // Fallback : première colonne = nom
+    // Fallback : première colonne = nom, dernière colonne non-texte = url
     if(iNom<0) iNom=0;
+    // Si pas de colonne URL détectée, scanner chaque ligne directement (fait plus bas)
 
     for (var r = 1; r < data.length; r++) {
       var row = data[r];
@@ -1520,12 +1521,23 @@ function readFichesTechniques(ss) {
       // Chercher l'URL dans la colonne détectée, sinon scanner toute la ligne
       if(iUrl>=0) url=cellUrl(r,iUrl);
       if(!url){ for(var c=0;c<row.length;c++){ var u=cellUrl(r,c); if(u){url=u;break;} } }
+      var typeVal   = iType>=0    ? String(row[iType]   ||'').trim() : '';
+      var refVal    = iRef>=0     ? String(row[iRef]    ||'').trim() : '';
+      var prodVal   = iProduit>=0 ? String(row[iProduit]||'').trim() : '';
+      var obsVal    = iObs>=0     ? String(row[iObs]    ||'').trim() : '';
+      // Si type/ref vides mais header de la colonne URL contient "FDS"/"FT"/"MSDS", l'utiliser comme type
+      if(!typeVal && !refVal && iUrl>=0) {
+        var hdrLabel = normalize(headers[iUrl]||'');
+        if(hdrLabel.indexOf('fds')>-1) typeVal='FDS';
+        else if(hdrLabel.indexOf('msds')>-1) typeVal='MSDS';
+        else if(hdrLabel.indexOf('ft')>-1||hdrLabel.indexOf('fiche')>-1) typeVal='FT';
+      }
       entries.push({
         nom:     nom,
-        type:    iType>=0    ? String(row[iType]   ||'').trim() : '',
-        produit: iProduit>=0 ? String(row[iProduit]||'').trim() : '',
-        ref:     iRef>=0     ? String(row[iRef]    ||'').trim() : '',
-        obs:     iObs>=0     ? String(row[iObs]    ||'').trim() : '',
+        type:    typeVal,
+        produit: prodVal,
+        ref:     refVal,
+        obs:     obsVal,
         url:     url,
         raw:     row.map(function(c){return String(c||'').trim();})
       });

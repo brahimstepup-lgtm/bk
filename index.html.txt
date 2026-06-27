@@ -12241,15 +12241,29 @@ function openFichesTechniques(){
   renderFichesTechniques();
 }
 
-function openFicheViewer(nom, ref, url){
+// Convertit une URL Google Drive/Docs en URL prévisualisable dans un iframe
+function toPreviewUrl(url){
+  if(!url) return '';
+  // Google Drive file : /view ou /edit → /preview
+  var mDrive=url.match(/drive\.google\.com\/file\/d\/([^\/\?#]+)/);
+  if(mDrive) return 'https://drive.google.com/file/d/'+mDrive[1]+'/preview';
+  // Google Docs/Sheets/Slides : remplacer /edit par /preview
+  var mDocs=url.match(/(https:\/\/docs\.google\.com\/[^?#]+)\/(edit|view|pub)(\?.*)?/);
+  if(mDocs) return mDocs[1]+'/preview';
+  // Déjà une URL prévisualisable
+  if(url.indexOf('/preview')>-1) return url;
+  return url;
+}
+
+function openFicheViewer(nom, badge, url){
   var modal=document.getElementById('ficheViewerModal');
   if(!modal) return;
   document.getElementById('ficheViewerName').textContent=nom||'Fiche technique';
-  document.getElementById('ficheViewerSub').textContent=ref?'Référence : '+ref:'';
+  document.getElementById('ficheViewerSub').textContent=badge?badge:'';
   var extLink=document.getElementById('ficheViewerExtLink');
-  if(extLink){ extLink.href=url||'#'; }
+  if(extLink){ extLink.href=url||'#'; extLink.style.display=url?'':'none'; }
   var iframe=document.getElementById('ficheViewerIframe');
-  if(iframe){ iframe.src=url||''; }
+  if(iframe){ iframe.src=toPreviewUrl(url); }
   modal.style.display='flex';
 }
 
@@ -12266,23 +12280,32 @@ function renderFichesTechniques(){
   h+='<span style="font-size:12px;color:var(--text3)">'+rows.length+' fiche(s) référencée(s)</span>';
   if(srcUrl) h+='<a href="'+srcUrl+'" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--accent);text-decoration:none">↗ Ouvrir dans Sheets</a>';
   h+='</div>';
-  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px">';
   rows.forEach(function(r){
-    var label=r.ref||'FT';
-    var inner='<div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">';
-    inner+='<div style="width:44px;height:44px;border-radius:10px;background:#fef9c3;border:1.5px solid #fde68a;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:800;color:#92400e;letter-spacing:.03em">'+label+'</div>';
-    inner+='<div style="min-width:0">';
-    inner+='<div style="font-weight:700;font-size:13px;color:#3730a3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.nom||'—')+'</div>';
-    inner+='<div style="font-size:11px;color:var(--text3);margin-top:2px">Voir la fiche</div>';
+    // Badge : priorité type > ref > 'FT'
+    var badge=r.type||r.ref||'FT';
+    // Couleur du badge selon type
+    var badgeBg='#fef9c3', badgeBorder='#fde68a', badgeColor='#92400e';
+    var bl=badge.toUpperCase();
+    if(bl==='FDS'){badgeBg='#dbeafe';badgeBorder='#93c5fd';badgeColor='#1e40af';}
+    else if(bl==='MSDS'){badgeBg='#fce7f3';badgeBorder='#f9a8d4';badgeColor='#9d174d';}
+    var inner='<div style="display:flex;align-items:center;gap:12px;flex:1">';
+    inner+='<div style="width:46px;height:46px;min-width:46px;border-radius:10px;background:'+badgeBg+';border:1.5px solid '+badgeBorder+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:'+badgeColor+';letter-spacing:.03em;text-align:center;line-height:1.2">'+badge+'</div>';
+    inner+='<div style="flex:1">';
+    inner+='<div style="font-weight:700;font-size:13px;color:#3730a3;line-height:1.3;word-break:break-word">'+(r.nom||'—')+'</div>';
+    inner+='<div style="font-size:11px;color:var(--text3);margin-top:3px">Voir la fiche</div>';
     inner+='</div></div>';
     if(r.url){
-      var onclick="openFicheViewer("+JSON.stringify(r.nom||'')+","+JSON.stringify(r.ref||'')+","+JSON.stringify(r.url||'')+");event.preventDefault()";
-      h+='<a href="'+r.url+'" onclick="'+onclick.replace(/"/g,'&quot;')+'" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);text-decoration:none;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.10)\'" onmouseout="this.style.boxShadow=\'none\'">';
+      var safeNom=(r.nom||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var safeBadge=badge.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var safeUrl=(r.url||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var onclick="openFicheViewer('"+safeNom+"','"+safeBadge+"','"+safeUrl+"');return false;";
+      h+='<a href="'+r.url+'" onclick="'+onclick+'" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);text-decoration:none;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.10)\'" onmouseout="this.style.boxShadow=\'none\'">';
       h+=inner;
       h+='<span style="font-size:16px;color:var(--text3);flex-shrink:0">↗</span>';
       h+='</a>';
     } else {
-      h+='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card)">';
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);opacity:.7">';
       h+=inner;
       h+='</div>';
     }
