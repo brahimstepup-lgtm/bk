@@ -3489,6 +3489,11 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="openListeProduitsChimiques()">
       🧪 Liste des produits chimiques <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE-22</span>
     </button>
+    <a href="https://docs.google.com/spreadsheets/d/1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo/edit?gid=1221571474#gid=1221571474"
+       target="_blank" rel="noopener noreferrer"
+       class="btn" style="background:#475569;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px;text-decoration:none">
+      📄 Fiches techniques
+    </a>
     <button class="btn" style="background:var(--p2);color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
