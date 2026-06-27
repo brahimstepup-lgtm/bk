@@ -4048,7 +4048,7 @@ html.light .pests-search-input{background:#edf2f7}
 </div>
 
 <!-- ═══ MODAL VISIONNEUSE FICHE TECHNIQUE (interne) ═══ -->
-<div class="modal-bg" id="ficheViewerModal" style="display:none;z-index:1100" onclick="if(event.target===this)closeModal('ficheViewerModal')">
+<div class="modal-bg" id="ficheViewerModal" style="display:none;z-index:10010" onclick="if(event.target===this)closeModal('ficheViewerModal')">
   <div class="modal-panel" style="max-width:98vw;width:98vw;height:92vh;display:flex;flex-direction:column" onclick="event.stopPropagation()">
     <div class="modal-top" style="flex-shrink:0">
       <div class="modal-badge" style="background:rgba(71,85,105,.18);border-color:rgba(71,85,105,.5);color:#475569">📄</div>

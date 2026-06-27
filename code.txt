@@ -1496,50 +1496,63 @@ function readFichesTechniques(ss) {
       return '';
     }
 
-    // Détection des colonnes depuis la première ligne
+    // Lire les en-têtes (première ligne)
     var hdrRow = data[0];
     headers = hdrRow.map(function(h){ return String(h||'').trim(); });
-    var iNom=-1, iType=-1, iProduit=-1, iRef=-1, iUrl=-1, iObs=-1;
-    headers.forEach(function(h, i){
-      var n = normalize(h);
-      if(iNom<0    && (n==='nom'||n==='libelle'||n==='designation'||n==='document'||n==='produit'||n.indexOf('nom')===0)) iNom=i;
-      if(iType<0   && (n==='type'||n==='categorie'||n==='categor'||n.indexOf('type')===0)) iType=i;
-      if(iProduit<0&& (n.indexOf('produit')>-1||n.indexOf('chimique')>-1||n.indexOf('article')>-1)) iProduit=i;
-      if(iRef<0    && (n==='ref'||n==='reference'||n==='numero'||n==='code'||n.indexOf('ref')===0||n.indexOf('numero')===0)) iRef=i;
-      if(iUrl<0    && (n.indexOf('lien')>-1||n.indexOf('url')>-1||n.indexOf('drive')>-1||n.indexOf('fds')===0||n.indexOf('fiche')===0||n.indexOf('document')===0)) iUrl=i;
-      if(iObs<0    && (n.indexOf('obs')>-1||n.indexOf('remarque')>-1||n.indexOf('comment')>-1||n.indexOf('note')>-1)) iObs=i;
-    });
-    // Fallback : première colonne = nom, dernière colonne non-texte = url
-    if(iNom<0) iNom=0;
-    // Si pas de colonne URL détectée, scanner chaque ligne directement (fait plus bas)
 
+    // Détecter la colonne de nom (première colonne contenant du texte non-URL)
+    var iNom = -1;
+    for (var ci = 0; ci < headers.length; ci++) {
+      var hn = normalize(headers[ci]);
+      if (!/^https?/i.test(headers[ci]) && headers[ci] !== '') { iNom = ci; break; }
+    }
+    if (iNom < 0) iNom = 0;
+
+    // Pour chaque ligne de données : nom = cellule iNom, url = première URL trouvée dans la ligne
+    // type = déduit du header de la colonne contenant l'URL
     for (var r = 1; r < data.length; r++) {
       var row = data[r];
       var nom = String(row[iNom]||'').trim();
-      if(!nom) continue;
-      var url = '';
-      // Chercher l'URL dans la colonne détectée, sinon scanner toute la ligne
-      if(iUrl>=0) url=cellUrl(r,iUrl);
-      if(!url){ for(var c=0;c<row.length;c++){ var u=cellUrl(r,c); if(u){url=u;break;} } }
-      var typeVal   = iType>=0    ? String(row[iType]   ||'').trim() : '';
-      var refVal    = iRef>=0     ? String(row[iRef]    ||'').trim() : '';
-      var prodVal   = iProduit>=0 ? String(row[iProduit]||'').trim() : '';
-      var obsVal    = iObs>=0     ? String(row[iObs]    ||'').trim() : '';
-      // Si type/ref vides mais header de la colonne URL contient "FDS"/"FT"/"MSDS", l'utiliser comme type
-      if(!typeVal && !refVal && iUrl>=0) {
-        var hdrLabel = normalize(headers[iUrl]||'');
-        if(hdrLabel.indexOf('fds')>-1) typeVal='FDS';
-        else if(hdrLabel.indexOf('msds')>-1) typeVal='MSDS';
-        else if(hdrLabel.indexOf('ft')>-1||hdrLabel.indexOf('fiche')>-1) typeVal='FT';
+      if (!nom) continue;
+
+      // Scanner toutes les cellules pour trouver l'URL ET le type associé
+      var url = '', typeVal = '';
+      for (var c = 0; c < row.length; c++) {
+        if (c === iNom) continue;
+        var u = cellUrl(r, c);
+        if (u && !url) {
+          url = u;
+          // Déduire le type depuis le header de cette colonne
+          var hLabel = normalize(headers[c]||'');
+          if      (hLabel.indexOf('msds')>-1)                              typeVal='MSDS';
+          else if (hLabel.indexOf('fds')>-1)                               typeVal='FDS';
+          else if (hLabel.indexOf('ft')>-1||hLabel.indexOf('fiche')>-1)   typeVal='FT';
+          else                                                              typeVal='FT';
+        }
       }
+      // Si valeur texte directe ressemble à un type, l'utiliser
+      for (var c2 = 0; c2 < row.length; c2++) {
+        if (c2 === iNom) continue;
+        var v = String(row[c2]||'').trim().toUpperCase();
+        if (!typeVal && (v==='FDS'||v==='FT'||v==='MSDS')) { typeVal=v; break; }
+      }
+
+      // Autres colonnes texte (observations, infos supplémentaires)
+      var extras = [];
+      for (var c3 = 0; c3 < row.length; c3++) {
+        if (c3 === iNom) continue;
+        var tv = String(row[c3]||'').trim();
+        if (tv && !/^https?/i.test(tv) && tv.toUpperCase()!==typeVal) extras.push(tv);
+      }
+
       entries.push({
         nom:     nom,
-        type:    typeVal,
-        produit: prodVal,
-        ref:     refVal,
-        obs:     obsVal,
+        type:    typeVal || 'FT',
+        produit: '',
+        ref:     '',
+        obs:     extras.join(' — '),
         url:     url,
-        raw:     row.map(function(c){return String(c||'').trim();})
+        raw:     row.map(function(c){ return String(c||'').trim(); })
       });
     }
   } catch(e) {
