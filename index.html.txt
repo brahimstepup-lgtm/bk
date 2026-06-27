@@ -11991,14 +11991,15 @@ function renderRecensementNuisibles(){
   var tdBase='padding:5px 8px;border:1px solid #d0d0d0;font-size:10.5px';
   var h='';
 
-  // ── En-tête officiel ──────────────────────────────────────────
   h+='<div id="recensementNuisiblesPrint">';
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px">';
+
+  // ── En-tête officiel ──────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
   h+='<tr>';
   h+='<td style="'+tdBase+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
   h+='<td style="'+tdBase+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
   h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Recensement des nuisibles</div>';
-  h+='<div style="font-size:11px;color:#444;margin-top:3px">Inventaire des dispositifs de lutte antiparasitaire</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Enregistrement des types de nuisibles détectés</div>';
   h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#16a34a">'+todayStr+'</span></div>';
   h+='</td>';
   h+='<td style="'+tdBase+';width:190px;padding:0;vertical-align:top">';
@@ -12016,80 +12017,137 @@ function renderRecensementNuisibles(){
   h+='</tr>';
   h+='</table>';
 
-  // Helper : pour chaque emplacement unique, conserver la visite la plus récente
-  function buildCensus(section){
+  // ── Section RONGEURS ──────────────────────────────────────────
+  // Pour chaque zone avec au moins une capture SOU, on note la source, le nb
+  // de captures et la date de dernière détection.
+  var ratEntries =(D.pests.rat &&D.pests.rat.entries )||[];
+  var mechEntries=(D.pests.mech&&D.pests.mech.entries)||[];
+  var glueEntries=(D.pests.glue&&D.pests.glue.entries)||[];
+
+  // Construire la liste des lignes rongeurs par zone × source
+  var rongeursRows=[];
+  function collectRongeurs(entries, sourceLabel, coder){
     var byZone={};
-    var entries=(section&&section.entries)||[];
     entries.forEach(function(e){
+      var code=coder(e.statut);
+      if(code!=='SOU') return; // uniquement captures confirmées
       var z=String(e.zone||'').trim()||'(sans emplacement)';
-      if(!byZone[z]
-         ||(!byZone[z].isoDate && e.isoDate)
-         ||(e.isoDate && byZone[z].isoDate && e.isoDate > byZone[z].isoDate)){
-        byZone[z]={zone:z, lastDate:e.date||'—', isoDate:e.isoDate||'', lastStatut:e.statut||'—'};
+      if(!byZone[z]) byZone[z]={zone:z, source:sourceLabel, count:0, lastDate:'', isoDate:''};
+      byZone[z].count++;
+      if(!byZone[z].isoDate||(e.isoDate&&e.isoDate>byZone[z].isoDate)){
+        byZone[z].lastDate=e.date||'—'; byZone[z].isoDate=e.isoDate||'';
       }
     });
-    var rows=Object.keys(byZone).map(function(z){ return byZone[z]; });
-    rows.sort(function(a,b){ return a.zone.localeCompare(b.zone,undefined,{numeric:true}); });
-    return rows;
+    Object.keys(byZone).forEach(function(z){ rongeursRows.push(byZone[z]); });
   }
+  collectRongeurs(ratEntries,  'Boîte raticide (ext.)', rodentCodeOutdoor);
+  collectRongeurs(mechEntries, 'Piège mécanique (int.)', rodentCodeIndoor);
+  collectRongeurs(glueEntries, 'Boîte à colle (int.)',  rodentCodeIndoor);
+  rongeursRows.sort(function(a,b){ return a.zone.localeCompare(b.zone,undefined,{numeric:true}); });
 
-  // Helper : tableau d'inventaire pour une catégorie
-  function categoryTable(title, color, section){
-    var rows=buildCensus(section);
-    var t='<div style="background:'+color+';color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0">'
-        +'▸ '+title+' &nbsp;<span style="font-weight:400;opacity:.85">'+rows.length+' dispositif(s) recensé(s)</span></div>';
-    t+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:14px">';
-    t+='<thead><tr style="background:#f5f7f8">';
-    t+='<th style="'+tdBase+';width:32px;font-size:10px;font-weight:700;text-transform:uppercase;color:#444">#</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Emplacement / N° dispositif</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:120px">Dernière inspection</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:110px">Statut</th>';
-    t+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;width:140px">Observations</th>';
-    t+='</tr></thead><tbody>';
-    if(!rows.length){
-      t+='<tr><td colspan="5" style="'+tdBase+';text-align:center;color:#999;padding:12px">Aucune donnée disponible</td></tr>';
-    } else {
-      rows.forEach(function(r,i){
-        var bg=i%2===0?'#fff':'#f9fbfc';
-        t+='<tr style="background:'+bg+'">';
-        t+='<td style="'+tdBase+';color:#aaa;font-size:10px;text-align:center">'+(i+1)+'</td>';
-        t+='<td style="'+tdBase+';font-weight:600">'+esc(r.zone)+'</td>';
-        t+='<td style="'+tdBase+';text-align:center;font-family:monospace;font-size:10px">'+esc(r.lastDate)+'</td>';
-        t+='<td style="'+tdBase+';text-align:center;font-weight:700">'+esc(r.lastStatut)+'</td>';
-        t+='<td style="'+tdBase+'"></td>';
-        t+='</tr>';
+  h+='<div style="background:#7f1d1d;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0">'
+    +'🐀 RONGEURS &nbsp;<span style="font-weight:400;opacity:.85">'+rongeursRows.length+' zone(s) avec capture confirmée (SOU)</span></div>';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:16px">';
+  h+='<thead><tr style="background:#fef2f2">';
+  h+='<th style="'+tdBase+';width:28px;font-size:10px;font-weight:700;text-transform:uppercase;color:#444">#</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Zone / Emplacement</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Source de détection</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:80px">Nb captures</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:115px">Dernière détection</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;width:130px">Observations</th>';
+  h+='</tr></thead><tbody>';
+  if(!rongeursRows.length){
+    h+='<tr><td colspan="6" style="'+tdBase+';text-align:center;color:#999;padding:12px">Aucune capture de rongeur enregistrée</td></tr>';
+  } else {
+    rongeursRows.forEach(function(r,i){
+      var bg=i%2===0?'#fff':'#fff8f8';
+      h+='<tr style="background:'+bg+'">';
+      h+='<td style="'+tdBase+';color:#aaa;font-size:10px;text-align:center">'+(i+1)+'</td>';
+      h+='<td style="'+tdBase+';font-weight:600">'+esc(r.zone)+'</td>';
+      h+='<td style="'+tdBase+';color:#666">'+esc(r.source)+'</td>';
+      h+='<td style="'+tdBase+';text-align:center;font-weight:700;color:#dc2626">'+r.count+'</td>';
+      h+='<td style="'+tdBase+';text-align:center;font-family:monospace;font-size:10px">'+esc(r.lastDate)+'</td>';
+      h+='<td style="'+tdBase+'"></td>';
+      h+='</tr>';
+    });
+  }
+  h+='</tbody></table>';
+
+  // ── Section INSECTES VOLANTS (par type détecté) ───────────────
+  var fkEntries=(D.pests.fk&&D.pests.fk.entries)||[];
+  var fkHeaders=(D.pests.fk&&D.pests.fk.headers)||[];
+  var fkTypes=flyDetectTypes(fkHeaders);
+  var fkIdxMap=flyBuildIdxMap(fkHeaders);
+  if(fkIdxMap.num<0) fkIdxMap.num=flyFindCol(fkHeaders,'numero');
+
+  // Pour chaque type d'insecte détecté, construire les lignes par zone
+  var flyRows=[];
+  fkTypes.forEach(function(typeDef){
+    var stats=flyComputeStats(fkEntries, typeDef, fkIdxMap);
+    var byZone=stats.byZone; // zone → total captures
+    // Trouver la dernière date de capture par zone
+    var lastDateByZone={};
+    stats.rows.forEach(function(r){
+      var z=r.zone||'(sans emplacement)';
+      if(!lastDateByZone[z]||(r.isoDate&&r.isoDate>lastDateByZone[z].isoDate)){
+        lastDateByZone[z]={date:r.date||r.isoDate||'—', isoDate:r.isoDate||''};
+      }
+    });
+    Object.keys(byZone).forEach(function(z){
+      var ld=lastDateByZone[z]||{};
+      flyRows.push({
+        icon:typeDef.icon, label:typeDef.label, color:typeDef.color,
+        zone:z, count:byZone[z],
+        lastDate:ld.date||'—'
       });
-    }
-    t+='</tbody></table>';
-    return t;
-  }
+    });
+  });
+  flyRows.sort(function(a,b){
+    if(a.label!==b.label) return a.label.localeCompare(b.label);
+    return a.zone.localeCompare(b.zone,undefined,{numeric:true});
+  });
 
-  // ── Tableaux d'inventaire par catégorie ───────────────────────
-  h+=categoryTable('BOÎTES À RATICIDE — Voie extérieure','#c2410c',D.pests.rat);
-  h+=categoryTable('PIÈGES MÉCANIQUES — Intérieur usine','#0369a1',D.pests.mech);
-  h+=categoryTable('BOÎTES À COLLES — Intérieur usine','#0e7490',D.pests.glue);
-  h+=categoryTable('INSECTES VOLANTS — Fly-killers','#0a7a9a',D.pests.fk);
+  h+='<div style="background:#0a7a9a;color:#fff;padding:5px 12px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1.5px solid #b0b0b0">'
+    +'🦟 INSECTES VOLANTS &nbsp;<span style="font-weight:400;opacity:.85">'+flyRows.length+' zone(s) avec capture détectée</span></div>';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;border-top:none;margin-bottom:16px">';
+  h+='<thead><tr style="background:#f0f9ff">';
+  h+='<th style="'+tdBase+';width:28px;font-size:10px;font-weight:700;text-transform:uppercase;color:#444">#</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Type de nuisible</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444">Zone / Emplacement</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:90px">Nb captures</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;text-align:center;width:115px">Dernière détection</th>';
+  h+='<th style="'+tdBase+';font-size:10px;font-weight:700;text-transform:uppercase;color:#444;width:130px">Observations</th>';
+  h+='</tr></thead><tbody>';
+  if(!flyRows.length){
+    h+='<tr><td colspan="6" style="'+tdBase+';text-align:center;color:#999;padding:12px">Aucune capture d\'insecte volant enregistrée</td></tr>';
+  } else {
+    flyRows.forEach(function(r,i){
+      var bg=i%2===0?'#fff':'#f0f9ff';
+      h+='<tr style="background:'+bg+'">';
+      h+='<td style="'+tdBase+';color:#aaa;font-size:10px;text-align:center">'+(i+1)+'</td>';
+      h+='<td style="'+tdBase+';font-weight:700;color:'+r.color+'">'+r.icon+' '+esc(r.label)+'</td>';
+      h+='<td style="'+tdBase+';font-weight:600">'+esc(r.zone)+'</td>';
+      h+='<td style="'+tdBase+';text-align:center;font-weight:700;color:'+r.color+'">'+r.count+'</td>';
+      h+='<td style="'+tdBase+';text-align:center;font-family:monospace;font-size:10px">'+esc(r.lastDate)+'</td>';
+      h+='<td style="'+tdBase+'"></td>';
+      h+='</tr>';
+    });
+  }
+  h+='</tbody></table>';
 
   // ── Visa / Signatures ─────────────────────────────────────────
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-top:8px">';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-top:6px">';
   h+='<tr>';
-  h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
-  h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">Établi par</div>';
-  h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
-  h+='</td>';
-  h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
-  h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">Vérifié par</div>';
-  h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
-  h+='</td>';
-  h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
-  h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">Approuvé par</div>';
-  h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
-  h+='</td>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="'+tdBase+';width:33%;text-align:center;padding:18px 8px">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+    h+='</td>';
+  });
   h+='</tr>';
   h+='</table>';
 
   h+='</div>'; // fin recensementNuisiblesPrint
-
   body.innerHTML=h;
 }
 
