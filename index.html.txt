@@ -1955,6 +1955,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
+  <button class="tab"    onclick="goTab('enr',this)">🗂️ Enregistrements</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
   <button class="tab"    onclick="goTab('contracts',this)">📑 Contrats</button>
   <button class="tab"    onclick="goTab('permits',this)">📜 Permis de travail</button>
@@ -2731,6 +2732,63 @@ html.light .pests-search-input{background:#edf2f7}
           </tr>
         </thead>
         <tbody id="procBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ENREGISTREMENTS HSE ═══ -->
+<div id="enr" class="page">
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Enregistrements HSE — SOBCO 3</div>
+    <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
+      Liste maîtresse des formulaires et enregistrements (ENR) référencés par les
+      procédures HSE : code, intitulé, procédure de rattachement, durée de
+      conservation et statut. Alimentée par la feuille
+      <em style="color:var(--text3)">« enregistrements »</em> du classeur source.
+      Cliquez sur un intitulé <strong style="color:var(--p4)">souligné</strong>
+      ou sur l'icône <strong>📄</strong> pour afficher le formulaire directement
+      dans le dashboard.
+    </p>
+    <p id="enrSourceNote" style="font-size:10px;color:var(--amber);line-height:1.5;margin:8px 0 0;display:none">
+      ⚠️ Feuille « enregistrements » introuvable dans le classeur — la liste affichée
+      est la liste par défaut issue de l'analyse des procédures. Créez l'onglet
+      <strong>enregistrements</strong> (colonnes : Code | Intitulé | Procédure | Durée de conservation | Statut)
+      pour la gérer directement depuis le classeur.
+    </p>
+  </div>
+
+  <!-- Synthèse -->
+  <div class="tsum" id="enrSum"></div>
+
+  <!-- Barre de recherche -->
+  <div class="tag-search-bar">
+    <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;flex-shrink:0">🔍</span>
+    <input type="text" class="tag-search-input" id="enrSearch"
+           placeholder="Rechercher un enregistrement, un code (ex: ENR-HSE-07), une procédure…"
+           oninput="renderEnregistrements()">
+    <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
+            onclick="document.getElementById('enrSearch').value='';renderEnregistrements()">↺ Reset</button>
+  </div>
+
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Liste des enregistrements
+      <span id="enrListCount" style="color:var(--p4);font-size:10px;font-family:'JetBrains Mono',monospace;margin-left:4px">—</span>
+    </div>
+    <div class="tblw">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:36px">#</th>
+            <th style="width:120px">Code</th>
+            <th>Intitulé</th>
+            <th style="width:210px">Procédure de rattachement</th>
+            <th style="width:100px">Conservation</th>
+            <th style="width:110px">Statut</th>
+            <th style="width:80px;text-align:center">Document</th>
+          </tr>
+        </thead>
+        <tbody id="enrBody"></tbody>
       </table>
     </div>
   </div>
@@ -8008,6 +8066,9 @@ function render(data){
   // ── PROCÉDURES HSE ──────────────────────────────────────
   renderProcedures();
 
+  // ── ENREGISTREMENTS HSE ─────────────────────────────────
+  renderEnregistrements();
+
   // ── CONTRATS ────────────────────────────────────────────
   renderContracts();
   // ── PERMIS DE TRAVAIL ───────────────────────────────────
@@ -8276,6 +8337,117 @@ function renderProcedures(){
       extraCard.style.display = 'none';
     }
   }
+}
+
+// ══ ENREGISTREMENTS HSE ═══════════════════════════════════════
+// Rendu de la liste maîtresse des formulaires/enregistrements (ENR)
+// référencés par les procédures : liste filtrable + synthèse.
+function renderEnregistrements(){
+  if(!D) return;
+  var list = (D.enregistrements || []);
+
+  // Bandeau source : liste par défaut vs feuille du classeur
+  var noteEl = document.getElementById('enrSourceNote');
+  if(noteEl) noteEl.style.display = (D.enregistrementsFromSheet === false) ? '' : 'none';
+
+  // Filtre recherche
+  var qEl = document.getElementById('enrSearch');
+  var q   = qEl ? qEl.value.trim().toLowerCase() : '';
+  var filtered = list.filter(function(e){
+    if(!q) return true;
+    var hay = ((e.code||'') + ' ' + (e.intitule||'') + ' ' + (e.procedure||'') + ' ' + (e.statut||'')).toLowerCase();
+    return hay.indexOf(q) > -1;
+  });
+
+  function isAnomalie(e){
+    var s = String(e.statut||'').toLowerCase();
+    return s.indexOf('conflit') > -1 || s.indexOf('double') > -1 || s.indexOf('corriger') > -1;
+  }
+  function isAPreparer(e){
+    var s = String(e.statut||'').toLowerCase();
+    return s.indexOf('creer') > -1 || s.indexOf('créer') > -1 || s.indexOf('codifier') > -1;
+  }
+
+  // Synthèse
+  var total    = list.length;
+  var withCode = list.filter(function(e){
+    var c = String(e.code||'').trim();
+    return c && c.indexOf('?') < 0 && !/xxx/i.test(c);
+  }).length;
+  var aPrep    = list.filter(isAPreparer).length;
+  var anom     = list.filter(isAnomalie).length;
+  var sumEl = document.getElementById('enrSum');
+  if(sumEl){
+    sumEl.innerHTML =
+      '<div class="tsc"><div class="tsv" style="color:var(--p4)">'+fmtNum(total)+'</div><div class="tsl">Total Enregistrements</div></div>'+
+      '<div class="tsc"><div class="tsv" style="color:var(--green)">'+fmtNum(withCode)+'</div><div class="tsl">Codifiés</div></div>'+
+      '<div class="tsc"><div class="tsv" style="color:var(--amber)">'+fmtNum(aPrep)+'</div><div class="tsl">À préparer / codifier</div></div>'+
+      '<div class="tsc"><div class="tsv" style="color:var(--red)">'+fmtNum(anom)+'</div><div class="tsl">Anomalies de code</div></div>';
+  }
+
+  // Compteur
+  var cntEl = document.getElementById('enrListCount');
+  if(cntEl) cntEl.textContent = filtered.length + (q ? ' / ' + total : '') + ' affiché'+(filtered.length>1?'s':'');
+
+  // Tableau
+  var body = document.getElementById('enrBody');
+  if(!body) return;
+  if(!filtered.length){
+    body.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:18px;color:var(--text3);font-size:11px">Aucun enregistrement trouvé</td></tr>';
+    return;
+  }
+  body.innerHTML = filtered.map(function(e, i){
+    var safeUrl   = escAttr(e.url || '');
+    var safeTitle = escAttr(e.intitule || 'Enregistrement HSE');
+
+    var codeHtml = String(e.code||'').trim()
+      ? '<span class="rbadge mono">'+esc(e.code)+'</span>'
+      : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+
+    var titleHtml = e.url
+      ? '<a href="'+safeUrl+'" rel="noopener" '
+        + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeTitle+'" '
+        + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+        + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer">'
+        + esc(e.intitule || '—') + '</a>'
+      : '<strong style="color:var(--text)">' + esc(e.intitule || '—') + '</strong>';
+
+    var procHtml = e.procedure
+      ? '<span style="font-size:11px;color:var(--text2)">'+esc(e.procedure)+'</span>'
+      : '<span style="color:var(--text3);font-size:10px;font-style:italic">—</span>';
+
+    var consHtml = e.conservation
+      ? '<span class="mono" style="font-size:11px">'+esc(e.conservation)+'</span>'
+      : '<span style="color:var(--text3);font-size:10px">—</span>';
+
+    var sColor = 'var(--text3)';
+    var sLow   = String(e.statut||'').toLowerCase();
+    if(sLow.indexOf('codifie') > -1 || sLow.indexOf('codifié') > -1) sColor = 'var(--green)';
+    if(isAPreparer(e)) sColor = 'var(--amber)';
+    if(isAnomalie(e))  sColor = 'var(--red)';
+    var statHtml = e.statut
+      ? '<span style="font-size:10px;font-weight:600;color:'+sColor+'">'+esc(e.statut)+'</span>'
+      : '<span style="color:var(--text3);font-size:10px">—</span>';
+
+    var docHtml = e.url
+      ? '<a href="'+safeUrl+'" rel="noopener" '
+        + 'class="tag-btn has-photo" title="Ouvrir le formulaire dans le dashboard" '
+        + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeTitle+'" '
+        + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+        + 'style="text-decoration:none">📄</a>'
+      : '<span class="tag-btn no-photo" title="Formulaire non disponible" '
+        + 'style="cursor:default">—</span>';
+
+    return '<tr>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">'+(i+1)+'</td>'
+      + '<td>'+codeHtml+'</td>'
+      + '<td>'+titleHtml+'</td>'
+      + '<td>'+procHtml+'</td>'
+      + '<td>'+consHtml+'</td>'
+      + '<td>'+statHtml+'</td>'
+      + '<td style="text-align:center">'+docHtml+'</td>'
+      + '</tr>';
+  }).join('');
 }
 
 // ══ CONTRATS ══════════════════════════════════════════════════
@@ -14028,6 +14200,7 @@ var RBAC_SECTIONS=[
   {id:'incidents',label:'Incidents / Accidents',icon:'⚠️'},
   {id:'planning',label:'Planning',icon:'📅'},
   {id:'procedures',label:'Procédures HSE',icon:'📋'},
+  {id:'enregistrements',label:'Enregistrements HSE',icon:'🗂️'},
   {id:'permis',label:'Permis de Travail',icon:'📝'},
   {id:'contrats',label:'Contrats',icon:'📄'},
   {id:'epi',label:'EPI (Équipements)',icon:'🦺'},
@@ -14092,7 +14265,7 @@ function applyRoleRestrictions(){
     document.querySelectorAll('.btn-delete,[data-action="delete"]').forEach(function(el){el.style.display='none';});
     if(currentUser.allowedSections.indexOf('ALL')<0){
       var tabs=document.querySelectorAll('.tabs .tab');
-      var map={'incidents':'incidents','tags':'tags','bilan':'incidents','nergie':'energie','veille':'procedures','proc':'procedures','nettoyage':'nettoyage','contrats':'contrats','permis':'permis','epi':'epi','nuisibles':'nuisibles'};
+      var map={'incidents':'incidents','tags':'tags','bilan':'incidents','nergie':'energie','veille':'procedures','proc':'procedures','enregistrements':'enregistrements','nettoyage':'nettoyage','contrats':'contrats','permis':'permis','epi':'epi','nuisibles':'nuisibles'};
       tabs.forEach(function(tab){
         var txt=tab.textContent.toLowerCase();var secId='';
         Object.keys(map).forEach(function(k){if(txt.indexOf(k)>-1)secId=map[k];});

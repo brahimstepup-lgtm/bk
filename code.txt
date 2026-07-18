@@ -43,6 +43,16 @@ var CLEAN_PLAN_SHEET_NAME= 'nettoyage 1';
 var PROCEDURES_SHEET_GID  = 1171171688;
 var PROCEDURES_SHEET_NAME = 'procédures';
 
+// ── ENREGISTREMENTS HSE (feuille "enregistrements") ──────────
+// Liste maîtresse des formulaires/enregistrements (ENR) référencés
+// par les procédures HSE. Colonnes attendues (détection souple) :
+//   Code | Intitulé | Procédure de rattachement | Durée de conservation | Statut
+// Certaines cellules peuvent contenir un HYPERLINK vers le formulaire.
+// Tant que la feuille n'existe pas dans le classeur, une liste par
+// défaut (issue de l'analyse des procédures en vigueur) est renvoyée
+// pour amorcer la section côté dashboard.
+var ENREGISTREMENTS_SHEET_NAME = 'enregistrements';
+
 // ── PERMIS DE TRAVAIL (feuille "Gestion des Permis de Travail", gid=40923444) ─
 // Détection souple des colonnes — typiquement :
 //   Référence | Titre | Type | Statut | Valide à partir du | Valide jusqu'au
@@ -1237,6 +1247,184 @@ function readProcedures(ss) {
     Logger.log('readProcedures error: ' + e.message);
   }
   return { entries: entries, extras: extras };
+}
+
+// ── LECTURE FEUILLE "enregistrements" ────────────────────────
+// Renvoie { entries, fromSheet } :
+//   entries   → [{ code, intitule, procedure, conservation, statut, url }]
+//   fromSheet → true si les données viennent de la feuille du classeur,
+//               false si la liste par défaut ci-dessous a été utilisée.
+//
+// Liste par défaut : relevé exhaustif des ENR cités dans les procédures
+// HSE en vigueur (SWP, Contracteurs, Nuisibles, Accidents, Clés,
+// Anti-corruption, Identification des dangers). Elle sert de point de
+// départ tant que l'onglet « enregistrements » n'a pas été créé.
+var DEFAULT_ENREGISTREMENTS = [
+  { code:'ENR-HSE-07',  intitule:'Vérification des appâts',                              procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
+  { code:'ENR-HSE-13',  intitule:"Fiche d'exécution de la lutte contre nuisible",        procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
+  { code:'ENR-HSE-15',  intitule:'Vérification de la lutte contre nuisible',             procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
+  { code:'ENR-HSE-21',  intitule:'Recensement des nuisibles / entretien des locaux',     procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Double emploi' },
+  { code:'ENR-HSE-22',  intitule:'Liste des produits chimiques',                         procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
+  { code:'ENR-HSE-23',  intitule:'Rapport de tendance',                                  procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
+  { code:'ENR-HSE-24',  intitule:'Rapport en cas de présence',                           procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
+  { code:'ENR-CQA-24',  intitule:'Rapport de réception de matière première',             procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
+  { code:'ENG-HSE-?',   intitule:"Diagnostic d'infestation (avec prestataire)",          procedure:'Lutte contre les Nuisibles',            conservation:'',      statut:'Code à corriger' },
+  { code:'ENR-HSE-16',  intitule:'Permis de travail général',                            procedure:'Permis de Travail Sécurisé (SWP)',      conservation:'3 ans', statut:'Codifié' },
+  { code:'ENR-HSE-017', intitule:'Permis de levage',                                     procedure:'Permis de Travail Sécurisé (SWP)',      conservation:'3 ans', statut:'Conflit de code' },
+  { code:'',            intitule:'Permis de travail par point chaud',                    procedure:'Permis de Travail Sécurisé (SWP)',      conservation:'3 ans', statut:'À codifier' },
+  { code:'',            intitule:'Permis de travail en hauteur',                         procedure:'Permis de Travail Sécurisé (SWP)',      conservation:'3 ans', statut:'À codifier' },
+  { code:'',            intitule:'Permis de travail en espace confiné',                  procedure:'Permis de Travail Sécurisé (SWP)',      conservation:'3 ans', statut:'À codifier' },
+  { code:'',            intitule:'Formulaire LMRA (évaluation de dernière minute)',      procedure:'Permis de Travail Sécurisé (SWP)',      conservation:'3 ans', statut:'À créer' },
+  { code:'EN-HSE-017',  intitule:'Plan de prévention HSE',                               procedure:'Gestion des Contracteurs (PRO-HSE-13)', conservation:'',      statut:'Conflit de code' },
+  { code:'',            intitule:'Formulaire de pré-qualification des contracteurs HSE', procedure:'Gestion des Contracteurs (PRO-HSE-13)', conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:"Questionnaire d'évaluation induction safety",          procedure:'Gestion des Contracteurs (PRO-HSE-13)', conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:'Inspection des contracteurs et comparatif du score',   procedure:'Gestion des Contracteurs (PRO-HSE-13)', conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:'Formulaire inspection des contracteurs',               procedure:'Gestion des Contracteurs (PRO-HSE-13)', conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:"Évaluation de l'entrepreneur en fin de travaux",       procedure:'Gestion des Contracteurs (PRO-HSE-13)', conservation:'3 ans', statut:'À créer' },
+  { code:'',            intitule:"Rapport d'accident — CRA (annexe 1)",                  procedure:'Gestion des Accidents (PRO-HSE-03)',    conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:"Rapport d'enquête accident — EAT (annexe 2)",          procedure:'Gestion des Accidents (PRO-HSE-03)',    conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:'Registre de prêt de clés',                             procedure:'Gestion des Clés',                      conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:'Inventaire des clés (CLE0001-CLE0034)',                procedure:'Gestion des Clés',                      conservation:'',      statut:'À codifier' },
+  { code:'',            intitule:"Déclaration de conflits d'intérêts",                   procedure:'Anti-corruption (PRO-HSE-05)',          conservation:'',      statut:'À créer' },
+  { code:'',            intitule:'Engagement anti-corruption individuel',                procedure:'Anti-corruption (PRO-HSE-05)',          conservation:'',      statut:'À créer' },
+  { code:'',            intitule:'Registre des signalements (lanceur d\'alerte)',        procedure:'Anti-corruption (PRO-HSE-05)',          conservation:'',      statut:'À créer' },
+  { code:'',            intitule:"Fiche d'évaluation des risques par unité de travail",  procedure:'Identification des dangers (PRO-HSE-11)', conservation:'',   statut:'À codifier' },
+  { code:'',            intitule:"Plan d'action de maîtrise des risques significatifs",  procedure:'Identification des dangers (PRO-HSE-11)', conservation:'',   statut:'À codifier' }
+];
+
+function readEnregistrements(ss) {
+  var entries = [];
+  try {
+    var sheets = ss.getSheets();
+    var sh = null;
+
+    // 1. Par nom exact "enregistrements"
+    var target = normalize(ENREGISTREMENTS_SHEET_NAME);
+    for (var i = 0; i < sheets.length; i++) {
+      if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon premier onglet contenant "enregistrement"
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        var n = normalize(sheets[i].getName());
+        if (n.indexOf('enregistrement') > -1) { sh = sheets[i]; break; }
+      }
+    }
+    if (!sh) {
+      Logger.log('Enregistrements sheet NOT found — liste par défaut utilisée');
+      return { entries: DEFAULT_ENREGISTREMENTS, fromSheet: false };
+    }
+    Logger.log('Enregistrements sheet found: ' + sh.getName());
+
+    var range    = sh.getDataRange();
+    var data     = range.getValues();
+    var rich     = null;
+    var formulas = null;
+    try { rich     = range.getRichTextValues(); } catch(e0) { rich = null; }
+    try { formulas = range.getFormulas();        } catch(eF) { formulas = null; }
+    if (!data || data.length < 1) return { entries: DEFAULT_ENREGISTREMENTS, fromSheet: false };
+
+    // ── Helper : extrait l'URL d'une cellule (même logique que procédures) ──
+    function cellUrl(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      if (formulas && formulas[rIdx] && formulas[rIdx][cIdx]) {
+        var f = String(formulas[rIdx][cIdx] || '');
+        if (f) {
+          var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i);
+          if (mH) return mH[1].trim();
+          var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);
+          if (mU) return mU[1].trim();
+        }
+      }
+      if (rich && rich[rIdx] && rich[rIdx][cIdx]) {
+        var rt = rich[rIdx][cIdx];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl();
+          if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) {
+            for (var k = 0; k < runs.length; k++) {
+              var ru = runs[k].getLinkUrl && runs[k].getLinkUrl();
+              if (ru) return String(ru).trim();
+            }
+          }
+        } catch(eR) {}
+      }
+      var v = data[rIdx][cIdx];
+      if (isNull(v)) return '';
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+      if (mIn) return mIn[1].trim();
+      return '';
+    }
+    function cellText(rIdx, cIdx) {
+      if (cIdx < 0) return '';
+      var v = data[rIdx][cIdx];
+      return isNull(v) ? '' : safeText(v);
+    }
+
+    // ── Détecter la ligne d'entête + colonnes ──
+    var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1;
+    for (var i = 0; i < Math.min(data.length, 6); i++) {
+      var row = data[i];
+      var cc = -1, tc = -1, pc = -1, kc = -1, sc = -1;
+      for (var c = 0; c < row.length; c++) {
+        var h = normalize(String(row[c]||''));
+        if (!h) continue;
+        if (cc < 0 && (h.indexOf('code') > -1 || h === 'enr' || h.indexOf('ref') === 0)) { cc = c; continue; }
+        if (tc < 0 && (h.indexOf('intitul') > -1 || h.indexOf('titre') > -1 ||
+                       h.indexOf('designation') > -1 || h.indexOf('nom') > -1)) { tc = c; continue; }
+        if (pc < 0 && (h.indexOf('procedure') > -1 || h.indexOf('rattach') > -1 ||
+                       h.indexOf('source') > -1)) { pc = c; continue; }
+        if (kc < 0 && (h.indexOf('conserv') > -1 || h.indexOf('duree') > -1 ||
+                       h.indexOf('archiv') > -1)) { kc = c; continue; }
+        if (sc < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)) { sc = c; continue; }
+      }
+      if (cc >= 0 && tc >= 0) {
+        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; break;
+      }
+    }
+    // Fallback : pas d'entête détectée → A=code, B=intitulé, C=procédure, D=conservation, E=statut
+    if (hdrRow < 0) { hdrRow = -1; codeCol = 0; titCol = 1; procCol = 2; consCol = 3; statCol = 4; }
+    Logger.log('Enregistrements cols: code=' + codeCol + ' intitulé=' + titCol +
+               ' procédure=' + procCol + ' conservation=' + consCol + ' statut=' + statCol);
+
+    // ── Parcourir les lignes de données ──
+    var firstDataRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
+    for (var i = firstDataRow; i < data.length; i++) {
+      var code     = cellText(i, codeCol);
+      var intitule = cellText(i, titCol);
+      var proc     = cellText(i, procCol);
+      var cons     = cellText(i, consCol);
+      var stat     = cellText(i, statCol);
+
+      if (!code && !intitule && !proc) continue;
+
+      // Sauter une éventuelle ré-impression de l'entête
+      var lcTit = normalize(intitule);
+      if (lcTit === 'intitule' || lcTit === 'titre' || normalize(code) === 'code') continue;
+
+      // URL associée — cellule de l'intitulé d'abord, puis celle du code
+      var url = cellUrl(i, titCol);
+      if (!url) url = cellUrl(i, codeCol);
+
+      entries.push({
+        code:         code,
+        intitule:     intitule,
+        procedure:    proc,
+        conservation: cons,
+        statut:       stat,
+        url:          url
+      });
+    }
+
+    Logger.log('Enregistrements: ' + entries.length + ' entrées (feuille)');
+  } catch(e) {
+    Logger.log('readEnregistrements error: ' + e.message);
+  }
+  if (!entries.length) return { entries: DEFAULT_ENREGISTREMENTS, fromSheet: false };
+  return { entries: entries, fromSheet: true };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2924,6 +3112,8 @@ function getData() {
     cleaningProducts:[],
     procedures:[],
     proceduresExtras:[],
+    enregistrements:[],
+    enregistrementsFromSheet:false,
     contracts:[],
     contractsHeaders:[],
     contractsSheetName:'',
@@ -2957,6 +3147,11 @@ function getData() {
   var pr = readProcedures(ss);
   out.procedures        = (pr && pr.entries) ? pr.entries : [];
   out.proceduresExtras  = (pr && pr.extras)  ? pr.extras  : [];
+
+  // ── Enregistrements HSE (feuille "enregistrements") ──────
+  var en = readEnregistrements(ss);
+  out.enregistrements          = (en && en.entries) ? en.entries : [];
+  out.enregistrementsFromSheet = !!(en && en.fromSheet);
 
   // ── Contrats (feuille "Suivi des Contrats et Liens Drive") ─
   var co = readContracts(ss);
