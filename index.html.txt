@@ -1667,6 +1667,12 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
       <div class="crud-row">
         <div class="crud-field full">
+          <label class="crud-label">Propositions / Commentaires</label>
+          <textarea id="crudTagProp" class="crud-textarea" style="min-height:50px" placeholder="Propositions d'amélioration, commentaires..."></textarea>
+        </div>
+      </div>
+      <div class="crud-row">
+        <div class="crud-field full">
           <label class="crud-label">📷 Photo (avant intervention)</label>
           <div class="crud-file-area" id="crudTagFileArea" onclick="document.getElementById('crudTagFile').click()">
             <div class="crud-file-icon">📁</div>
@@ -6686,12 +6692,18 @@ function openAccPJ(){
 }
 
 // ══ MODAL TAG — Photo Drive automatique ═══════════════════════
-// photoRef = nom propre du fichier (sans "tags/")
-// photoUrl = URL Drive résolue par le serveur
+// photoRef = nom de fichier (sans "tags/") OU url Drive (feuille source)
+// Libellé court pour l'affichage : une URL devient « lien Drive ».
+function tagRefLabel(ref){
+  ref=String(ref||'').trim();
+  if(!ref) return '—';
+  if(/^https?:\/\//i.test(ref)) return '🔗 lien Drive';
+  return ref;
+}
 function openTagModal(tag) {
   document.getElementById('mTagId').textContent  = 'TAG ' + tag.id + (tag.date ? ' · ' + tag.date : '');
   document.getElementById('mTagDesc').textContent = tag.description || '—';
-  var isOpen = tag.statut.toLowerCase().indexOf('ouvert') > -1 || tag.statut.toLowerCase().indexOf('open') > -1;
+  var isOpen = tagIsOpen(tag);
 
   var chips = '';
   if (tag.type)        chips += '<span class="modal-chip">'+ esc(tag.type) +'</span>';
@@ -6709,7 +6721,7 @@ function openTagModal(tag) {
     infoItemF('Zone', (tag.zone||tag.emplacement)||'—'),
     infoItemF('Responsable', tag.responsable||'—'),
     infoItemF('Statut', tag.statut),
-    infoItemF('Réf. photo', tag.photoClean||tag.photoRef||'—')
+    infoItemF('Réf. photo', tagRefLabel(tag.photoClean||tag.photoRef))
   ].join('');
 
   var rSec=document.getElementById('mTagRisqueSec');
@@ -6726,6 +6738,12 @@ function openTagModal(tag) {
   var hasAvant = !!(tag.hasPhotoAvant && tag.driveFileIdAvant);
   var hasApres = !!(tag.hasPhotoApres && tag.driveFileIdApres);
   var hasAny   = hasAvant || hasApres;
+
+  // Jeton anti-course : si l'utilisateur ouvre un autre TAG pendant le
+  // chargement, les réponses du TAG précédent sont ignorées — les photos
+  // ne peuvent jamais s'afficher dans la mauvaise fiche.
+  var photoToken = 'tagModal_' + tag.id + '_' + Date.now();
+  window._tagModalPhotoToken = photoToken;
 
   if (hasAny) {
     if (photoTabBtn) photoTabBtn.textContent = '📸 Photo Drive';
@@ -6754,7 +6772,7 @@ function openTagModal(tag) {
         } else {
           html += '<div class="photo-noimg" style="padding:16px"><div style="font-size:28px;margin-bottom:6px">⚠️</div><p style="color:var(--amber);font-size:11px">Lecture impossible</p></div>';
         }
-        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(tag.photoClean||tag.photoRef||'—')+'</p>';
+        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(tagRefLabel(tag.photoClean||tag.photoRef))+'</p>';
         html += '</div>';
       }
 
@@ -6767,7 +6785,7 @@ function openTagModal(tag) {
         } else {
           html += '<div class="photo-noimg" style="padding:16px"><div style="font-size:28px;margin-bottom:6px">⚠️</div><p style="color:var(--amber);font-size:11px">Lecture impossible</p></div>';
         }
-        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(tag.photoCleanApres||tag.photoRefApres||'après')+'</p>';
+        html += '<p style="font-size:9px;color:var(--text3)">📁 '+esc(tagRefLabel(tag.photoCleanApres||tag.photoRefApres)||'après')+'</p>';
         html += '</div>';
       }
 
@@ -6789,33 +6807,29 @@ function openTagModal(tag) {
       if (photosLoaded >= photosExpected) renderPhotos();
     }
 
-    // Charger photo AVANT
-    if (hasAvant) {
+    // Chargement d'une photo (avant/après) : réutilise le cache des
+    // vignettes pour un affichage instantané, sinon appel serveur ;
+    // toutes les réponses sont validées par le jeton anti-course.
+    if (!window._tagPhotoCache) window._tagPhotoCache = {};
+    function loadModalPhoto(fid, slotKey) {
+      var cached = window._tagPhotoCache[fid];
+      if (cached) { photoResults[slotKey] = cached; onPhotoLoaded(); return; }
       google.script.run
         .withSuccessHandler(function(dataUrl) {
-          photoResults.avant = dataUrl || null;
+          if (window._tagModalPhotoToken !== photoToken) return;
+          if (dataUrl) window._tagPhotoCache[fid] = dataUrl;
+          photoResults[slotKey] = dataUrl || null;
           onPhotoLoaded();
         })
         .withFailureHandler(function(err) {
-          photoResults.avant = null;
+          if (window._tagModalPhotoToken !== photoToken) return;
+          photoResults[slotKey] = null;
           onPhotoLoaded();
         })
-        .getTagPhotoForClient(tag.driveFileIdAvant);
+        .getTagPhotoForClient(fid);
     }
-
-    // Charger photo APRÈS
-    if (hasApres) {
-      google.script.run
-        .withSuccessHandler(function(dataUrl) {
-          photoResults.apres = dataUrl || null;
-          onPhotoLoaded();
-        })
-        .withFailureHandler(function(err) {
-          photoResults.apres = null;
-          onPhotoLoaded();
-        })
-        .getTagPhotoForClient(tag.driveFileIdApres);
-    }
+    if (hasAvant) loadModalPhoto(tag.driveFileIdAvant, 'avant');
+    if (hasApres) loadModalPhoto(tag.driveFileIdApres, 'apres');
 
   } else {
     if (photoTabBtn) photoTabBtn.textContent = '📷 Photo Drive';
@@ -6823,9 +6837,11 @@ function openTagModal(tag) {
       '<div class="photo-noimg">' +
       '<div style="font-size:52px;margin-bottom:14px">📷</div>' +
       (tag.photoRef
-        ? '<p style="color:var(--text2);margin-bottom:6px">Référence : <strong style="color:var(--p4)">' + esc(tag.photoClean||tag.photoRef) + '</strong></p>' +
-          '<p style="font-size:11px;color:var(--text3);margin-top:8px">Numéro recherché dans Drive : <strong>' +
-          esc(((tag.photoClean||'').match(/(\d+)/)||['?'])[0]) + '</strong><br>Fichier non trouvé dans le dossier Tags.</p>'
+        ? '<p style="color:var(--text2);margin-bottom:6px">Référence : <strong style="color:var(--p4)">' + esc(tagRefLabel(tag.photoClean||tag.photoRef)) + '</strong></p>' +
+          (/^https?:\/\//i.test(tag.photoRef)
+            ? '<p style="font-size:11px;color:var(--text3);margin-top:8px">Lien Drive illisible ou fichier inaccessible.<br>Vérifiez que le fichier existe et que le compte du script y a accès.</p>'
+            : '<p style="font-size:11px;color:var(--text3);margin-top:8px">Numéro recherché dans Drive : <strong>' +
+              esc(((tag.photoClean||'').match(/(\d+)/)||['?'])[0]) + '</strong><br>Fichier non trouvé dans le dossier Tags.</p>')
         : '<p style="color:var(--text3)">Aucune référence photo.</p>') +
       '</div>';
   }
@@ -6913,6 +6929,18 @@ function renderIncidents(incs){
 }
 
 // ══ FILTRES TAGS ══════════════════════════════════════════════
+// Statut « ouvert » = Ouvert / Open / En cours (non résolu).
+// Helper UNIQUE utilisé partout (table, KPI, modale, Vue Globale)
+// pour que le même TAG soit toujours classé de la même façon.
+function tagIsOpen(t){
+  var s=String((t&&t.statut)||'').toLowerCase();
+  return s.indexOf('ouvert')>-1||s.indexOf('open')>-1||s.indexOf('cours')>-1;
+}
+// « dd/MM/yyyy » → « yyyy-MM-dd » (fallback pour input[type=date])
+function isoFromFr(s){
+  var m=String(s||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m?m[3]+'-'+('0'+m[2]).slice(-2)+'-'+('0'+m[1]).slice(-2):'';
+}
 function populateTagDropdowns(){
   if(!D||!D.tags) return;
   var resps=new Set(),zones=new Set();
@@ -6920,12 +6948,17 @@ function populateTagDropdowns(){
     if(t.responsable&&t.responsable.trim()) resps.add(t.responsable.trim());
     var z=(t.zone||t.emplacement||'').trim(); if(z) zones.add(z);
   });
+  // Préserver la sélection courante lors d'un re-rendu (actualisation auto)
   var rSel=document.getElementById('tagFilterResp');
+  var rCur=rSel.value||'all';
   rSel.innerHTML='<option value="all">Tous ('+resps.size+')</option>';
   Array.from(resps).sort().forEach(function(r){rSel.innerHTML+='<option value="'+esc(r)+'">'+esc(r)+'</option>';});
+  rSel.value=rCur; if(rSel.value!==rCur) rSel.value='all';
   var zSel=document.getElementById('tagFilterZone');
+  var zCur=zSel.value||'all';
   zSel.innerHTML='<option value="all">Toutes ('+zones.size+')</option>';
   Array.from(zones).sort().forEach(function(z){zSel.innerHTML+='<option value="'+esc(z)+'">'+esc(z)+'</option>';});
+  zSel.value=zCur; if(zSel.value!==zCur) zSel.value='all';
 }
 function setTagStat(val,el){
   tagStatFilter=val;
@@ -6966,7 +6999,9 @@ function applyTagF(){
 
   var filtered=(D.tags||[]).filter(function(t){
     if(!t.id||t._err) return false;
-    var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
+    // Ligne d'entête recopiée dans les données (« N° Cas »…) → jamais affichée
+    if(/^n\s*[°ºo.]?\s*(cas|tag)s?$/i.test(String(t.id).trim())) return false;
+    var isOpen=tagIsOpen(t);
     if(tagStatFilter==='open'&&!isOpen) return false;
     if(tagStatFilter==='closed'&&isOpen) return false;
     if(filterResp!=='all'&&(t.responsable||'').trim()!==filterResp) return false;
@@ -7002,7 +7037,7 @@ function applyTagF(){
 
   var total=D.tags.length;
   var openAll=D.tagsOpen.length,closedAll=total-openAll;
-  var openF=filtered.filter(function(t){return t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;}).length;
+  var openF=filtered.filter(tagIsOpen).length;
   var closedF=filtered.length-openF;
   var cloPct=filtered.length>0?Math.round(closedF/filtered.length*100):0;
 
@@ -7037,13 +7072,20 @@ function applyTagF(){
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
 
   // Table avec vignettes Avant / Après inline (chargement asynchrone)
+  // Génération de rendu : invalide les chargements photo des rendus
+  // précédents (filtre modifié pendant un chargement en cours).
+  window._tagRenderGen=(window._tagRenderGen||0)+1;
+  var renderGen=window._tagRenderGen;
+  var nCols=userCanEdit('tags')?11:10;
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
   if(filtered.length===0){
-    var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
+    var msg=D.tagsSheetError?'⚠️ '+esc(D.tagsSheetError)
+      :searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
       :'Aucun TAG pour ce filtre';
-    tb.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
+    tb.innerHTML='<tr><td colspan="'+nCols+'" style="text-align:center;color:'
+      +(D.tagsSheetError?'var(--amber)':'var(--text3)')+';padding:20px">'+msg+'</td></tr>';
     return;
   }
   function hl(str){
@@ -7053,14 +7095,17 @@ function applyTagF(){
   }
   var pendingTagThumbs=[];
   filtered.forEach(function(t,idx){
-    var isOpen=t.statut.toLowerCase().indexOf('ouvert')>-1||t.statut.toLowerCase().indexOf('open')>-1;
+    var isOpen=tagIsOpen(t);
     var respHtml=t.responsable
       ?'<span class="rbadge" style="color:var(--p4)">'+hl(t.responsable)+'</span>'
       :'<span style="color:var(--text3);font-size:9px">—</span>';
 
     // ── Vignettes Avant / Après — chargement asynchrone via google.script.run
+    // L'id de cellule inclut la génération de rendu + l'id du TAG :
+    // impossible qu'une photo d'un rendu précédent atterrisse dans la
+    // mauvaise ligne après un changement de filtre.
     function tagThumbCell(label, has, fid, ref){
-      var cellId='tagThumb_'+idx+'_'+label;
+      var cellId='tagThumb_'+renderGen+'_'+idx+'_'+label;
       if(!has||!fid){
         return '<td class="cln-thumb-cell"><div class="cln-thumb-ph" title="Pas de photo '+label+'">📷</div></td>';
       }
@@ -7081,29 +7126,59 @@ function applyTagF(){
       +'<td style="font-size:10px">'+hl(t.type)+'</td>'
       +'<td style="white-space:nowrap;font-size:10px">'+esc(t.dateCible||'—')+'</td>'
       +'<td style="font-size:10px">'+respHtml+'</td>'
-      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(isOpen?'Ouvert':'Fermé')+'</span></td>'
-      +(userCanEdit('tags')?'<td style="text-align:center"><button class="crud-btn edit" style="padding:3px 8px;font-size:10px" onclick="event.stopPropagation();openEditTag(\''+esc(t.id)+'\',\''+esc((t.description||'').replace(/'/g,"\\\'"))+'\',\''+esc((t.zone||'').replace(/'/g,"\\\'"))+'\',\''+esc((t.emplacement||'').replace(/'/g,"\\\'"))+'\',\''+esc(t.type||'')+'\',\''+esc(t.gravite||'')+'\',\''+esc((t.responsable||'').replace(/'/g,"\\\'"))+'\',\''+(t.isoDate||'')+'\',\''+esc((t.risque||'').replace(/'/g,"\\\'"))+'\',\''+esc(t.statut||'')+'\',\''+esc((t.action||'').replace(/'/g,"\\\'"))+'\')">✏️</button></td>':'');
+      +'<td><span class="'+(isOpen?'s-open':'s-close')+'">'+(t.statut?esc(t.statut):(isOpen?'Ouvert':'Fermé'))+'</span></td>'
+      +(userCanEdit('tags')?'<td style="text-align:center"><button class="crud-btn edit" style="padding:3px 8px;font-size:10px" title="Modifier le TAG #'+esc(t.id)+'">✏️</button></td>':'');
+    var editBtn=tr.querySelector('.crud-btn.edit');
+    if(editBtn){
+      // Édition par ID : les données sont relues depuis D.tags au clic
+      // (aucune sérialisation fragile dans l'attribut onclick).
+      editBtn.addEventListener('click',function(e){ e.stopPropagation(); openEditTagById(t.id); });
+    }
     tr.addEventListener('click',function(){ openTagModal(t); });
     tb.appendChild(tr);
   });
 
-  // ── Chargement asynchrone des vignettes (avec cache partagé) ──
+  // ── Chargement asynchrone des vignettes (cache + déduplication) ──
+  // Un seul appel serveur par fichier Drive, même si plusieurs rendus
+  // se succèdent (frappe dans la recherche) ou si le même fichier
+  // apparaît dans plusieurs lignes : les demandes en attente sont
+  // regroupées puis résolues ensemble.
   if(!window._tagPhotoCache) window._tagPhotoCache={};
+  if(!window._tagPhotoPending) window._tagPhotoPending={};
   pendingTagThumbs.forEach(function(p){
     var slot=document.getElementById(p.cellId);
     if(!slot) return;
     var cached=window._tagPhotoCache[p.fid];
     if(cached){ replaceTagThumb(slot,cached,p); return; }
+    if(window._tagPhotoPending[p.fid]){
+      window._tagPhotoPending[p.fid].push({slot:slot,p:p});
+      return;
+    }
+    window._tagPhotoPending[p.fid]=[{slot:slot,p:p}];
     google.script.run
       .withSuccessHandler(function(d){
-        if(d){ window._tagPhotoCache[p.fid]=d; replaceTagThumb(slot,d,p); }
-        else if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
+        var waiters=window._tagPhotoPending[p.fid]||[];
+        delete window._tagPhotoPending[p.fid];
+        if(d){
+          window._tagPhotoCache[p.fid]=d;
+          waiters.forEach(function(w){ replaceTagThumb(w.slot,d,w.p); });
+        } else {
+          waiters.forEach(function(w){ failTagThumb(w.slot); });
+        }
       })
       .withFailureHandler(function(){
-        if(slot && slot.parentNode){ slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible">⚠️</div>'; }
+        var waiters=window._tagPhotoPending[p.fid]||[];
+        delete window._tagPhotoPending[p.fid];
+        waiters.forEach(function(w){ failTagThumb(w.slot); });
       })
       .getTagPhotoForClient(p.fid);
   });
+}
+
+function failTagThumb(slot){
+  if(slot && slot.parentNode){
+    slot.outerHTML='<div class="cln-thumb-ph" title="Lecture impossible — vérifier le fichier dans le dossier Drive Tags">⚠️</div>';
+  }
 }
 
 function replaceTagThumb(slot, dataUrl, p){
@@ -7804,6 +7879,7 @@ function openCleanModal(c){
 // ══ RENDU PRINCIPAL ═══════════════════════════════════════════
 function render(data){
   D=data; var m=data.metrics;
+  window._lastDataTs=Date.now();   // horodatage pour l'actualisation auto
 
   // ── Synchronisation « Résol. TAGs » (Vue Globale) avec
   // « Clôture » (page TAGs, filtre YTD 2026) ──
@@ -7815,10 +7891,7 @@ function render(data){
       if(!t.id||t._err||!t.isoDate) return false;
       return parseInt(t.isoDate.split('-')[0])===2026;
     });
-    var open=tags.filter(function(t){
-      var s=(t.statut||'').toLowerCase();
-      return s.indexOf('ouvert')>-1||s.indexOf('open')>-1;
-    }).length;
+    var open=tags.filter(tagIsOpen).length;
     var closed=tags.length-open;
     m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
   })();
@@ -13593,6 +13666,40 @@ function refreshData(){
     })
     .getDataForClient();
 }
+
+// ══ ACTUALISATION AUTOMATIQUE SILENCIEUSE ═════════════════════
+// Toute modification de la feuille source (ajout / suppression /
+// mise à jour d'un TAG ou d'une photo Drive) est répercutée dans
+// l'interface sans intervention manuelle : re-fetch périodique de
+// getDataForClient() + render() en place, sans loader ni scroll.
+// Les filtres et sélections en cours sont préservés (les contrôles
+// ne sont pas reconstruits, et les dropdowns gardent leur valeur).
+var _silentBusy=false;
+var AUTO_REFRESH_MS=5*60*1000;   // 5 minutes
+function silentRefresh(){
+  if(_silentBusy) return;
+  _silentBusy=true;
+  google.script.run
+    .withSuccessHandler(function(data){
+      _silentBusy=false;
+      if(data){ try{ render(data); }catch(e){} }
+    })
+    .withFailureHandler(function(){ _silentBusy=false; })   // silencieux : nouvel essai au prochain cycle
+    .getDataForClient();
+}
+setInterval(function(){
+  if(document.hidden) return;                                  // onglet en arrière-plan
+  if(typeof tvOpen!=='undefined'&&tvOpen) return;              // le Mode TV a son propre cycle
+  if(!D) return;                                               // chargement initial pas terminé
+  if(document.querySelector('.crud-modal-bg.open')) return;    // saisie en cours — ne pas perturber
+  silentRefresh();
+},AUTO_REFRESH_MS);
+// Retour sur l'onglet après une absence : rafraîchir si les données datent.
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden||!D) return;
+  if(document.querySelector('.crud-modal-bg.open')) return;
+  if(!window._lastDataTs||Date.now()-window._lastDataTs>AUTO_REFRESH_MS) silentRefresh();
+});
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════
@@ -13637,6 +13744,7 @@ function openAddTag(){
   document.getElementById('crudTagRisque').value='';
   document.getElementById('crudTagStatut').value='Ouvert';
   document.getElementById('crudTagAction').value='';
+  document.getElementById('crudTagProp').value='';
   document.getElementById('crudTagFileName').textContent='';
   document.getElementById('crudTagPreview').style.display='none';
   document.getElementById('crudTagFileArea').classList.remove('has-file');
@@ -13644,19 +13752,37 @@ function openAddTag(){
   document.getElementById('crudTagModal').classList.add('open');
 }
 
-function openEditTag(tagId,desc,zone,empl,type,grav,resp,dateCible,risque,statut,action){
-  document.getElementById('crudTagId').value=tagId;
-  document.getElementById('crudTagTitle').textContent='Modifier TAG #'+tagId;
-  document.getElementById('crudTagDesc').value=desc||'';
-  document.getElementById('crudTagZone').value=zone||'';
-  document.getElementById('crudTagEmplacement').value=empl||'';
-  document.getElementById('crudTagType').value=type||'';
-  document.getElementById('crudTagGravite').value=grav||'';
-  document.getElementById('crudTagResp').value=resp||'';
-  document.getElementById('crudTagDateCible').value=dateCible||'';
-  document.getElementById('crudTagRisque').value=risque||'';
-  document.getElementById('crudTagStatut').value=statut||'Ouvert';
-  document.getElementById('crudTagAction').value=action||'';
+// Sélectionne une valeur dans un <select> ; retombe sur fallback si
+// la valeur de la feuille ne correspond à aucune option.
+function crudSetSelect(id,val,fallback){
+  var el=document.getElementById(id);
+  el.value=val||'';
+  if(el.value!==(val||'')) el.value=fallback||'';
+}
+
+// Édition par ID : relit le TAG directement depuis la source de
+// données (D.tags) — aucune donnée sérialisée dans le HTML, donc
+// aucun risque de décalage entre la ligne affichée et le formulaire.
+function openEditTagById(tagId){
+  var t=(D&&D.tags||[]).filter(function(x){return String(x.id)===String(tagId);})[0];
+  if(!t){ showToast('TAG #'+tagId+' introuvable — actualisez les données.','error'); return; }
+  document.getElementById('crudTagId').value=t.id;
+  document.getElementById('crudTagTitle').textContent='Modifier TAG #'+t.id;
+  document.getElementById('crudTagDesc').value=t.description||'';
+  document.getElementById('crudTagZone').value=t.zone||'';
+  document.getElementById('crudTagEmplacement').value=t.emplacement||'';
+  crudSetSelect('crudTagType',t.type,'');
+  crudSetSelect('crudTagGravite',t.gravite,'');
+  document.getElementById('crudTagResp').value=t.responsable||'';
+  // Date CIBLE (et non date de création) — ISO fourni par le serveur,
+  // sinon reconstruit depuis le format dd/MM/yyyy.
+  document.getElementById('crudTagDateCible').value=t.isoDateCible||isoFromFr(t.dateCible);
+  document.getElementById('crudTagRisque').value=t.risque||'';
+  var statutLow=String(t.statut||'').toLowerCase();
+  crudSetSelect('crudTagStatut',t.statut,
+    statutLow.indexOf('cours')>-1?'En cours':(tagIsOpen(t)?'Ouvert':'Fermé'));
+  document.getElementById('crudTagAction').value=t.action||'';
+  document.getElementById('crudTagProp').value=t.propositions||'';
   document.getElementById('crudTagFileName').textContent='';
   document.getElementById('crudTagPreview').style.display='none';
   document.getElementById('crudTagFileArea').classList.remove('has-file');
@@ -13699,13 +13825,14 @@ function submitTag(){
     dateCible:document.getElementById('crudTagDateCible').value,
     risque:document.getElementById('crudTagRisque').value.trim(),
     statut:document.getElementById('crudTagStatut').value,
-    action:document.getElementById('crudTagAction').value.trim()
+    action:document.getElementById('crudTagAction').value.trim(),
+    propositions:document.getElementById('crudTagProp').value.trim()
   };
   if(tagFileData){data.photoBase64=tagFileData.base64;data.photoName=tagFileData.name;data.photoMime=tagFileData.mime;}
 
   var callback=function(r){
     btn.disabled=false;btn.textContent='Enregistrer';
-    if(r.success){closeCrudTag();showToast(r.message,'success');refreshData();}
+    if(r.success){closeCrudTag();showToast(r.message,'success');silentRefresh();}
     else{showToast(r.error||'Erreur','error');}
   };
   var fail=function(){btn.disabled=false;btn.textContent='Enregistrer';showToast('Erreur réseau','error');};
@@ -13720,9 +13847,17 @@ function submitTag(){
 function deleteSelectedTag(){
   var id=prompt('Entrez l\'ID du TAG à supprimer :');
   if(!id)return;
-  if(!confirm('Supprimer définitivement le TAG #'+id+' ?\nCette action est irréversible.'))return;
+  id=id.trim();
+  // Validation contre la source de données avant l'appel serveur :
+  // évite un aller-retour inutile et affiche la description pour
+  // confirmer qu'on supprime bien le bon enregistrement.
+  var t=(D&&D.tags||[]).filter(function(x){return String(x.id)===id;})[0];
+  if(!t){ showToast('TAG #'+id+' introuvable dans les données actuelles.','error'); return; }
+  var apercu=(t.description||'').substring(0,80);
+  if(!confirm('Supprimer définitivement le TAG #'+id+' ?\n« '+apercu+' »\nCette action est irréversible.'))return;
   google.script.run.withSuccessHandler(function(r){
-    if(r.success){showToast(r.message,'success');refreshData();}else showToast(r.error,'error');
+    if(r.success){showToast(r.message,'success');silentRefresh();}else showToast(r.error,'error');
+  }).withFailureHandler(function(){showToast('Erreur réseau','error');
   }).crudDeleteTag(currentUser.username,id);
 }
 

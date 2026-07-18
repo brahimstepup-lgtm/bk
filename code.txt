@@ -12,6 +12,16 @@ var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
 var PLANNING_GID   = 1312782146;
 
+// ── SOURCE DES TAGS ──────────────────────────────────────────
+// L'onglet « plan » du classeur principal n'est qu'un MIROIR
+// (=IMPORTRANGE) du classeur source ci-dessous. On lit ET on
+// écrit directement dans la SOURCE : les données sont toujours
+// fraîches, et les ajouts/modifications ne cassent jamais la
+// formule IMPORTRANGE du miroir (écrire dans la plage importée
+// la mettrait en #REF!).
+var TAGS_SOURCE_SHEET_ID   = '1UPfWAHzIKBVvECIPqjg3ccgIwBlX1KzyflJ73jfPRc0';
+var TAGS_SOURCE_SHEET_NAME = 'plan';
+
 // ── NETTOYAGE ────────────────────────────────────────────────
 // Feuille source : "Nettoyage " (gid=1543533109)
 // Photos : dossier Drive racine 1IOv87AtD21q7l7yVIK6bJubkfaJf7AWw
@@ -161,9 +171,9 @@ function buildDriveTagsCache() {
       var id   = file.getId();
       count++;
       // Extraire le premier numéro rencontré : "431.Référence...", "photo_431.jpg", "ref-431" → "431"
-      var m = name.match(/(\d+)/);
-      if (m) {
-        var num = m[1];
+      // Clé normalisée (zéros de tête retirés) pour que "045" et "45" matchent.
+      var num = photoNumKey_(name);
+      if (num) {
         if (!cache[num]) cache[num] = { any: '', avant: '', apres: '' };
         // Tout premier fichier rencontré pour ce numéro → "any"
         if (!cache[num].any) cache[num].any = id;
@@ -183,6 +193,174 @@ function buildDriveTagsCache() {
     Logger.log('buildDriveTagsCache error: ' + e.message);
   }
   return { cache: cache, count: count };
+}
+
+// ── Clé photo normalisée ─────────────────────────────────────
+// Extrait le premier numéro d'une référence / d'un nom de fichier
+// et retire les zéros de tête ("tags/045.jpg" → "45").
+// Utilisée des DEUX côtés (cache Drive + référence feuille) pour
+// garantir la correspondance exacte photo ↔ tag.
+function photoNumKey_(s) {
+  var m = String(s == null ? '' : s).match(/(\d+)/);
+  if (!m) return '';
+  return m[1].replace(/^0+(?=\d)/, '');
+}
+
+// ── Détection des colonnes de la feuille TAGs ────────────────
+// Logique UNIQUE partagée entre la lecture (getData) et les
+// écritures CRUD (crudAddTag / crudEditTag / crudDeleteTag) :
+// la même détection d'entêtes garantit que ce qui est écrit
+// atterrit exactement dans les colonnes qui seront relues.
+function detectTagCols_(hdr) {
+  var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
+              emplacement:5, zone:6, description:7, risque:8,
+              action:9, propositions:10, photoRef:11, photoRefApres:-1,
+              statut:12, responsable:13 };
+  for (var c = 0; c < hdr.length; c++) {
+    var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
+    // ── PHOTO APRÈS — colonne dédiée (à tester AVANT photoRef pour ne pas la voler)
+    if ((h.indexOf('photo') > -1 || h.indexOf('reference') > -1) &&
+        (h.indexOf('apres') > -1 || h.indexOf('after') > -1)) {
+      COL.photoRefApres = c;
+      continue;
+    }
+    if      (h.match(/^n.?\s*(cas|tag|$)/))            COL.id          = c;
+    else if (h.indexOf('date c') === 0 && h.indexOf('cible') < 0 && h.indexOf('cr') > -1) COL.dateCreate = c;
+    else if (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1) COL.dateCible   = c;
+    else if (h.indexOf('type') > -1 && h.indexOf('danger') > -1)     COL.type        = c;
+    else if (h.indexOf('gravit') > -1)                                 COL.gravite     = c;
+    else if (h.indexOf('emplace') > -1)                                COL.emplacement = c;
+    else if (h === 'zone')                                              COL.zone        = c;
+    else if (h.indexOf('description') > -1)                            COL.description = c;
+    else if (h.indexOf('risque') > -1)                                 COL.risque      = c;
+    else if (h.indexOf('action') > -1 && h.indexOf('urgente') > -1)   COL.action      = c;
+    else if (h.indexOf('proposition') > -1)                            COL.propositions= c;
+    else if (h.indexOf('reference') > -1 && h.indexOf('photo') > -1)  COL.photoRef    = c;
+    else if (h.indexOf('statut') > -1)                                 COL.statut      = c;
+    else if (h.indexOf('respens') > -1 || h.indexOf('respons') > -1)  COL.responsable = c;
+  }
+  return COL;
+}
+
+// Statut « ouvert » = Ouvert / Open / En cours (non résolu).
+function tagStatutOuvert_(statut) {
+  var s = String(statut||'').toLowerCase();
+  return s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 || s.indexOf('cours') > -1;
+}
+
+// ── Localisation ROBUSTE de la feuille TAGs ──────────────────
+// L'ancienne détection (nom contenant "tag" + repli sur la 3e
+// feuille du classeur) pouvait renvoyer n'importe quelle feuille
+// (ex. RBAC_Users) si la feuille TAGs était renommée ou déplacée
+// → comptes utilisateurs affichés comme des TAGs.
+// Nouvelle logique : chaque feuille est NOTÉE d'après ses entêtes
+// réelles ; on ne retient que celle qui ressemble vraiment à la
+// feuille TAGs, sinon on ne retourne RIEN (jamais de feuille au
+// hasard).
+function tagsHeaderScore_(hdrRow) {
+  var score = 0, distinct = false;
+  for (var c = 0; c < hdrRow.length; c++) {
+    var h = normalize(String(hdrRow[c]||'').replace(/[\n\r#]/g,'').trim());
+    if (!h) continue;
+    if      (h.match(/^n.?\s*(cas|tag)/))       { score += 3; distinct = true; }  // « N° Cas » — très distinctif
+    else if (h.indexOf('danger') > -1)           { score += 3; distinct = true; }  // « Type de danger »
+    else if (h.indexOf('proposition') > -1)      score += 2;
+    else if (h.indexOf('urgente') > -1)          score += 2;
+    else if (h.indexOf('photo') > -1)            score += 2;
+    else if (h.indexOf('risque') > -1)           score += 1;
+    else if (h.indexOf('cible') > -1)            score += 1;
+    else if (h.indexOf('emplace') > -1)          score += 1;
+    else if (h === 'zone')                       score += 1;
+    else if (h.indexOf('gravit') > -1)           score += 1;
+    else if (h.indexOf('description') > -1)      score += 1;
+    else if (h.indexOf('statut') > -1)           score += 1;
+  }
+  return { score: score, distinct: distinct };
+}
+function findTagsSheet_(ss) {
+  var sheets = ss.getSheets();
+  var best = null, bestScore = 0;
+  for (var i = 0; i < sheets.length; i++) {
+    var sh = sheets[i];
+    var name = normalize(sh.getName());
+    // Feuilles techniques : jamais candidates
+    if (/rbac|user|utilisateur/.test(name)) continue;
+    var hdr = [];
+    try {
+      var lastCol = sh.getLastColumn();
+      if (lastCol > 0) hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0] || [];
+    } catch(e) { continue; }
+    var hs = tagsHeaderScore_(hdr);
+    var score = hs.score;
+    // Bonus si le NOM évoque les TAGs — \btag\b en mot isolé pour
+    // éviter les faux positifs (« étage », « pourcentage »…)
+    var nameMatch = /(^|[^a-z])tags?([^a-z]|$)/.test(name) ||
+                    name.indexOf('danger') > -1 || name.indexOf('situation') > -1;
+    if (nameMatch) score += 4;
+    // Preuve distinctive obligatoire : entête « N° Cas »/« danger »
+    // OU nom évocateur — sinon une feuille générique (zone/statut/photo,
+    // ex. Nettoyage) pourrait passer le seuil par accident.
+    if (!hs.distinct && !nameMatch) continue;
+    if (score > bestScore) { bestScore = score; best = sh; }
+  }
+  // Seuil minimal : en dessous, aucune feuille ne ressemble à la
+  // feuille TAGs → mieux vaut « non trouvée » que de mauvaises données.
+  return bestScore >= 6 ? best : null;
+}
+
+// ── Localisation de la LIGNE d'entête dans la feuille TAGs ───
+// L'entête n'est pas toujours en ligne 1 (ligne de titre, formule
+// IMPORTRANGE…) : on note les 10 premières lignes et on retient
+// celle qui ressemble le plus à un entête TAGs.
+function locateTagHeaderRow_(data) {
+  var hRow = 0, hBest = -1;
+  for (var i = 0; i < Math.min(data.length, 10); i++) {
+    var sc = tagsHeaderScore_(data[i] || []).score;
+    if (sc > hBest) { hBest = sc; hRow = i; }
+  }
+  return hRow;
+}
+
+// Ligne d'entête (éventuellement répétée) au milieu des données ?
+// → cellule ID non numérique du type « N° Cas » / « N° TAG », ou
+// ligne dont les valeurs ressemblent massivement à des entêtes.
+function isTagHeaderLikeRow_(r, idCol) {
+  var id = normalize(String((r && r[idCol]) || ''));
+  if (/^n\s*.?\s*(cas|tag)/.test(id) && !/\d/.test(id)) return true;
+  return tagsHeaderScore_(r || []).score >= 6;
+}
+
+// ── Résolution de LA feuille TAGs (source d'abord) ───────────
+// 1. Classeur SOURCE (TAGS_SOURCE_SHEET_ID / onglet « plan ») —
+//    celui que recopie l'IMPORTRANGE du classeur principal.
+// 2. Repli : détection par entêtes dans le classeur principal
+//    (le miroir IMPORTRANGE y est trouvé même renommé).
+// Retourne { sheet, source: 'source'|'miroir'|'' }.
+function getTagsSheet_(mainSS) {
+  if (TAGS_SOURCE_SHEET_ID) {
+    try {
+      var src = SpreadsheetApp.openById(TAGS_SOURCE_SHEET_ID);
+      var sh = TAGS_SOURCE_SHEET_NAME ? src.getSheetByName(TAGS_SOURCE_SHEET_NAME) : null;
+      if (!sh) sh = findTagsSheet_(src);
+      if (sh) return { sheet: sh, source: 'source' };
+    } catch(e) {
+      Logger.log('getTagsSheet_ : classeur source inaccessible (' + e.message + ') — repli sur le miroir');
+    }
+  }
+  var local = findTagsSheet_(mainSS || SpreadsheetApp.openById(SHEET_ID));
+  return { sheet: local, source: local ? 'miroir' : '' };
+}
+
+// ── Extraction d'un ID de fichier Drive depuis une URL ───────
+// La feuille source stocke les photos sous forme d'URL
+// (https://drive.google.com/uc?export=view&id=… ou …/file/d/…/) :
+// on récupère l'ID directement — correspondance exacte garantie,
+// sans passer par la recherche par numéro dans le dossier Tags.
+function extractDriveId_(s) {
+  s = String(s == null ? '' : s);
+  var m = s.match(/[?&]id=([A-Za-z0-9_-]{20,})/) ||
+          s.match(/\/d\/([A-Za-z0-9_-]{20,})/);
+  return m ? m[1] : '';
 }
 
 // ── Utilitaires ───────────────────────────────────────────────
@@ -2942,44 +3120,34 @@ function getData() {
   // r[4]=Gravité  r[5]=Emplacement  r[6]=Zone  r[7]=Description
   // r[8]=RisquePrincipal  r[9]=ActionUrgente  r[10]=Propositions
   // r[11]=RéférencePhoto  r[12]=Statut  r[13]=Responsable
-  var tagSheet = findSheet(['tag','danger','situation']) || (sheets.length>2?sheets[2]:null);
+  // Résolution : classeur SOURCE en priorité (onglet « plan » du
+  // classeur importé par IMPORTRANGE), sinon détection par entêtes
+  // dans le classeur principal. Ne peut JAMAIS renvoyer une feuille
+  // technique (RBAC_Users…) ni une feuille au hasard.
+  var tagRes   = getTagsSheet_(ss);
+  var tagSheet = tagRes.sheet;
+  out.tagsSheetName   = tagSheet ? tagSheet.getName() : '';
+  out.tagsSheetOrigin = tagRes.source;   // 'source' | 'miroir' | ''
+  if (!tagSheet) {
+    out.tagsSheetError = 'Feuille TAGs introuvable — classeur source inaccessible et aucun onglet du classeur principal ne présente les entêtes attendues (N° Cas, Type de danger, Description…).';
+  }
   if (tagSheet) {
     var tagData = tagSheet.getDataRange().getValues();
 
-    // Détecter les colonnes depuis l'entête (ligne 0)
-    var hdr = tagData[0];
-    var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
-                emplacement:5, zone:6, description:7, risque:8,
-                action:9, propositions:10, photoRef:11, photoRefApres:-1,
-                statut:12, responsable:13 };
-    for (var c = 0; c < hdr.length; c++) {
-      var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
-      // ── PHOTO APRÈS — colonne dédiée (à tester AVANT photoRef pour ne pas la voler)
-      if ((h.indexOf('photo') > -1 || h.indexOf('reference') > -1) &&
-          (h.indexOf('apres') > -1 || h.indexOf('after') > -1)) {
-        COL.photoRefApres = c;
-        continue;
-      }
-      if      (h.match(/^n.?\s*(cas|tag|$)/))            COL.id          = c;
-      else if (h.indexOf('date c') === 0 && h.indexOf('cible') < 0 && h.indexOf('cr') > -1) COL.dateCreate = c;
-      else if (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1) COL.dateCible   = c;
-      else if (h.indexOf('type') > -1 && h.indexOf('danger') > -1)     COL.type        = c;
-      else if (h.indexOf('gravit') > -1)                                 COL.gravite     = c;
-      else if (h.indexOf('emplace') > -1)                                COL.emplacement = c;
-      else if (h === 'zone')                                              COL.zone        = c;
-      else if (h.indexOf('description') > -1)                            COL.description = c;
-      else if (h.indexOf('risque') > -1)                                 COL.risque      = c;
-      else if (h.indexOf('action') > -1 && h.indexOf('urgente') > -1)   COL.action      = c;
-      else if (h.indexOf('proposition') > -1)                            COL.propositions= c;
-      else if (h.indexOf('reference') > -1 && h.indexOf('photo') > -1)  COL.photoRef    = c;
-      else if (h.indexOf('statut') > -1)                                 COL.statut      = c;
-      else if (h.indexOf('respens') > -1 || h.indexOf('respons') > -1)  COL.responsable = c;
-    }
-    Logger.log('TAGs COL: ' + JSON.stringify(COL));
+    // Localiser la VRAIE ligne d'entête (pas forcément la ligne 1)
+    // puis détecter les colonnes — logique partagée avec le CRUD
+    // (detectTagCols_) : lecture et écriture pointent toujours sur
+    // les mêmes colonnes.
+    var tagHRow = locateTagHeaderRow_(tagData);
+    var COL = detectTagCols_(tagData[tagHRow] || []);
+    Logger.log('TAGs header row: ' + (tagHRow+1) + ' | COL: ' + JSON.stringify(COL));
 
-    for (var i = 1; i < tagData.length; i++) {
+    for (var i = tagHRow + 1; i < tagData.length; i++) {
+      try {
       var r = tagData[i];
       if (isNull(r[COL.id])) continue;
+      // Ligne d'entête répétée (titre, miroir…) → jamais affichée
+      if (isTagHeaderLikeRow_(r, COL.id)) continue;
 
       // ── Référence photo AVANT (colonne principale) ────────
       var refRaw   = isNull(r[COL.photoRef]) ? '' : String(r[COL.photoRef]).trim();
@@ -2990,31 +3158,40 @@ function getData() {
                             ? String(r[COL.photoRefApres]).trim() : '';
       var refApresClean = refApresRaw.replace(/^tags?\//i, '').trim();
 
-      // ── Résolution fileId depuis le cache Drive ───────────
-      var driveFileIdAvant = '';
-      var driveFileIdApres = '';
+      // ── Résolution fileId ─────────────────────────────────
+      // Priorité 1 : la référence est une URL Drive (format de la
+      // feuille source « plan ») → ID extrait directement, aucune
+      // ambiguïté possible.
+      // Priorité 2 : référence numérique historique ("tags/431…")
+      // → correspondance par numéro dans le cache du dossier Tags.
+      var driveFileIdAvant = extractDriveId_(refRaw);
+      var driveFileIdApres = extractDriveId_(refApresRaw);
 
-      // AVANT : extraire le numéro de la réf principale et chercher le fichier
-      // Priorité : fichier sans mot-clé "après" → puis n'importe quel fichier avec ce numéro
-      var numAvant = refClean.match(/(\d+)/);
-      if (numAvant && driveCache[numAvant[1]]) {
-        var entryAv = driveCache[numAvant[1]];
-        driveFileIdAvant = entryAv.avant || entryAv.any || '';
+      var keyAvant = photoNumKey_(refClean);
+      if (!driveFileIdAvant) {
+        // AVANT : fichier sans mot-clé "après" → sinon n'importe quel
+        // fichier portant ce numéro (clé normalisée : "045" ≡ "45")
+        if (keyAvant && driveCache[keyAvant]) {
+          var entryAv = driveCache[keyAvant];
+          driveFileIdAvant = entryAv.avant || entryAv.any || '';
+        }
       }
 
-      // APRÈS : 2 cas selon que la feuille a une colonne dédiée
-      if (refApresClean) {
-        // Cas 1 — Colonne « Réf. photo après » fournie : on prend le fichier
-        // qui porte ce numéro, sans contrainte de mot-clé (l'utilisateur a explicité)
-        var numApres = refApresClean.match(/(\d+)/);
-        if (numApres && driveCache[numApres[1]]) {
-          var entryAp = driveCache[numApres[1]];
-          driveFileIdApres = entryAp.apres || entryAp.any || '';
+      if (!driveFileIdApres) {
+        // APRÈS : 2 cas selon que la feuille a une colonne dédiée
+        if (refApresClean) {
+          // Cas 1 — Colonne « Réf. photo après » fournie : on prend le
+          // fichier qui porte ce numéro, sans contrainte de mot-clé
+          var keyApres = photoNumKey_(refApresClean);
+          if (keyApres && driveCache[keyApres]) {
+            var entryAp = driveCache[keyApres];
+            driveFileIdApres = entryAp.apres || entryAp.any || '';
+          }
+        } else if (keyAvant && driveCache[keyAvant]) {
+          // Cas 2 — Une seule colonne photo : la photo « après » doit
+          // avoir un mot-clé apres/après/after dans son nom.
+          driveFileIdApres = driveCache[keyAvant].apres || '';
         }
-      } else if (numAvant && driveCache[numAvant[1]]) {
-        // Cas 2 — Une seule colonne photo : la photo « après » doit avoir
-        // un mot-clé apres/après/after dans son nom, sinon il n'y en a pas.
-        driveFileIdApres = driveCache[numAvant[1]].apres || '';
       }
 
       var tag = {
@@ -3022,6 +3199,7 @@ function getData() {
         date:        fmtDate(r[COL.dateCreate]),
         isoDate:     getIso(r[COL.dateCreate]),
         dateCible:   fmtDate(r[COL.dateCible]),
+        isoDateCible:getIso(r[COL.dateCible]),
         type:        isNull(r[COL.type])         ? '' : String(r[COL.type]).trim(),
         gravite:     isNull(r[COL.gravite])      ? '' : String(r[COL.gravite]).trim(),
         emplacement: isNull(r[COL.emplacement])  ? '' : String(r[COL.emplacement]).trim(),
@@ -3044,8 +3222,13 @@ function getData() {
         responsable: isNull(r[COL.responsable])  ? '' : String(r[COL.responsable]).trim()
       };
       out.tags.push(tag);
-      if (tag.statut.toLowerCase().indexOf('ouvert') > -1 || tag.statut.toLowerCase().indexOf('open') > -1) {
+      if (tagStatutOuvert_(tag.statut)) {
         out.tagsOpen.push(tag);
+      }
+      } catch(eRow) {
+        // Une ligne malformée ne doit jamais faire échouer tout le
+        // chargement : on la journalise et on continue.
+        Logger.log('TAG ligne ' + (i+1) + ' ignorée: ' + eRow.message);
       }
     }
     // ── Tri haut → bas : numéro de TAG décroissant (plus récent en haut) ──
@@ -3503,44 +3686,58 @@ function crudAddTag(username, tagData) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
-    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+    // Écriture dans le classeur SOURCE (jamais dans le miroir
+    // IMPORTRANGE, qui passerait en #REF!).
+    var sh = getTagsSheet_(ss).sheet;
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée (classeur source inaccessible ?).' };
+
+    // Colonnes détectées depuis l'entête — même logique que la lecture,
+    // pour que la nouvelle ligne atterrisse dans les bonnes colonnes
+    // même si la feuille a été réorganisée.
+    var data = sh.getDataRange().getValues();
+    var tagHRow = locateTagHeaderRow_(data);
+    var COL  = detectTagCols_(data[tagHRow] || []);
 
     // Générer un nouvel ID
-    var data = sh.getDataRange().getValues();
     var maxId = 0;
     for (var i = 1; i < data.length; i++) {
-      var num = parseInt(String(data[i][0]).match(/\d+/), 10);
+      var num = parseInt(String(data[i][COL.id]).match(/\d+/), 10);
       if (!isNaN(num) && num > maxId) maxId = num;
     }
     var newId = String(maxId + 1);
 
-    // Upload photo si fournie (base64)
+    // Upload photo si fournie (base64) — la référence stockée est
+    // l'URL Drive du fichier créé (même convention que la feuille
+    // source), résolue ensuite directement par son ID : aucune
+    // erreur de correspondance possible.
     var photoRef = '';
     if (tagData.photoBase64 && tagData.photoName) {
-      var upload = uploadFileToDrive(TAGS_FOLDER_ID, newId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
-      if (upload.success) photoRef = newId + '.' + tagData.photoName;
+      var photoFileName = newId + '_' + tagData.photoName;
+      var upload = uploadFileToDrive(TAGS_FOLDER_ID, photoFileName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
+      if (upload.success) photoRef = 'https://drive.google.com/uc?export=view&id=' + upload.fileId;
+      else Logger.log('crudAddTag photo upload failed: ' + (upload.error || '?'));
     }
 
     // Date de création = aujourd'hui
     var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
 
-    var newRow = [
-      newId,
-      today,
-      tagData.dateCible || '',
-      tagData.type || '',
-      tagData.gravite || '',
-      tagData.emplacement || '',
-      tagData.zone || '',
-      tagData.description || '',
-      tagData.risque || '',
-      tagData.action || '',
-      tagData.propositions || '',
-      photoRef,
-      tagData.statut || 'Ouvert',
-      tagData.responsable || ''
-    ];
+    var width = Math.max((data[tagHRow] || []).length, 14);
+    var newRow = [];
+    for (var k = 0; k < width; k++) newRow.push('');
+    newRow[COL.id]          = newId;
+    newRow[COL.dateCreate]  = today;
+    newRow[COL.dateCible]   = tagData.dateCible || '';
+    newRow[COL.type]        = tagData.type || '';
+    newRow[COL.gravite]     = tagData.gravite || '';
+    newRow[COL.emplacement] = tagData.emplacement || '';
+    newRow[COL.zone]        = tagData.zone || '';
+    newRow[COL.description] = tagData.description || '';
+    newRow[COL.risque]      = tagData.risque || '';
+    newRow[COL.action]      = tagData.action || '';
+    newRow[COL.propositions]= tagData.propositions || '';
+    newRow[COL.photoRef]    = photoRef;
+    newRow[COL.statut]      = tagData.statut || 'Ouvert';
+    newRow[COL.responsable] = tagData.responsable || '';
 
     sh.appendRow(newRow);
     Logger.log('TAG added: #' + newId + ' by ' + username);
@@ -3557,33 +3754,43 @@ function crudEditTag(username, tagId, tagData) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
-    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+    // Écriture dans le classeur SOURCE (jamais dans le miroir
+    // IMPORTRANGE, qui passerait en #REF!).
+    var sh = getTagsSheet_(ss).sheet;
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée (classeur source inaccessible ?).' };
 
+    // Colonnes détectées depuis l'entête — même logique que la lecture :
+    // chaque champ est écrit exactement dans la colonne qui sera relue.
     var data = sh.getDataRange().getValues();
+    var tagHRow = locateTagHeaderRow_(data);
+    var COL  = detectTagCols_(data[tagHRow] || []);
     var targetRow = -1;
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
+      if (String(data[i][COL.id]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
     }
     if (targetRow < 0) return { success: false, error: 'TAG #' + tagId + ' non trouvé.' };
 
-    // Mettre à jour les champs fournis
-    if (tagData.dateCible !== undefined) sh.getRange(targetRow, 3).setValue(tagData.dateCible);
-    if (tagData.type !== undefined) sh.getRange(targetRow, 4).setValue(tagData.type);
-    if (tagData.gravite !== undefined) sh.getRange(targetRow, 5).setValue(tagData.gravite);
-    if (tagData.emplacement !== undefined) sh.getRange(targetRow, 6).setValue(tagData.emplacement);
-    if (tagData.zone !== undefined) sh.getRange(targetRow, 7).setValue(tagData.zone);
-    if (tagData.description !== undefined) sh.getRange(targetRow, 8).setValue(tagData.description);
-    if (tagData.risque !== undefined) sh.getRange(targetRow, 9).setValue(tagData.risque);
-    if (tagData.action !== undefined) sh.getRange(targetRow, 10).setValue(tagData.action);
-    if (tagData.propositions !== undefined) sh.getRange(targetRow, 11).setValue(tagData.propositions);
-    if (tagData.statut !== undefined) sh.getRange(targetRow, 13).setValue(tagData.statut);
-    if (tagData.responsable !== undefined) sh.getRange(targetRow, 14).setValue(tagData.responsable);
+    // Mettre à jour les champs fournis (colonnes 1-based → COL + 1)
+    if (tagData.dateCible !== undefined) sh.getRange(targetRow, COL.dateCible + 1).setValue(tagData.dateCible);
+    if (tagData.type !== undefined) sh.getRange(targetRow, COL.type + 1).setValue(tagData.type);
+    if (tagData.gravite !== undefined) sh.getRange(targetRow, COL.gravite + 1).setValue(tagData.gravite);
+    if (tagData.emplacement !== undefined) sh.getRange(targetRow, COL.emplacement + 1).setValue(tagData.emplacement);
+    if (tagData.zone !== undefined) sh.getRange(targetRow, COL.zone + 1).setValue(tagData.zone);
+    if (tagData.description !== undefined) sh.getRange(targetRow, COL.description + 1).setValue(tagData.description);
+    if (tagData.risque !== undefined) sh.getRange(targetRow, COL.risque + 1).setValue(tagData.risque);
+    if (tagData.action !== undefined) sh.getRange(targetRow, COL.action + 1).setValue(tagData.action);
+    if (tagData.propositions !== undefined) sh.getRange(targetRow, COL.propositions + 1).setValue(tagData.propositions);
+    if (tagData.statut !== undefined) sh.getRange(targetRow, COL.statut + 1).setValue(tagData.statut);
+    if (tagData.responsable !== undefined) sh.getRange(targetRow, COL.responsable + 1).setValue(tagData.responsable);
 
-    // Upload nouvelle photo si fournie
+    // Upload nouvelle photo si fournie — la référence stockée est
+    // l'URL Drive du fichier créé (même convention que la feuille
+    // source), résolue ensuite directement par son ID.
     if (tagData.photoBase64 && tagData.photoName) {
-      var upload = uploadFileToDrive(TAGS_FOLDER_ID, tagId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
-      if (upload.success) sh.getRange(targetRow, 12).setValue(tagId + '.' + tagData.photoName);
+      var photoFileName = tagId + '_' + tagData.photoName;
+      var upload = uploadFileToDrive(TAGS_FOLDER_ID, photoFileName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
+      if (upload.success) sh.getRange(targetRow, COL.photoRef + 1).setValue('https://drive.google.com/uc?export=view&id=' + upload.fileId);
+      else Logger.log('crudEditTag photo upload failed: ' + (upload.error || '?'));
     }
 
     Logger.log('TAG #' + tagId + ' updated by ' + username);
@@ -3600,13 +3807,17 @@ function crudDeleteTag(username, tagId) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
-    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+    // Écriture dans le classeur SOURCE (jamais dans le miroir
+    // IMPORTRANGE, qui passerait en #REF!).
+    var sh = getTagsSheet_(ss).sheet;
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée (classeur source inaccessible ?).' };
 
     var data = sh.getDataRange().getValues();
+    var tagHRow = locateTagHeaderRow_(data);
+    var COL  = detectTagCols_(data[tagHRow] || []);
     var targetRow = -1;
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
+      if (String(data[i][COL.id]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
     }
     if (targetRow < 0) return { success: false, error: 'TAG #' + tagId + ' non trouvé.' };
 
