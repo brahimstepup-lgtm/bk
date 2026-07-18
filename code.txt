@@ -1365,10 +1365,10 @@ function readEnregistrements(ss) {
     }
 
     // ── Détecter la ligne d'entête + colonnes ──
-    var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1;
+    var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1, linkCol = -1;
     for (var i = 0; i < Math.min(data.length, 6); i++) {
       var row = data[i];
-      var cc = -1, tc = -1, pc = -1, kc = -1, sc = -1;
+      var cc = -1, tc = -1, pc = -1, kc = -1, sc = -1, lc = -1;
       for (var c = 0; c < row.length; c++) {
         var h = normalize(String(row[c]||''));
         if (!h) continue;
@@ -1380,15 +1380,19 @@ function readEnregistrements(ss) {
         if (kc < 0 && (h.indexOf('conserv') > -1 || h.indexOf('duree') > -1 ||
                        h.indexOf('archiv') > -1)) { kc = c; continue; }
         if (sc < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)) { sc = c; continue; }
+        if (lc < 0 && (h.indexOf('lien') > -1 || h.indexOf('url') > -1 ||
+                       h.indexOf('drive') > -1 || h.indexOf('document') > -1)) { lc = c; continue; }
       }
       if (cc >= 0 && tc >= 0) {
-        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; break;
+        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; linkCol = lc; break;
       }
     }
-    // Fallback : pas d'entête détectée → A=code, B=intitulé, C=procédure, D=conservation, E=statut
-    if (hdrRow < 0) { hdrRow = -1; codeCol = 0; titCol = 1; procCol = 2; consCol = 3; statCol = 4; }
+    // Fallback : pas d'entête détectée → A=code, B=intitulé, C=procédure,
+    // D=conservation, E=statut, F=lien
+    if (hdrRow < 0) { hdrRow = -1; codeCol = 0; titCol = 1; procCol = 2; consCol = 3; statCol = 4; linkCol = 5; }
     Logger.log('Enregistrements cols: code=' + codeCol + ' intitulé=' + titCol +
-               ' procédure=' + procCol + ' conservation=' + consCol + ' statut=' + statCol);
+               ' procédure=' + procCol + ' conservation=' + consCol +
+               ' statut=' + statCol + ' lien=' + linkCol);
 
     // ── Parcourir les lignes de données ──
     var firstDataRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
@@ -1405,8 +1409,9 @@ function readEnregistrements(ss) {
       var lcTit = normalize(intitule);
       if (lcTit === 'intitule' || lcTit === 'titre' || normalize(code) === 'code') continue;
 
-      // URL associée — cellule de l'intitulé d'abord, puis celle du code
-      var url = cellUrl(i, titCol);
+      // URL associée — colonne « Lien » d'abord, puis intitulé, puis code
+      var url = cellUrl(i, linkCol);
+      if (!url) url = cellUrl(i, titCol);
       if (!url) url = cellUrl(i, codeCol);
 
       entries.push({
@@ -1425,6 +1430,63 @@ function readEnregistrements(ss) {
   }
   if (!entries.length) return { entries: DEFAULT_ENREGISTREMENTS, fromSheet: false };
   return { entries: entries, fromSheet: true };
+}
+
+// ── CRÉATION DE LA FEUILLE "enregistrements" ─────────────────
+// Appelée depuis le dashboard (bouton de la section Enregistrements)
+// ou manuellement depuis l'éditeur Apps Script. Idempotente :
+// si un onglet « enregistrements » existe déjà, ne touche à rien.
+// Crée l'onglet avec les entêtes attendues par readEnregistrements()
+// et le pré-remplit avec la liste maîtresse par défaut.
+function setupEnregistrementsSheet() {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+    var target = normalize(ENREGISTREMENTS_SHEET_NAME);
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n === target || n.indexOf('enregistrement') > -1) {
+        return {
+          success: true, created: false,
+          message: 'La feuille « ' + sheets[i].getName() + ' » existe déjà dans le classeur.',
+          gid: sheets[i].getSheetId()
+        };
+      }
+    }
+
+    var sh = ss.insertSheet(ENREGISTREMENTS_SHEET_NAME);
+    var headers = ['Code', 'Intitulé', 'Procédure de rattachement',
+                   'Durée de conservation', 'Statut', 'Lien (Drive)'];
+    var rows = DEFAULT_ENREGISTREMENTS.map(function(e){
+      return [e.code || '', e.intitule || '', e.procedure || '',
+              e.conservation || '', e.statut || '', ''];
+    });
+
+    sh.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setFontWeight('bold')
+      .setBackground('#1f2b3a')
+      .setFontColor('#ffffff');
+    if (rows.length) {
+      sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+    }
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1, 120);  // Code
+    sh.setColumnWidth(2, 340);  // Intitulé
+    sh.setColumnWidth(3, 260);  // Procédure
+    sh.setColumnWidth(4, 130);  // Conservation
+    sh.setColumnWidth(5, 130);  // Statut
+    sh.setColumnWidth(6, 220);  // Lien
+
+    Logger.log('Feuille "enregistrements" créée avec ' + rows.length + ' lignes');
+    return {
+      success: true, created: true,
+      message: 'Feuille « enregistrements » créée avec ' + rows.length + ' enregistrements pré-remplis.',
+      gid: sh.getSheetId()
+    };
+  } catch(e) {
+    Logger.log('setupEnregistrementsSheet error: ' + e.message);
+    return { success: false, created: false, message: 'Erreur : ' + e.message };
+  }
 }
 
 // ════════════════════════════════════════════════════════════

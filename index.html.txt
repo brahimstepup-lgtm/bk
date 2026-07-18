@@ -2750,12 +2750,18 @@ html.light .pests-search-input{background:#edf2f7}
       ou sur l'icône <strong>📄</strong> pour afficher le formulaire directement
       dans le dashboard.
     </p>
-    <p id="enrSourceNote" style="font-size:10px;color:var(--amber);line-height:1.5;margin:8px 0 0;display:none">
-      ⚠️ Feuille « enregistrements » introuvable dans le classeur — la liste affichée
-      est la liste par défaut issue de l'analyse des procédures. Créez l'onglet
-      <strong>enregistrements</strong> (colonnes : Code | Intitulé | Procédure | Durée de conservation | Statut)
-      pour la gérer directement depuis le classeur.
-    </p>
+    <div id="enrSourceNote" style="display:none;margin:8px 0 0">
+      <p style="font-size:10px;color:var(--amber);line-height:1.5;margin:0 0 8px">
+        ⚠️ Feuille « enregistrements » introuvable dans le classeur — la liste affichée
+        est la liste par défaut issue de l'analyse des procédures. Créez l'onglet
+        <strong>enregistrements</strong> (colonnes : Code | Intitulé | Procédure |
+        Durée de conservation | Statut | Lien) pour la gérer directement depuis le classeur.
+      </p>
+      <button class="btn" id="enrCreateBtn" onclick="createEnrSheet()"
+              style="font-size:10px;padding:6px 12px">
+        ➕ Créer la feuille « enregistrements » (pré-remplie) dans le classeur source
+      </button>
+    </div>
   </div>
 
   <!-- Synthèse -->
@@ -8342,6 +8348,33 @@ function renderProcedures(){
 // ══ ENREGISTREMENTS HSE ═══════════════════════════════════════
 // Rendu de la liste maîtresse des formulaires/enregistrements (ENR)
 // référencés par les procédures : liste filtrable + synthèse.
+
+// Crée la feuille « enregistrements » dans le classeur source
+// (pré-remplie avec la liste par défaut) via le serveur Apps Script.
+function createEnrSheet(){
+  if(typeof currentUser !== 'undefined' && currentUser && !userCanEdit('enregistrements')){
+    alert("Vous n'avez pas les droits pour créer la feuille « enregistrements ».");
+    return;
+  }
+  var btn = document.getElementById('enrCreateBtn');
+  var lbl = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Création de la feuille en cours…'; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(btn){ btn.disabled = false; btn.textContent = lbl; }
+      if(r && r.success){
+        alert(r.message + (r.created ? ' Les données vont être rechargées.' : ''));
+        if(typeof refreshData === 'function') refreshData();
+      } else {
+        alert((r && r.message) || 'Erreur lors de la création de la feuille.');
+      }
+    })
+    .withFailureHandler(function(err){
+      if(btn){ btn.disabled = false; btn.textContent = lbl; }
+      alert('Erreur : ' + (err && err.message ? err.message : err));
+    })
+    .setupEnregistrementsSheet();
+}
 function renderEnregistrements(){
   if(!D) return;
   var list = (D.enregistrements || []);
