@@ -12,6 +12,16 @@ var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
 var PLANNING_GID   = 1312782146;
 
+// ── SOURCE DES TAGS ──────────────────────────────────────────
+// L'onglet « plan » du classeur principal n'est qu'un MIROIR
+// (=IMPORTRANGE) du classeur source ci-dessous. On lit ET on
+// écrit directement dans la SOURCE : les données sont toujours
+// fraîches, et les ajouts/modifications ne cassent jamais la
+// formule IMPORTRANGE du miroir (écrire dans la plage importée
+// la mettrait en #REF!).
+var TAGS_SOURCE_SHEET_ID   = '1UPfWAHzIKBVvECIPqjg3ccgIwBlX1KzyflJ73jfPRc0';
+var TAGS_SOURCE_SHEET_NAME = 'plan';
+
 // ── NETTOYAGE ────────────────────────────────────────────────
 // Feuille source : "Nettoyage " (gid=1543533109)
 // Photos : dossier Drive racine 1IOv87AtD21q7l7yVIK6bJubkfaJf7AWw
@@ -296,6 +306,39 @@ function findTagsSheet_(ss) {
   // Seuil minimal : en dessous, aucune feuille ne ressemble à la
   // feuille TAGs → mieux vaut « non trouvée » que de mauvaises données.
   return bestScore >= 6 ? best : null;
+}
+
+// ── Résolution de LA feuille TAGs (source d'abord) ───────────
+// 1. Classeur SOURCE (TAGS_SOURCE_SHEET_ID / onglet « plan ») —
+//    celui que recopie l'IMPORTRANGE du classeur principal.
+// 2. Repli : détection par entêtes dans le classeur principal
+//    (le miroir IMPORTRANGE y est trouvé même renommé).
+// Retourne { sheet, source: 'source'|'miroir'|'' }.
+function getTagsSheet_(mainSS) {
+  if (TAGS_SOURCE_SHEET_ID) {
+    try {
+      var src = SpreadsheetApp.openById(TAGS_SOURCE_SHEET_ID);
+      var sh = TAGS_SOURCE_SHEET_NAME ? src.getSheetByName(TAGS_SOURCE_SHEET_NAME) : null;
+      if (!sh) sh = findTagsSheet_(src);
+      if (sh) return { sheet: sh, source: 'source' };
+    } catch(e) {
+      Logger.log('getTagsSheet_ : classeur source inaccessible (' + e.message + ') — repli sur le miroir');
+    }
+  }
+  var local = findTagsSheet_(mainSS || SpreadsheetApp.openById(SHEET_ID));
+  return { sheet: local, source: local ? 'miroir' : '' };
+}
+
+// ── Extraction d'un ID de fichier Drive depuis une URL ───────
+// La feuille source stocke les photos sous forme d'URL
+// (https://drive.google.com/uc?export=view&id=… ou …/file/d/…/) :
+// on récupère l'ID directement — correspondance exacte garantie,
+// sans passer par la recherche par numéro dans le dossier Tags.
+function extractDriveId_(s) {
+  s = String(s == null ? '' : s);
+  var m = s.match(/[?&]id=([A-Za-z0-9_-]{20,})/) ||
+          s.match(/\/d\/([A-Za-z0-9_-]{20,})/);
+  return m ? m[1] : '';
 }
 
 // ── Utilitaires ───────────────────────────────────────────────
@@ -3055,14 +3098,16 @@ function getData() {
   // r[4]=Gravité  r[5]=Emplacement  r[6]=Zone  r[7]=Description
   // r[8]=RisquePrincipal  r[9]=ActionUrgente  r[10]=Propositions
   // r[11]=RéférencePhoto  r[12]=Statut  r[13]=Responsable
-  // Localisation par notation des entêtes (findTagsSheet_) : ne peut
-  // JAMAIS renvoyer une feuille technique (RBAC_Users…) ni une feuille
-  // au hasard. Si aucune feuille ne correspond, la section affiche un
-  // message clair au lieu de données erronées.
-  var tagSheet = findTagsSheet_(ss);
-  out.tagsSheetName  = tagSheet ? tagSheet.getName() : '';
+  // Résolution : classeur SOURCE en priorité (onglet « plan » du
+  // classeur importé par IMPORTRANGE), sinon détection par entêtes
+  // dans le classeur principal. Ne peut JAMAIS renvoyer une feuille
+  // technique (RBAC_Users…) ni une feuille au hasard.
+  var tagRes   = getTagsSheet_(ss);
+  var tagSheet = tagRes.sheet;
+  out.tagsSheetName   = tagSheet ? tagSheet.getName() : '';
+  out.tagsSheetOrigin = tagRes.source;   // 'source' | 'miroir' | ''
   if (!tagSheet) {
-    out.tagsSheetError = 'Feuille TAGs introuvable dans le classeur — vérifiez son nom (ex. « TAGs ») et ses entêtes (N° Cas, Type de danger, Description…).';
+    out.tagsSheetError = 'Feuille TAGs introuvable — classeur source inaccessible et aucun onglet du classeur principal ne présente les entêtes attendues (N° Cas, Type de danger, Description…).';
   }
   if (tagSheet) {
     var tagData = tagSheet.getDataRange().getValues();
@@ -3087,32 +3132,40 @@ function getData() {
                             ? String(r[COL.photoRefApres]).trim() : '';
       var refApresClean = refApresRaw.replace(/^tags?\//i, '').trim();
 
-      // ── Résolution fileId depuis le cache Drive ───────────
-      var driveFileIdAvant = '';
-      var driveFileIdApres = '';
+      // ── Résolution fileId ─────────────────────────────────
+      // Priorité 1 : la référence est une URL Drive (format de la
+      // feuille source « plan ») → ID extrait directement, aucune
+      // ambiguïté possible.
+      // Priorité 2 : référence numérique historique ("tags/431…")
+      // → correspondance par numéro dans le cache du dossier Tags.
+      var driveFileIdAvant = extractDriveId_(refRaw);
+      var driveFileIdApres = extractDriveId_(refApresRaw);
 
-      // AVANT : extraire le numéro de la réf principale et chercher le fichier
-      // Priorité : fichier sans mot-clé "après" → puis n'importe quel fichier avec ce numéro
-      // (clé normalisée : "045" et "45" pointent sur le même fichier)
       var keyAvant = photoNumKey_(refClean);
-      if (keyAvant && driveCache[keyAvant]) {
-        var entryAv = driveCache[keyAvant];
-        driveFileIdAvant = entryAv.avant || entryAv.any || '';
+      if (!driveFileIdAvant) {
+        // AVANT : fichier sans mot-clé "après" → sinon n'importe quel
+        // fichier portant ce numéro (clé normalisée : "045" ≡ "45")
+        if (keyAvant && driveCache[keyAvant]) {
+          var entryAv = driveCache[keyAvant];
+          driveFileIdAvant = entryAv.avant || entryAv.any || '';
+        }
       }
 
-      // APRÈS : 2 cas selon que la feuille a une colonne dédiée
-      if (refApresClean) {
-        // Cas 1 — Colonne « Réf. photo après » fournie : on prend le fichier
-        // qui porte ce numéro, sans contrainte de mot-clé (l'utilisateur a explicité)
-        var keyApres = photoNumKey_(refApresClean);
-        if (keyApres && driveCache[keyApres]) {
-          var entryAp = driveCache[keyApres];
-          driveFileIdApres = entryAp.apres || entryAp.any || '';
+      if (!driveFileIdApres) {
+        // APRÈS : 2 cas selon que la feuille a une colonne dédiée
+        if (refApresClean) {
+          // Cas 1 — Colonne « Réf. photo après » fournie : on prend le
+          // fichier qui porte ce numéro, sans contrainte de mot-clé
+          var keyApres = photoNumKey_(refApresClean);
+          if (keyApres && driveCache[keyApres]) {
+            var entryAp = driveCache[keyApres];
+            driveFileIdApres = entryAp.apres || entryAp.any || '';
+          }
+        } else if (keyAvant && driveCache[keyAvant]) {
+          // Cas 2 — Une seule colonne photo : la photo « après » doit
+          // avoir un mot-clé apres/après/after dans son nom.
+          driveFileIdApres = driveCache[keyAvant].apres || '';
         }
-      } else if (keyAvant && driveCache[keyAvant]) {
-        // Cas 2 — Une seule colonne photo : la photo « après » doit avoir
-        // un mot-clé apres/après/after dans son nom, sinon il n'y en a pas.
-        driveFileIdApres = driveCache[keyAvant].apres || '';
       }
 
       var tag = {
@@ -3607,8 +3660,10 @@ function crudAddTag(username, tagData) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findTagsSheet_(ss);
-    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+    // Écriture dans le classeur SOURCE (jamais dans le miroir
+    // IMPORTRANGE, qui passerait en #REF!).
+    var sh = getTagsSheet_(ss).sheet;
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée (classeur source inaccessible ?).' };
 
     // Colonnes détectées depuis l'entête — même logique que la lecture,
     // pour que la nouvelle ligne atterrisse dans les bonnes colonnes
@@ -3624,13 +3679,15 @@ function crudAddTag(username, tagData) {
     }
     var newId = String(maxId + 1);
 
-    // Upload photo si fournie (base64) — la référence stockée est le
-    // nom RÉEL du fichier uploadé, pour une correspondance exacte.
+    // Upload photo si fournie (base64) — la référence stockée est
+    // l'URL Drive du fichier créé (même convention que la feuille
+    // source), résolue ensuite directement par son ID : aucune
+    // erreur de correspondance possible.
     var photoRef = '';
     if (tagData.photoBase64 && tagData.photoName) {
       var photoFileName = newId + '_' + tagData.photoName;
       var upload = uploadFileToDrive(TAGS_FOLDER_ID, photoFileName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
-      if (upload.success) photoRef = photoFileName;
+      if (upload.success) photoRef = 'https://drive.google.com/uc?export=view&id=' + upload.fileId;
       else Logger.log('crudAddTag photo upload failed: ' + (upload.error || '?'));
     }
 
@@ -3670,8 +3727,10 @@ function crudEditTag(username, tagId, tagData) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findTagsSheet_(ss);
-    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+    // Écriture dans le classeur SOURCE (jamais dans le miroir
+    // IMPORTRANGE, qui passerait en #REF!).
+    var sh = getTagsSheet_(ss).sheet;
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée (classeur source inaccessible ?).' };
 
     // Colonnes détectées depuis l'entête — même logique que la lecture :
     // chaque champ est écrit exactement dans la colonne qui sera relue.
@@ -3696,12 +3755,13 @@ function crudEditTag(username, tagId, tagData) {
     if (tagData.statut !== undefined) sh.getRange(targetRow, COL.statut + 1).setValue(tagData.statut);
     if (tagData.responsable !== undefined) sh.getRange(targetRow, COL.responsable + 1).setValue(tagData.responsable);
 
-    // Upload nouvelle photo si fournie — la référence stockée est le
-    // nom RÉEL du fichier uploadé, pour une correspondance exacte.
+    // Upload nouvelle photo si fournie — la référence stockée est
+    // l'URL Drive du fichier créé (même convention que la feuille
+    // source), résolue ensuite directement par son ID.
     if (tagData.photoBase64 && tagData.photoName) {
       var photoFileName = tagId + '_' + tagData.photoName;
       var upload = uploadFileToDrive(TAGS_FOLDER_ID, photoFileName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
-      if (upload.success) sh.getRange(targetRow, COL.photoRef + 1).setValue(photoFileName);
+      if (upload.success) sh.getRange(targetRow, COL.photoRef + 1).setValue('https://drive.google.com/uc?export=view&id=' + upload.fileId);
       else Logger.log('crudEditTag photo upload failed: ' + (upload.error || '?'));
     }
 
@@ -3719,8 +3779,10 @@ function crudDeleteTag(username, tagId) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findTagsSheet_(ss);
-    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
+    // Écriture dans le classeur SOURCE (jamais dans le miroir
+    // IMPORTRANGE, qui passerait en #REF!).
+    var sh = getTagsSheet_(ss).sheet;
+    if (!sh) return { success: false, error: 'Feuille TAGs non trouvée (classeur source inaccessible ?).' };
 
     var data = sh.getDataRange().getValues();
     var COL  = detectTagCols_(data[0] || []);
