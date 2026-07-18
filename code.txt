@@ -161,9 +161,9 @@ function buildDriveTagsCache() {
       var id   = file.getId();
       count++;
       // Extraire le premier numéro rencontré : "431.Référence...", "photo_431.jpg", "ref-431" → "431"
-      var m = name.match(/(\d+)/);
-      if (m) {
-        var num = m[1];
+      // Clé normalisée (zéros de tête retirés) pour que "045" et "45" matchent.
+      var num = photoNumKey_(name);
+      if (num) {
         if (!cache[num]) cache[num] = { any: '', avant: '', apres: '' };
         // Tout premier fichier rencontré pour ce numéro → "any"
         if (!cache[num].any) cache[num].any = id;
@@ -183,6 +183,59 @@ function buildDriveTagsCache() {
     Logger.log('buildDriveTagsCache error: ' + e.message);
   }
   return { cache: cache, count: count };
+}
+
+// ── Clé photo normalisée ─────────────────────────────────────
+// Extrait le premier numéro d'une référence / d'un nom de fichier
+// et retire les zéros de tête ("tags/045.jpg" → "45").
+// Utilisée des DEUX côtés (cache Drive + référence feuille) pour
+// garantir la correspondance exacte photo ↔ tag.
+function photoNumKey_(s) {
+  var m = String(s == null ? '' : s).match(/(\d+)/);
+  if (!m) return '';
+  return m[1].replace(/^0+(?=\d)/, '');
+}
+
+// ── Détection des colonnes de la feuille TAGs ────────────────
+// Logique UNIQUE partagée entre la lecture (getData) et les
+// écritures CRUD (crudAddTag / crudEditTag / crudDeleteTag) :
+// la même détection d'entêtes garantit que ce qui est écrit
+// atterrit exactement dans les colonnes qui seront relues.
+function detectTagCols_(hdr) {
+  var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
+              emplacement:5, zone:6, description:7, risque:8,
+              action:9, propositions:10, photoRef:11, photoRefApres:-1,
+              statut:12, responsable:13 };
+  for (var c = 0; c < hdr.length; c++) {
+    var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
+    // ── PHOTO APRÈS — colonne dédiée (à tester AVANT photoRef pour ne pas la voler)
+    if ((h.indexOf('photo') > -1 || h.indexOf('reference') > -1) &&
+        (h.indexOf('apres') > -1 || h.indexOf('after') > -1)) {
+      COL.photoRefApres = c;
+      continue;
+    }
+    if      (h.match(/^n.?\s*(cas|tag|$)/))            COL.id          = c;
+    else if (h.indexOf('date c') === 0 && h.indexOf('cible') < 0 && h.indexOf('cr') > -1) COL.dateCreate = c;
+    else if (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1) COL.dateCible   = c;
+    else if (h.indexOf('type') > -1 && h.indexOf('danger') > -1)     COL.type        = c;
+    else if (h.indexOf('gravit') > -1)                                 COL.gravite     = c;
+    else if (h.indexOf('emplace') > -1)                                COL.emplacement = c;
+    else if (h === 'zone')                                              COL.zone        = c;
+    else if (h.indexOf('description') > -1)                            COL.description = c;
+    else if (h.indexOf('risque') > -1)                                 COL.risque      = c;
+    else if (h.indexOf('action') > -1 && h.indexOf('urgente') > -1)   COL.action      = c;
+    else if (h.indexOf('proposition') > -1)                            COL.propositions= c;
+    else if (h.indexOf('reference') > -1 && h.indexOf('photo') > -1)  COL.photoRef    = c;
+    else if (h.indexOf('statut') > -1)                                 COL.statut      = c;
+    else if (h.indexOf('respens') > -1 || h.indexOf('respons') > -1)  COL.responsable = c;
+  }
+  return COL;
+}
+
+// Statut « ouvert » = Ouvert / Open / En cours (non résolu).
+function tagStatutOuvert_(statut) {
+  var s = String(statut||'').toLowerCase();
+  return s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 || s.indexOf('cours') > -1;
 }
 
 // ── Utilitaires ───────────────────────────────────────────────
@@ -2946,38 +2999,14 @@ function getData() {
   if (tagSheet) {
     var tagData = tagSheet.getDataRange().getValues();
 
-    // Détecter les colonnes depuis l'entête (ligne 0)
-    var hdr = tagData[0];
-    var COL = { id:0, dateCreate:1, dateCible:2, type:3, gravite:4,
-                emplacement:5, zone:6, description:7, risque:8,
-                action:9, propositions:10, photoRef:11, photoRefApres:-1,
-                statut:12, responsable:13 };
-    for (var c = 0; c < hdr.length; c++) {
-      var h = normalize(String(hdr[c]||'').replace(/[\n\r#]/g,'').trim());
-      // ── PHOTO APRÈS — colonne dédiée (à tester AVANT photoRef pour ne pas la voler)
-      if ((h.indexOf('photo') > -1 || h.indexOf('reference') > -1) &&
-          (h.indexOf('apres') > -1 || h.indexOf('after') > -1)) {
-        COL.photoRefApres = c;
-        continue;
-      }
-      if      (h.match(/^n.?\s*(cas|tag|$)/))            COL.id          = c;
-      else if (h.indexOf('date c') === 0 && h.indexOf('cible') < 0 && h.indexOf('cr') > -1) COL.dateCreate = c;
-      else if (h.indexOf('cible') > -1 || h.indexOf('echeance') > -1) COL.dateCible   = c;
-      else if (h.indexOf('type') > -1 && h.indexOf('danger') > -1)     COL.type        = c;
-      else if (h.indexOf('gravit') > -1)                                 COL.gravite     = c;
-      else if (h.indexOf('emplace') > -1)                                COL.emplacement = c;
-      else if (h === 'zone')                                              COL.zone        = c;
-      else if (h.indexOf('description') > -1)                            COL.description = c;
-      else if (h.indexOf('risque') > -1)                                 COL.risque      = c;
-      else if (h.indexOf('action') > -1 && h.indexOf('urgente') > -1)   COL.action      = c;
-      else if (h.indexOf('proposition') > -1)                            COL.propositions= c;
-      else if (h.indexOf('reference') > -1 && h.indexOf('photo') > -1)  COL.photoRef    = c;
-      else if (h.indexOf('statut') > -1)                                 COL.statut      = c;
-      else if (h.indexOf('respens') > -1 || h.indexOf('respons') > -1)  COL.responsable = c;
-    }
+    // Détecter les colonnes depuis l'entête (ligne 0) — logique
+    // partagée avec le CRUD (detectTagCols_) : lecture et écriture
+    // pointent toujours sur les mêmes colonnes.
+    var COL = detectTagCols_(tagData[0] || []);
     Logger.log('TAGs COL: ' + JSON.stringify(COL));
 
     for (var i = 1; i < tagData.length; i++) {
+      try {
       var r = tagData[i];
       if (isNull(r[COL.id])) continue;
 
@@ -2996,9 +3025,10 @@ function getData() {
 
       // AVANT : extraire le numéro de la réf principale et chercher le fichier
       // Priorité : fichier sans mot-clé "après" → puis n'importe quel fichier avec ce numéro
-      var numAvant = refClean.match(/(\d+)/);
-      if (numAvant && driveCache[numAvant[1]]) {
-        var entryAv = driveCache[numAvant[1]];
+      // (clé normalisée : "045" et "45" pointent sur le même fichier)
+      var keyAvant = photoNumKey_(refClean);
+      if (keyAvant && driveCache[keyAvant]) {
+        var entryAv = driveCache[keyAvant];
         driveFileIdAvant = entryAv.avant || entryAv.any || '';
       }
 
@@ -3006,15 +3036,15 @@ function getData() {
       if (refApresClean) {
         // Cas 1 — Colonne « Réf. photo après » fournie : on prend le fichier
         // qui porte ce numéro, sans contrainte de mot-clé (l'utilisateur a explicité)
-        var numApres = refApresClean.match(/(\d+)/);
-        if (numApres && driveCache[numApres[1]]) {
-          var entryAp = driveCache[numApres[1]];
+        var keyApres = photoNumKey_(refApresClean);
+        if (keyApres && driveCache[keyApres]) {
+          var entryAp = driveCache[keyApres];
           driveFileIdApres = entryAp.apres || entryAp.any || '';
         }
-      } else if (numAvant && driveCache[numAvant[1]]) {
+      } else if (keyAvant && driveCache[keyAvant]) {
         // Cas 2 — Une seule colonne photo : la photo « après » doit avoir
         // un mot-clé apres/après/after dans son nom, sinon il n'y en a pas.
-        driveFileIdApres = driveCache[numAvant[1]].apres || '';
+        driveFileIdApres = driveCache[keyAvant].apres || '';
       }
 
       var tag = {
@@ -3022,6 +3052,7 @@ function getData() {
         date:        fmtDate(r[COL.dateCreate]),
         isoDate:     getIso(r[COL.dateCreate]),
         dateCible:   fmtDate(r[COL.dateCible]),
+        isoDateCible:getIso(r[COL.dateCible]),
         type:        isNull(r[COL.type])         ? '' : String(r[COL.type]).trim(),
         gravite:     isNull(r[COL.gravite])      ? '' : String(r[COL.gravite]).trim(),
         emplacement: isNull(r[COL.emplacement])  ? '' : String(r[COL.emplacement]).trim(),
@@ -3044,8 +3075,13 @@ function getData() {
         responsable: isNull(r[COL.responsable])  ? '' : String(r[COL.responsable]).trim()
       };
       out.tags.push(tag);
-      if (tag.statut.toLowerCase().indexOf('ouvert') > -1 || tag.statut.toLowerCase().indexOf('open') > -1) {
+      if (tagStatutOuvert_(tag.statut)) {
         out.tagsOpen.push(tag);
+      }
+      } catch(eRow) {
+        // Une ligne malformée ne doit jamais faire échouer tout le
+        // chargement : on la journalise et on continue.
+        Logger.log('TAG ligne ' + (i+1) + ' ignorée: ' + eRow.message);
       }
     }
     // ── Tri haut → bas : numéro de TAG décroissant (plus récent en haut) ──
@@ -3506,41 +3542,50 @@ function crudAddTag(username, tagData) {
     var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
     if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
 
-    // Générer un nouvel ID
+    // Colonnes détectées depuis l'entête — même logique que la lecture,
+    // pour que la nouvelle ligne atterrisse dans les bonnes colonnes
+    // même si la feuille a été réorganisée.
     var data = sh.getDataRange().getValues();
+    var COL  = detectTagCols_(data[0] || []);
+
+    // Générer un nouvel ID
     var maxId = 0;
     for (var i = 1; i < data.length; i++) {
-      var num = parseInt(String(data[i][0]).match(/\d+/), 10);
+      var num = parseInt(String(data[i][COL.id]).match(/\d+/), 10);
       if (!isNaN(num) && num > maxId) maxId = num;
     }
     var newId = String(maxId + 1);
 
-    // Upload photo si fournie (base64)
+    // Upload photo si fournie (base64) — la référence stockée est le
+    // nom RÉEL du fichier uploadé, pour une correspondance exacte.
     var photoRef = '';
     if (tagData.photoBase64 && tagData.photoName) {
-      var upload = uploadFileToDrive(TAGS_FOLDER_ID, newId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
-      if (upload.success) photoRef = newId + '.' + tagData.photoName;
+      var photoFileName = newId + '_' + tagData.photoName;
+      var upload = uploadFileToDrive(TAGS_FOLDER_ID, photoFileName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
+      if (upload.success) photoRef = photoFileName;
+      else Logger.log('crudAddTag photo upload failed: ' + (upload.error || '?'));
     }
 
     // Date de création = aujourd'hui
     var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
 
-    var newRow = [
-      newId,
-      today,
-      tagData.dateCible || '',
-      tagData.type || '',
-      tagData.gravite || '',
-      tagData.emplacement || '',
-      tagData.zone || '',
-      tagData.description || '',
-      tagData.risque || '',
-      tagData.action || '',
-      tagData.propositions || '',
-      photoRef,
-      tagData.statut || 'Ouvert',
-      tagData.responsable || ''
-    ];
+    var width = Math.max((data[0] || []).length, 14);
+    var newRow = [];
+    for (var k = 0; k < width; k++) newRow.push('');
+    newRow[COL.id]          = newId;
+    newRow[COL.dateCreate]  = today;
+    newRow[COL.dateCible]   = tagData.dateCible || '';
+    newRow[COL.type]        = tagData.type || '';
+    newRow[COL.gravite]     = tagData.gravite || '';
+    newRow[COL.emplacement] = tagData.emplacement || '';
+    newRow[COL.zone]        = tagData.zone || '';
+    newRow[COL.description] = tagData.description || '';
+    newRow[COL.risque]      = tagData.risque || '';
+    newRow[COL.action]      = tagData.action || '';
+    newRow[COL.propositions]= tagData.propositions || '';
+    newRow[COL.photoRef]    = photoRef;
+    newRow[COL.statut]      = tagData.statut || 'Ouvert';
+    newRow[COL.responsable] = tagData.responsable || '';
 
     sh.appendRow(newRow);
     Logger.log('TAG added: #' + newId + ' by ' + username);
@@ -3560,30 +3605,36 @@ function crudEditTag(username, tagId, tagData) {
     var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
     if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
 
+    // Colonnes détectées depuis l'entête — même logique que la lecture :
+    // chaque champ est écrit exactement dans la colonne qui sera relue.
     var data = sh.getDataRange().getValues();
+    var COL  = detectTagCols_(data[0] || []);
     var targetRow = -1;
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
+      if (String(data[i][COL.id]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
     }
     if (targetRow < 0) return { success: false, error: 'TAG #' + tagId + ' non trouvé.' };
 
-    // Mettre à jour les champs fournis
-    if (tagData.dateCible !== undefined) sh.getRange(targetRow, 3).setValue(tagData.dateCible);
-    if (tagData.type !== undefined) sh.getRange(targetRow, 4).setValue(tagData.type);
-    if (tagData.gravite !== undefined) sh.getRange(targetRow, 5).setValue(tagData.gravite);
-    if (tagData.emplacement !== undefined) sh.getRange(targetRow, 6).setValue(tagData.emplacement);
-    if (tagData.zone !== undefined) sh.getRange(targetRow, 7).setValue(tagData.zone);
-    if (tagData.description !== undefined) sh.getRange(targetRow, 8).setValue(tagData.description);
-    if (tagData.risque !== undefined) sh.getRange(targetRow, 9).setValue(tagData.risque);
-    if (tagData.action !== undefined) sh.getRange(targetRow, 10).setValue(tagData.action);
-    if (tagData.propositions !== undefined) sh.getRange(targetRow, 11).setValue(tagData.propositions);
-    if (tagData.statut !== undefined) sh.getRange(targetRow, 13).setValue(tagData.statut);
-    if (tagData.responsable !== undefined) sh.getRange(targetRow, 14).setValue(tagData.responsable);
+    // Mettre à jour les champs fournis (colonnes 1-based → COL + 1)
+    if (tagData.dateCible !== undefined) sh.getRange(targetRow, COL.dateCible + 1).setValue(tagData.dateCible);
+    if (tagData.type !== undefined) sh.getRange(targetRow, COL.type + 1).setValue(tagData.type);
+    if (tagData.gravite !== undefined) sh.getRange(targetRow, COL.gravite + 1).setValue(tagData.gravite);
+    if (tagData.emplacement !== undefined) sh.getRange(targetRow, COL.emplacement + 1).setValue(tagData.emplacement);
+    if (tagData.zone !== undefined) sh.getRange(targetRow, COL.zone + 1).setValue(tagData.zone);
+    if (tagData.description !== undefined) sh.getRange(targetRow, COL.description + 1).setValue(tagData.description);
+    if (tagData.risque !== undefined) sh.getRange(targetRow, COL.risque + 1).setValue(tagData.risque);
+    if (tagData.action !== undefined) sh.getRange(targetRow, COL.action + 1).setValue(tagData.action);
+    if (tagData.propositions !== undefined) sh.getRange(targetRow, COL.propositions + 1).setValue(tagData.propositions);
+    if (tagData.statut !== undefined) sh.getRange(targetRow, COL.statut + 1).setValue(tagData.statut);
+    if (tagData.responsable !== undefined) sh.getRange(targetRow, COL.responsable + 1).setValue(tagData.responsable);
 
-    // Upload nouvelle photo si fournie
+    // Upload nouvelle photo si fournie — la référence stockée est le
+    // nom RÉEL du fichier uploadé, pour une correspondance exacte.
     if (tagData.photoBase64 && tagData.photoName) {
-      var upload = uploadFileToDrive(TAGS_FOLDER_ID, tagId + '_' + tagData.photoName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
-      if (upload.success) sh.getRange(targetRow, 12).setValue(tagId + '.' + tagData.photoName);
+      var photoFileName = tagId + '_' + tagData.photoName;
+      var upload = uploadFileToDrive(TAGS_FOLDER_ID, photoFileName, tagData.photoBase64, tagData.photoMime || 'image/jpeg');
+      if (upload.success) sh.getRange(targetRow, COL.photoRef + 1).setValue(photoFileName);
+      else Logger.log('crudEditTag photo upload failed: ' + (upload.error || '?'));
     }
 
     Logger.log('TAG #' + tagId + ' updated by ' + username);
@@ -3604,9 +3655,10 @@ function crudDeleteTag(username, tagId) {
     if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
 
     var data = sh.getDataRange().getValues();
+    var COL  = detectTagCols_(data[0] || []);
     var targetRow = -1;
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
+      if (String(data[i][COL.id]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
     }
     if (targetRow < 0) return { success: false, error: 'TAG #' + tagId + ' non trouvé.' };
 
