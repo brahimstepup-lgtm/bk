@@ -6999,6 +6999,8 @@ function applyTagF(){
 
   var filtered=(D.tags||[]).filter(function(t){
     if(!t.id||t._err) return false;
+    // Ligne d'entête recopiée dans les données (« N° Cas »…) → jamais affichée
+    if(/^n\s*[°ºo.]?\s*(cas|tag)s?$/i.test(String(t.id).trim())) return false;
     var isOpen=tagIsOpen(t);
     if(tagStatFilter==='open'&&!isOpen) return false;
     if(tagStatFilter==='closed'&&isOpen) return false;

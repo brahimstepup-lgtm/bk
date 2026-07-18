@@ -308,6 +308,28 @@ function findTagsSheet_(ss) {
   return bestScore >= 6 ? best : null;
 }
 
+// ── Localisation de la LIGNE d'entête dans la feuille TAGs ───
+// L'entête n'est pas toujours en ligne 1 (ligne de titre, formule
+// IMPORTRANGE…) : on note les 10 premières lignes et on retient
+// celle qui ressemble le plus à un entête TAGs.
+function locateTagHeaderRow_(data) {
+  var hRow = 0, hBest = -1;
+  for (var i = 0; i < Math.min(data.length, 10); i++) {
+    var sc = tagsHeaderScore_(data[i] || []).score;
+    if (sc > hBest) { hBest = sc; hRow = i; }
+  }
+  return hRow;
+}
+
+// Ligne d'entête (éventuellement répétée) au milieu des données ?
+// → cellule ID non numérique du type « N° Cas » / « N° TAG », ou
+// ligne dont les valeurs ressemblent massivement à des entêtes.
+function isTagHeaderLikeRow_(r, idCol) {
+  var id = normalize(String((r && r[idCol]) || ''));
+  if (/^n\s*.?\s*(cas|tag)/.test(id) && !/\d/.test(id)) return true;
+  return tagsHeaderScore_(r || []).score >= 6;
+}
+
 // ── Résolution de LA feuille TAGs (source d'abord) ───────────
 // 1. Classeur SOURCE (TAGS_SOURCE_SHEET_ID / onglet « plan ») —
 //    celui que recopie l'IMPORTRANGE du classeur principal.
@@ -3112,16 +3134,20 @@ function getData() {
   if (tagSheet) {
     var tagData = tagSheet.getDataRange().getValues();
 
-    // Détecter les colonnes depuis l'entête (ligne 0) — logique
-    // partagée avec le CRUD (detectTagCols_) : lecture et écriture
-    // pointent toujours sur les mêmes colonnes.
-    var COL = detectTagCols_(tagData[0] || []);
-    Logger.log('TAGs COL: ' + JSON.stringify(COL));
+    // Localiser la VRAIE ligne d'entête (pas forcément la ligne 1)
+    // puis détecter les colonnes — logique partagée avec le CRUD
+    // (detectTagCols_) : lecture et écriture pointent toujours sur
+    // les mêmes colonnes.
+    var tagHRow = locateTagHeaderRow_(tagData);
+    var COL = detectTagCols_(tagData[tagHRow] || []);
+    Logger.log('TAGs header row: ' + (tagHRow+1) + ' | COL: ' + JSON.stringify(COL));
 
-    for (var i = 1; i < tagData.length; i++) {
+    for (var i = tagHRow + 1; i < tagData.length; i++) {
       try {
       var r = tagData[i];
       if (isNull(r[COL.id])) continue;
+      // Ligne d'entête répétée (titre, miroir…) → jamais affichée
+      if (isTagHeaderLikeRow_(r, COL.id)) continue;
 
       // ── Référence photo AVANT (colonne principale) ────────
       var refRaw   = isNull(r[COL.photoRef]) ? '' : String(r[COL.photoRef]).trim();
@@ -3669,7 +3695,8 @@ function crudAddTag(username, tagData) {
     // pour que la nouvelle ligne atterrisse dans les bonnes colonnes
     // même si la feuille a été réorganisée.
     var data = sh.getDataRange().getValues();
-    var COL  = detectTagCols_(data[0] || []);
+    var tagHRow = locateTagHeaderRow_(data);
+    var COL  = detectTagCols_(data[tagHRow] || []);
 
     // Générer un nouvel ID
     var maxId = 0;
@@ -3694,7 +3721,7 @@ function crudAddTag(username, tagData) {
     // Date de création = aujourd'hui
     var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
 
-    var width = Math.max((data[0] || []).length, 14);
+    var width = Math.max((data[tagHRow] || []).length, 14);
     var newRow = [];
     for (var k = 0; k < width; k++) newRow.push('');
     newRow[COL.id]          = newId;
@@ -3735,7 +3762,8 @@ function crudEditTag(username, tagId, tagData) {
     // Colonnes détectées depuis l'entête — même logique que la lecture :
     // chaque champ est écrit exactement dans la colonne qui sera relue.
     var data = sh.getDataRange().getValues();
-    var COL  = detectTagCols_(data[0] || []);
+    var tagHRow = locateTagHeaderRow_(data);
+    var COL  = detectTagCols_(data[tagHRow] || []);
     var targetRow = -1;
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][COL.id]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
@@ -3785,7 +3813,8 @@ function crudDeleteTag(username, tagId) {
     if (!sh) return { success: false, error: 'Feuille TAGs non trouvée (classeur source inaccessible ?).' };
 
     var data = sh.getDataRange().getValues();
-    var COL  = detectTagCols_(data[0] || []);
+    var tagHRow = locateTagHeaderRow_(data);
+    var COL  = detectTagCols_(data[tagHRow] || []);
     var targetRow = -1;
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][COL.id]).trim() === String(tagId).trim()) { targetRow = i + 1; break; }
