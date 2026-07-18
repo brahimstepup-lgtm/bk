@@ -238,6 +238,66 @@ function tagStatutOuvert_(statut) {
   return s.indexOf('ouvert') > -1 || s.indexOf('open') > -1 || s.indexOf('cours') > -1;
 }
 
+// ── Localisation ROBUSTE de la feuille TAGs ──────────────────
+// L'ancienne détection (nom contenant "tag" + repli sur la 3e
+// feuille du classeur) pouvait renvoyer n'importe quelle feuille
+// (ex. RBAC_Users) si la feuille TAGs était renommée ou déplacée
+// → comptes utilisateurs affichés comme des TAGs.
+// Nouvelle logique : chaque feuille est NOTÉE d'après ses entêtes
+// réelles ; on ne retient que celle qui ressemble vraiment à la
+// feuille TAGs, sinon on ne retourne RIEN (jamais de feuille au
+// hasard).
+function tagsHeaderScore_(hdrRow) {
+  var score = 0, distinct = false;
+  for (var c = 0; c < hdrRow.length; c++) {
+    var h = normalize(String(hdrRow[c]||'').replace(/[\n\r#]/g,'').trim());
+    if (!h) continue;
+    if      (h.match(/^n.?\s*(cas|tag)/))       { score += 3; distinct = true; }  // « N° Cas » — très distinctif
+    else if (h.indexOf('danger') > -1)           { score += 3; distinct = true; }  // « Type de danger »
+    else if (h.indexOf('proposition') > -1)      score += 2;
+    else if (h.indexOf('urgente') > -1)          score += 2;
+    else if (h.indexOf('photo') > -1)            score += 2;
+    else if (h.indexOf('risque') > -1)           score += 1;
+    else if (h.indexOf('cible') > -1)            score += 1;
+    else if (h.indexOf('emplace') > -1)          score += 1;
+    else if (h === 'zone')                       score += 1;
+    else if (h.indexOf('gravit') > -1)           score += 1;
+    else if (h.indexOf('description') > -1)      score += 1;
+    else if (h.indexOf('statut') > -1)           score += 1;
+  }
+  return { score: score, distinct: distinct };
+}
+function findTagsSheet_(ss) {
+  var sheets = ss.getSheets();
+  var best = null, bestScore = 0;
+  for (var i = 0; i < sheets.length; i++) {
+    var sh = sheets[i];
+    var name = normalize(sh.getName());
+    // Feuilles techniques : jamais candidates
+    if (/rbac|user|utilisateur/.test(name)) continue;
+    var hdr = [];
+    try {
+      var lastCol = sh.getLastColumn();
+      if (lastCol > 0) hdr = sh.getRange(1, 1, 1, lastCol).getValues()[0] || [];
+    } catch(e) { continue; }
+    var hs = tagsHeaderScore_(hdr);
+    var score = hs.score;
+    // Bonus si le NOM évoque les TAGs — \btag\b en mot isolé pour
+    // éviter les faux positifs (« étage », « pourcentage »…)
+    var nameMatch = /(^|[^a-z])tags?([^a-z]|$)/.test(name) ||
+                    name.indexOf('danger') > -1 || name.indexOf('situation') > -1;
+    if (nameMatch) score += 4;
+    // Preuve distinctive obligatoire : entête « N° Cas »/« danger »
+    // OU nom évocateur — sinon une feuille générique (zone/statut/photo,
+    // ex. Nettoyage) pourrait passer le seuil par accident.
+    if (!hs.distinct && !nameMatch) continue;
+    if (score > bestScore) { bestScore = score; best = sh; }
+  }
+  // Seuil minimal : en dessous, aucune feuille ne ressemble à la
+  // feuille TAGs → mieux vaut « non trouvée » que de mauvaises données.
+  return bestScore >= 6 ? best : null;
+}
+
 // ── Utilitaires ───────────────────────────────────────────────
 function isNull(v) {
   if (v === null || v === undefined) return true;
@@ -2995,7 +3055,15 @@ function getData() {
   // r[4]=Gravité  r[5]=Emplacement  r[6]=Zone  r[7]=Description
   // r[8]=RisquePrincipal  r[9]=ActionUrgente  r[10]=Propositions
   // r[11]=RéférencePhoto  r[12]=Statut  r[13]=Responsable
-  var tagSheet = findSheet(['tag','danger','situation']) || (sheets.length>2?sheets[2]:null);
+  // Localisation par notation des entêtes (findTagsSheet_) : ne peut
+  // JAMAIS renvoyer une feuille technique (RBAC_Users…) ni une feuille
+  // au hasard. Si aucune feuille ne correspond, la section affiche un
+  // message clair au lieu de données erronées.
+  var tagSheet = findTagsSheet_(ss);
+  out.tagsSheetName  = tagSheet ? tagSheet.getName() : '';
+  if (!tagSheet) {
+    out.tagsSheetError = 'Feuille TAGs introuvable dans le classeur — vérifiez son nom (ex. « TAGs ») et ses entêtes (N° Cas, Type de danger, Description…).';
+  }
   if (tagSheet) {
     var tagData = tagSheet.getDataRange().getValues();
 
@@ -3539,7 +3607,7 @@ function crudAddTag(username, tagData) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
+    var sh = findTagsSheet_(ss);
     if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
 
     // Colonnes détectées depuis l'entête — même logique que la lecture,
@@ -3602,7 +3670,7 @@ function crudEditTag(username, tagId, tagData) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
+    var sh = findTagsSheet_(ss);
     if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
 
     // Colonnes détectées depuis l'entête — même logique que la lecture :
@@ -3651,7 +3719,7 @@ function crudDeleteTag(username, tagId) {
     if (!perm.ok) return { success: false, error: perm.error };
 
     var ss = SpreadsheetApp.openById(SHEET_ID);
-    var sh = findSheetByKeywords(ss, ['tag', 'danger', 'situation']);
+    var sh = findTagsSheet_(ss);
     if (!sh) return { success: false, error: 'Feuille TAGs non trouvée.' };
 
     var data = sh.getDataRange().getValues();

@@ -7069,11 +7069,13 @@ function applyTagF(){
   var nCols=userCanEdit('tags')?11:10;
   var tb=document.getElementById('tagBody'); tb.innerHTML='';
   if(filtered.length===0){
-    var msg=searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
+    var msg=D.tagsSheetError?'⚠️ '+esc(D.tagsSheetError)
+      :searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
       :'Aucun TAG pour ce filtre';
-    tb.innerHTML='<tr><td colspan="'+nCols+'" style="text-align:center;color:var(--text3);padding:20px">'+msg+'</td></tr>';
+    tb.innerHTML='<tr><td colspan="'+nCols+'" style="text-align:center;color:'
+      +(D.tagsSheetError?'var(--amber)':'var(--text3)')+';padding:20px">'+msg+'</td></tr>';
     return;
   }
   function hl(str){
