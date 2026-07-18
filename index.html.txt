@@ -8029,7 +8029,7 @@ function renderTvDash(){
           tvStatus(m.tg_ytd,0.8,true)),
     tvKpi('🩹','Jours perdus', fmtNum(m.jp_ytd||0), 'Cumul '+year, 'n'),
     tvKpi('⚠️','Presqu\'accidents', fmtNum(m.inc_ytd||0), 'Incidents sans arrêt · '+year, 'n'),
-    tvKpi('👷','Visites managériales — TVM', fmtNum(m.tvm)+'%', 'Objectif ≥ 95%',
+    tvKpi('🩺','Taux de visite médicale — TVM', fmtNum(m.tvm)+'%', 'Objectif ≥ 95%',
           tvStatus(m.tvm,95,false)),
     tvKpi('🏷️','Résolution TAGs', fmtNum(m.taux_res_tags)+'%',
           fmtNum(m.open_tags||0)+' TAG'+((m.open_tags||0)>1?'s':'')+' ouvert'+((m.open_tags||0)>1?'s':'')+' · Obj. ≥ 95%',
