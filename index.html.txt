@@ -2071,7 +2071,7 @@ html.light .pests-search-input{background:#edf2f7}
     <span class="pf-stat" id="incStat">— incidents</span>
     <button class="crud-btn add" style="margin-left:auto;font-size:10px;padding:4px 10px"
             onclick="openSectionActionPlan('incidents')"
-            title="Afficher le PDF « plan d'action » de la section Incidents">📋 Plan d'action</button>
+            title="Générer et afficher le plan d'action (PDF) à partir des incidents de la section">📋 Plan d'action</button>
   </div>
   <div class="kpi-grid" id="incKpi"></div>
   <div class="row2">
@@ -2113,7 +2113,7 @@ html.light .pests-search-input{background:#edf2f7}
     <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearTagFilters()">↺ Reset</button>
     <button class="crud-btn add" style="font-size:10px;padding:4px 10px;flex-shrink:0"
             onclick="openSectionActionPlan('tags')"
-            title="Afficher le PDF « plan d'action » de la section TAGs">📋 Plan d'action</button>
+            title="Générer et afficher le plan d'action (PDF) à partir des TAGs de la section">📋 Plan d'action</button>
   </div>
 
   <!-- Chips statut + période -->
@@ -2291,7 +2291,7 @@ html.light .pests-search-input{background:#edf2f7}
     <span class="pf-stat" id="accStat">— accidents</span>
     <button class="crud-btn add" style="margin-left:auto;font-size:10px;padding:4px 10px"
             onclick="openSectionActionPlan('accidents')"
-            title="Afficher le PDF « plan d'action » de la section Accidents">📋 Plan d'action</button>
+            title="Générer et afficher le plan d'action (PDF) à partir des accidents de la section">📋 Plan d'action</button>
   </div>
   <div class="acc-summary" id="accSum"></div>
   <div class="row2">
@@ -7725,40 +7725,96 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
   };
 })();
 
-// ══ PLAN D'ACTION PAR SECTION (PDF Drive « plan d'action ») ═══
-// Bouton 📋 des sections Incidents / Accidents / TAGs : demande au
-// serveur le PDF « plan d'action » de la section puis l'affiche dans
-// le viewer intégré du dashboard (aucune redirection externe).
-// Le résultat est mémorisé par section pour éviter de rechercher
-// Drive à chaque clic pendant la session.
-var sapCache = {};
+// ══ PLAN D'ACTION PAR SECTION (PDF généré depuis le contenu) ══
+// Bouton 📋 des sections Incidents / Accidents / TAGs : assemble les
+// actions présentes dans la section (données D déjà chargées), les
+// envoie au serveur qui génère le PDF « Plan d'action — <Section> »
+// dans Drive, puis affiche le PDF dans le viewer intégré du
+// dashboard (aucune redirection externe).
+function sapPayload(section){
+  var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
+  if (section === 'incidents') {
+    var incs = (D && D.incidents) || [];
+    var nAct = incs.filter(function(x){ return x.actions && String(x.actions).trim(); }).length;
+    return {
+      title: "Plan d'action — Incidents",
+      meta:  incs.length + ' incident(s) · ' + nAct + ' avec action corrective définie · '
+           + (incs.length - nAct) + ' action(s) à définir',
+      cols: [ {k:'id',l:'N°',w:6},{k:'date',l:'Date',w:7},{k:'lieu',l:'Lieu',w:9},
+              {k:'type',l:'Type',w:8},{k:'desc',l:'Description',w:20},
+              {k:'action',l:'Action corrective',w:20},{k:'resp',l:'Responsable',w:10},
+              {k:'delai',l:'Délai',w:8},{k:'statut',l:'Statut',w:12} ],
+      rows: incs.map(function(x){ return {
+        id:v(x.id), date:v(x.date), lieu:v(x.lieu), type:v(x.type),
+        desc:v(x.description),
+        action:(x.actions&&String(x.actions).trim())?String(x.actions).trim():'À définir',
+        resp:v(x.responsable), delai:v(x.delai), statut:v(x.statut) }; })
+    };
+  }
+  if (section === 'accidents') {
+    var accs = (D && D.accidents) || [];
+    var njp = 0; accs.forEach(function(a){ njp += (a.njp||0); });
+    return {
+      title: "Plan d'action — Accidents (Bilan AT)",
+      meta:  accs.length + ' accident(s) · ' + njp + ' jour(s) perdu(s) (NJP) au total',
+      cols: [ {k:'date',l:'Date',w:7},{k:'nom',l:'Nom',w:10},{k:'fonction',l:'Fonction',w:9},
+              {k:'lieu',l:'Lieu',w:9},{k:'siege',l:'Siège lésion',w:8},
+              {k:'nature',l:'Nature',w:11},{k:'njp',l:'NJP',w:4},
+              {k:'cause',l:'Cause racine',w:20},{k:'circ',l:'Circonstances',w:22} ],
+      rows: accs.map(function(a){ return {
+        date:v(a.date), nom:v(a.nom), fonction:v(a.fonction), lieu:v(a.lieu),
+        siege:v(a.siege), nature:v(a.nature), njp:(a.njp!=null?a.njp:'—'),
+        cause:v(a.cause), circ:v(a.circonstance) }; })
+    };
+  }
+  if (section === 'tags') {
+    var tags = (D && D.tags) || [];
+    var nOpen = tags.filter(function(t){ return tagIsOpen(t); }).length;
+    return {
+      title: "Plan d'action — TAGs",
+      meta:  tags.length + ' TAG(s) · ' + nOpen + ' ouvert(s) · '
+           + (tags.length - nOpen) + ' fermé(s)',
+      cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
+              {k:'zone',l:'Zone',w:7},{k:'empl',l:'Emplacement',w:9},
+              {k:'desc',l:'Description',w:16},{k:'action',l:'Action urgente',w:16},
+              {k:'prop',l:'Propositions',w:16},{k:'resp',l:'Responsable',w:8},
+              {k:'statut',l:'Statut',w:6} ],
+      rows: tags.map(function(t){ return {
+        id:v(t.id), date:v(t.dateCreate), cible:v(t.dateCible),
+        zone:v(t.zone), empl:v(t.emplacement), desc:v(t.description),
+        action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
+        prop:v(t.propositions), resp:v(t.responsable),
+        statut:t.statut?String(t.statut).trim():(tagIsOpen(t)?'Ouvert':'Fermé') }; })
+    };
+  }
+  return null;
+}
 var sapLoading = false;
 function openSectionActionPlan(section){
   var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
   var kind = 'PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase());
-  var c = sapCache[section];
-  if (c && c.ok && c.url) {
-    openCleaningEmbed(c.url, c.name || 'Plan d\'action', kind, '📋');
+  var p = sapPayload(section);
+  if (!p || !p.rows.length) {
+    showToast('Aucune donnée dans cette section pour générer le plan d\'action.','error');
     return;
   }
-  if (sapLoading) return;           // évite les doubles clics pendant la recherche
+  if (sapLoading) return;           // évite les doubles clics pendant la génération
   sapLoading = true;
-  showToast('Recherche du plan d\'action…','success');
+  showToast('Génération du plan d\'action PDF (' + p.rows.length + ' lignes)…','success');
   google.script.run
     .withSuccessHandler(function(r){
       sapLoading = false;
       if (r && r.ok && r.url) {
-        sapCache[section] = r;
         openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋');
       } else {
-        showToast((r && r.error) || 'Aucun PDF « plan d\'action » trouvé pour cette section.','error');
+        showToast((r && r.error) || 'Échec de la génération du plan d\'action.','error');
       }
     })
     .withFailureHandler(function(e){
       sapLoading = false;
       showToast('Erreur : ' + ((e && e.message) || e), 'error');
     })
-    .getSectionActionPlanForClient(section);
+    .generateSectionActionPlanForClient(p);
 }
 
 // ── EMBED PROCÉDURES — réutilise le modal iframe générique ──

@@ -5335,74 +5335,87 @@ function getActionPlan() {
 function getActionPlanForClient() { return getActionPlan(); }
 
 // ══════════════════════════════════════════════════════════════
-// PLAN D'ACTION PAR SECTION — PDF Drive « plan d'action »
-// Cherche dans Drive un PDF dont le nom contient « plan d'action »
-// et le mot-clé de la section (incident / accident / tag), ex. :
-//   « Plan d'action incidents.pdf », « plan d'actions TAGs.pdf ».
-// Un PDF générique « plan d'action.pdf » (sans mot-clé de section)
-// sert de repli commun ; un PDF portant le mot-clé d'une AUTRE
-// section est exclu. Le fichier est partagé en lecture par lien
-// pour pouvoir s'afficher en iframe /preview dans le dashboard.
-// Appelé à la demande par le bouton 📋 des sections.
+// PLAN D'ACTION PAR SECTION — PDF GÉNÉRÉ depuis le contenu
+// Reçoit du client les actions de la section (Incidents / Accidents
+// / TAGs), construit un document HTML tabulaire puis le convertit
+// en PDF (Utilities → getAs application/pdf). Le PDF, nommé
+// « Plan d'action — <Section>.pdf », est enregistré dans le dossier
+// Drive « Plans d'action - Dashboard HSE » (créé au besoin, ancien
+// PDF de même nom mis à la corbeille), partagé en lecture par lien
+// et renvoyé sous forme d'URL /preview pour affichage en iframe.
+// payload = { title, meta, cols:[{k,l,w}], rows:[{...}] }
 // ══════════════════════════════════════════════════════════════
-function getSectionActionPlanForClient(section) {
-  var SECTIONS = {
-    incidents: { re: /incident/,                   lbl: 'Incidents' },
-    accidents: { re: /accident|bilan\s*at/,        lbl: 'Accidents' },
-    tags:      { re: /(^|[^a-z])tags?([^a-z]|$)/,  lbl: 'TAGs'      }
-  };
-  var sec = String(section || '').toLowerCase();
-  var cfg = SECTIONS[sec];
-  if (!cfg) return { ok: false, error: 'Section inconnue : ' + section };
+var ACTION_PLAN_FOLDER_NAME = "Plans d'action - Dashboard HSE";
+var ACTION_PLAN_MAX_ROWS    = 800;
+
+function generateSectionActionPlanForClient(payload) {
   try {
-    // Recherche large (Drive ignore accents/apostrophes de façon peu
-    // fiable dans les requêtes) puis filtrage précis côté script.
-    var files = DriveApp.searchFiles(
-      'title contains "plan" and title contains "action" and mimeType = "application/pdf" and trashed = false');
-    var best = null, bestScore = -1, bestDate = 0;
-    while (files.hasNext()) {
-      var f = files.next();
-      // Apostrophes typographiques → droites, puis normalisation accents
-      var name = normalize(String(f.getName()).replace(/[’‘`]/g, "'"));
-      // Doit être un « plan d'action(s) » (apostrophe/espace optionnels)
-      if (!/plan\s*d?\s*'?\s*actions?/.test(name)) continue;
-      var score;
-      if (cfg.re.test(name)) score = 2;                    // PDF dédié à la section
-      else {
-        // Mentionne une autre section → exclu ; sinon PDF générique = repli
-        var otherHit = false;
-        for (var k in SECTIONS) {
-          if (k !== sec && SECTIONS[k].re.test(name)) { otherHit = true; break; }
-        }
-        if (otherHit) continue;
-        score = 1;
-      }
-      var d = 0;
-      try { d = f.getLastUpdated().getTime(); } catch(eD) {}
-      // Meilleur score d'abord ; à score égal, le plus récent gagne
-      if (score > bestScore || (score === bestScore && d > bestDate)) {
-        best = f; bestScore = score; bestDate = d;
-      }
+    if (!payload || !payload.cols || !payload.cols.length ||
+        !payload.rows || !payload.rows.length) {
+      return { ok: false, error: 'Aucune action à inclure dans le plan.' };
     }
-    if (!best) return {
-      ok: false,
-      error: 'Aucun PDF « plan d\'action » trouvé pour la section ' + cfg.lbl +
-             '. Déposez dans Drive un PDF nommé « Plan d\'action ' + cfg.lbl + ' ».'
+    var title = safeText(payload.title) || "Plan d'action";
+    var rows  = payload.rows.slice(0, ACTION_PLAN_MAX_ROWS);
+    var esc   = function(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     };
+    var now = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy HH:mm');
+
+    var html = '<html><head><meta charset="utf-8"><style>'
+      + '@page{size:A4 landscape;margin:1.2cm}'
+      + 'body{font-family:Arial,Helvetica,sans-serif;color:#16323e;font-size:9px;margin:0}'
+      + 'h1{font-size:16px;color:#09637e;margin:0 0 2px}'
+      + '.sub{font-size:9px;color:#5a7684;margin:0 0 8px}'
+      + '.meta{font-size:9px;color:#16323e;background:#eaf2f6;border:1px solid #c6d9e2;'
+      +   'border-radius:4px;padding:6px 8px;margin:0 0 10px}'
+      + 'table{border-collapse:collapse;width:100%}'
+      + 'th{background:#09637e;color:#ffffff;font-size:8.5px;text-align:left;'
+      +   'padding:4px 5px;border:1px solid #09637e}'
+      + 'td{border:1px solid #c6d9e2;padding:4px 5px;font-size:8.5px;vertical-align:top}'
+      + 'tr:nth-child(even) td{background:#f3f8fa}'
+      + '.foot{margin-top:8px;font-size:8px;color:#5a7684}'
+      + '</style></head><body>'
+      + '<h1>' + esc(title) + '</h1>'
+      + '<p class="sub">SOBCO 3 — HSE Master Dashboard · Généré le ' + now
+      + ' · ' + rows.length + ' ligne(s)</p>';
+    if (payload.meta) html += '<div class="meta">' + esc(payload.meta) + '</div>';
+    html += '<table><tr>';
+    payload.cols.forEach(function(c) {
+      html += '<th style="width:' + (Number(c.w) || 10) + '%">' + esc(c.l) + '</th>';
+    });
+    html += '</tr>';
+    rows.forEach(function(r) {
+      html += '<tr>';
+      payload.cols.forEach(function(c) { html += '<td>' + esc(r[c.k]) + '</td>'; });
+      html += '</tr>';
+    });
+    html += '</table>';
+    if (payload.rows.length > rows.length) {
+      html += '<p class="foot">Liste tronquée à ' + ACTION_PLAN_MAX_ROWS
+        + ' lignes (' + payload.rows.length + ' au total).</p>';
+    }
+    html += '<p class="foot">Document généré automatiquement à partir des données'
+      + ' de la section — Dashboard HSE SOBCO 3.</p></body></html>';
+
+    var pdfName = title + '.pdf';
+    var pdf = Utilities.newBlob(html, 'text/html', title + '.html')
+      .getAs('application/pdf').setName(pdfName);
+
+    // Dossier de sortie (créé au besoin) + remplacement de l'ancien PDF
+    var it = DriveApp.getFoldersByName(ACTION_PLAN_FOLDER_NAME);
+    var folder = it.hasNext() ? it.next() : DriveApp.createFolder(ACTION_PLAN_FOLDER_NAME);
+    var olds = folder.getFilesByName(pdfName);
+    while (olds.hasNext()) { try { olds.next().setTrashed(true); } catch(eT) {} }
+    var file = folder.createFile(pdf);
     // Partage lecture par lien pour l'affichage iframe (comme les PJ)
-    try { best.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
-    var updated = '';
-    try { updated = Utilities.formatDate(best.getLastUpdated(), 'GMT+1', 'dd/MM/yyyy'); } catch(eU) {}
+    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
     return {
-      ok: true,
-      id: best.getId(),
-      name: best.getName(),
-      url: 'https://drive.google.com/file/d/' + best.getId() + '/preview',
-      updated: updated,
-      generic: bestScore < 2
+      ok: true, id: file.getId(), name: pdfName, count: rows.length,
+      url: 'https://drive.google.com/file/d/' + file.getId() + '/preview'
     };
   } catch(e) {
-    Logger.log('getSectionActionPlanForClient error: ' + e.message);
+    Logger.log('generateSectionActionPlanForClient error: ' + e.message);
     return { ok: false, error: e.toString() };
   }
 }
