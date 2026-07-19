@@ -1489,6 +1489,105 @@ function setupEnregistrementsSheet() {
   }
 }
 
+// ── DOCUMENTS ENR : dossier Drive, listing et téléversement ──
+// Les enregistrements remplis (scans, PDF, photos…) téléversés depuis
+// le dashboard sont stockés dans un dossier racine Drive
+// « Enregistrements HSE - Dashboard », avec un sous-dossier par code
+// ENR (ou par intitulé si l'enregistrement n'a pas encore de code).
+// L'ID du dossier racine est mémorisé dans les Script Properties pour
+// éviter les recherches Drive répétées.
+var ENR_DOCS_ROOT_NAME = 'Enregistrements HSE - Dashboard';
+
+function getEnrRootFolder_() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('ENR_DOCS_ROOT_ID');
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch(e) {}
+  }
+  var it = DriveApp.getFoldersByName(ENR_DOCS_ROOT_NAME);
+  var folder = it.hasNext() ? it.next() : DriveApp.createFolder(ENR_DOCS_ROOT_NAME);
+  props.setProperty('ENR_DOCS_ROOT_ID', folder.getId());
+  return folder;
+}
+
+// Nom de sous-dossier normalisé pour un enregistrement :
+// le code ENR de préférence, sinon l'intitulé.
+function enrFolderKey_(code, intitule) {
+  var key = String(code || '').trim();
+  if (!key || key === '—' || key === '-') key = String(intitule || '').trim();
+  key = key.replace(/[\\\/:*?"<>|]/g, '-').substring(0, 80).trim();
+  return key || 'SANS-CODE';
+}
+
+function getEnrSubFolder_(root, key, createIfMissing) {
+  var it = root.getFoldersByName(key);
+  if (it.hasNext()) return it.next();
+  return createIfMissing ? root.createFolder(key) : null;
+}
+
+// Liste les documents d'un enregistrement, du plus récent au plus ancien.
+function listEnrDocuments(code, intitule) {
+  try {
+    var root = getEnrRootFolder_();
+    var key  = enrFolderKey_(code, intitule);
+    var sub  = getEnrSubFolder_(root, key, false);
+    var files = [];
+    if (sub) {
+      var it = sub.getFiles();
+      while (it.hasNext()) {
+        var f = it.next();
+        var dt = null;
+        try { dt = f.getDateCreated(); } catch(eD) { dt = null; }
+        files.push({
+          id:   f.getId(),
+          name: f.getName(),
+          url:  'https://drive.google.com/file/d/' + f.getId() + '/view?usp=sharing',
+          date: dt ? dt.toISOString() : '',
+          size: f.getSize(),
+          mime: f.getMimeType()
+        });
+      }
+      // Tri : date de création décroissante (plus récent en haut)
+      files.sort(function(a, b){
+        return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0);
+      });
+    }
+    return { success: true, key: key, files: files, folderUrl: sub ? sub.getUrl() : '' };
+  } catch(e) {
+    Logger.log('listEnrDocuments error: ' + e.message);
+    return { success: false, error: e.message, files: [] };
+  }
+}
+
+// Téléverse un document (base64) pour un enregistrement.
+// Le fichier est horodaté (préfixe yyyy-MM-dd_HHmm) pour tracer les
+// versions successives, et partagé en lecture par lien pour que le
+// modal embed du dashboard puisse l'afficher.
+function uploadEnrDocument(code, intitule, fileName, base64Data, mimeType) {
+  try {
+    if (!base64Data) return { success: false, error: 'Fichier vide' };
+    var root = getEnrRootFolder_();
+    var key  = enrFolderKey_(code, intitule);
+    var sub  = getEnrSubFolder_(root, key, true);
+    var bytes = Utilities.base64Decode(base64Data);
+    var safeName = String(fileName || 'document').replace(/[\\\/:*?"<>|]/g, '-');
+    var stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT', 'yyyy-MM-dd_HHmm');
+    var blob = Utilities.newBlob(bytes, mimeType || 'application/octet-stream', stamp + '_' + safeName);
+    var file = sub.createFile(blob);
+    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
+    Logger.log('uploadEnrDocument: ' + key + ' ← ' + file.getName());
+    return {
+      success: true,
+      fileId:  file.getId(),
+      url:     'https://drive.google.com/file/d/' + file.getId() + '/view?usp=sharing',
+      name:    file.getName()
+    };
+  } catch(e) {
+    Logger.log('uploadEnrDocument error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "Suivi des Contrats et Liens Drive" ──────
 // Renvoie un tableau de contrats :
