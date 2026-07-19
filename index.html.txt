@@ -2069,6 +2069,9 @@ html.light .pests-search-input{background:#edf2f7}
     <span id="incSep" style="display:none;color:var(--text3);font-size:10px">→</span>
     <input type="date" class="pf-input" id="incD2" style="display:none" onchange="applyIncF()">
     <span class="pf-stat" id="incStat">— incidents</span>
+    <button class="crud-btn add" style="margin-left:auto;font-size:10px;padding:4px 10px"
+            onclick="openSectionActionPlan('incidents')"
+            title="Afficher le PDF « plan d'action » de la section Incidents">📋 Plan d'action</button>
   </div>
   <div class="kpi-grid" id="incKpi"></div>
   <div class="row2">
@@ -2108,6 +2111,9 @@ html.light .pests-search-input{background:#edf2f7}
       <option value="resp_az">Resp. A→Z</option>
     </select>
     <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0" onclick="clearTagFilters()">↺ Reset</button>
+    <button class="crud-btn add" style="font-size:10px;padding:4px 10px;flex-shrink:0"
+            onclick="openSectionActionPlan('tags')"
+            title="Afficher le PDF « plan d'action » de la section TAGs">📋 Plan d'action</button>
   </div>
 
   <!-- Chips statut + période -->
@@ -2283,6 +2289,9 @@ html.light .pests-search-input{background:#edf2f7}
     <span id="accSep" style="display:none;color:var(--text3);font-size:10px">→</span>
     <input type="date" class="pf-input" id="accD2" style="display:none" onchange="applyAccF()">
     <span class="pf-stat" id="accStat">— accidents</span>
+    <button class="crud-btn add" style="margin-left:auto;font-size:10px;padding:4px 10px"
+            onclick="openSectionActionPlan('accidents')"
+            title="Afficher le PDF « plan d'action » de la section Accidents">📋 Plan d'action</button>
   </div>
   <div class="acc-summary" id="accSum"></div>
   <div class="row2">
@@ -7715,6 +7724,42 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
     return prevClose ? prevClose(id) : null;
   };
 })();
+
+// ══ PLAN D'ACTION PAR SECTION (PDF Drive « plan d'action ») ═══
+// Bouton 📋 des sections Incidents / Accidents / TAGs : demande au
+// serveur le PDF « plan d'action » de la section puis l'affiche dans
+// le viewer intégré du dashboard (aucune redirection externe).
+// Le résultat est mémorisé par section pour éviter de rechercher
+// Drive à chaque clic pendant la session.
+var sapCache = {};
+var sapLoading = false;
+function openSectionActionPlan(section){
+  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
+  var kind = 'PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase());
+  var c = sapCache[section];
+  if (c && c.ok && c.url) {
+    openCleaningEmbed(c.url, c.name || 'Plan d\'action', kind, '📋');
+    return;
+  }
+  if (sapLoading) return;           // évite les doubles clics pendant la recherche
+  sapLoading = true;
+  showToast('Recherche du plan d\'action…','success');
+  google.script.run
+    .withSuccessHandler(function(r){
+      sapLoading = false;
+      if (r && r.ok && r.url) {
+        sapCache[section] = r;
+        openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋');
+      } else {
+        showToast((r && r.error) || 'Aucun PDF « plan d\'action » trouvé pour cette section.','error');
+      }
+    })
+    .withFailureHandler(function(e){
+      sapLoading = false;
+      showToast('Erreur : ' + ((e && e.message) || e), 'error');
+    })
+    .getSectionActionPlanForClient(section);
+}
 
 // ── EMBED PROCÉDURES — réutilise le modal iframe générique ──
 // Ouvre une procédure HSE (Drive / Docs / Sheets) DANS le dashboard,

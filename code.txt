@@ -5333,3 +5333,76 @@ function getActionPlan() {
   }
 }
 function getActionPlanForClient() { return getActionPlan(); }
+
+// ══════════════════════════════════════════════════════════════
+// PLAN D'ACTION PAR SECTION — PDF Drive « plan d'action »
+// Cherche dans Drive un PDF dont le nom contient « plan d'action »
+// et le mot-clé de la section (incident / accident / tag), ex. :
+//   « Plan d'action incidents.pdf », « plan d'actions TAGs.pdf ».
+// Un PDF générique « plan d'action.pdf » (sans mot-clé de section)
+// sert de repli commun ; un PDF portant le mot-clé d'une AUTRE
+// section est exclu. Le fichier est partagé en lecture par lien
+// pour pouvoir s'afficher en iframe /preview dans le dashboard.
+// Appelé à la demande par le bouton 📋 des sections.
+// ══════════════════════════════════════════════════════════════
+function getSectionActionPlanForClient(section) {
+  var SECTIONS = {
+    incidents: { re: /incident/,                   lbl: 'Incidents' },
+    accidents: { re: /accident|bilan\s*at/,        lbl: 'Accidents' },
+    tags:      { re: /(^|[^a-z])tags?([^a-z]|$)/,  lbl: 'TAGs'      }
+  };
+  var sec = String(section || '').toLowerCase();
+  var cfg = SECTIONS[sec];
+  if (!cfg) return { ok: false, error: 'Section inconnue : ' + section };
+  try {
+    // Recherche large (Drive ignore accents/apostrophes de façon peu
+    // fiable dans les requêtes) puis filtrage précis côté script.
+    var files = DriveApp.searchFiles(
+      'title contains "plan" and title contains "action" and mimeType = "application/pdf" and trashed = false');
+    var best = null, bestScore = -1, bestDate = 0;
+    while (files.hasNext()) {
+      var f = files.next();
+      // Apostrophes typographiques → droites, puis normalisation accents
+      var name = normalize(String(f.getName()).replace(/[’‘`]/g, "'"));
+      // Doit être un « plan d'action(s) » (apostrophe/espace optionnels)
+      if (!/plan\s*d?\s*'?\s*actions?/.test(name)) continue;
+      var score;
+      if (cfg.re.test(name)) score = 2;                    // PDF dédié à la section
+      else {
+        // Mentionne une autre section → exclu ; sinon PDF générique = repli
+        var otherHit = false;
+        for (var k in SECTIONS) {
+          if (k !== sec && SECTIONS[k].re.test(name)) { otherHit = true; break; }
+        }
+        if (otherHit) continue;
+        score = 1;
+      }
+      var d = 0;
+      try { d = f.getLastUpdated().getTime(); } catch(eD) {}
+      // Meilleur score d'abord ; à score égal, le plus récent gagne
+      if (score > bestScore || (score === bestScore && d > bestDate)) {
+        best = f; bestScore = score; bestDate = d;
+      }
+    }
+    if (!best) return {
+      ok: false,
+      error: 'Aucun PDF « plan d\'action » trouvé pour la section ' + cfg.lbl +
+             '. Déposez dans Drive un PDF nommé « Plan d\'action ' + cfg.lbl + ' ».'
+    };
+    // Partage lecture par lien pour l'affichage iframe (comme les PJ)
+    try { best.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
+    var updated = '';
+    try { updated = Utilities.formatDate(best.getLastUpdated(), 'GMT+1', 'dd/MM/yyyy'); } catch(eU) {}
+    return {
+      ok: true,
+      id: best.getId(),
+      name: best.getName(),
+      url: 'https://drive.google.com/file/d/' + best.getId() + '/preview',
+      updated: updated,
+      generic: bestScore < 2
+    };
+  } catch(e) {
+    Logger.log('getSectionActionPlanForClient error: ' + e.message);
+    return { ok: false, error: e.toString() };
+  }
+}
