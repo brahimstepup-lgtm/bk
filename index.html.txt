@@ -2750,12 +2750,18 @@ html.light .pests-search-input{background:#edf2f7}
       ou sur l'icône <strong>📄</strong> pour afficher le formulaire directement
       dans le dashboard.
     </p>
-    <p id="enrSourceNote" style="font-size:10px;color:var(--amber);line-height:1.5;margin:8px 0 0;display:none">
-      ⚠️ Feuille « enregistrements » introuvable dans le classeur — la liste affichée
-      est la liste par défaut issue de l'analyse des procédures. Créez l'onglet
-      <strong>enregistrements</strong> (colonnes : Code | Intitulé | Procédure | Durée de conservation | Statut)
-      pour la gérer directement depuis le classeur.
-    </p>
+    <div id="enrSourceNote" style="display:none;margin:8px 0 0">
+      <p style="font-size:10px;color:var(--amber);line-height:1.5;margin:0 0 8px">
+        ⚠️ Feuille « enregistrements » introuvable dans le classeur — la liste affichée
+        est la liste par défaut issue de l'analyse des procédures. Créez l'onglet
+        <strong>enregistrements</strong> (colonnes : Code | Intitulé | Procédure |
+        Durée de conservation | Statut | Lien) pour la gérer directement depuis le classeur.
+      </p>
+      <button class="btn" id="enrCreateBtn" onclick="createEnrSheet()"
+              style="font-size:10px;padding:6px 12px">
+        ➕ Créer la feuille « enregistrements » (pré-remplie) dans le classeur source
+      </button>
+    </div>
   </div>
 
   <!-- Synthèse -->
@@ -2790,6 +2796,45 @@ html.light .pests-search-input{background:#edf2f7}
         </thead>
         <tbody id="enrBody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL DOCUMENTS ENREGISTREMENT (liste + téléversement) ═══ -->
+<div id="enrDocsModal" class="crud-modal-bg" onclick="if(event.target===this)closeEnrDocs()">
+  <div class="crud-modal" style="max-width:680px">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">🗂️</span>
+      <div class="crud-modal-title" id="enrDocsTitle">Documents de l'enregistrement</div>
+      <button class="crud-modal-close" onclick="closeEnrDocs()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <div id="enrDocsMeta" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:10px"></div>
+
+      <!-- Téléversement -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <input type="file" id="enrDocFile" class="crud-input" style="padding:6px;flex:1;min-width:200px"
+               accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,image/*,application/pdf">
+        <button class="btn btn-ai" id="enrDocUploadBtn" style="font-size:11px;padding:8px 14px;flex-shrink:0"
+                onclick="uploadEnrDoc()">📤 Téléverser</button>
+      </div>
+
+      <!-- Liste des documents (plus récent en haut) -->
+      <div class="tblw">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th>Nom du fichier</th>
+              <th style="width:140px">Date</th>
+              <th style="width:70px;text-align:center">Ouvrir</th>
+            </tr>
+          </thead>
+          <tbody id="enrDocsBody">
+            <tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">—</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div>
@@ -8342,6 +8387,148 @@ function renderProcedures(){
 // ══ ENREGISTREMENTS HSE ═══════════════════════════════════════
 // Rendu de la liste maîtresse des formulaires/enregistrements (ENR)
 // référencés par les procédures : liste filtrable + synthèse.
+
+// ── Modal « Documents de l'enregistrement » ──────────────────
+// Liste les fichiers téléversés pour un ENR (plus récent en haut)
+// et permet d'en téléverser de nouveaux vers le dossier Drive dédié.
+var enrDocsCurrent = null; // { code, intitule, sheetUrl }
+
+function openEnrDocs(code, intitule, sheetUrl){
+  enrDocsCurrent = { code: code || '', intitule: intitule || '', sheetUrl: sheetUrl || '' };
+  var t = document.getElementById('enrDocsTitle');
+  if(t) t.textContent = intitule || code || "Documents de l'enregistrement";
+  var m = document.getElementById('enrDocsMeta');
+  if(m) m.textContent = code ? ('Code : ' + code) : 'Enregistrement sans code';
+  var fi = document.getElementById('enrDocFile');
+  if(fi) fi.value = '';
+  document.getElementById('enrDocsModal').classList.add('open');
+  loadEnrDocs();
+}
+function closeEnrDocs(){
+  document.getElementById('enrDocsModal').classList.remove('open');
+}
+
+function loadEnrDocs(){
+  if(!enrDocsCurrent) return;
+  var body = document.getElementById('enrDocsBody');
+  if(body) body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">⏳ Chargement…</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r){ renderEnrDocs(r); })
+    .withFailureHandler(function(err){
+      if(body) body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--red);font-size:11px">Erreur : '
+        + esc(err && err.message ? err.message : String(err)) + '</td></tr>';
+    })
+    .listEnrDocuments(enrDocsCurrent.code, enrDocsCurrent.intitule);
+}
+
+function renderEnrDocs(r){
+  var body = document.getElementById('enrDocsBody');
+  if(!body) return;
+  var files = (r && r.files) || [];
+  var rows = '';
+
+  // Modèle / formulaire vierge éventuel (lien porté par la feuille)
+  if(enrDocsCurrent && enrDocsCurrent.sheetUrl){
+    var muUrl = escAttr(enrDocsCurrent.sheetUrl);
+    var muLbl = escAttr('Modèle — ' + (enrDocsCurrent.intitule || 'formulaire'));
+    rows += '<tr>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">📎</td>'
+      + '<td><a href="'+muUrl+'" rel="noopener" data-proc-url="'+muUrl+'" data-proc-title="'+muLbl+'" '
+      + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+      + 'style="color:var(--p3);text-decoration:underline;font-weight:600;cursor:pointer;font-size:11px">Modèle / formulaire vierge</a></td>'
+      + '<td><span style="color:var(--text3);font-size:10px">—</span></td>'
+      + '<td style="text-align:center"><a href="'+muUrl+'" rel="noopener" class="tag-btn has-photo" '
+      + 'data-proc-url="'+muUrl+'" data-proc-title="'+muLbl+'" '
+      + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+      + 'style="text-decoration:none">📄</a></td>'
+      + '</tr>';
+  }
+
+  if(!files.length && !rows){
+    body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">'
+      + 'Aucun document téléversé pour cet enregistrement.<br>Utilisez le bouton 📤 ci-dessus pour ajouter le premier.</td></tr>';
+    return;
+  }
+
+  rows += files.map(function(f, i){
+    var d  = f.date ? new Date(f.date) : null;
+    var ds = d ? (d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'})) : '—';
+    var fUrl = escAttr(f.url || '');
+    var fLbl = escAttr(f.name || 'Document');
+    return '<tr>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">'+(i+1)+'</td>'
+      + '<td><a href="'+fUrl+'" rel="noopener" data-proc-url="'+fUrl+'" data-proc-title="'+fLbl+'" '
+      + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+      + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer;font-size:11px">'
+      + esc(f.name || '—') + '</a></td>'
+      + '<td><span class="mono" style="font-size:10px">'+esc(ds)+'</span></td>'
+      + '<td style="text-align:center"><a href="'+fUrl+'" rel="noopener" class="tag-btn has-photo" '
+      + 'title="Ouvrir dans le dashboard" data-proc-url="'+fUrl+'" data-proc-title="'+fLbl+'" '
+      + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
+      + 'style="text-decoration:none">📄</a></td>'
+      + '</tr>';
+  }).join('');
+
+  body.innerHTML = rows;
+}
+
+function uploadEnrDoc(){
+  if(typeof currentUser !== 'undefined' && currentUser && !userCanEdit('enregistrements')){
+    alert("Vous n'avez pas les droits pour téléverser un enregistrement.");
+    return;
+  }
+  if(!enrDocsCurrent) return;
+  var fi = document.getElementById('enrDocFile');
+  if(!fi || !fi.files.length){ alert("Sélectionnez d'abord un fichier."); return; }
+  var file = fi.files[0];
+  if(file.size > 15*1024*1024){ alert('Fichier trop volumineux (maximum 15 Mo).'); return; }
+  var btn = document.getElementById('enrDocUploadBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⬆️ Upload en cours…'; }
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var b64 = ev.target.result.split(',')[1];
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(btn){ btn.disabled = false; btn.textContent = '📤 Téléverser'; }
+        if(r && r.success){ fi.value = ''; loadEnrDocs(); }
+        else alert('Échec du téléversement : ' + ((r && r.error) || 'réponse vide'));
+      })
+      .withFailureHandler(function(err){
+        if(btn){ btn.disabled = false; btn.textContent = '📤 Téléverser'; }
+        alert('Erreur : ' + (err && err.message ? err.message : err));
+      })
+      .uploadEnrDocument(enrDocsCurrent.code, enrDocsCurrent.intitule,
+                         file.name, b64, file.type || 'application/octet-stream');
+  };
+  reader.readAsDataURL(file);
+}
+
+// Crée la feuille « enregistrements » dans le classeur source
+// (pré-remplie avec la liste par défaut) via le serveur Apps Script.
+function createEnrSheet(){
+  if(typeof currentUser !== 'undefined' && currentUser && !userCanEdit('enregistrements')){
+    alert("Vous n'avez pas les droits pour créer la feuille « enregistrements ».");
+    return;
+  }
+  var btn = document.getElementById('enrCreateBtn');
+  var lbl = btn ? btn.textContent : '';
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Création de la feuille en cours…'; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(btn){ btn.disabled = false; btn.textContent = lbl; }
+      if(r && r.success){
+        alert(r.message + (r.created ? ' Les données vont être rechargées.' : ''));
+        if(typeof refreshData === 'function') refreshData();
+      } else {
+        alert((r && r.message) || 'Erreur lors de la création de la feuille.');
+      }
+    })
+    .withFailureHandler(function(err){
+      if(btn){ btn.disabled = false; btn.textContent = lbl; }
+      alert('Erreur : ' + (err && err.message ? err.message : err));
+    })
+    .setupEnregistrementsSheet();
+}
 function renderEnregistrements(){
   if(!D) return;
   var list = (D.enregistrements || []);
@@ -8350,13 +8537,15 @@ function renderEnregistrements(){
   var noteEl = document.getElementById('enrSourceNote');
   if(noteEl) noteEl.style.display = (D.enregistrementsFromSheet === false) ? '' : 'none';
 
-  // Filtre recherche
+  // Filtre recherche — comparaison souple : ignore espaces, tirets et
+  // points, pour que « ENR-HSE-07 » trouve aussi « ENR-HSE 07 ».
   var qEl = document.getElementById('enrSearch');
   var q   = qEl ? qEl.value.trim().toLowerCase() : '';
+  var qN  = q.replace(/[\s\-_.]/g, '');
   var filtered = list.filter(function(e){
     if(!q) return true;
     var hay = ((e.code||'') + ' ' + (e.intitule||'') + ' ' + (e.procedure||'') + ' ' + (e.statut||'')).toLowerCase();
-    return hay.indexOf(q) > -1;
+    return hay.indexOf(q) > -1 || hay.replace(/[\s\-_.]/g, '').indexOf(qN) > -1;
   });
 
   function isAnomalie(e){
@@ -8429,14 +8618,12 @@ function renderEnregistrements(){
       ? '<span style="font-size:10px;font-weight:600;color:'+sColor+'">'+esc(e.statut)+'</span>'
       : '<span style="color:var(--text3);font-size:10px">—</span>';
 
-    var docHtml = e.url
-      ? '<a href="'+safeUrl+'" rel="noopener" '
-        + 'class="tag-btn has-photo" title="Ouvrir le formulaire dans le dashboard" '
-        + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeTitle+'" '
-        + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
-        + 'style="text-decoration:none">📄</a>'
-      : '<span class="tag-btn no-photo" title="Formulaire non disponible" '
-        + 'style="cursor:default">—</span>';
+    var safeCode = escAttr(e.code || '');
+    var docHtml = '<a href="#" rel="noopener" '
+      + 'class="tag-btn has-photo" title="Documents de cet enregistrement (liste + téléversement)" '
+      + 'data-enr-code="'+safeCode+'" data-enr-title="'+safeTitle+'" data-enr-url="'+safeUrl+'" '
+      + 'onclick="openEnrDocs(this.getAttribute(\'data-enr-code\'),this.getAttribute(\'data-enr-title\'),this.getAttribute(\'data-enr-url\'));return false;" '
+      + 'style="text-decoration:none">🗂️</a>';
 
     return '<tr>'
       + '<td class="mono" style="font-size:10px;color:var(--text3)">'+(i+1)+'</td>'

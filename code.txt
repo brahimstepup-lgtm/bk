@@ -51,6 +51,11 @@ var PROCEDURES_SHEET_NAME = 'procédures';
 // Tant que la feuille n'existe pas dans le classeur, une liste par
 // défaut (issue de l'analyse des procédures en vigueur) est renvoyée
 // pour amorcer la section côté dashboard.
+//
+// Feuille réelle du classeur : onglet « ENREGISTREMENTS » (gid ci-dessous)
+// Structure : A=Procédures | B=Enregistrement (code ENR-HSE xx)
+//             C=Intitulé (entête vide) | D=Lien drive
+var ENREGISTREMENTS_SHEET_GID  = 45304192;
 var ENREGISTREMENTS_SHEET_NAME = 'enregistrements';
 
 // ── PERMIS DE TRAVAIL (feuille "Gestion des Permis de Travail", gid=40923444) ─
@@ -1298,12 +1303,18 @@ function readEnregistrements(ss) {
     var sheets = ss.getSheets();
     var sh = null;
 
-    // 1. Par nom exact "enregistrements"
-    var target = normalize(ENREGISTREMENTS_SHEET_NAME);
+    // 1. Par GID (onglet « ENREGISTREMENTS » du classeur)
     for (var i = 0; i < sheets.length; i++) {
-      if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      if (sheets[i].getSheetId() === ENREGISTREMENTS_SHEET_GID) { sh = sheets[i]; break; }
     }
-    // 2. Sinon premier onglet contenant "enregistrement"
+    // 2. Sinon par nom exact "enregistrements"
+    var target = normalize(ENREGISTREMENTS_SHEET_NAME);
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "enregistrement"
     if (!sh) {
       for (var i = 0; i < sheets.length; i++) {
         var n = normalize(sheets[i].getName());
@@ -1365,14 +1376,19 @@ function readEnregistrements(ss) {
     }
 
     // ── Détecter la ligne d'entête + colonnes ──
-    var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1;
+    // Feuille réelle : A=« Procédures » | B=« Enregistrement » (code)
+    //                  C=intitulé (entête vide) | D=« Lien drive »
+    // → l'entête « enregistrement » désigne la colonne CODE ; si aucune
+    //   colonne intitulé n'est nommée, on prend la colonne à droite du code.
+    var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1, linkCol = -1;
     for (var i = 0; i < Math.min(data.length, 6); i++) {
       var row = data[i];
-      var cc = -1, tc = -1, pc = -1, kc = -1, sc = -1;
+      var cc = -1, tc = -1, pc = -1, kc = -1, sc = -1, lc = -1;
       for (var c = 0; c < row.length; c++) {
         var h = normalize(String(row[c]||''));
         if (!h) continue;
-        if (cc < 0 && (h.indexOf('code') > -1 || h === 'enr' || h.indexOf('ref') === 0)) { cc = c; continue; }
+        if (cc < 0 && (h.indexOf('code') > -1 || h === 'enr' || h.indexOf('ref') === 0 ||
+                       h.indexOf('enregistrement') > -1)) { cc = c; continue; }
         if (tc < 0 && (h.indexOf('intitul') > -1 || h.indexOf('titre') > -1 ||
                        h.indexOf('designation') > -1 || h.indexOf('nom') > -1)) { tc = c; continue; }
         if (pc < 0 && (h.indexOf('procedure') > -1 || h.indexOf('rattach') > -1 ||
@@ -1380,15 +1396,26 @@ function readEnregistrements(ss) {
         if (kc < 0 && (h.indexOf('conserv') > -1 || h.indexOf('duree') > -1 ||
                        h.indexOf('archiv') > -1)) { kc = c; continue; }
         if (sc < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1)) { sc = c; continue; }
+        if (lc < 0 && (h.indexOf('lien') > -1 || h.indexOf('url') > -1 ||
+                       h.indexOf('drive') > -1 || h.indexOf('document') > -1)) { lc = c; continue; }
       }
-      if (cc >= 0 && tc >= 0) {
-        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; break;
+      if (cc >= 0 && (tc >= 0 || lc >= 0 || pc >= 0)) {
+        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; linkCol = lc;
+        // Pas de colonne intitulé nommée → colonne à droite du code,
+        // si elle n'est pas déjà affectée à un autre rôle.
+        if (titCol < 0) {
+          var guess = codeCol + 1;
+          if (guess !== procCol && guess !== consCol && guess !== statCol && guess !== linkCol) titCol = guess;
+        }
+        break;
       }
     }
-    // Fallback : pas d'entête détectée → A=code, B=intitulé, C=procédure, D=conservation, E=statut
-    if (hdrRow < 0) { hdrRow = -1; codeCol = 0; titCol = 1; procCol = 2; consCol = 3; statCol = 4; }
+    // Fallback : pas d'entête détectée → A=code, B=intitulé, C=procédure,
+    // D=conservation, E=statut, F=lien
+    if (hdrRow < 0) { hdrRow = -1; codeCol = 0; titCol = 1; procCol = 2; consCol = 3; statCol = 4; linkCol = 5; }
     Logger.log('Enregistrements cols: code=' + codeCol + ' intitulé=' + titCol +
-               ' procédure=' + procCol + ' conservation=' + consCol + ' statut=' + statCol);
+               ' procédure=' + procCol + ' conservation=' + consCol +
+               ' statut=' + statCol + ' lien=' + linkCol);
 
     // ── Parcourir les lignes de données ──
     var firstDataRow = (hdrRow >= 0) ? hdrRow + 1 : 0;
@@ -1402,12 +1429,19 @@ function readEnregistrements(ss) {
       if (!code && !intitule && !proc) continue;
 
       // Sauter une éventuelle ré-impression de l'entête
-      var lcTit = normalize(intitule);
-      if (lcTit === 'intitule' || lcTit === 'titre' || normalize(code) === 'code') continue;
+      var lcTit  = normalize(intitule);
+      var lcCode = normalize(code);
+      if (lcTit === 'intitule' || lcTit === 'titre' ||
+          lcCode === 'code' || lcCode === 'enregistrement') continue;
 
-      // URL associée — cellule de l'intitulé d'abord, puis celle du code
-      var url = cellUrl(i, titCol);
+      // URL associée — colonne « Lien » d'abord, puis intitulé, puis code
+      var url = cellUrl(i, linkCol);
+      if (!url) url = cellUrl(i, titCol);
       if (!url) url = cellUrl(i, codeCol);
+
+      // Feuille sans colonne Statut → statut dérivé : un code attribué
+      // vaut « Codifié », sinon « À codifier ».
+      if (!stat && statCol < 0) stat = code ? 'Codifié' : 'À codifier';
 
       entries.push({
         code:         code,
@@ -1425,6 +1459,163 @@ function readEnregistrements(ss) {
   }
   if (!entries.length) return { entries: DEFAULT_ENREGISTREMENTS, fromSheet: false };
   return { entries: entries, fromSheet: true };
+}
+
+// ── CRÉATION DE LA FEUILLE "enregistrements" ─────────────────
+// Appelée depuis le dashboard (bouton de la section Enregistrements)
+// ou manuellement depuis l'éditeur Apps Script. Idempotente :
+// si un onglet « enregistrements » existe déjà, ne touche à rien.
+// Crée l'onglet avec les entêtes attendues par readEnregistrements()
+// et le pré-remplit avec la liste maîtresse par défaut.
+function setupEnregistrementsSheet() {
+  try {
+    var ss = SpreadsheetApp.openById(SHEET_ID);
+    var sheets = ss.getSheets();
+    var target = normalize(ENREGISTREMENTS_SHEET_NAME);
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n === target || n.indexOf('enregistrement') > -1 ||
+          sheets[i].getSheetId() === ENREGISTREMENTS_SHEET_GID) {
+        return {
+          success: true, created: false,
+          message: 'La feuille « ' + sheets[i].getName() + ' » existe déjà dans le classeur.',
+          gid: sheets[i].getSheetId()
+        };
+      }
+    }
+
+    var sh = ss.insertSheet(ENREGISTREMENTS_SHEET_NAME);
+    var headers = ['Code', 'Intitulé', 'Procédure de rattachement',
+                   'Durée de conservation', 'Statut', 'Lien (Drive)'];
+    var rows = DEFAULT_ENREGISTREMENTS.map(function(e){
+      return [e.code || '', e.intitule || '', e.procedure || '',
+              e.conservation || '', e.statut || '', ''];
+    });
+
+    sh.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setFontWeight('bold')
+      .setBackground('#1f2b3a')
+      .setFontColor('#ffffff');
+    if (rows.length) {
+      sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+    }
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1, 120);  // Code
+    sh.setColumnWidth(2, 340);  // Intitulé
+    sh.setColumnWidth(3, 260);  // Procédure
+    sh.setColumnWidth(4, 130);  // Conservation
+    sh.setColumnWidth(5, 130);  // Statut
+    sh.setColumnWidth(6, 220);  // Lien
+
+    Logger.log('Feuille "enregistrements" créée avec ' + rows.length + ' lignes');
+    return {
+      success: true, created: true,
+      message: 'Feuille « enregistrements » créée avec ' + rows.length + ' enregistrements pré-remplis.',
+      gid: sh.getSheetId()
+    };
+  } catch(e) {
+    Logger.log('setupEnregistrementsSheet error: ' + e.message);
+    return { success: false, created: false, message: 'Erreur : ' + e.message };
+  }
+}
+
+// ── DOCUMENTS ENR : dossier Drive, listing et téléversement ──
+// Les enregistrements remplis (scans, PDF, photos…) téléversés depuis
+// le dashboard sont stockés dans un dossier racine Drive
+// « Enregistrements HSE - Dashboard », avec un sous-dossier par code
+// ENR (ou par intitulé si l'enregistrement n'a pas encore de code).
+// L'ID du dossier racine est mémorisé dans les Script Properties pour
+// éviter les recherches Drive répétées.
+var ENR_DOCS_ROOT_NAME = 'Enregistrements HSE - Dashboard';
+
+function getEnrRootFolder_() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('ENR_DOCS_ROOT_ID');
+  if (id) {
+    try { return DriveApp.getFolderById(id); } catch(e) {}
+  }
+  var it = DriveApp.getFoldersByName(ENR_DOCS_ROOT_NAME);
+  var folder = it.hasNext() ? it.next() : DriveApp.createFolder(ENR_DOCS_ROOT_NAME);
+  props.setProperty('ENR_DOCS_ROOT_ID', folder.getId());
+  return folder;
+}
+
+// Nom de sous-dossier normalisé pour un enregistrement :
+// le code ENR de préférence, sinon l'intitulé.
+function enrFolderKey_(code, intitule) {
+  var key = String(code || '').trim();
+  if (!key || key === '—' || key === '-') key = String(intitule || '').trim();
+  key = key.replace(/[\\\/:*?"<>|]/g, '-').substring(0, 80).trim();
+  return key || 'SANS-CODE';
+}
+
+function getEnrSubFolder_(root, key, createIfMissing) {
+  var it = root.getFoldersByName(key);
+  if (it.hasNext()) return it.next();
+  return createIfMissing ? root.createFolder(key) : null;
+}
+
+// Liste les documents d'un enregistrement, du plus récent au plus ancien.
+function listEnrDocuments(code, intitule) {
+  try {
+    var root = getEnrRootFolder_();
+    var key  = enrFolderKey_(code, intitule);
+    var sub  = getEnrSubFolder_(root, key, false);
+    var files = [];
+    if (sub) {
+      var it = sub.getFiles();
+      while (it.hasNext()) {
+        var f = it.next();
+        var dt = null;
+        try { dt = f.getDateCreated(); } catch(eD) { dt = null; }
+        files.push({
+          id:   f.getId(),
+          name: f.getName(),
+          url:  'https://drive.google.com/file/d/' + f.getId() + '/view?usp=sharing',
+          date: dt ? dt.toISOString() : '',
+          size: f.getSize(),
+          mime: f.getMimeType()
+        });
+      }
+      // Tri : date de création décroissante (plus récent en haut)
+      files.sort(function(a, b){
+        return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0);
+      });
+    }
+    return { success: true, key: key, files: files, folderUrl: sub ? sub.getUrl() : '' };
+  } catch(e) {
+    Logger.log('listEnrDocuments error: ' + e.message);
+    return { success: false, error: e.message, files: [] };
+  }
+}
+
+// Téléverse un document (base64) pour un enregistrement.
+// Le fichier est horodaté (préfixe yyyy-MM-dd_HHmm) pour tracer les
+// versions successives, et partagé en lecture par lien pour que le
+// modal embed du dashboard puisse l'afficher.
+function uploadEnrDocument(code, intitule, fileName, base64Data, mimeType) {
+  try {
+    if (!base64Data) return { success: false, error: 'Fichier vide' };
+    var root = getEnrRootFolder_();
+    var key  = enrFolderKey_(code, intitule);
+    var sub  = getEnrSubFolder_(root, key, true);
+    var bytes = Utilities.base64Decode(base64Data);
+    var safeName = String(fileName || 'document').replace(/[\\\/:*?"<>|]/g, '-');
+    var stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'GMT', 'yyyy-MM-dd_HHmm');
+    var blob = Utilities.newBlob(bytes, mimeType || 'application/octet-stream', stamp + '_' + safeName);
+    var file = sub.createFile(blob);
+    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
+    Logger.log('uploadEnrDocument: ' + key + ' ← ' + file.getName());
+    return {
+      success: true,
+      fileId:  file.getId(),
+      url:     'https://drive.google.com/file/d/' + file.getId() + '/view?usp=sharing',
+      name:    file.getName()
+    };
+  } catch(e) {
+    Logger.log('uploadEnrDocument error: ' + e.message);
+    return { success: false, error: e.message };
+  }
 }
 
 // ════════════════════════════════════════════════════════════
