@@ -1618,6 +1618,146 @@ function uploadEnrDocument(code, intitule, fileName, base64Data, mimeType) {
   }
 }
 
+// ── DOCUMENTS NUISIBLES : stockage SANS Drive ────────────────
+// Même principe que les documents ENR (liste datée + téléversement
+// depuis le dashboard) mais AUCUN appel Drive : les fichiers sont
+// stockés en base64 dans une feuille technique masquée du classeur
+// principal (« nuisibles_docs »), découpés en blocs < 50 000
+// caractères (limite d'une cellule). Seul le scope Spreadsheets —
+// déjà accordé — est nécessaire. Taille max : 3 Mo par fichier.
+// Structure d'une ligne :
+//   A=ID  B=Date ISO  C=Code ENR  D=Nom fichier  E=Type MIME
+//   F=Taille (octets)  G=Nb blocs  H… = blocs base64
+var PESTS_DOCS_SHEET_NAME = 'nuisibles_docs';
+var PESTS_DOC_MAX_BYTES   = 3 * 1024 * 1024;
+var PESTS_DOC_CHUNK       = 45000;
+
+function getPestsDocsSheet_(createIfMissing) {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sh = ss.getSheetByName(PESTS_DOCS_SHEET_NAME);
+  if (!sh && createIfMissing) {
+    sh = ss.insertSheet(PESTS_DOCS_SHEET_NAME);
+    sh.getRange(1, 1, 1, 8).setValues([[
+      'ID', 'Date ISO', 'Code ENR', 'Nom fichier', 'Type MIME',
+      'Taille (octets)', 'Nb blocs', 'Blocs base64 →'
+    ]]);
+    try { sh.hideSheet(); } catch(eH) {}
+  }
+  return sh;
+}
+
+// Liste les documents nuisibles (métadonnées seules, sans le base64),
+// du plus récent au plus ancien.
+function listPestsDocuments() {
+  try {
+    var sh = getPestsDocsSheet_(false);
+    var files = [];
+    if (sh && sh.getLastRow() > 1) {
+      var vals = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+      for (var i = 0; i < vals.length; i++) {
+        var r = vals[i];
+        if (isNull(r[0])) continue;
+        files.push({
+          id:   String(r[0]),
+          date: String(r[1] || ''),
+          code: String(r[2] || ''),
+          name: String(r[3] || 'Document'),
+          mime: String(r[4] || ''),
+          size: Number(r[5]) || 0
+        });
+      }
+      files.sort(function(a, b) {
+        return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0);
+      });
+    }
+    return { success: true, files: files };
+  } catch(e) {
+    Logger.log('listPestsDocuments error: ' + e.message);
+    return { success: false, error: e.message, files: [] };
+  }
+}
+
+// Téléverse un document (base64) : horodaté comme les ENR puis écrit
+// sur une ligne de la feuille technique, découpé en blocs.
+function uploadPestsDocument(code, fileName, base64Data, mimeType) {
+  try {
+    if (!base64Data) return { success: false, error: 'Fichier vide' };
+    var approxBytes = Math.floor(base64Data.length * 3 / 4);
+    if (approxBytes > PESTS_DOC_MAX_BYTES) {
+      return { success: false, error: 'Fichier trop volumineux (maximum 3 Mo pour le stockage sans Drive).' };
+    }
+    var sh = getPestsDocsSheet_(true);
+    var safeName = String(fileName || 'document').replace(/[\\\/:*?"<>|]/g, '-');
+    var stamp = Utilities.formatDate(new Date(), 'GMT+1', 'yyyy-MM-dd_HHmm');
+    var chunks = [];
+    for (var p = 0; p < base64Data.length; p += PESTS_DOC_CHUNK) {
+      chunks.push(base64Data.substring(p, p + PESTS_DOC_CHUNK));
+    }
+    var row = [
+      'PD-' + new Date().getTime(), new Date().toISOString(),
+      String(code || ''), stamp + '_' + safeName,
+      mimeType || 'application/octet-stream', approxBytes, chunks.length
+    ].concat(chunks);
+    // La feuille doit avoir assez de colonnes pour tous les blocs
+    if (sh.getMaxColumns() < row.length) {
+      sh.insertColumnsAfter(sh.getMaxColumns(), row.length - sh.getMaxColumns());
+    }
+    sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+    Logger.log('uploadPestsDocument: ' + row[3] + ' (' + approxBytes + ' o, ' + chunks.length + ' blocs)');
+    return { success: true, id: row[0], name: row[3] };
+  } catch(e) {
+    Logger.log('uploadPestsDocument error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Renvoie le contenu base64 d'un document (blocs recollés) pour un
+// affichage côté client via blob URL — toujours sans Drive.
+function getPestsDocumentData(docId) {
+  try {
+    var sh = getPestsDocsSheet_(false);
+    if (!sh || sh.getLastRow() < 2) return { success: false, error: 'Aucun document.' };
+    var ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(docId)) {
+        var rowIdx = i + 2;
+        var meta = sh.getRange(rowIdx, 1, 1, 7).getValues()[0];
+        var n = Number(meta[6]) || 0;
+        var chunks = n > 0 ? sh.getRange(rowIdx, 8, 1, n).getValues()[0] : [];
+        return {
+          success: true,
+          name: String(meta[3] || 'Document'),
+          mime: String(meta[4] || 'application/octet-stream'),
+          b64:  chunks.join('')
+        };
+      }
+    }
+    return { success: false, error: 'Document introuvable.' };
+  } catch(e) {
+    Logger.log('getPestsDocumentData error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Supprime un document (ligne entière) — réservé aux admins côté client.
+function deletePestsDocument(docId) {
+  try {
+    var sh = getPestsDocsSheet_(false);
+    if (!sh || sh.getLastRow() < 2) return { success: false, error: 'Aucun document.' };
+    var ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(docId)) {
+        sh.deleteRow(i + 2);
+        return { success: true };
+      }
+    }
+    return { success: false, error: 'Document introuvable.' };
+  } catch(e) {
+    Logger.log('deletePestsDocument error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "Suivi des Contrats et Liens Drive" ──────
 // Renvoie un tableau de contrats :
@@ -5333,3 +5473,103 @@ function getActionPlan() {
   }
 }
 function getActionPlanForClient() { return getActionPlan(); }
+
+// ══════════════════════════════════════════════════════════════
+// PLAN D'ACTION PAR SECTION — PDF GÉNÉRÉ depuis le contenu
+// Reçoit du client les actions de la section (Incidents / Accidents
+// / TAGs), construit un document HTML tabulaire puis le convertit
+// en PDF (Utilities → getAs application/pdf). Le PDF, nommé
+// « Plan d'action — <Section>.pdf », est enregistré dans le dossier
+// Drive « Plans d'action - Dashboard HSE » (créé au besoin, ancien
+// PDF de même nom mis à la corbeille), partagé en lecture par lien
+// et renvoyé sous forme d'URL /preview pour affichage en iframe.
+// payload = { title, meta, cols:[{k,l,w}], rows:[{...}] }
+// ══════════════════════════════════════════════════════════════
+var ACTION_PLAN_FOLDER_NAME = "Plans d'action - Dashboard HSE";
+var ACTION_PLAN_MAX_ROWS    = 800;
+
+function generateSectionActionPlanForClient(payload) {
+  try {
+    if (!payload || !payload.cols || !payload.cols.length ||
+        !payload.rows || !payload.rows.length) {
+      return { ok: false, error: 'Aucune action à inclure dans le plan.' };
+    }
+    var title = safeText(payload.title) || "Plan d'action";
+    var rows  = payload.rows.slice(0, ACTION_PLAN_MAX_ROWS);
+    var esc   = function(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+    var now = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy HH:mm');
+
+    var html = '<html><head><meta charset="utf-8"><style>'
+      + '@page{size:A4 landscape;margin:1.2cm}'
+      + 'body{font-family:Arial,Helvetica,sans-serif;color:#16323e;font-size:9px;margin:0}'
+      + 'h1{font-size:16px;color:#09637e;margin:0 0 2px}'
+      + '.sub{font-size:9px;color:#5a7684;margin:0 0 8px}'
+      + '.meta{font-size:9px;color:#16323e;background:#eaf2f6;border:1px solid #c6d9e2;'
+      +   'border-radius:4px;padding:6px 8px;margin:0 0 10px}'
+      + 'table{border-collapse:collapse;width:100%}'
+      + 'th{background:#09637e;color:#ffffff;font-size:8.5px;text-align:left;'
+      +   'padding:4px 5px;border:1px solid #09637e}'
+      + 'td{border:1px solid #c6d9e2;padding:4px 5px;font-size:8.5px;vertical-align:top}'
+      + 'tr:nth-child(even) td{background:#f3f8fa}'
+      + '.foot{margin-top:8px;font-size:8px;color:#5a7684}'
+      + '</style></head><body>'
+      + '<h1>' + esc(title) + '</h1>'
+      + '<p class="sub">SOBCO 3 — HSE Master Dashboard · Généré le ' + now
+      + ' · ' + rows.length + ' ligne(s)</p>';
+    if (payload.meta) html += '<div class="meta">' + esc(payload.meta) + '</div>';
+    html += '<table><tr>';
+    payload.cols.forEach(function(c) {
+      html += '<th style="width:' + (Number(c.w) || 10) + '%">' + esc(c.l) + '</th>';
+    });
+    html += '</tr>';
+    rows.forEach(function(r) {
+      html += '<tr>';
+      payload.cols.forEach(function(c) { html += '<td>' + esc(r[c.k]) + '</td>'; });
+      html += '</tr>';
+    });
+    html += '</table>';
+    if (payload.rows.length > rows.length) {
+      html += '<p class="foot">Liste tronquée à ' + ACTION_PLAN_MAX_ROWS
+        + ' lignes (' + payload.rows.length + ' au total).</p>';
+    }
+    html += '<p class="foot">Document généré automatiquement à partir des données'
+      + ' de la section — Dashboard HSE SOBCO 3.</p></body></html>';
+
+    var pdfName = title + '.pdf';
+    var pdf = Utilities.newBlob(html, 'text/html', title + '.html')
+      .getAs('application/pdf').setName(pdfName);
+
+    // 1) Archivage Drive (si autorisé) : dossier créé au besoin,
+    //    ancien PDF de même nom mis à la corbeille, partage lecture
+    //    par lien pour l'affichage iframe. Si le scope Drive complet
+    //    n'est pas accordé (DriveApp.createFolder interdit), on passe
+    //    au repli base64 sans faire échouer la génération.
+    try {
+      var it = DriveApp.getFoldersByName(ACTION_PLAN_FOLDER_NAME);
+      var folder = it.hasNext() ? it.next() : DriveApp.createFolder(ACTION_PLAN_FOLDER_NAME);
+      var olds = folder.getFilesByName(pdfName);
+      while (olds.hasNext()) { try { olds.next().setTrashed(true); } catch(eT) {} }
+      var file = folder.createFile(pdf);
+      try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
+      return {
+        ok: true, id: file.getId(), name: pdfName, count: rows.length,
+        url: 'https://drive.google.com/file/d/' + file.getId() + '/preview'
+      };
+    } catch(eDrive) {
+      Logger.log('generateSectionActionPlan Drive fallback: ' + eDrive.message);
+    }
+
+    // 2) Repli SANS Drive : PDF renvoyé en base64, affiché côté
+    //    client via un blob URL (pas d'archivage, affichage seul).
+    return {
+      ok: true, name: pdfName, count: rows.length,
+      b64: Utilities.base64Encode(pdf.getBytes())
+    };
+  } catch(e) {
+    Logger.log('generateSectionActionPlanForClient error: ' + e.message);
+    return { ok: false, error: e.toString() };
+  }
+}
