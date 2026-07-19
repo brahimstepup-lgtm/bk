@@ -358,6 +358,9 @@ tr:hover td{background:var(--bg3);color:var(--text)}
   border:1px solid rgba(232,68,90,.5);box-shadow:0 4px 14px rgba(232,68,90,.28);transition:all .2s}
 .acc-pj-btn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,68,90,.4)}
 .acc-pj-btn:active{transform:translateY(0)}
+.acc-action-btn{background:linear-gradient(135deg,var(--green),#0da56d);
+  border:1px solid rgba(16,201,133,.5);box-shadow:0 4px 14px rgba(16,201,133,.28)}
+.acc-action-btn:hover{box-shadow:0 6px 18px rgba(16,201,133,.4)}
 
 /* ══ ENERGIE ══ */
 .egrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
@@ -4590,6 +4593,7 @@ html.light .pests-search-input{background:#edf2f7}
       <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
       <div class="modal-section" id="mAccActionSec" style="display:none"><div class="modal-sec-title"><span>✅</span>Action</div><div class="act-list" id="mAccActions"></div></div>
       <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
+      <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Action</div><button type="button" class="acc-pj-btn acc-action-btn" id="mAccActionBtn" onclick="openSectionActionPlan('accidents')">📋 Plan d'action</button></div>
     </div>
   </div>
 </div>
