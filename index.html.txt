@@ -8537,13 +8537,15 @@ function renderEnregistrements(){
   var noteEl = document.getElementById('enrSourceNote');
   if(noteEl) noteEl.style.display = (D.enregistrementsFromSheet === false) ? '' : 'none';
 
-  // Filtre recherche
+  // Filtre recherche — comparaison souple : ignore espaces, tirets et
+  // points, pour que « ENR-HSE-07 » trouve aussi « ENR-HSE 07 ».
   var qEl = document.getElementById('enrSearch');
   var q   = qEl ? qEl.value.trim().toLowerCase() : '';
+  var qN  = q.replace(/[\s\-_.]/g, '');
   var filtered = list.filter(function(e){
     if(!q) return true;
     var hay = ((e.code||'') + ' ' + (e.intitule||'') + ' ' + (e.procedure||'') + ' ' + (e.statut||'')).toLowerCase();
-    return hay.indexOf(q) > -1;
+    return hay.indexOf(q) > -1 || hay.replace(/[\s\-_.]/g, '').indexOf(qN) > -1;
   });
 
   function isAnomalie(e){

@@ -51,6 +51,11 @@ var PROCEDURES_SHEET_NAME = 'procédures';
 // Tant que la feuille n'existe pas dans le classeur, une liste par
 // défaut (issue de l'analyse des procédures en vigueur) est renvoyée
 // pour amorcer la section côté dashboard.
+//
+// Feuille réelle du classeur : onglet « ENREGISTREMENTS » (gid ci-dessous)
+// Structure : A=Procédures | B=Enregistrement (code ENR-HSE xx)
+//             C=Intitulé (entête vide) | D=Lien drive
+var ENREGISTREMENTS_SHEET_GID  = 45304192;
 var ENREGISTREMENTS_SHEET_NAME = 'enregistrements';
 
 // ── PERMIS DE TRAVAIL (feuille "Gestion des Permis de Travail", gid=40923444) ─
@@ -1298,12 +1303,18 @@ function readEnregistrements(ss) {
     var sheets = ss.getSheets();
     var sh = null;
 
-    // 1. Par nom exact "enregistrements"
-    var target = normalize(ENREGISTREMENTS_SHEET_NAME);
+    // 1. Par GID (onglet « ENREGISTREMENTS » du classeur)
     for (var i = 0; i < sheets.length; i++) {
-      if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      if (sheets[i].getSheetId() === ENREGISTREMENTS_SHEET_GID) { sh = sheets[i]; break; }
     }
-    // 2. Sinon premier onglet contenant "enregistrement"
+    // 2. Sinon par nom exact "enregistrements"
+    var target = normalize(ENREGISTREMENTS_SHEET_NAME);
+    if (!sh) {
+      for (var i = 0; i < sheets.length; i++) {
+        if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+      }
+    }
+    // 3. Sinon premier onglet contenant "enregistrement"
     if (!sh) {
       for (var i = 0; i < sheets.length; i++) {
         var n = normalize(sheets[i].getName());
@@ -1365,6 +1376,10 @@ function readEnregistrements(ss) {
     }
 
     // ── Détecter la ligne d'entête + colonnes ──
+    // Feuille réelle : A=« Procédures » | B=« Enregistrement » (code)
+    //                  C=intitulé (entête vide) | D=« Lien drive »
+    // → l'entête « enregistrement » désigne la colonne CODE ; si aucune
+    //   colonne intitulé n'est nommée, on prend la colonne à droite du code.
     var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1, linkCol = -1;
     for (var i = 0; i < Math.min(data.length, 6); i++) {
       var row = data[i];
@@ -1372,7 +1387,8 @@ function readEnregistrements(ss) {
       for (var c = 0; c < row.length; c++) {
         var h = normalize(String(row[c]||''));
         if (!h) continue;
-        if (cc < 0 && (h.indexOf('code') > -1 || h === 'enr' || h.indexOf('ref') === 0)) { cc = c; continue; }
+        if (cc < 0 && (h.indexOf('code') > -1 || h === 'enr' || h.indexOf('ref') === 0 ||
+                       h.indexOf('enregistrement') > -1)) { cc = c; continue; }
         if (tc < 0 && (h.indexOf('intitul') > -1 || h.indexOf('titre') > -1 ||
                        h.indexOf('designation') > -1 || h.indexOf('nom') > -1)) { tc = c; continue; }
         if (pc < 0 && (h.indexOf('procedure') > -1 || h.indexOf('rattach') > -1 ||
@@ -1383,8 +1399,15 @@ function readEnregistrements(ss) {
         if (lc < 0 && (h.indexOf('lien') > -1 || h.indexOf('url') > -1 ||
                        h.indexOf('drive') > -1 || h.indexOf('document') > -1)) { lc = c; continue; }
       }
-      if (cc >= 0 && tc >= 0) {
-        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; linkCol = lc; break;
+      if (cc >= 0 && (tc >= 0 || lc >= 0 || pc >= 0)) {
+        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; linkCol = lc;
+        // Pas de colonne intitulé nommée → colonne à droite du code,
+        // si elle n'est pas déjà affectée à un autre rôle.
+        if (titCol < 0) {
+          var guess = codeCol + 1;
+          if (guess !== procCol && guess !== consCol && guess !== statCol && guess !== linkCol) titCol = guess;
+        }
+        break;
       }
     }
     // Fallback : pas d'entête détectée → A=code, B=intitulé, C=procédure,
@@ -1406,13 +1429,19 @@ function readEnregistrements(ss) {
       if (!code && !intitule && !proc) continue;
 
       // Sauter une éventuelle ré-impression de l'entête
-      var lcTit = normalize(intitule);
-      if (lcTit === 'intitule' || lcTit === 'titre' || normalize(code) === 'code') continue;
+      var lcTit  = normalize(intitule);
+      var lcCode = normalize(code);
+      if (lcTit === 'intitule' || lcTit === 'titre' ||
+          lcCode === 'code' || lcCode === 'enregistrement') continue;
 
       // URL associée — colonne « Lien » d'abord, puis intitulé, puis code
       var url = cellUrl(i, linkCol);
       if (!url) url = cellUrl(i, titCol);
       if (!url) url = cellUrl(i, codeCol);
+
+      // Feuille sans colonne Statut → statut dérivé : un code attribué
+      // vaut « Codifié », sinon « À codifier ».
+      if (!stat && statCol < 0) stat = code ? 'Codifié' : 'À codifier';
 
       entries.push({
         code:         code,
@@ -1445,7 +1474,8 @@ function setupEnregistrementsSheet() {
     var target = normalize(ENREGISTREMENTS_SHEET_NAME);
     for (var i = 0; i < sheets.length; i++) {
       var n = normalize(sheets[i].getName());
-      if (n === target || n.indexOf('enregistrement') > -1) {
+      if (n === target || n.indexOf('enregistrement') > -1 ||
+          sheets[i].getSheetId() === ENREGISTREMENTS_SHEET_GID) {
         return {
           success: true, created: false,
           message: 'La feuille « ' + sheets[i].getName() + ' » existe déjà dans le classeur.',
