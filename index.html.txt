@@ -4593,7 +4593,7 @@ html.light .pests-search-input{background:#edf2f7}
       <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
       <div class="modal-section" id="mAccActionSec" style="display:none"><div class="modal-sec-title"><span>✅</span>Action</div><div class="act-list" id="mAccActions"></div></div>
       <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
-      <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Action</div><button type="button" class="acc-pj-btn acc-action-btn" id="mAccActionBtn" onclick="openSectionActionPlan('accidents')">📋 Plan d'action</button></div>
+      <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Action</div><button type="button" class="acc-pj-btn acc-action-btn" id="mAccActionBtn" onclick="openAccidentActionPlan()">📋 Plan d'action</button></div>
     </div>
   </div>
 </div>
@@ -6829,6 +6829,7 @@ function openIncEnqueteLarge(){
 
 // ══ MODAL ACCIDENT ════════════════════════════════════════════
 function openAccModal(acc){
+  currentAccData=acc;
   document.getElementById('mAccId').textContent=(acc.mois?acc.mois+' · ':'')+acc.date;
   document.getElementById('mAccNom').textContent=acc.nom||'—';
   var chips='<span class="modal-chip">'+esc(acc.mois)+'</span>';
@@ -6867,7 +6868,7 @@ function openAccModal(acc){
 }
 // ── Voir PJ : affiche le document de la colonne K DANS le dashboard ──
 // (visionneuse iframe intégrée, sans ouvrir Google Drive ni un nouvel onglet)
-var currentAccPJ='', currentAccPJTitle='';
+var currentAccPJ='', currentAccPJTitle='', currentAccData=null;
 function openAccPJ(){
   if(!currentAccPJ) return;
   openCleaningEmbed(currentAccPJ, currentAccPJTitle||'Pièce jointe', 'PIÈCE JOINTE · ACCIDENT', '📎');
@@ -7867,7 +7868,33 @@ var sapLoading = false;
 function openSectionActionPlan(section){
   var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
   var kind = 'PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase());
-  var p = sapPayload(section);
+  sapRun(sapPayload(section), kind);
+}
+// ── Plan d'action d'UN SEUL accident (bouton 📋 du modal Accident) ──
+// Génère le même PDF que la section, limité à l'accident affiché.
+function openAccidentActionPlan(){
+  var a = currentAccData;
+  if (!a) { showToast('Aucun accident sélectionné.','error'); return; }
+  var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
+  var p = {
+    title: "Plan d'action — Accident · " + (a.nom||'—') + (a.date ? ' ('+a.date+')' : ''),
+    meta:  (a.fonction ? a.fonction+' · ' : '') + (a.structure ? a.structure+' · ' : '')
+         + 'NJP : ' + (a.njp||0) + ' jour(s)'
+         + ((a.action && String(a.action).trim()) ? '' : ' · action à définir'),
+    cols: [ {k:'date',l:'Date',w:7},{k:'nom',l:'Nom',w:9},{k:'fonction',l:'Fonction',w:8},
+            {k:'lieu',l:'Lieu',w:8},{k:'siege',l:'Siège lésion',w:7},
+            {k:'nature',l:'Nature',w:9},{k:'njp',l:'NJP',w:4},
+            {k:'cause',l:'Cause racine',w:15},{k:'circ',l:'Circonstances',w:17},
+            {k:'action',l:'Action',w:16} ],
+    rows: [{
+      date:v(a.date), nom:v(a.nom), fonction:v(a.fonction), lieu:v(a.lieu),
+      siege:v(a.siege), nature:v(a.nature), njp:(a.njp!=null?a.njp:'—'),
+      cause:v(a.cause), circ:v(a.circonstance),
+      action:(a.action&&String(a.action).trim())?String(a.action).trim():'À définir' }]
+  };
+  sapRun(p, 'PLAN D\'ACTION · ACCIDENT');
+}
+function sapRun(p, kind){
   if (!p || !p.rows.length) {
     showToast('Aucune donnée dans cette section pour générer le plan d\'action.','error');
     return;
