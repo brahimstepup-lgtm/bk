@@ -1618,6 +1618,146 @@ function uploadEnrDocument(code, intitule, fileName, base64Data, mimeType) {
   }
 }
 
+// ── DOCUMENTS NUISIBLES : stockage SANS Drive ────────────────
+// Même principe que les documents ENR (liste datée + téléversement
+// depuis le dashboard) mais AUCUN appel Drive : les fichiers sont
+// stockés en base64 dans une feuille technique masquée du classeur
+// principal (« nuisibles_docs »), découpés en blocs < 50 000
+// caractères (limite d'une cellule). Seul le scope Spreadsheets —
+// déjà accordé — est nécessaire. Taille max : 3 Mo par fichier.
+// Structure d'une ligne :
+//   A=ID  B=Date ISO  C=Code ENR  D=Nom fichier  E=Type MIME
+//   F=Taille (octets)  G=Nb blocs  H… = blocs base64
+var PESTS_DOCS_SHEET_NAME = 'nuisibles_docs';
+var PESTS_DOC_MAX_BYTES   = 3 * 1024 * 1024;
+var PESTS_DOC_CHUNK       = 45000;
+
+function getPestsDocsSheet_(createIfMissing) {
+  var ss = SpreadsheetApp.openById(SHEET_ID);
+  var sh = ss.getSheetByName(PESTS_DOCS_SHEET_NAME);
+  if (!sh && createIfMissing) {
+    sh = ss.insertSheet(PESTS_DOCS_SHEET_NAME);
+    sh.getRange(1, 1, 1, 8).setValues([[
+      'ID', 'Date ISO', 'Code ENR', 'Nom fichier', 'Type MIME',
+      'Taille (octets)', 'Nb blocs', 'Blocs base64 →'
+    ]]);
+    try { sh.hideSheet(); } catch(eH) {}
+  }
+  return sh;
+}
+
+// Liste les documents nuisibles (métadonnées seules, sans le base64),
+// du plus récent au plus ancien.
+function listPestsDocuments() {
+  try {
+    var sh = getPestsDocsSheet_(false);
+    var files = [];
+    if (sh && sh.getLastRow() > 1) {
+      var vals = sh.getRange(2, 1, sh.getLastRow() - 1, 6).getValues();
+      for (var i = 0; i < vals.length; i++) {
+        var r = vals[i];
+        if (isNull(r[0])) continue;
+        files.push({
+          id:   String(r[0]),
+          date: String(r[1] || ''),
+          code: String(r[2] || ''),
+          name: String(r[3] || 'Document'),
+          mime: String(r[4] || ''),
+          size: Number(r[5]) || 0
+        });
+      }
+      files.sort(function(a, b) {
+        return (a.date < b.date) ? 1 : (a.date > b.date ? -1 : 0);
+      });
+    }
+    return { success: true, files: files };
+  } catch(e) {
+    Logger.log('listPestsDocuments error: ' + e.message);
+    return { success: false, error: e.message, files: [] };
+  }
+}
+
+// Téléverse un document (base64) : horodaté comme les ENR puis écrit
+// sur une ligne de la feuille technique, découpé en blocs.
+function uploadPestsDocument(code, fileName, base64Data, mimeType) {
+  try {
+    if (!base64Data) return { success: false, error: 'Fichier vide' };
+    var approxBytes = Math.floor(base64Data.length * 3 / 4);
+    if (approxBytes > PESTS_DOC_MAX_BYTES) {
+      return { success: false, error: 'Fichier trop volumineux (maximum 3 Mo pour le stockage sans Drive).' };
+    }
+    var sh = getPestsDocsSheet_(true);
+    var safeName = String(fileName || 'document').replace(/[\\\/:*?"<>|]/g, '-');
+    var stamp = Utilities.formatDate(new Date(), 'GMT+1', 'yyyy-MM-dd_HHmm');
+    var chunks = [];
+    for (var p = 0; p < base64Data.length; p += PESTS_DOC_CHUNK) {
+      chunks.push(base64Data.substring(p, p + PESTS_DOC_CHUNK));
+    }
+    var row = [
+      'PD-' + new Date().getTime(), new Date().toISOString(),
+      String(code || ''), stamp + '_' + safeName,
+      mimeType || 'application/octet-stream', approxBytes, chunks.length
+    ].concat(chunks);
+    // La feuille doit avoir assez de colonnes pour tous les blocs
+    if (sh.getMaxColumns() < row.length) {
+      sh.insertColumnsAfter(sh.getMaxColumns(), row.length - sh.getMaxColumns());
+    }
+    sh.getRange(sh.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+    Logger.log('uploadPestsDocument: ' + row[3] + ' (' + approxBytes + ' o, ' + chunks.length + ' blocs)');
+    return { success: true, id: row[0], name: row[3] };
+  } catch(e) {
+    Logger.log('uploadPestsDocument error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Renvoie le contenu base64 d'un document (blocs recollés) pour un
+// affichage côté client via blob URL — toujours sans Drive.
+function getPestsDocumentData(docId) {
+  try {
+    var sh = getPestsDocsSheet_(false);
+    if (!sh || sh.getLastRow() < 2) return { success: false, error: 'Aucun document.' };
+    var ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(docId)) {
+        var rowIdx = i + 2;
+        var meta = sh.getRange(rowIdx, 1, 1, 7).getValues()[0];
+        var n = Number(meta[6]) || 0;
+        var chunks = n > 0 ? sh.getRange(rowIdx, 8, 1, n).getValues()[0] : [];
+        return {
+          success: true,
+          name: String(meta[3] || 'Document'),
+          mime: String(meta[4] || 'application/octet-stream'),
+          b64:  chunks.join('')
+        };
+      }
+    }
+    return { success: false, error: 'Document introuvable.' };
+  } catch(e) {
+    Logger.log('getPestsDocumentData error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+// Supprime un document (ligne entière) — réservé aux admins côté client.
+function deletePestsDocument(docId) {
+  try {
+    var sh = getPestsDocsSheet_(false);
+    if (!sh || sh.getLastRow() < 2) return { success: false, error: 'Aucun document.' };
+    var ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+    for (var i = 0; i < ids.length; i++) {
+      if (String(ids[i][0]) === String(docId)) {
+        sh.deleteRow(i + 2);
+        return { success: true };
+      }
+    }
+    return { success: false, error: 'Document introuvable.' };
+  } catch(e) {
+    Logger.log('deletePestsDocument error: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // ── LECTURE FEUILLE "Suivi des Contrats et Liens Drive" ──────
 // Renvoie un tableau de contrats :

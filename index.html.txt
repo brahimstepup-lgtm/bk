@@ -3841,6 +3841,11 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
     </button>
+    <button class="btn" style="background:#7c3aed;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openPestsDocs()"
+            title="Enregistrements remplis (scans, PDF, photos) de la lutte contre les nuisibles — stockés dans le classeur, sans Drive">
+      🗂️ Documents ENR <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">sans Drive</span>
+    </button>
   </div>
 
   <!-- ─── SECTION 1 : INSECTES VOLANTS (FK) ─── -->
@@ -4370,8 +4375,60 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
-<!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
-<!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
+<!-- ═══ MODAL DOCUMENTS NUISIBLES (ENR remplis — stockage sans Drive) ═══ -->
+<div id="pestsDocsModal" class="crud-modal-bg" onclick="if(event.target===this)closePestsDocs()">
+  <div class="crud-modal" style="max-width:720px">
+    <div class="crud-modal-top">
+      <span style="font-size:18px">🗂️</span>
+      <div class="crud-modal-title">Documents — Lutte contre les nuisibles</div>
+      <button class="crud-modal-close" onclick="closePestsDocs()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:10px">
+        Enregistrements remplis (scans, PDF, photos) · stockés dans le classeur — sans Drive · 3 Mo max
+      </div>
+
+      <!-- Téléversement : code ENR + fichier -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+        <select id="pestsDocCode" class="crud-input" style="padding:6px;flex-shrink:0;width:auto">
+          <option value="ENR-HSE-07">ENR-HSE-07 · Vérification des appâts</option>
+          <option value="ENR-HSE-13">ENR-HSE-13 · Fiche d'exécution</option>
+          <option value="ENR-HSE-15">ENR-HSE-15 · Vérification de la lutte</option>
+          <option value="ENR-HSE-21">ENR-HSE-21 · Recensement des nuisibles</option>
+          <option value="ENR-HSE-22">ENR-HSE-22 · Produits chimiques</option>
+          <option value="ENR-HSE-23">ENR-HSE-23 · Rapport de tendance</option>
+          <option value="ENR-HSE-24">ENR-HSE-24 · Rapport en cas de présence</option>
+          <option value="ENR-CQA-24">ENR-CQA-24 · Réception matière première</option>
+          <option value="">Autre document</option>
+        </select>
+        <input type="file" id="pestsDocFile" class="crud-input" style="padding:6px;flex:1;min-width:180px"
+               accept=".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf">
+        <button class="btn btn-ai" id="pestsDocUploadBtn" style="font-size:11px;padding:8px 14px;flex-shrink:0"
+                onclick="uploadPestsDoc()">📤 Téléverser</button>
+      </div>
+
+      <!-- Liste des documents (plus récent en haut) -->
+      <div class="tblw">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:36px">#</th>
+              <th style="width:110px">Code ENR</th>
+              <th>Nom du fichier</th>
+              <th style="width:130px">Date</th>
+              <th style="width:70px;text-align:center">Ouvrir</th>
+              <th style="width:44px;text-align:center" id="pestsDocsDelHead">🗑️</th>
+            </tr>
+          </thead>
+          <tbody id="pestsDocsBody">
+            <tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL FICHES TECHNIQUES ═══ -->
 <div class="modal-bg" id="fichesTechniquesModal" style="display:none" onclick="if(event.target===this)closeModal('fichesTechniquesModal')">
   <div class="modal-panel" style="max-width:720px;width:95vw" onclick="event.stopPropagation()">
@@ -12356,6 +12413,140 @@ function renderPests(){
   renderRodentSouDashboard();
   renderIndoorRodentDetailed();
   renderOutdoorRodentDetailed();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DOCUMENTS NUISIBLES — ENR remplis, stockage SANS Drive
+   Même usage que le modal « Documents ENR » de la section
+   Enregistrements (liste datée + téléversement), mais les fichiers
+   vivent dans la feuille technique « nuisibles_docs » du classeur.
+   L'ouverture passe par un blob URL local dans le viewer intégré.
+   ══════════════════════════════════════════════════════════════ */
+function openPestsDocs(){
+  var fi = document.getElementById('pestsDocFile');
+  if (fi) fi.value = '';
+  document.getElementById('pestsDocsModal').classList.add('open');
+  loadPestsDocs();
+}
+function closePestsDocs(){
+  document.getElementById('pestsDocsModal').classList.remove('open');
+}
+function loadPestsDocs(){
+  var body = document.getElementById('pestsDocsBody');
+  if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">⏳ Chargement…</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r){ renderPestsDocs(r); })
+    .withFailureHandler(function(err){
+      if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--red);font-size:11px">Erreur : '
+        + esc(err && err.message ? err.message : String(err)) + '</td></tr>';
+    })
+    .listPestsDocuments();
+}
+function renderPestsDocs(r){
+  var body = document.getElementById('pestsDocsBody');
+  if (!body) return;
+  var canDel = (typeof userCanDelete === 'function') && userCanDelete();
+  var delHead = document.getElementById('pestsDocsDelHead');
+  if (delHead) delHead.style.display = canDel ? '' : 'none';
+  var files = (r && r.files) || [];
+  if (!files.length) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">'
+      + 'Aucun document téléversé pour la lutte contre les nuisibles.<br>'
+      + 'Utilisez le bouton 📤 ci-dessus pour ajouter le premier.</td></tr>';
+    return;
+  }
+  body.innerHTML = files.map(function(f, i){
+    var d  = f.date ? new Date(f.date) : null;
+    var ds = d && !isNaN(d.getTime())
+      ? (d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}))
+      : '—';
+    var fId = escAttr(f.id || '');
+    return '<tr>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">' + (i+1) + '</td>'
+      + '<td><span class="mono" style="font-size:9px;color:var(--p4)">' + esc(f.code || '—') + '</span></td>'
+      + '<td><a href="#" data-doc-id="' + fId + '" '
+      + 'onclick="openPestsDocView(this.getAttribute(\'data-doc-id\'));return false;" '
+      + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer;font-size:11px">'
+      + esc(f.name || '—') + '</a></td>'
+      + '<td><span class="mono" style="font-size:10px">' + esc(ds) + '</span></td>'
+      + '<td style="text-align:center"><a href="#" class="tag-btn has-photo" title="Ouvrir dans le dashboard" '
+      + 'data-doc-id="' + fId + '" onclick="openPestsDocView(this.getAttribute(\'data-doc-id\'));return false;" '
+      + 'style="text-decoration:none">📄</a></td>'
+      + (canDel
+        ? '<td style="text-align:center"><a href="#" title="Supprimer" data-doc-id="' + fId + '" '
+          + 'onclick="deletePestsDoc(this.getAttribute(\'data-doc-id\'));return false;" '
+          + 'style="text-decoration:none;font-size:12px">🗑️</a></td>'
+        : '<td style="display:none"></td>')
+      + '</tr>';
+  }).join('');
+}
+function uploadPestsDoc(){
+  if (typeof currentUser !== 'undefined' && currentUser && !userCanEdit('nuisibles')) {
+    alert("Vous n'avez pas les droits pour téléverser un document nuisibles.");
+    return;
+  }
+  var fi = document.getElementById('pestsDocFile');
+  if (!fi || !fi.files.length) { alert("Sélectionnez d'abord un fichier."); return; }
+  var file = fi.files[0];
+  if (file.size > 3*1024*1024) { alert('Fichier trop volumineux (maximum 3 Mo pour le stockage sans Drive).'); return; }
+  var code = (document.getElementById('pestsDocCode') || {}).value || '';
+  var btn  = document.getElementById('pestsDocUploadBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⬆️ Upload en cours…'; }
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var b64 = ev.target.result.split(',')[1];
+    google.script.run
+      .withSuccessHandler(function(r){
+        if (btn) { btn.disabled = false; btn.textContent = '📤 Téléverser'; }
+        if (r && r.success) { fi.value = ''; loadPestsDocs(); }
+        else alert('Échec du téléversement : ' + ((r && r.error) || 'réponse vide'));
+      })
+      .withFailureHandler(function(err){
+        if (btn) { btn.disabled = false; btn.textContent = '📤 Téléverser'; }
+        alert('Erreur : ' + (err && err.message ? err.message : err));
+      })
+      .uploadPestsDocument(code, file.name, b64, file.type || 'application/octet-stream');
+  };
+  reader.readAsDataURL(file);
+}
+function openPestsDocView(docId){
+  if (!docId) return;
+  showToast('Ouverture du document…','success');
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (r && r.success && r.b64) {
+        try {
+          var bin = atob(r.b64), arr = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          var blobUrl = URL.createObjectURL(new Blob([arr], { type: r.mime || 'application/octet-stream' }));
+          openCleaningEmbed(blobUrl, r.name || 'Document', 'DOCUMENT · NUISIBLES', '🗂️');
+        } catch(eB) {
+          showToast('Affichage impossible : ' + eB.message, 'error');
+        }
+      } else {
+        showToast((r && r.error) || 'Document introuvable.', 'error');
+      }
+    })
+    .withFailureHandler(function(err){
+      showToast('Erreur : ' + (err && err.message ? err.message : err), 'error');
+    })
+    .getPestsDocumentData(docId);
+}
+function deletePestsDoc(docId){
+  if (!(typeof userCanDelete === 'function' && userCanDelete())) {
+    alert('Suppression réservée aux administrateurs.');
+    return;
+  }
+  if (!confirm('Supprimer définitivement ce document ?')) return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (r && r.success) { showToast('Document supprimé.','success'); loadPestsDocs(); }
+      else showToast((r && r.error) || 'Échec de la suppression.','error');
+    })
+    .withFailureHandler(function(err){
+      showToast('Erreur : ' + (err && err.message ? err.message : err), 'error');
+    })
+    .deletePestsDocument(docId);
 }
 
 /* ══════════════════════════════════════════════════════════════
