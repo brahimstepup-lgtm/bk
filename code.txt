@@ -5402,17 +5402,31 @@ function generateSectionActionPlanForClient(payload) {
     var pdf = Utilities.newBlob(html, 'text/html', title + '.html')
       .getAs('application/pdf').setName(pdfName);
 
-    // Dossier de sortie (créé au besoin) + remplacement de l'ancien PDF
-    var it = DriveApp.getFoldersByName(ACTION_PLAN_FOLDER_NAME);
-    var folder = it.hasNext() ? it.next() : DriveApp.createFolder(ACTION_PLAN_FOLDER_NAME);
-    var olds = folder.getFilesByName(pdfName);
-    while (olds.hasNext()) { try { olds.next().setTrashed(true); } catch(eT) {} }
-    var file = folder.createFile(pdf);
-    // Partage lecture par lien pour l'affichage iframe (comme les PJ)
-    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
+    // 1) Archivage Drive (si autorisé) : dossier créé au besoin,
+    //    ancien PDF de même nom mis à la corbeille, partage lecture
+    //    par lien pour l'affichage iframe. Si le scope Drive complet
+    //    n'est pas accordé (DriveApp.createFolder interdit), on passe
+    //    au repli base64 sans faire échouer la génération.
+    try {
+      var it = DriveApp.getFoldersByName(ACTION_PLAN_FOLDER_NAME);
+      var folder = it.hasNext() ? it.next() : DriveApp.createFolder(ACTION_PLAN_FOLDER_NAME);
+      var olds = folder.getFilesByName(pdfName);
+      while (olds.hasNext()) { try { olds.next().setTrashed(true); } catch(eT) {} }
+      var file = folder.createFile(pdf);
+      try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(eS) {}
+      return {
+        ok: true, id: file.getId(), name: pdfName, count: rows.length,
+        url: 'https://drive.google.com/file/d/' + file.getId() + '/preview'
+      };
+    } catch(eDrive) {
+      Logger.log('generateSectionActionPlan Drive fallback: ' + eDrive.message);
+    }
+
+    // 2) Repli SANS Drive : PDF renvoyé en base64, affiché côté
+    //    client via un blob URL (pas d'archivage, affichage seul).
     return {
-      ok: true, id: file.getId(), name: pdfName, count: rows.length,
-      url: 'https://drive.google.com/file/d/' + file.getId() + '/preview'
+      ok: true, name: pdfName, count: rows.length,
+      b64: Utilities.base64Encode(pdf.getBytes())
     };
   } catch(e) {
     Logger.log('generateSectionActionPlanForClient error: ' + e.message);

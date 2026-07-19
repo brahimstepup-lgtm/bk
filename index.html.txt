@@ -7806,6 +7806,17 @@ function openSectionActionPlan(section){
       sapLoading = false;
       if (r && r.ok && r.url) {
         openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋');
+      } else if (r && r.ok && r.b64) {
+        // Repli sans Drive : le serveur renvoie le PDF en base64 →
+        // blob URL local affiché dans le viewer intégré.
+        try {
+          var bin = atob(r.b64), arr = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          var blobUrl = URL.createObjectURL(new Blob([arr], { type:'application/pdf' }));
+          openCleaningEmbed(blobUrl, r.name || 'Plan d\'action', kind, '📋');
+        } catch(eB) {
+          showToast('PDF généré mais affichage impossible : ' + eB.message, 'error');
+        }
       } else {
         showToast((r && r.error) || 'Échec de la génération du plan d\'action.','error');
       }
