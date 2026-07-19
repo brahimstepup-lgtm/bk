@@ -3780,6 +3780,8 @@ function getData() {
     // Pièce jointe (colonne K) : l'URL peut être un =HYPERLINK, un lien
     // RichText, un objet Drive ou du texte brut → on lit tout pour
     // extraire l'URL de façon robuste.
+    // Action (colonne L) : texte libre — affichée dans le modal Accident
+    // et dans le PDF « Plan d'action — Accidents ».
     var accRich = null, accForm = null;
     try { accRich = accRange.getRichTextValues(); } catch(eAR) { accRich = null; }
     try { accForm = accRange.getFormulas();        } catch(eAF) { accForm = null; }
@@ -3842,7 +3844,8 @@ function getData() {
         njp:toNumZ(r[7]),
         cause:isNull(r[8])?'':String(r[8]).trim(),
         circonstance:isNull(r[9])?'':String(r[9]).trim(),
-        pj:accCellUrl(i, 10)
+        pj:accCellUrl(i, 10),
+        action:isNull(r[11])?'':String(r[11]).trim()
       });
     }
     out.accidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
