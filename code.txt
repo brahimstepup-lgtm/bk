@@ -1268,7 +1268,7 @@ var DEFAULT_ENREGISTREMENTS = [
   { code:'ENR-HSE-07',  intitule:'Vérification des appâts',                              procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
   { code:'ENR-HSE-13',  intitule:"Fiche d'exécution de la lutte contre nuisible",        procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
   { code:'ENR-HSE-15',  intitule:'Vérification de la lutte contre nuisible',             procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
-  { code:'ENR-HSE-21',  intitule:'Recensement des nuisibles / entretien des locaux',     procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Double emploi' },
+  { code:'ENR-HSE-20',  intitule:'Recensement des nuisibles / entretien des locaux',     procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Double emploi' },
   { code:'ENR-HSE-22',  intitule:'Liste des produits chimiques',                         procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
   { code:'ENR-HSE-23',  intitule:'Rapport de tendance',                                  procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
   { code:'ENR-HSE-24',  intitule:'Rapport en cas de présence',                           procedure:'Lutte contre les Nuisibles',            conservation:'3 ans', statut:'Codifié' },
