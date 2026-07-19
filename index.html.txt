@@ -358,9 +358,6 @@ tr:hover td{background:var(--bg3);color:var(--text)}
   border:1px solid rgba(232,68,90,.5);box-shadow:0 4px 14px rgba(232,68,90,.28);transition:all .2s}
 .acc-pj-btn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,68,90,.4)}
 .acc-pj-btn:active{transform:translateY(0)}
-.acc-action-btn{background:linear-gradient(135deg,var(--green),#0da56d);
-  border:1px solid rgba(16,201,133,.5);box-shadow:0 4px 14px rgba(16,201,133,.28)}
-.acc-action-btn:hover{box-shadow:0 6px 18px rgba(16,201,133,.4)}
 
 /* ══ ENERGIE ══ */
 .egrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
@@ -4587,13 +4584,26 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
       <button class="modal-close" onclick="closeModal('accModal')">✕</button>
     </div>
+    <div class="modal-tabs">
+      <button class="modal-tab on" onclick="switchTab('mAcc','info',this)">📋 Infos</button>
+      <button class="modal-tab"    onclick="switchTab('mAcc','actions',this)">✅ Actions</button>
+    </div>
     <div class="modal-body">
-      <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
-      <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
-      <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
-      <div class="modal-section" id="mAccActionSec" style="display:none"><div class="modal-sec-title"><span>✅</span>Action</div><div class="act-list" id="mAccActions"></div></div>
-      <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
-      <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Action</div><button type="button" class="acc-pj-btn acc-action-btn" id="mAccActionBtn" onclick="openAccidentActionPlan()">📋 Plan d'action</button></div>
+      <div id="mAcc-info">
+        <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
+        <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
+        <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
+        <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
+      </div>
+      <div id="mAcc-actions" style="display:none">
+        <div class="modal-section"><div class="modal-sec-title"><span>✅</span>Actions correctives</div><div class="act-list" id="mAccActions"></div></div>
+        <div class="info-grid" style="margin-top:10px">
+          <div class="info-item"><div class="info-lbl">Nom</div><div class="info-val" id="mAccNom2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Date</div><div class="info-val" id="mAccDate2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Structure</div><div class="info-val" id="mAccStruct2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Jours perdus</div><div class="info-val" id="mAccNjp2">—</div></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -6846,14 +6856,16 @@ function openAccModal(acc){
   if(acc.circonstance){document.getElementById('mAccCirc').textContent=acc.circonstance;circSec.style.display='block';}else circSec.style.display='none';
   var causeSec=document.getElementById('mAccCauseSec');
   if(acc.cause){document.getElementById('mAccCause').textContent=acc.cause;causeSec.style.display='block';}else causeSec.style.display='none';
-  // ── Action (colonne L) — liste numérotée, même rendu que le modal Incident ──
-  var accActSec=document.getElementById('mAccActionSec');
+  // ── Onglet ✅ Actions (colonne L) — même rendu que le modal Incident ──
   var accActs=cleanMd(acc.action||'');
-  var accActLines=accActs.split('\n').filter(function(l){return l.replace(/[-•*# ]/g,'').trim().length>2;});
-  if(accActLines.length){
-    document.getElementById('mAccActions').innerHTML=accActLines.map(function(l,i){return'<div class="act-item"><div class="act-num">'+(i+1)+'</div>'+esc(l.replace(/^[-•*#\\ ]+/,'').trim())+'</div>';}).join('');
-    accActSec.style.display='block';
-  }else accActSec.style.display='none';
+  var accActLines=accActs.split('\n').filter(function(l){return l.replace(/[-•*# ]/g,'').trim().length>5;});
+  document.getElementById('mAccActions').innerHTML=accActLines.length
+    ?accActLines.map(function(l,i){return'<div class="act-item"><div class="act-num">'+(i+1)+'</div>'+esc(l.replace(/^[-•*#\\ ]+/,'').trim())+'</div>';}).join('')
+    :'<div class="info-item"><div class="info-val" style="color:var(--text3)">Actions non renseignées</div></div>';
+  document.getElementById('mAccNom2').textContent=acc.nom||'—';
+  document.getElementById('mAccDate2').textContent=acc.date||'—';
+  document.getElementById('mAccStruct2').textContent=acc.structure||'—';
+  document.getElementById('mAccNjp2').textContent=(acc.njp!=null?acc.njp:'—')+' jours';
   // ── Pièce jointe (colonne K) — bouton « Voir PJ » visible seulement si un lien existe ──
   var pjSec=document.getElementById('mAccPjSec');
   if(acc.pj && /^https?:\/\//i.test(acc.pj)){
@@ -6864,6 +6876,7 @@ function openAccModal(acc){
     currentAccPJ='';
     pjSec.style.display='none';
   }
+  switchTab('mAcc','info',document.querySelector('#accModal .modal-tab'));
   openModal('accModal');
 }
 // ── Voir PJ : affiche le document de la colonne K DANS le dashboard ──
@@ -7869,30 +7882,6 @@ function openSectionActionPlan(section){
   var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
   var kind = 'PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase());
   sapRun(sapPayload(section), kind);
-}
-// ── Plan d'action d'UN SEUL accident (bouton 📋 du modal Accident) ──
-// Génère le même PDF que la section, limité à l'accident affiché.
-function openAccidentActionPlan(){
-  var a = currentAccData;
-  if (!a) { showToast('Aucun accident sélectionné.','error'); return; }
-  var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
-  var p = {
-    title: "Plan d'action — Accident · " + (a.nom||'—') + (a.date ? ' ('+a.date+')' : ''),
-    meta:  (a.fonction ? a.fonction+' · ' : '') + (a.structure ? a.structure+' · ' : '')
-         + 'NJP : ' + (a.njp||0) + ' jour(s)'
-         + ((a.action && String(a.action).trim()) ? '' : ' · action à définir'),
-    cols: [ {k:'date',l:'Date',w:7},{k:'nom',l:'Nom',w:9},{k:'fonction',l:'Fonction',w:8},
-            {k:'lieu',l:'Lieu',w:8},{k:'siege',l:'Siège lésion',w:7},
-            {k:'nature',l:'Nature',w:9},{k:'njp',l:'NJP',w:4},
-            {k:'cause',l:'Cause racine',w:15},{k:'circ',l:'Circonstances',w:17},
-            {k:'action',l:'Action',w:16} ],
-    rows: [{
-      date:v(a.date), nom:v(a.nom), fonction:v(a.fonction), lieu:v(a.lieu),
-      siege:v(a.siege), nature:v(a.nature), njp:(a.njp!=null?a.njp:'—'),
-      cause:v(a.cause), circ:v(a.circonstance),
-      action:(a.action&&String(a.action).trim())?String(a.action).trim():'À définir' }]
-  };
-  sapRun(p, 'PLAN D\'ACTION · ACCIDENT');
 }
 function sapRun(p, kind){
   if (!p || !p.rows.length) {
