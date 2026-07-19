@@ -4588,6 +4588,7 @@ html.light .pests-search-input{background:#edf2f7}
       <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
       <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
       <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
+      <div class="modal-section" id="mAccActionSec" style="display:none"><div class="modal-sec-title"><span>✅</span>Action</div><div class="act-list" id="mAccActions"></div></div>
       <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
     </div>
   </div>
@@ -6840,6 +6841,14 @@ function openAccModal(acc){
   if(acc.circonstance){document.getElementById('mAccCirc').textContent=acc.circonstance;circSec.style.display='block';}else circSec.style.display='none';
   var causeSec=document.getElementById('mAccCauseSec');
   if(acc.cause){document.getElementById('mAccCause').textContent=acc.cause;causeSec.style.display='block';}else causeSec.style.display='none';
+  // ── Action (colonne L) — liste numérotée, même rendu que le modal Incident ──
+  var accActSec=document.getElementById('mAccActionSec');
+  var accActs=cleanMd(acc.action||'');
+  var accActLines=accActs.split('\n').filter(function(l){return l.replace(/[-•*# ]/g,'').trim().length>2;});
+  if(accActLines.length){
+    document.getElementById('mAccActions').innerHTML=accActLines.map(function(l,i){return'<div class="act-item"><div class="act-num">'+(i+1)+'</div>'+esc(l.replace(/^[-•*#\\ ]+/,'').trim())+'</div>';}).join('');
+    accActSec.style.display='block';
+  }else accActSec.style.display='none';
   // ── Pièce jointe (colonne K) — bouton « Voir PJ » visible seulement si un lien existe ──
   var pjSec=document.getElementById('mAccPjSec');
   if(acc.pj && /^https?:\/\//i.test(acc.pj)){
@@ -7811,17 +7820,21 @@ function sapPayload(section){
   if (section === 'accidents') {
     var accs = (D && D.accidents) || [];
     var njp = 0; accs.forEach(function(a){ njp += (a.njp||0); });
+    var nActA = accs.filter(function(a){ return a.action && String(a.action).trim(); }).length;
     return {
       title: "Plan d'action — Accidents (Bilan AT)",
-      meta:  accs.length + ' accident(s) · ' + njp + ' jour(s) perdu(s) (NJP) au total',
-      cols: [ {k:'date',l:'Date',w:7},{k:'nom',l:'Nom',w:10},{k:'fonction',l:'Fonction',w:9},
-              {k:'lieu',l:'Lieu',w:9},{k:'siege',l:'Siège lésion',w:8},
-              {k:'nature',l:'Nature',w:11},{k:'njp',l:'NJP',w:4},
-              {k:'cause',l:'Cause racine',w:20},{k:'circ',l:'Circonstances',w:22} ],
+      meta:  accs.length + ' accident(s) · ' + njp + ' jour(s) perdu(s) (NJP) au total · '
+           + nActA + ' avec action définie · ' + (accs.length - nActA) + ' action(s) à définir',
+      cols: [ {k:'date',l:'Date',w:7},{k:'nom',l:'Nom',w:9},{k:'fonction',l:'Fonction',w:8},
+              {k:'lieu',l:'Lieu',w:8},{k:'siege',l:'Siège lésion',w:7},
+              {k:'nature',l:'Nature',w:9},{k:'njp',l:'NJP',w:4},
+              {k:'cause',l:'Cause racine',w:15},{k:'circ',l:'Circonstances',w:17},
+              {k:'action',l:'Action',w:16} ],
       rows: accs.map(function(a){ return {
         date:v(a.date), nom:v(a.nom), fonction:v(a.fonction), lieu:v(a.lieu),
         siege:v(a.siege), nature:v(a.nature), njp:(a.njp!=null?a.njp:'—'),
-        cause:v(a.cause), circ:v(a.circonstance) }; })
+        cause:v(a.cause), circ:v(a.circonstance),
+        action:(a.action&&String(a.action).trim())?String(a.action).trim():'À définir' }; })
     };
   }
   if (section === 'tags') {
