@@ -6540,6 +6540,40 @@ function cleanMonths(arr,hdrs){
   }
   return{labels:lbs,data:dat};
 }
+function lblMonth(i,hdrs){ return hdrs&&hdrs[i]?hdrs[i].replace(/-\d{2,4}$/,'').trim():ML[i]; }
+// Série cumulée « depuis le début de l'année » (YTD) pour un graphique.
+//  • Compteurs (Incidents, TAGs) : somme cumulée → strictement croissante.
+//  • Taux TF / TG : taux cumulé réel = numérateur cumulé / dénominateur cumulé,
+//    reconstruit à partir du nombre d'accidents (TF) ou des jours perdus (TG) et
+//    calé pour finir exactement sur la valeur YTD. Il peut baisser lors d'un mois
+//    sans accident (le dénominateur — heures travaillées — continue d'augmenter),
+//    ce qui est une amélioration réelle, pas une anomalie.
+//  • Pourcentages / ratios : moyenne cumulée (valeur moyenne depuis janvier).
+function cumMonths(sel,arr,m,hdrs){
+  var idx=[];
+  for(var i=0;i<Math.min((arr||[]).length,12);i++)
+    if(arr[i]!==null&&arr[i]!==undefined) idx.push(i);
+  var N=idx.length,labels=[],data=[];
+  var rateNum=null,rateYtd=null;
+  if(sel==='tf1'){ rateNum=m.at_months; rateYtd=m.tf1_ytd; }
+  else if(sel==='tg'){ rateNum=m.jp_months; rateYtd=m.tg_ytd; }
+  if(rateNum){
+    var tot=0; idx.forEach(function(i){ tot+=(+rateNum[i]||0); });
+    var run=0;
+    idx.forEach(function(i,p){
+      run+=(+rateNum[i]||0);
+      labels.push(lblMonth(i,hdrs));
+      data.push(tot>0 ? rateYtd*(run/tot)*(N/(p+1)) : 0);
+    });
+  } else if(sel==='inc'||sel==='tags'){
+    var cs=0;
+    idx.forEach(function(i){ cs+=(+arr[i]||0); labels.push(lblMonth(i,hdrs)); data.push(cs); });
+  } else {
+    var s=0;
+    idx.forEach(function(i,p){ s+=(+arr[i]||0); labels.push(lblMonth(i,hdrs)); data.push(s/(p+1)); });
+  }
+  return{labels:labels,data:data};
+}
 function infoItem(lbl,val){ return val&&String(val).trim()&&val!=='—'?'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+esc(String(val))+'</div></div>':''; }
 function infoItemF(lbl,val){ return'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+(val?esc(String(val)):'—')+'</div></div>'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -6700,14 +6734,14 @@ function drawChart(cid,tid,sel,m,hdrs){
   document.getElementById(tid).textContent=dat.t;
   if(dat.sp==='at'){
     var mj=m.atM_months||[], mn=m.atm_months||[];
-    var lbs=[],mjD=[],mnD=[];
+    var lbs=[],mjD=[],mnD=[],cmj=0,cmn=0;
     for(var i=0;i<Math.max(mj.length,mn.length);i++){
       if(mj[i]!==null||mn[i]!==null){
-        lbs.push(hdrs&&hdrs[i]?hdrs[i].replace(/-\d{2,4}$/,'').trim():ML[i]);
-        mjD.push(mj[i]||0); mnD.push(mn[i]||0);
+        lbs.push(lblMonth(i,hdrs));
+        if(viewMode==='ytd'){ cmj+=(mj[i]||0); cmn+=(mn[i]||0); mjD.push(cmj); mnD.push(cmn); }
+        else { mjD.push(mj[i]||0); mnD.push(mn[i]||0); }
       }
     }
-    if(viewMode==='ytd'){lbs.push('YTD');mjD.push(m.at_majeur);mnD.push(m.at_mineur);}
     mkChart(cid,'bar',lbs,
       [{label:'Majeur',data:mjD,backgroundColor:'rgba(245,166,35,.85)',borderRadius:4},
        {label:'Mineur',data:mnD,backgroundColor:'rgba(9,99,126,.7)',borderRadius:4}],
@@ -6715,8 +6749,7 @@ function drawChart(cid,tid,sel,m,hdrs){
         scales:{x:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt}},
                 y:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt,stepSize:1}}}}));
   } else {
-    var cd=cleanMonths(dat.arr||[],hdrs);
-    if(viewMode==='ytd'&&dat.ytd!=null){ cd.labels.push('YTD'); cd.data.push(dat.ytd); }
+    var cd=(viewMode==='ytd')?cumMonths(sel,dat.arr||[],m,hdrs):cleanMonths(dat.arr||[],hdrs);
     var ds=[{label:dat.t,data:cd.data,borderColor:dat.c,backgroundColor:dat.c+'22',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:dat.c}];
     if(dat.obj) ds.push({label:'Obj.',data:cd.labels.map(function(){return dat.obj;}),borderColor:'rgba(232,68,90,.5)',borderDash:[5,4],borderWidth:1.5,pointRadius:0});
     mkChart(cid,'line',cd.labels,ds,Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}}));
