@@ -3906,6 +3906,7 @@ function calcMetrics(d) {
     tf1_months:mths('Taux de Fréquence (TF1)'),tg_months:mths('Taux de Gravité (TG)'),
     at_months:mths('Accident Travail (AT) (Total)'),atM_months:mths('Accident Travail (MAJEUR)'),
     atm_months:mths('Accident Travail (MINEUR)'),inc_months:mths('Accident Travail (SANS AT) - INCIDENT'),
+    jp_months:mths('Jours Perdus'),
     tags_months:mths('Situations dangereuses (TAGs)'),tvm_months:mths('TVM - Taux de visite médicale'),
     pres_months:mths('% prestataires conformes HSE'),
     relt_months:mths('Ratio ELT (kWh/unité prod)'),rgaz_months:mths('Ratio GAZ (m3/unité prod)'),reau_months:mths('Ratio EAU (m3/unité prod)'),
