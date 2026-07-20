@@ -4584,12 +4584,26 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
       <button class="modal-close" onclick="closeModal('accModal')">✕</button>
     </div>
+    <div class="modal-tabs">
+      <button class="modal-tab on" onclick="switchTab('mAcc','info',this)">📋 Infos</button>
+      <button class="modal-tab"    onclick="switchTab('mAcc','actions',this)">✅ Actions</button>
+    </div>
     <div class="modal-body">
-      <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
-      <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
-      <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
-      <div class="modal-section" id="mAccActionSec" style="display:none"><div class="modal-sec-title"><span>✅</span>Action</div><div class="act-list" id="mAccActions"></div></div>
-      <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
+      <div id="mAcc-info">
+        <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
+        <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
+        <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
+        <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
+      </div>
+      <div id="mAcc-actions" style="display:none">
+        <div class="modal-section"><div class="modal-sec-title"><span>✅</span>Actions correctives</div><div class="act-list" id="mAccActions"></div></div>
+        <div class="info-grid" style="margin-top:10px">
+          <div class="info-item"><div class="info-lbl">Nom</div><div class="info-val" id="mAccNom2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Date</div><div class="info-val" id="mAccDate2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Structure</div><div class="info-val" id="mAccStruct2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Jours perdus</div><div class="info-val" id="mAccNjp2">—</div></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -6825,6 +6839,7 @@ function openIncEnqueteLarge(){
 
 // ══ MODAL ACCIDENT ════════════════════════════════════════════
 function openAccModal(acc){
+  currentAccData=acc;
   document.getElementById('mAccId').textContent=(acc.mois?acc.mois+' · ':'')+acc.date;
   document.getElementById('mAccNom').textContent=acc.nom||'—';
   var chips='<span class="modal-chip">'+esc(acc.mois)+'</span>';
@@ -6841,14 +6856,16 @@ function openAccModal(acc){
   if(acc.circonstance){document.getElementById('mAccCirc').textContent=acc.circonstance;circSec.style.display='block';}else circSec.style.display='none';
   var causeSec=document.getElementById('mAccCauseSec');
   if(acc.cause){document.getElementById('mAccCause').textContent=acc.cause;causeSec.style.display='block';}else causeSec.style.display='none';
-  // ── Action (colonne L) — liste numérotée, même rendu que le modal Incident ──
-  var accActSec=document.getElementById('mAccActionSec');
+  // ── Onglet ✅ Actions (colonne L) — même rendu que le modal Incident ──
   var accActs=cleanMd(acc.action||'');
-  var accActLines=accActs.split('\n').filter(function(l){return l.replace(/[-•*# ]/g,'').trim().length>2;});
-  if(accActLines.length){
-    document.getElementById('mAccActions').innerHTML=accActLines.map(function(l,i){return'<div class="act-item"><div class="act-num">'+(i+1)+'</div>'+esc(l.replace(/^[-•*#\\ ]+/,'').trim())+'</div>';}).join('');
-    accActSec.style.display='block';
-  }else accActSec.style.display='none';
+  var accActLines=accActs.split('\n').filter(function(l){return l.replace(/[-•*# ]/g,'').trim().length>5;});
+  document.getElementById('mAccActions').innerHTML=accActLines.length
+    ?accActLines.map(function(l,i){return'<div class="act-item"><div class="act-num">'+(i+1)+'</div>'+esc(l.replace(/^[-•*#\\ ]+/,'').trim())+'</div>';}).join('')
+    :'<div class="info-item"><div class="info-val" style="color:var(--text3)">Actions non renseignées</div></div>';
+  document.getElementById('mAccNom2').textContent=acc.nom||'—';
+  document.getElementById('mAccDate2').textContent=acc.date||'—';
+  document.getElementById('mAccStruct2').textContent=acc.structure||'—';
+  document.getElementById('mAccNjp2').textContent=(acc.njp!=null?acc.njp:'—')+' jours';
   // ── Pièce jointe (colonne K) — bouton « Voir PJ » visible seulement si un lien existe ──
   var pjSec=document.getElementById('mAccPjSec');
   if(acc.pj && /^https?:\/\//i.test(acc.pj)){
@@ -6859,11 +6876,12 @@ function openAccModal(acc){
     currentAccPJ='';
     pjSec.style.display='none';
   }
+  switchTab('mAcc','info',document.querySelector('#accModal .modal-tab'));
   openModal('accModal');
 }
 // ── Voir PJ : affiche le document de la colonne K DANS le dashboard ──
 // (visionneuse iframe intégrée, sans ouvrir Google Drive ni un nouvel onglet)
-var currentAccPJ='', currentAccPJTitle='';
+var currentAccPJ='', currentAccPJTitle='', currentAccData=null;
 function openAccPJ(){
   if(!currentAccPJ) return;
   openCleaningEmbed(currentAccPJ, currentAccPJTitle||'Pièce jointe', 'PIÈCE JOINTE · ACCIDENT', '📎');
@@ -7863,7 +7881,9 @@ var sapLoading = false;
 function openSectionActionPlan(section){
   var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
   var kind = 'PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase());
-  var p = sapPayload(section);
+  sapRun(sapPayload(section), kind);
+}
+function sapRun(p, kind){
   if (!p || !p.rows.length) {
     showToast('Aucune donnée dans cette section pour générer le plan d\'action.','error');
     return;
