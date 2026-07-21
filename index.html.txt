@@ -2295,8 +2295,11 @@ html.light .pests-search-input{background:#edf2f7}
     <input type="date" class="pf-input" id="accD2" style="display:none" onchange="applyAccF()">
     <span class="pf-stat" id="accStat">— accidents</span>
     <button class="crud-btn add" style="margin-left:auto;font-size:10px;padding:4px 10px"
-            onclick="openSectionActionPlan('accidents')"
-            title="Générer et afficher le plan d'action (PDF) à partir des accidents de la section">📋 Plan d'action</button>
+            onclick="openAccBilan()"
+            title="Bilan AT (ENR HSE 25) — synthèse graphique téléchargeable en PDF">📊 Bilan AT</button>
+    <button class="crud-btn add" style="font-size:10px;padding:4px 10px"
+            onclick="openAccActionPlanForm()"
+            title="Formulaire de plan d'action (PLA-MAQ-09)">📋 Plan d'action</button>
   </div>
   <div class="acc-summary" id="accSum"></div>
   <div class="row2">
@@ -4618,7 +4621,7 @@ html.light .pests-search-input{background:#edf2f7}
         <div class="modal-section"><div class="modal-sec-title"><span>📋</span>Détails</div><div class="info-grid" id="mAccInfoGrid"></div></div>
         <div class="modal-section" id="mAccCircSec"><div class="modal-sec-title"><span>📝</span>Circonstances</div><div class="desc-box" id="mAccCirc"></div></div>
         <div class="modal-section" id="mAccCauseSec"><div class="modal-sec-title"><span>🔎</span>Cause</div><div class="desc-box amber" id="mAccCause"></div></div>
-        <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><button type="button" class="acc-pj-btn" id="mAccPjBtn" onclick="openAccPJ()">📎 Voir PJ</button></div>
+        <div class="modal-section" id="mAccPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièces jointes</div><div id="mAccPjList" style="display:flex;flex-direction:column;gap:8px"></div></div>
       </div>
       <div id="mAcc-actions" style="display:none">
         <div class="modal-section"><div class="modal-sec-title"><span>✅</span>Actions correctives</div><div class="act-list" id="mAccActions"></div></div>
@@ -4629,6 +4632,46 @@ html.light .pests-search-input{background:#edf2f7}
           <div class="info-item"><div class="info-lbl">Jours perdus</div><div class="info-val" id="mAccNjp2">—</div></div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL BILAN AT — GRAPHIQUES (Réf. ENR HSE 25) ═══ -->
+<div class="modal-bg" id="accBilanModal" style="display:none" onclick="if(event.target===this)closeModal('accBilanModal')">
+  <div class="modal-panel" style="max-width:900px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(232,68,90,.2);border-color:var(--red)">📊</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-family:'JetBrains Mono',monospace;letter-spacing:.05em">ENR HSE 25</div>
+        <div class="modal-hdr-name">Bilan AT — Synthèse graphique</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printAccBilan()">🖨️ Télécharger PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('accBilanModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="accBilanBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Génération…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL PLAN D'ACTION — FORMULAIRE (Réf. PLA-MAQ-09) ═══ -->
+<div class="modal-bg" id="accActionPlanModal" style="display:none" onclick="if(event.target===this)closeModal('accActionPlanModal')">
+  <div class="modal-panel" style="max-width:900px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(3,105,161,.18);border-color:rgba(3,105,161,.5);color:#0369a1">📋</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-family:'JetBrains Mono',monospace;letter-spacing:.05em">PLA-MAQ-09</div>
+        <div class="modal-hdr-name">Plan d'action</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <button class="btn" style="font-size:10px;padding:3px 10px" onclick="printAccActionPlan()">🖨️ Télécharger PDF</button>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('accActionPlanModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="accActionPlanBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)"><div class="spin"></div><div style="margin-top:8px">Chargement…</div></div>
     </div>
   </div>
 </div>
@@ -6891,25 +6934,373 @@ function openAccModal(acc){
   document.getElementById('mAccDate2').textContent=acc.date||'—';
   document.getElementById('mAccStruct2').textContent=acc.structure||'—';
   document.getElementById('mAccNjp2').textContent=(acc.njp!=null?acc.njp:'—')+' jours';
-  // ── Pièce jointe (colonne K) — bouton « Voir PJ » visible seulement si un lien existe ──
-  var pjSec=document.getElementById('mAccPjSec');
-  if(acc.pj && /^https?:\/\//i.test(acc.pj)){
-    currentAccPJ=acc.pj;
-    currentAccPJTitle=(acc.nom||'Accident')+(acc.date?' · '+acc.date:'');
-    pjSec.style.display='block';
-  }else{
-    currentAccPJ='';
-    pjSec.style.display='none';
-  }
+  // ── Pièces jointes — documents nommés automatiquement selon la
+  //    référence documentaire et les informations de l'accident :
+  //      • ENR HSE 01 — Déclaration d'accident
+  //      • ENR HSE 62 — Enquête d'accident
+  //    Chaque document dispose d'un bouton « Voir » et « Télécharger ».
+  renderAccPjList(acc);
   switchTab('mAcc','info',document.querySelector('#accModal .modal-tab'));
   openModal('accModal');
 }
-// ── Voir PJ : affiche le document de la colonne K DANS le dashboard ──
-// (visionneuse iframe intégrée, sans ouvrir Google Drive ni un nouvel onglet)
-var currentAccPJ='', currentAccPJTitle='', currentAccData=null;
-function openAccPJ(){
-  if(!currentAccPJ) return;
-  openCleaningEmbed(currentAccPJ, currentAccPJTitle||'Pièce jointe', 'PIÈCE JOINTE · ACCIDENT', '📎');
+var currentAccData=null;
+// Documents attendus par accident (réf. documentaire + libellé + couleur).
+var ACC_PJ_DOCS=[
+  {ref:'ENR HSE 01', key:'pjDecl', label:"Déclaration d'accident", color:'#0369a1'},
+  {ref:'ENR HSE 62', key:'pjEnq',  label:"Enquête d'accident",     color:'#7c3aed'}
+];
+// Nom de fichier normalisé : « <réf> <libellé> - <Nom> - <Date> ».
+function accPjFileName(acc,ref,label){
+  var clean=function(s){ return String(s||'').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim(); };
+  var nom=clean(acc.nom)||'Accident';
+  var d=clean(acc.date);
+  return (ref.replace(/\s+/g,'-')+' '+label+' - '+nom+(d?' - '+d:'')).replace(/\s+/g,' ').trim();
+}
+function renderAccPjList(acc){
+  var sec=document.getElementById('mAccPjSec');
+  var list=document.getElementById('mAccPjList');
+  if(!sec||!list) return;
+  var html='', n=0;
+  ACC_PJ_DOCS.forEach(function(doc){
+    var url=acc[doc.key]||'';
+    // Repli : l'ancienne colonne unique « pj » alimente la déclaration.
+    if(!url && doc.key==='pjDecl') url=acc.pj||'';
+    if(!url || !/^https?:\/\//i.test(url)) return;
+    n++;
+    var fname=accPjFileName(acc,doc.ref,doc.label);
+    html+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
+        +'border:1px solid var(--border);border-radius:9px;padding:9px 11px;background:var(--bg3)">'
+      +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;font-weight:700;'
+        +'padding:3px 8px;border-radius:5px;white-space:nowrap;color:#fff;background:'+doc.color+'">'+esc(doc.ref)+'</span>'
+      +'<div style="flex:1;min-width:120px">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--text)">'+esc(doc.label)+'</div>'
+        +'<div style="font-size:9px;color:var(--text3);word-break:break-word">'+esc(fname)+'</div>'
+      +'</div>'
+      +'<button type="button" class="acc-pj-btn" style="padding:7px 12px;font-size:10px" '
+        +'onclick="viewAccPj('+jsq(url)+','+jsq(doc.ref+' — '+doc.label+' · '+(acc.nom||''))+')">👁️ Voir</button>'
+      +'<button type="button" class="acc-pj-btn" style="padding:7px 12px;font-size:10px;'
+        +'background:linear-gradient(135deg,#0a7a9a,#0da8d2)" '
+        +'onclick="downloadAccPj('+jsq(url)+','+jsq(fname)+')">⬇️ Télécharger</button>'
+      +'</div>';
+  });
+  if(n===0){ sec.style.display='none'; list.innerHTML=''; return; }
+  sec.style.display='block';
+  list.innerHTML=html;
+}
+// Guillemets sûrs pour insertion dans un attribut onclick.
+function jsq(s){ return "'"+String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')+"'"; }
+// Affiche la pièce jointe dans la visionneuse intégrée (sans quitter le dashboard).
+function viewAccPj(url,title){
+  if(!url) return;
+  openCleaningEmbed(url, title||'Pièce jointe', 'PIÈCE JOINTE · ACCIDENT', '📎');
+}
+// Extraction d'un identifiant Drive depuis une URL.
+function extractDriveIdFront(u){
+  u=String(u||'');
+  var m=u.match(/\/file\/d\/([a-zA-Z0-9_-]{10,})/)||u.match(/[?&]id=([a-zA-Z0-9_-]{10,})/)||u.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  return m?m[1]:'';
+}
+// Extension de fichier déduite du type MIME.
+function extFromMime(t){
+  t=String(t||'').toLowerCase();
+  if(t.indexOf('pdf')>-1) return '.pdf';
+  if(t.indexOf('png')>-1) return '.png';
+  if(t.indexOf('jpeg')>-1||t.indexOf('jpg')>-1) return '.jpg';
+  if(t.indexOf('wordprocessingml')>-1||t.indexOf('msword')>-1) return '.docx';
+  if(t.indexOf('spreadsheetml')>-1||t.indexOf('excel')>-1) return '.xlsx';
+  if(t.indexOf('presentationml')>-1||t.indexOf('powerpoint')>-1) return '.pptx';
+  return '';
+}
+// Télécharge la pièce jointe sous un nom normalisé (rename automatique).
+// Passe par le serveur (Drive) pour récupérer le contenu puis force le
+// téléchargement côté navigateur avec le nom voulu.
+function downloadAccPj(rawUrl,filename){
+  var id=extractDriveIdFront(rawUrl);
+  if(!id){ window.open(rawUrl,'_blank'); return; }
+  showToast('Préparation du téléchargement…','success');
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res||!res.dataUrl){ window.open(rawUrl,'_blank'); return; }
+      try{
+        fetch(res.dataUrl).then(function(r){return r.blob();}).then(function(b){
+          var a=document.createElement('a');
+          var objUrl=URL.createObjectURL(b);
+          a.href=objUrl;
+          a.download=filename+extFromMime(res.mime||b.type);
+          document.body.appendChild(a); a.click();
+          setTimeout(function(){ URL.revokeObjectURL(objUrl); a.remove(); },1500);
+          showToast('Téléchargement lancé.','success');
+        }).catch(function(){ window.open(rawUrl,'_blank'); });
+      }catch(e){ window.open(rawUrl,'_blank'); }
+    })
+    .withFailureHandler(function(){ window.open(rawUrl,'_blank'); })
+    .getAccidentAttachment(id);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BILAN AT — SYNTHÈSE GRAPHIQUE (Réf. ENR HSE 25)
+   ──────────────────────────────────────────────────────────────
+   Ouvert depuis la section Bilan AT (bouton « 📊 Bilan AT »).
+   Compose un bilan UNIQUEMENT de graphiques à partir des accidents
+   filtrés, avec téléchargement PDF (conversion canvas → image).
+   ══════════════════════════════════════════════════════════════ */
+function accBilanSource(){
+  var a=window._accFiltered;
+  if(!a||!a.length) a=((D&&D.accidents)||[]).filter(function(x){return x.nom&&!x._err&&x.nom.length>=3;});
+  return a||[];
+}
+function openAccBilan(){
+  var modal=document.getElementById('accBilanModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderAccBilan();
+}
+function renderAccBilan(){
+  var body=document.getElementById('accBilanBody');
+  if(!body) return;
+  var accs=accBilanSource();
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=(D&&D.logoUrl)||'';
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var njpTot=0; accs.forEach(function(a){njpTot+=(a.njp||0);});
+
+  var h='<div id="accBilanPrint">';
+  // En-tête
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<tr>';
+  h+='<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Bilan des Accidents de Travail</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Synthèse graphique — '+accs.length+' accident(s) · '+njpTot+' jour(s) perdu(s)</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+td+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR HSE 25</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='</table></td></tr></table>';
+
+  if(!accs.length){
+    h+='<div style="text-align:center;color:#94a3b8;font-style:italic;padding:30px">Aucun accident sur la période sélectionnée.</div></div>';
+    body.innerHTML=h; return;
+  }
+
+  // Grille de graphiques (uniquement des graphiques)
+  var cards=[
+    {id:'accBilanNjp',   title:'NJP par mois'},
+    {id:'accBilanMonth', title:'Accidents par mois'},
+    {id:'accBilanZone',  title:'Accidents par zone (top 6)'},
+    {id:'accBilanCause', title:'Accidents par cause racine (top 6)'},
+    {id:'accBilanFonc',  title:'Répartition par fonction'},
+    {id:'accBilanNature',title:'Siège / nature de lésion (top 6)'}
+  ];
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px">';
+  cards.forEach(function(cd){
+    h+='<div style="border:1px solid #cbd5e1;border-radius:6px;padding:9px 11px;background:#fff">';
+    h+='<div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:5px">'+esc(cd.title)+'</div>';
+    h+='<div style="height:165px;position:relative"><canvas id="'+cd.id+'"></canvas></div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  h+='<div style="font-size:8.5px;color:#94a3b8;margin-top:8px">SOBCO 3 — HSE Dashboard · Bilan AT (ENR HSE 25) · édité le '+todayStr+'</div>';
+  h+='</div>';
+  body.innerHTML=h;
+
+  // ── Agrégations ────────────────────────────────────────────────
+  var MO=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  function topCount(field,limit,cut){
+    var mp={}; accs.forEach(function(a){ var v=a[field]; if(v){ var k=String(v).substring(0,cut||30); mp[k]=(mp[k]||0)+1; } });
+    var ks=Object.keys(mp).sort(function(x,y){return mp[y]-mp[x];}).slice(0,limit||6);
+    return {labels:ks,data:ks.map(function(k){return mp[k];})};
+  }
+  var njpM={}, cntM={};
+  accs.forEach(function(a){ var mo=a.mois||'—'; njpM[mo]=(njpM[mo]||0)+(a.njp||0); cntM[mo]=(cntM[mo]||0)+1; });
+  var moKeys=MO.filter(function(mo){return cntM[mo]!==undefined;});
+  if(!moKeys.length) moKeys=Object.keys(cntM);
+
+  var PAL=[C.red,C.amber,C.p2,C.teal,C.purple,C.p4];
+  var barOpts=Object.assign({},BASE,{animation:false});
+  var hbarOpts=Object.assign({},BASE,{animation:false,indexAxis:'y',
+    scales:{x:{grid:{color:C.grid},ticks:{color:C.txt,precision:0}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}});
+
+  mkChart('accBilanNjp','bar',moKeys.map(function(m){return m.substring(0,3);}),
+    [{data:moKeys.map(function(m){return njpM[m]||0;}),backgroundColor:C.red,borderRadius:5}],barOpts);
+  mkChart('accBilanMonth','bar',moKeys.map(function(m){return m.substring(0,3);}),
+    [{data:moKeys.map(function(m){return cntM[m]||0;}),backgroundColor:C.p2,borderRadius:5}],barOpts);
+  var z=topCount('lieu',6,22);   if(z.labels.length) mkChart('accBilanZone','bar',z.labels,[{data:z.data,backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],hbarOpts);
+  var cz=topCount('cause',6,32); if(cz.labels.length) mkChart('accBilanCause','bar',cz.labels,[{data:cz.data,backgroundColor:PAL,borderRadius:4}],hbarOpts);
+  var fz=topCount('fonction',6,22);
+  if(fz.labels.length){ if(charts['accBilanFonc'])charts['accBilanFonc'].destroy();
+    charts['accBilanFonc']=new Chart(document.getElementById('accBilanFonc'),{type:'doughnut',animation:false,
+      data:{labels:fz.labels,datasets:[{data:fz.data,backgroundColor:PAL,borderWidth:0,hoverOffset:4}]},
+      options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});
+  }
+  var nz=topCount('siege',6,22); if(nz.labels.length) mkChart('accBilanNature','bar',nz.labels,[{data:nz.data,backgroundColor:'rgba(124,58,237,.75)',borderRadius:4}],hbarOpts);
+}
+function printAccBilan(){
+  var el=document.getElementById('accBilanPrint');
+  if(!el){ window.print(); return; }
+  var clone=el.cloneNode(true);
+  var sc=el.querySelectorAll('canvas'), dc=clone.querySelectorAll('canvas');
+  for(var i=0;i<sc.length;i++){
+    try{ var img=document.createElement('img'); img.src=sc[i].toDataURL('image/png');
+      img.style.cssText='width:100%;height:auto;display:block';
+      if(dc[i]&&dc[i].parentNode) dc[i].parentNode.replaceChild(img,dc[i]); }catch(e){}
+  }
+  var w=window.open('','_blank','width=1050,height=800');
+  if(!w) return;
+  var styles='<style>*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}th,td{padding:5px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top}'
+    +'img{max-width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 portrait}div[style*="grid"]{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Bilan AT — ENR HSE 25</title>'+styles+'</head><body>');
+  w.document.write(clone.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PLAN D'ACTION — FORMULAIRE (Réf. PLA-MAQ-09)
+   ──────────────────────────────────────────────────────────────
+   Remplace l'ancien PDF « Plan d'action — Accidents ». Formulaire
+   éditable pré-rempli à partir des accidents filtrés, imprimable /
+   téléchargeable en PDF.
+   ══════════════════════════════════════════════════════════════ */
+function openAccActionPlanForm(){
+  var modal=document.getElementById('accActionPlanModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  renderAccActionPlan();
+}
+function apRow(n,constat,action,resp,delai,statut){
+  var inp='width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;'
+    +'color:var(--text);font-size:10px;padding:5px 6px;font-family:inherit';
+  var opts=['À planifier','En cours','Réalisée','Clôturée'];
+  var sel='<select style="'+inp+'">';
+  opts.forEach(function(o){ sel+='<option'+(o===statut?' selected':'')+'>'+o+'</option>'; });
+  sel+='</select>';
+  return '<tr>'
+    +'<td style="text-align:center;color:var(--text3);font-weight:700">'+n+'</td>'
+    +'<td><textarea rows="2" style="'+inp+';resize:vertical">'+esc(constat||'')+'</textarea></td>'
+    +'<td><textarea rows="2" style="'+inp+';resize:vertical">'+esc(action||'')+'</textarea></td>'
+    +'<td><input type="text" style="'+inp+'" value="'+esc(resp||'').replace(/"/g,'&quot;')+'"></td>'
+    +'<td><input type="text" style="'+inp+'" value="'+esc(delai||'').replace(/"/g,'&quot;')+'" placeholder="jj/mm/aaaa"></td>'
+    +'<td>'+sel+'</td>'
+    +'<td style="text-align:center"><button type="button" class="crud-btn" style="padding:3px 7px;font-size:11px" title="Supprimer la ligne" onclick="this.closest(\'tr\').remove()">🗑️</button></td>'
+    +'</tr>';
+}
+function renderAccActionPlan(){
+  var body=document.getElementById('accActionPlanBody');
+  if(!body) return;
+  var accs=accBilanSource();
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var fld='background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;padding:6px 8px;font-family:inherit';
+
+  var h='<div id="accActionPlanPrint">';
+  // En-tête administratif du formulaire
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:14px">';
+  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Établissement / Site</div>'
+    +'<input type="text" style="'+fld+';width:100%" value="SOBCO 3"></div>';
+  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Service / Zone</div>'
+    +'<input type="text" style="'+fld+';width:100%" placeholder="Ex : Production"></div>';
+  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Établi par</div>'
+    +'<input type="text" style="'+fld+';width:100%" placeholder="Nom / fonction"></div>';
+  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Date d\'établissement</div>'
+    +'<input type="text" style="'+fld+';width:100%" value="'+todayStr+'"></div>';
+  h+='<div style="grid-column:1/-1"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Objet du plan d\'action</div>'
+    +'<input type="text" style="'+fld+';width:100%" value="Plan d\'action — Accidents de travail ('+accs.length+' accident(s))"></div>';
+  h+='</div>';
+
+  // Tableau du plan d'action (éditable)
+  h+='<div style="overflow-x:auto"><table id="accActionPlanTable" style="width:100%;border-collapse:collapse;min-width:640px">';
+  h+='<thead><tr style="background:var(--bg4)">';
+  ['N°','Constat / Problème (cause racine)','Action corrective / préventive','Responsable','Délai','Statut',''].forEach(function(c,i){
+    var w=(i===0?'width:34px':i===6?'width:34px':i===3?'width:110px':i===4?'width:90px':i===5?'width:110px':'');
+    h+='<th style="font-size:9px;text-transform:uppercase;color:var(--text3);padding:6px 6px;text-align:left;border-bottom:1px solid var(--border);'+w+'">'+c+'</th>';
+  });
+  h+='</tr></thead><tbody id="accActionPlanRows">';
+  if(accs.length){
+    accs.forEach(function(a,i){
+      var constat=(a.cause||a.nature||'').trim();
+      if(a.nom||a.date) constat=(constat?constat+' — ':'')+'AT : '+(a.nom||'')+(a.date?' ('+a.date+')':'');
+      var action=(a.action&&String(a.action).trim())?String(a.action).trim():'';
+      h+=apRow(i+1,constat,action,a.fonction||'',(a.mois||''),action?'En cours':'À planifier');
+    });
+  }else{
+    h+=apRow(1,'','','','','À planifier');
+  }
+  h+='</tbody></table></div>';
+  h+='<div style="margin-top:10px" class="no-print"><button type="button" class="crud-btn add" style="font-size:10px;padding:5px 12px" onclick="addAccActionRow()">➕ Ajouter une ligne</button></div>';
+
+  // Signatures
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);margin-top:16px">';
+  h+='<tr>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="width:33%;text-align:center;padding:18px 8px;border:1px solid var(--border)">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px;color:var(--text2)">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid var(--text3);width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:var(--text3)">Nom / Signature</div>';
+    h+='</td>';
+  });
+  h+='</tr></table>';
+  h+='</div>';
+  body.innerHTML=h;
+}
+function addAccActionRow(){
+  var tb=document.getElementById('accActionPlanRows');
+  if(!tb) return;
+  var n=tb.querySelectorAll('tr').length+1;
+  tb.insertAdjacentHTML('beforeend',apRow(n,'','','','','À planifier'));
+}
+function printAccActionPlan(){
+  var el=document.getElementById('accActionPlanPrint');
+  if(!el){ window.print(); return; }
+  var clone=el.cloneNode(true);
+  // Remplace les champs de saisie par leur valeur (texte figé pour le PDF)
+  var sIn=el.querySelectorAll('input,textarea,select'), dIn=clone.querySelectorAll('input,textarea,select');
+  for(var i=0;i<sIn.length;i++){
+    var v=(sIn[i].tagName==='SELECT')?(sIn[i].options[sIn[i].selectedIndex]||{}).text||'':sIn[i].value;
+    var span=document.createElement('div');
+    span.textContent=v||'—';
+    span.style.cssText='font-size:10px;color:#111;white-space:pre-wrap;min-height:14px';
+    if(dIn[i]&&dIn[i].parentNode) dIn[i].parentNode.replaceChild(span,dIn[i]);
+  }
+  // Retire les commandes (boutons ajouter/supprimer)
+  clone.querySelectorAll('.no-print,button').forEach(function(b){ if(b.parentNode) b.parentNode.removeChild(b); });
+  var lastTh=clone.querySelectorAll('#accActionPlanTable thead th');
+  if(lastTh.length) lastTh[lastTh.length-1].remove();
+  clone.querySelectorAll('#accActionPlanRows tr').forEach(function(tr){ var tds=tr.querySelectorAll('td'); if(tds.length) tds[tds.length-1].remove(); });
+
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var w=window.open('','_blank','width=1050,height=800');
+  if(!w) return;
+  var styles='<style>*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}th,td{padding:5px 7px;border:1px solid #cbd5e1;font-size:10px;vertical-align:top;text-align:left}'
+    +'thead th{background:#0c4a6e;color:#fff;text-transform:uppercase;font-size:9px}'
+    +'h2{font-size:15px;margin:0 0 2px}.meta{font-size:10px;color:#555;margin-bottom:12px}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plan d\'action — PLA-MAQ-09</title>'+styles+'</head><body>');
+  w.document.write('<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #0c4a6e;padding-bottom:6px;margin-bottom:12px">'
+    +'<div><h2>Plan d\'action</h2><div class="meta">SOBCO 3 — HSE · Réf. PLA-MAQ-09 · édité le '+todayStr+'</div></div>'
+    +'<div style="font-family:monospace;font-weight:700;color:#0369a1;font-size:12px">PLA-MAQ-09</div></div>');
+  w.document.write(clone.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },400);
 }
 
 // ══ MODAL TAG — Photo Drive automatique ═══════════════════════
@@ -7441,6 +7832,7 @@ function applyAccF(){
   renderAccidents(filtered);
 }
 function renderAccidents(accs){
+  window._accFiltered=accs;   // conservé pour le Bilan AT (ENR HSE 25) et le plan d'action
   document.getElementById('accStat').textContent=accs.length+' accidents';
   var totalNJP=0; accs.forEach(function(a){totalNJP+=a.njp;});
   var njpM={Janvier:0,Février:0,Mars:0,Avril:0};

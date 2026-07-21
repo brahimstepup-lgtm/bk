@@ -3822,6 +3822,30 @@ function getData() {
       if (mIn) return mIn[1].trim();
       return '';
     }
+    // ── Détection des colonnes de pièces jointes par en-tête ──────
+    //   • ENR HSE 01 — Déclaration d'accident  (défaut : colonne K)
+    //   • ENR HSE 62 — Enquête d'accident      (détectée par en-tête)
+    var COL_DECL = 10;      // colonne K par défaut (pièce jointe existante)
+    var COL_ENQ_ACC = -1;   // colonne « enquête » si un en-tête la désigne
+    for (var hr = 0; hr < Math.min(accData.length, 10); hr++) {
+      var hrow = accData[hr] || [];
+      var joined = normalize(hrow.join(' '));
+      if (joined.indexOf('nom') > -1 &&
+          (joined.indexOf('fonction') > -1 || joined.indexOf('date') > -1)) {
+        for (var hc = 0; hc < hrow.length; hc++) {
+          var hh = normalize(String(hrow[hc]||'').replace(/[\n\r#]/g,'').trim());
+          if (!hh) continue;
+          if (hh.indexOf('62') > -1 || hh.indexOf('enquet') > -1) {
+            COL_ENQ_ACC = hc;
+          } else if (hh.indexOf('01') > -1 || hh.indexOf('declaration') > -1 ||
+                     (hh.indexOf('piece') > -1 && hh.indexOf('joint') > -1)) {
+            COL_DECL = hc;
+          }
+        }
+        break;
+      }
+    }
+
     var moisMap = {'janvier':'Janvier','fevrier':'Février','février':'Février','mars':'Mars','avril':'Avril','mai':'Mai','juin':'Juin','juillet':'Juillet'};
     var curMois = '';
     for (var i = 0; i < accData.length; i++) {
@@ -3845,6 +3869,8 @@ function getData() {
         cause:isNull(r[8])?'':String(r[8]).trim(),
         circonstance:isNull(r[9])?'':String(r[9]).trim(),
         pj:accCellUrl(i, 10),
+        pjDecl:accCellUrl(i, COL_DECL),
+        pjEnq:(COL_ENQ_ACC >= 0) ? accCellUrl(i, COL_ENQ_ACC) : '',
         action:isNull(r[11])?'':String(r[11]).trim()
       });
     }
@@ -3947,6 +3973,24 @@ function getTagPhotoForClient_(fileId) {
     var blob = DriveApp.getFileById(fileId).getBlob();
     return 'data:' + (blob.getContentType()||'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
   } catch(e) { Logger.log('photo error: '+e.message); return ''; }
+}
+
+// ── Pièce jointe d'un accident (Déclaration ENR HSE 01 / Enquête
+//    ENR HSE 62) : renvoie le fichier Drive encodé en data-URL afin
+//    que le client puisse le télécharger sous un nom normalisé.
+//    Renvoie { dataUrl, mime, name } ou '' en cas d'échec.
+function getAccidentAttachment(fileId) {
+  if (!fileId) return '';
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var blob = file.getBlob();
+    var mime = blob.getContentType() || 'application/octet-stream';
+    return {
+      dataUrl: 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes()),
+      mime:    mime,
+      name:    file.getName() || ''
+    };
+  } catch(e) { Logger.log('acc attachment error: '+e.message); return ''; }
 }
 
 
