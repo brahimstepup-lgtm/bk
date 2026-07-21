@@ -8,7 +8,8 @@
 // ============================================================
 var SHEET_ID       = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
 var GEMINI_KEY     = 'AIzaSyDdp7ZxwL1f3_OsvjbXB39_u_MadHul8q8';
-var LOGO_FILE_ID   = '1_eG3fiBoKImvH8uh46bUrChtN_KvZxAv';
+var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';   // logo de l'en-tête (SOBCO)
+var ENR_LOGO_FILE_ID = '1_eG3fiBoKImvH8uh46bUrChtN_KvZxAv'; // logo des fiches/ENR & PDF (Palmary)
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
 var PLANNING_GID   = 1312782146;
 
@@ -3455,9 +3456,11 @@ function getData() {
     permitsSourceUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + PERMITS_SHEET_GID + '#gid=' + PERMITS_SHEET_GID,
     monthHeaders:[],
     logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID,
-    // Logo embarqué en data-URL : garantit un affichage fiable dans les
-    // fiches/ENR et les PDF (fenêtre d'impression), sans requête externe.
-    logoDataUrl: getLogoDataUrl_()
+    // Logos embarqués en data-URL : affichage fiable sans requête externe.
+    //  • logoDataUrl    : en-tête du tableau de bord (SOBCO)
+    //  • enrLogoDataUrl : fiches/ENR & PDF (Palmary)
+    logoDataUrl: getLogoDataUrl_(LOGO_FILE_ID),
+    enrLogoDataUrl: getLogoDataUrl_(ENR_LOGO_FILE_ID)
   };
 
   out.planning = readPlanning(ss);
@@ -3986,17 +3989,20 @@ function callGemini(prompt) {
 function getDataForClient()           { return getData(); }
 function askGeminiForClient(p)        { return callGemini(p); }
 // PHOTO PROXY — retourne base64 de l'image Drive
-// Logo de l'entreprise (Drive) encodé en data-URL, mis en cache pour
-// éviter des lectures Drive répétées à chaque chargement du tableau.
-var _logoDataUrlCache = null;
-function getLogoDataUrl_() {
-  if (_logoDataUrlCache !== null) return _logoDataUrlCache;
+// Logo (Drive) encodé en data-URL, mis en cache par identifiant de
+// fichier pour éviter des lectures Drive répétées à chaque chargement.
+var _logoDataUrlCache = {};
+function getLogoDataUrl_(fileId) {
+  fileId = fileId || LOGO_FILE_ID;
+  if (_logoDataUrlCache.hasOwnProperty(fileId)) return _logoDataUrlCache[fileId];
+  var out = '';
   try {
-    var blob = DriveApp.getFileById(LOGO_FILE_ID).getBlob();
-    _logoDataUrlCache = 'data:' + (blob.getContentType()||'image/png') +
-                        ';base64,' + Utilities.base64Encode(blob.getBytes());
-  } catch(e) { Logger.log('logo error: '+e.message); _logoDataUrlCache = ''; }
-  return _logoDataUrlCache;
+    var blob = DriveApp.getFileById(fileId).getBlob();
+    out = 'data:' + (blob.getContentType()||'image/png') +
+          ';base64,' + Utilities.base64Encode(blob.getBytes());
+  } catch(e) { Logger.log('logo error ('+fileId+'): '+e.message); }
+  _logoDataUrlCache[fileId] = out;
+  return out;
 }
 
 function getTagPhotoForClient(fileId) { return getTagPhotoForClient_(fileId); }

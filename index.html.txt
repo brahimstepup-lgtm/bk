@@ -6997,10 +6997,12 @@ function renderAccPjList(acc){
 }
 // Guillemets sûrs pour insertion dans un attribut onclick.
 function jsq(s){ return "'"+String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')+"'"; }
-// Source du logo pour les fiches/ENR et les PDF : le data-URL embarqué
-// (D.logoDataUrl) est privilégié car il s'affiche de façon fiable dans
-// la fenêtre d'impression et hors ligne ; repli sur l'URL Drive.
+// Source du logo pour les fiches/ENR et les PDF : le logo dédié aux
+// documents (Palmary, D.enrLogoDataUrl) est privilégié ; replis
+// successifs sur le logo d'en-tête puis l'URL Drive. Les data-URL
+// s'affichent de façon fiable dans la fenêtre d'impression.
 function ficheLogoSrc(){
+  if(D&&D.enrLogoDataUrl) return D.enrLogoDataUrl;
   if(D&&D.logoDataUrl) return D.logoDataUrl;
   var _li=document.getElementById('logoImg');
   if(_li&&_li.src&&_li.naturalWidth>0 && /^data:/.test(_li.src)) return _li.src;
