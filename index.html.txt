@@ -7282,37 +7282,40 @@ function renderAccActionPlan(){
     +'<td style="'+td+'" colspan="3">Actions correctives suite aux accidents de travail ('+accs.length+' accident(s) · '+nAct+' avec action définie)</td></tr>';
   h+='</table>';
 
-  // ── Tableau du plan d'action (statique) ───────────────────────
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px">';
+  // ── Tableau du plan d'action (statique) — reflète la feuille source
+  //    Cause · Circonstance · Action · Responsable · Délai · Avancement · Efficacité
+  var tds='padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top';
+  h+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px;min-width:820px">';
   h+='<thead><tr style="background:#0c4a6e;color:#fff">';
-  [['N°','width:30px;text-align:center'],['Constat / Cause racine','width:21%'],['Action corrective / préventive','width:24%'],
-   ['Responsable','width:11%'],['Délai','width:9%'],['Avancement','width:10%;text-align:center'],['Efficacité','width:10%;text-align:center']].forEach(function(c){
-    h+='<th style="'+td+';color:#fff;font-weight:700;text-transform:uppercase;font-size:8.5px;'+(c[1]||'')+'">'+c[0]+'</th>';
+  [['N°','width:28px;text-align:center'],['Cause racine','width:14%'],['Circonstance','width:19%'],['Action corrective / préventive','width:20%'],
+   ['Responsable','width:10%'],['Délai','width:8%'],['Avancement','width:10%;text-align:center'],['Efficacité','width:9%;text-align:center']].forEach(function(c){
+    h+='<th style="'+tds+';color:#fff;font-weight:700;text-transform:uppercase;font-size:8px;'+(c[1]||'')+'">'+c[0]+'</th>';
   });
   h+='</tr></thead><tbody>';
   if(accs.length){
     accs.forEach(function(a,i){
-      var constat=(a.cause||a.nature||'').trim();
+      var cause=(a.cause||a.nature||'').trim();
       var ref='AT : '+(a.nom||'—')+(a.date?' ('+a.date+')':'');
       var action=(a.action&&String(a.action).trim())?String(a.action).trim():'À définir';
       var statut=(a.avancement&&String(a.avancement).trim())?String(a.avancement).trim()
                  :((a.action&&String(a.action).trim())?'En cours':'À planifier');
       var bg=i%2===0?'#fff':'#f8fafc';
       h+='<tr style="background:'+bg+'">';
-      h+='<td style="'+td+';text-align:center;color:#94a3b8;font-weight:700">'+(i+1)+'</td>';
-      h+='<td style="'+td+'"><div style="font-weight:600;color:#1e293b">'+esc(constat||'—')+'</div>'
-        +'<div style="font-size:8.5px;color:#64748b;margin-top:2px">'+esc(ref)+'</div></td>';
-      h+='<td style="'+td+';color:#334155">'+esc(action)+'</td>';
-      h+='<td style="'+td+';color:#334155">'+esc(a.responsable||'—')+'</td>';
-      h+='<td style="'+td+';color:#334155;white-space:nowrap">'+esc(a.delai||'—')+'</td>';
-      h+='<td style="'+td+';text-align:center">'+apStatutBadge(statut)+'</td>';
-      h+='<td style="'+td+';text-align:center;color:#334155">'+esc(a.efficacite||'—')+'</td>';
+      h+='<td style="'+tds+';text-align:center;color:#94a3b8;font-weight:700">'+(i+1)+'</td>';
+      h+='<td style="'+tds+'"><div style="font-weight:600;color:#1e293b">'+esc(cause||'—')+'</div>'
+        +'<div style="font-size:8px;color:#64748b;margin-top:2px">'+esc(ref)+'</div></td>';
+      h+='<td style="'+tds+';color:#475569">'+esc(a.circonstance||'—')+'</td>';
+      h+='<td style="'+tds+';color:#334155">'+esc(action)+'</td>';
+      h+='<td style="'+tds+';color:#334155">'+esc(a.responsable||'—')+'</td>';
+      h+='<td style="'+tds+';color:#334155;white-space:nowrap">'+esc(a.delai||'—')+'</td>';
+      h+='<td style="'+tds+';text-align:center">'+apStatutBadge(statut)+'</td>';
+      h+='<td style="'+tds+';text-align:center;color:#334155">'+esc(a.efficacite||'—')+'</td>';
       h+='</tr>';
     });
   }else{
-    h+='<tr><td style="'+td+';text-align:center;color:#94a3b8;font-style:italic" colspan="7">Aucun accident sur la période — aucune action à planifier.</td></tr>';
+    h+='<tr><td style="'+tds+';text-align:center;color:#94a3b8;font-style:italic" colspan="8">Aucun accident sur la période — aucune action à planifier.</td></tr>';
   }
-  h+='</tbody></table>';
+  h+='</tbody></table></div>';
 
   // ── Légende ───────────────────────────────────────────────────
   h+='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;font-size:9px;color:#555">';
