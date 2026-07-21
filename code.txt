@@ -8,7 +8,8 @@
 // ============================================================
 var SHEET_ID       = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
 var GEMINI_KEY     = 'AIzaSyDdp7ZxwL1f3_OsvjbXB39_u_MadHul8q8';
-var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';
+var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';   // logo de l'en-tête (SOBCO)
+var ENR_LOGO_FILE_ID = '1_eG3fiBoKImvH8uh46bUrChtN_KvZxAv'; // logo des fiches/ENR & PDF (Palmary)
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
 var PLANNING_GID   = 1312782146;
 
@@ -3454,7 +3455,12 @@ function getData() {
     permitsSheetName:'',
     permitsSourceUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + PERMITS_SHEET_GID + '#gid=' + PERMITS_SHEET_GID,
     monthHeaders:[],
-    logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
+    logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID,
+    // Logos embarqués en data-URL : affichage fiable sans requête externe.
+    //  • logoDataUrl    : en-tête du tableau de bord (SOBCO)
+    //  • enrLogoDataUrl : fiches/ENR & PDF (Palmary)
+    logoDataUrl: getLogoDataUrl_(LOGO_FILE_ID),
+    enrLogoDataUrl: getLogoDataUrl_(ENR_LOGO_FILE_ID)
   };
 
   out.planning = readPlanning(ss);
@@ -3822,6 +3828,43 @@ function getData() {
       if (mIn) return mIn[1].trim();
       return '';
     }
+    // ── Détection des colonnes par en-tête (robuste au décalage) ──
+    //   Structure réelle de la feuille « Bilan des Accidents » :
+    //     I=Cause  J=Circonstance  K=rapport déclaration  L=rapport
+    //     enquête  M=ACTION  N=Delai  O=RESPONSABLE  P=Avancement
+    //     Q=Efficacité.
+    //   Pièces jointes (réf. inversées côté client) :
+    //     • Déclaration d'accident → colonne K
+    //     • Enquête d'accident     → colonne L
+    var COL_DECL = 10;      // K — rapport de déclaration
+    var COL_ENQ_ACC = 11;   // L — rapport d'enquête
+    var COL_ACTION = 12;    // M — ACTION
+    var COL_DELAI  = 13;    // N — Delai
+    var COL_RESP   = 14;    // O — RESPONSABLE
+    var COL_AVANC  = 15;    // P — Avancement
+    var COL_EFF    = 16;    // Q — Efficacité
+    for (var hr = 0; hr < Math.min(accData.length, 10); hr++) {
+      var hrow = accData[hr] || [];
+      var joined = normalize(hrow.join(' '));
+      if (joined.indexOf('nom') > -1 &&
+          (joined.indexOf('fonction') > -1 || joined.indexOf('date') > -1)) {
+        for (var hc = 0; hc < hrow.length; hc++) {
+          var hh = normalize(String(hrow[hc]||'').replace(/[\n\r#]/g,'').trim());
+          if (!hh) continue;
+          if (hh.indexOf('enquet') > -1)               COL_ENQ_ACC = hc;
+          else if (hh.indexOf('declaration') > -1)     COL_DECL    = hc;
+          else if (hh.indexOf('action') > -1)          COL_ACTION  = hc;
+          else if (hh.indexOf('delai') > -1)           COL_DELAI   = hc;
+          else if (hh.indexOf('responsable') > -1)     COL_RESP    = hc;
+          else if (hh.indexOf('avancement') > -1 ||
+                   hh.indexOf('statut') > -1 ||
+                   hh.indexOf('etat') > -1)            COL_AVANC   = hc;
+          else if (hh.indexOf('efficacit') > -1)       COL_EFF     = hc;
+        }
+        break;
+      }
+    }
+
     var moisMap = {'janvier':'Janvier','fevrier':'Février','février':'Février','mars':'Mars','avril':'Avril','mai':'Mai','juin':'Juin','juillet':'Juillet'};
     var curMois = '';
     for (var i = 0; i < accData.length; i++) {
@@ -3844,8 +3887,14 @@ function getData() {
         njp:toNumZ(r[7]),
         cause:isNull(r[8])?'':String(r[8]).trim(),
         circonstance:isNull(r[9])?'':String(r[9]).trim(),
-        pj:accCellUrl(i, 10),
-        action:isNull(r[11])?'':String(r[11]).trim()
+        pj:accCellUrl(i, COL_DECL),
+        pjDecl:accCellUrl(i, COL_DECL),
+        pjEnq:(COL_ENQ_ACC >= 0) ? accCellUrl(i, COL_ENQ_ACC) : '',
+        action:isNull(r[COL_ACTION])?'':String(r[COL_ACTION]).trim(),
+        delai:isNull(r[COL_DELAI])?'':String(r[COL_DELAI]).trim(),
+        responsable:isNull(r[COL_RESP])?'':String(r[COL_RESP]).trim(),
+        avancement:isNull(r[COL_AVANC])?'':String(r[COL_AVANC]).trim(),
+        efficacite:isNull(r[COL_EFF])?'':String(r[COL_EFF]).trim()
       });
     }
     out.accidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
@@ -3940,6 +3989,22 @@ function callGemini(prompt) {
 function getDataForClient()           { return getData(); }
 function askGeminiForClient(p)        { return callGemini(p); }
 // PHOTO PROXY — retourne base64 de l'image Drive
+// Logo (Drive) encodé en data-URL, mis en cache par identifiant de
+// fichier pour éviter des lectures Drive répétées à chaque chargement.
+var _logoDataUrlCache = {};
+function getLogoDataUrl_(fileId) {
+  fileId = fileId || LOGO_FILE_ID;
+  if (_logoDataUrlCache.hasOwnProperty(fileId)) return _logoDataUrlCache[fileId];
+  var out = '';
+  try {
+    var blob = DriveApp.getFileById(fileId).getBlob();
+    out = 'data:' + (blob.getContentType()||'image/png') +
+          ';base64,' + Utilities.base64Encode(blob.getBytes());
+  } catch(e) { Logger.log('logo error ('+fileId+'): '+e.message); }
+  _logoDataUrlCache[fileId] = out;
+  return out;
+}
+
 function getTagPhotoForClient(fileId) { return getTagPhotoForClient_(fileId); }
 function getTagPhotoForClient_(fileId) {
   if (!fileId) return '';
@@ -3947,6 +4012,24 @@ function getTagPhotoForClient_(fileId) {
     var blob = DriveApp.getFileById(fileId).getBlob();
     return 'data:' + (blob.getContentType()||'image/jpeg') + ';base64,' + Utilities.base64Encode(blob.getBytes());
   } catch(e) { Logger.log('photo error: '+e.message); return ''; }
+}
+
+// ── Pièce jointe d'un accident (Déclaration ENR HSE 01 / Enquête
+//    ENR HSE 62) : renvoie le fichier Drive encodé en data-URL afin
+//    que le client puisse le télécharger sous un nom normalisé.
+//    Renvoie { dataUrl, mime, name } ou '' en cas d'échec.
+function getAccidentAttachment(fileId) {
+  if (!fileId) return '';
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var blob = file.getBlob();
+    var mime = blob.getContentType() || 'application/octet-stream';
+    return {
+      dataUrl: 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes()),
+      mime:    mime,
+      name:    file.getName() || ''
+    };
+  } catch(e) { Logger.log('acc attachment error: '+e.message); return ''; }
 }
 
 
