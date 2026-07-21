@@ -6946,8 +6946,8 @@ function openAccModal(acc){
 var currentAccData=null;
 // Documents attendus par accident (réf. documentaire + libellé + couleur).
 var ACC_PJ_DOCS=[
-  {ref:'ENR HSE 01', key:'pjDecl', label:"Déclaration d'accident", color:'#0369a1'},
-  {ref:'ENR HSE 62', key:'pjEnq',  label:"Enquête d'accident",     color:'#7c3aed'}
+  {ref:'ENR HSE 01', key:'pjEnq',  label:"Fiche d'enquête d'accident", color:'#7c3aed'},
+  {ref:'ENR HSE 62', key:'pjDecl', label:"Déclaration d'accident",     color:'#0369a1'}
 ];
 // Nom de fichier normalisé : « <réf> <libellé> - <Nom> - <Date> ».
 function accPjFileName(acc,ref,label){
@@ -7113,6 +7113,38 @@ function renderAccBilan(){
     h+='</div>';
   });
   h+='</div>';
+
+  // ── Détail de tous les accidents (sous les graphiques) ─────────
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9.5px;vertical-align:top;color:#334155';
+  h+='<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#0c4a6e;margin:14px 0 6px">Détail des accidents ('+accs.length+')</div>';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:10px">';
+  h+='<thead><tr style="background:#0c4a6e;color:#fff">';
+  ['#','Mois','Date','Nom','Fonction','Lieu','Siège lésion','Nature','NJP','Cause racine'].forEach(function(c,i){
+    var al=(c==='#'||c==='NJP')?'center':'left';
+    h+='<th style="'+tdc+';color:#fff;font-weight:700;text-transform:uppercase;font-size:8.5px;text-align:'+al+'">'+c+'</th>';
+  });
+  h+='</tr></thead><tbody>';
+  accs.forEach(function(a,i){
+    var bg=i%2===0?'#fff':'#f8fafc';
+    h+='<tr style="background:'+bg+'">';
+    h+='<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>';
+    h+='<td style="'+tdc+'">'+esc(a.mois||'—')+'</td>';
+    h+='<td style="'+tdc+';white-space:nowrap">'+esc(a.date||'—')+'</td>';
+    h+='<td style="'+tdc+';font-weight:700;color:#1e293b">'+esc(a.nom||'—')+'</td>';
+    h+='<td style="'+tdc+'">'+esc(a.fonction||'—')+'</td>';
+    h+='<td style="'+tdc+'">'+esc(a.lieu||'—')+'</td>';
+    h+='<td style="'+tdc+'">'+esc(a.siege||'—')+'</td>';
+    h+='<td style="'+tdc+'">'+esc(a.nature||'—')+'</td>';
+    h+='<td style="'+tdc+';text-align:center;font-weight:700;color:#e8445a">'+(a.njp!=null?fmtNum(a.njp):'—')+'</td>';
+    h+='<td style="'+tdc+'">'+esc(a.cause||'—')+'</td>';
+    h+='</tr>';
+    if(a.circonstance){
+      h+='<tr style="background:'+bg+'"><td style="'+tdc+'"></td>'
+        +'<td colspan="9" style="'+tdc+';color:#64748b;font-style:italic"><strong style="font-style:normal;color:#475569">Circonstances :</strong> '+esc(a.circonstance)+'</td></tr>';
+    }
+  });
+  h+='</tbody></table>';
+
   h+='<div style="font-size:8.5px;color:#94a3b8;margin-top:8px">SOBCO 3 — HSE Dashboard · Bilan AT (ENR HSE 25) · édité le '+todayStr+'</div>';
   h+='</div>';
   body.innerHTML=h;
@@ -7184,120 +7216,126 @@ function openAccActionPlanForm(){
   modal.style.display='flex';
   renderAccActionPlan();
 }
-function apRow(n,constat,action,resp,delai,statut){
-  var inp='width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:5px;'
-    +'color:var(--text);font-size:10px;padding:5px 6px;font-family:inherit';
-  var opts=['À planifier','En cours','Réalisée','Clôturée'];
-  var sel='<select style="'+inp+'">';
-  opts.forEach(function(o){ sel+='<option'+(o===statut?' selected':'')+'>'+o+'</option>'; });
-  sel+='</select>';
-  return '<tr>'
-    +'<td style="text-align:center;color:var(--text3);font-weight:700">'+n+'</td>'
-    +'<td><textarea rows="2" style="'+inp+';resize:vertical">'+esc(constat||'')+'</textarea></td>'
-    +'<td><textarea rows="2" style="'+inp+';resize:vertical">'+esc(action||'')+'</textarea></td>'
-    +'<td><input type="text" style="'+inp+'" value="'+esc(resp||'').replace(/"/g,'&quot;')+'"></td>'
-    +'<td><input type="text" style="'+inp+'" value="'+esc(delai||'').replace(/"/g,'&quot;')+'" placeholder="jj/mm/aaaa"></td>'
-    +'<td>'+sel+'</td>'
-    +'<td style="text-align:center"><button type="button" class="crud-btn" style="padding:3px 7px;font-size:11px" title="Supprimer la ligne" onclick="this.closest(\'tr\').remove()">🗑️</button></td>'
-    +'</tr>';
+// Badge de statut (document non modifiable → statut dérivé des données).
+function apStatutBadge(st){
+  var s=String(st||'').toLowerCase(), c;
+  if(s.indexOf('clot')>-1||s.indexOf('réal')>-1||s.indexOf('real')>-1) c={bg:'#dcfce7',bd:'#86efac',t:'#166534'};
+  else if(s.indexOf('cours')>-1)                                        c={bg:'#fef9c3',bd:'#fde047',t:'#854d0e'};
+  else                                                                  c={bg:'#fee2e2',bd:'#fca5a5',t:'#991b1b'};
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.bd+';color:'+c.t+';font-weight:700;font-size:9px;white-space:nowrap">'+esc(st)+'</span>';
 }
+// Document « Plan d'action » (PLA-MAQ-09) — mise en page professionnelle,
+// entièrement statique (aucun champ de saisie, aucun bouton d'édition).
 function renderAccActionPlan(){
   var body=document.getElementById('accActionPlanBody');
   if(!body) return;
   var accs=accBilanSource();
   var today=new Date();
   var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
-  var fld='background:var(--bg2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;padding:6px 8px;font-family:inherit';
+
+  var logoSrc=(D&&D.logoUrl)||'';
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var nAct=accs.filter(function(a){return a.action&&String(a.action).trim();}).length;
 
   var h='<div id="accActionPlanPrint">';
-  // En-tête administratif du formulaire
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-bottom:14px">';
-  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Établissement / Site</div>'
-    +'<input type="text" style="'+fld+';width:100%" value="SOBCO 3"></div>';
-  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Service / Zone</div>'
-    +'<input type="text" style="'+fld+';width:100%" placeholder="Ex : Production"></div>';
-  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Établi par</div>'
-    +'<input type="text" style="'+fld+';width:100%" placeholder="Nom / fonction"></div>';
-  h+='<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Date d\'établissement</div>'
-    +'<input type="text" style="'+fld+';width:100%" value="'+todayStr+'"></div>';
-  h+='<div style="grid-column:1/-1"><div style="font-size:9px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Objet du plan d\'action</div>'
-    +'<input type="text" style="'+fld+';width:100%" value="Plan d\'action — Accidents de travail ('+accs.length+' accident(s))"></div>';
-  h+='</div>';
 
-  // Tableau du plan d'action (éditable)
-  h+='<div style="overflow-x:auto"><table id="accActionPlanTable" style="width:100%;border-collapse:collapse;min-width:640px">';
-  h+='<thead><tr style="background:var(--bg4)">';
-  ['N°','Constat / Problème (cause racine)','Action corrective / préventive','Responsable','Délai','Statut',''].forEach(function(c,i){
-    var w=(i===0?'width:34px':i===6?'width:34px':i===3?'width:110px':i===4?'width:90px':i===5?'width:110px':'');
-    h+='<th style="font-size:9px;text-transform:uppercase;color:var(--text3);padding:6px 6px;text-align:left;border-bottom:1px solid var(--border);'+w+'">'+c+'</th>';
+  // ── En-tête (logo · titre · cartouche Réf.) ───────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<tr>';
+  h+='<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Plan d\'action</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Actions correctives et préventives — Accidents de travail</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+td+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MAQ-09</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='</table></td></tr></table>';
+
+  // ── Informations générales (statiques) ────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<tr>'
+    +'<td style="'+td+';width:16%;background:#f1f5f9;font-weight:700;color:#475569">Établissement</td><td style="'+td+';width:34%">SOBCO 3</td>'
+    +'<td style="'+td+';width:16%;background:#f1f5f9;font-weight:700;color:#475569">Établi par</td><td style="'+td+'">Responsable HSE</td></tr>';
+  h+='<tr>'
+    +'<td style="'+td+';background:#f1f5f9;font-weight:700;color:#475569">Objet</td>'
+    +'<td style="'+td+'" colspan="3">Actions correctives suite aux accidents de travail ('+accs.length+' accident(s) · '+nAct+' avec action définie)</td></tr>';
+  h+='</table>';
+
+  // ── Tableau du plan d'action (statique) ───────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px">';
+  h+='<thead><tr style="background:#0c4a6e;color:#fff">';
+  [['N°','width:32px;text-align:center'],['Constat / Cause racine','width:24%'],['Action corrective / préventive','width:26%'],
+   ['Responsable','width:12%'],['Délai',''],['Statut','width:11%;text-align:center']].forEach(function(c){
+    h+='<th style="'+td+';color:#fff;font-weight:700;text-transform:uppercase;font-size:8.5px;'+(c[1]||'')+'">'+c[0]+'</th>';
   });
-  h+='</tr></thead><tbody id="accActionPlanRows">';
+  h+='</tr></thead><tbody>';
   if(accs.length){
     accs.forEach(function(a,i){
       var constat=(a.cause||a.nature||'').trim();
-      if(a.nom||a.date) constat=(constat?constat+' — ':'')+'AT : '+(a.nom||'')+(a.date?' ('+a.date+')':'');
-      var action=(a.action&&String(a.action).trim())?String(a.action).trim():'';
-      h+=apRow(i+1,constat,action,a.fonction||'',(a.mois||''),action?'En cours':'À planifier');
+      var ref='AT : '+(a.nom||'—')+(a.date?' ('+a.date+')':'');
+      var action=(a.action&&String(a.action).trim())?String(a.action).trim():'À définir';
+      var statut=(a.action&&String(a.action).trim())?'En cours':'À planifier';
+      var bg=i%2===0?'#fff':'#f8fafc';
+      h+='<tr style="background:'+bg+'">';
+      h+='<td style="'+td+';text-align:center;color:#94a3b8;font-weight:700">'+(i+1)+'</td>';
+      h+='<td style="'+td+'"><div style="font-weight:600;color:#1e293b">'+esc(constat||'—')+'</div>'
+        +'<div style="font-size:8.5px;color:#64748b;margin-top:2px">'+esc(ref)+'</div></td>';
+      h+='<td style="'+td+';color:#334155">'+esc(action)+'</td>';
+      h+='<td style="'+td+';color:#334155">'+esc(a.fonction||'—')+'</td>';
+      h+='<td style="'+td+';color:#334155">À définir</td>';
+      h+='<td style="'+td+';text-align:center">'+apStatutBadge(statut)+'</td>';
+      h+='</tr>';
     });
   }else{
-    h+=apRow(1,'','','','','À planifier');
+    h+='<tr><td style="'+td+';text-align:center;color:#94a3b8;font-style:italic" colspan="6">Aucun accident sur la période — aucune action à planifier.</td></tr>';
   }
-  h+='</tbody></table></div>';
-  h+='<div style="margin-top:10px" class="no-print"><button type="button" class="crud-btn add" style="font-size:10px;padding:5px 12px" onclick="addAccActionRow()">➕ Ajouter une ligne</button></div>';
+  h+='</tbody></table>';
 
-  // Signatures
-  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);margin-top:16px">';
+  // ── Légende ───────────────────────────────────────────────────
+  h+='<div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;font-size:9px;color:#555">';
+  [['À planifier','#fee2e2','#fca5a5','#991b1b'],['En cours','#fef9c3','#fde047','#854d0e'],['Réalisée / Clôturée','#dcfce7','#86efac','#166534']].forEach(function(p){
+    h+='<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:'+p[1]+';border:1px solid '+p[2]+'"></span>'+p[0]+'</span>';
+  });
+  h+='</div>';
+
+  // ── Signatures ────────────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
   h+='<tr>';
   ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
-    h+='<td style="width:33%;text-align:center;padding:18px 8px;border:1px solid var(--border)">';
-    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px;color:var(--text2)">'+lbl+'</div>';
-    h+='<div style="border-top:1px solid var(--text3);width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:var(--text3)">Nom / Signature</div>';
+    h+='<td style="'+td+';width:33%;text-align:center;padding:18px 8px">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
     h+='</td>';
   });
   h+='</tr></table>';
+
   h+='</div>';
   body.innerHTML=h;
-}
-function addAccActionRow(){
-  var tb=document.getElementById('accActionPlanRows');
-  if(!tb) return;
-  var n=tb.querySelectorAll('tr').length+1;
-  tb.insertAdjacentHTML('beforeend',apRow(n,'','','','','À planifier'));
 }
 function printAccActionPlan(){
   var el=document.getElementById('accActionPlanPrint');
   if(!el){ window.print(); return; }
-  var clone=el.cloneNode(true);
-  // Remplace les champs de saisie par leur valeur (texte figé pour le PDF)
-  var sIn=el.querySelectorAll('input,textarea,select'), dIn=clone.querySelectorAll('input,textarea,select');
-  for(var i=0;i<sIn.length;i++){
-    var v=(sIn[i].tagName==='SELECT')?(sIn[i].options[sIn[i].selectedIndex]||{}).text||'':sIn[i].value;
-    var span=document.createElement('div');
-    span.textContent=v||'—';
-    span.style.cssText='font-size:10px;color:#111;white-space:pre-wrap;min-height:14px';
-    if(dIn[i]&&dIn[i].parentNode) dIn[i].parentNode.replaceChild(span,dIn[i]);
-  }
-  // Retire les commandes (boutons ajouter/supprimer)
-  clone.querySelectorAll('.no-print,button').forEach(function(b){ if(b.parentNode) b.parentNode.removeChild(b); });
-  var lastTh=clone.querySelectorAll('#accActionPlanTable thead th');
-  if(lastTh.length) lastTh[lastTh.length-1].remove();
-  clone.querySelectorAll('#accActionPlanRows tr').forEach(function(tr){ var tds=tr.querySelectorAll('td'); if(tds.length) tds[tds.length-1].remove(); });
-
-  var today=new Date();
-  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
   var w=window.open('','_blank','width=1050,height=800');
   if(!w) return;
   var styles='<style>*{box-sizing:border-box}'
     +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:10px}'
-    +'table{border-collapse:collapse;width:100%}th,td{padding:5px 7px;border:1px solid #cbd5e1;font-size:10px;vertical-align:top;text-align:left}'
-    +'thead th{background:#0c4a6e;color:#fff;text-transform:uppercase;font-size:9px}'
-    +'h2{font-size:15px;margin:0 0 2px}.meta{font-size:10px;color:#555;margin-bottom:12px}'
-    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}}</style>';
+    +'table{border-collapse:collapse;width:100%}th,td{padding:5px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plan d\'action — PLA-MAQ-09</title>'+styles+'</head><body>');
-  w.document.write('<div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #0c4a6e;padding-bottom:6px;margin-bottom:12px">'
-    +'<div><h2>Plan d\'action</h2><div class="meta">SOBCO 3 — HSE · Réf. PLA-MAQ-09 · édité le '+todayStr+'</div></div>'
-    +'<div style="font-family:monospace;font-weight:700;color:#0369a1;font-size:12px">PLA-MAQ-09</div></div>');
-  w.document.write(clone.innerHTML);
+  w.document.write(el.innerHTML);
   w.document.write('</body></html>');
   w.document.close(); w.focus();
   setTimeout(function(){ w.print(); },400);
