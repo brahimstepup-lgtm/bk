@@ -8680,7 +8680,11 @@ function render(data){
     m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
   })();
 
-  if(data.logoDataUrl||data.logoUrl){var img=document.getElementById('logoImg');img.src=data.logoDataUrl||data.logoUrl;img.style.display='block';document.getElementById('logoFb').style.display='none';}
+  // En-tête : conserver le badge « BK » (blanc sur fond rouge) comme
+  // logo d'origine — on n'injecte pas de logo Drive dans l'en-tête.
+  // (Le logo Palmary/ENR ne concerne que les fiches & PDF.)
+  (function(){var img=document.getElementById('logoImg'); if(img)img.style.display='none';
+   var fb=document.getElementById('logoFb'); if(fb)fb.style.display='flex';})();
   document.getElementById('loader').style.display='none';
   document.getElementById('main').style.display='block';
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
