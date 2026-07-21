@@ -8,7 +8,7 @@
 // ============================================================
 var SHEET_ID       = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
 var GEMINI_KEY     = 'AIzaSyDdp7ZxwL1f3_OsvjbXB39_u_MadHul8q8';
-var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';
+var LOGO_FILE_ID   = '1_eG3fiBoKImvH8uh46bUrChtN_KvZxAv';
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
 var PLANNING_GID   = 1312782146;
 
