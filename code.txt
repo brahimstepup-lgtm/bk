@@ -3454,7 +3454,10 @@ function getData() {
     permitsSheetName:'',
     permitsSourceUrl: 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + PERMITS_SHEET_GID + '#gid=' + PERMITS_SHEET_GID,
     monthHeaders:[],
-    logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID
+    logoUrl: 'https://drive.google.com/uc?export=view&id=' + LOGO_FILE_ID,
+    // Logo embarqué en data-URL : garantit un affichage fiable dans les
+    // fiches/ENR et les PDF (fenêtre d'impression), sans requête externe.
+    logoDataUrl: getLogoDataUrl_()
   };
 
   out.planning = readPlanning(ss);
@@ -3983,6 +3986,19 @@ function callGemini(prompt) {
 function getDataForClient()           { return getData(); }
 function askGeminiForClient(p)        { return callGemini(p); }
 // PHOTO PROXY — retourne base64 de l'image Drive
+// Logo de l'entreprise (Drive) encodé en data-URL, mis en cache pour
+// éviter des lectures Drive répétées à chaque chargement du tableau.
+var _logoDataUrlCache = null;
+function getLogoDataUrl_() {
+  if (_logoDataUrlCache !== null) return _logoDataUrlCache;
+  try {
+    var blob = DriveApp.getFileById(LOGO_FILE_ID).getBlob();
+    _logoDataUrlCache = 'data:' + (blob.getContentType()||'image/png') +
+                        ';base64,' + Utilities.base64Encode(blob.getBytes());
+  } catch(e) { Logger.log('logo error: '+e.message); _logoDataUrlCache = ''; }
+  return _logoDataUrlCache;
+}
+
 function getTagPhotoForClient(fileId) { return getTagPhotoForClient_(fileId); }
 function getTagPhotoForClient_(fileId) {
   if (!fileId) return '';

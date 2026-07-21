@@ -6997,6 +6997,15 @@ function renderAccPjList(acc){
 }
 // Guillemets sûrs pour insertion dans un attribut onclick.
 function jsq(s){ return "'"+String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')+"'"; }
+// Source du logo pour les fiches/ENR et les PDF : le data-URL embarqué
+// (D.logoDataUrl) est privilégié car il s'affiche de façon fiable dans
+// la fenêtre d'impression et hors ligne ; repli sur l'URL Drive.
+function ficheLogoSrc(){
+  if(D&&D.logoDataUrl) return D.logoDataUrl;
+  var _li=document.getElementById('logoImg');
+  if(_li&&_li.src&&_li.naturalWidth>0 && /^data:/.test(_li.src)) return _li.src;
+  return (D&&D.logoUrl)||(_li&&_li.src)||'';
+}
 // Affiche la pièce jointe dans la visionneuse intégrée (sans quitter le dashboard).
 function viewAccPj(url,title){
   if(!url) return;
@@ -7069,7 +7078,7 @@ function renderAccBilan(){
   var accs=accBilanSource();
   var today=new Date();
   var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
-  var logoSrc=(D&&D.logoUrl)||'';
+  var logoSrc=ficheLogoSrc();
   if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
   var logoHtml=logoSrc
     ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
@@ -7241,7 +7250,7 @@ function renderAccActionPlan(){
   var today=new Date();
   var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
 
-  var logoSrc=(D&&D.logoUrl)||'';
+  var logoSrc=ficheLogoSrc();
   if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
   var logoHtml=logoSrc
     ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
@@ -8669,7 +8678,7 @@ function render(data){
     m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
   })();
 
-  if(data.logoUrl){var img=document.getElementById('logoImg');img.src=data.logoUrl;img.style.display='block';document.getElementById('logoFb').style.display='none';}
+  if(data.logoDataUrl||data.logoUrl){var img=document.getElementById('logoImg');img.src=data.logoDataUrl||data.logoUrl;img.style.display='block';document.getElementById('logoFb').style.display='none';}
   document.getElementById('loader').style.display='none';
   document.getElementById('main').style.display='block';
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
@@ -13243,7 +13252,7 @@ function renderRapportTendanceNuisibles(){
   var yyyy=today.getFullYear();
   var todayStr=dd+'/'+mm+'/'+yyyy;
   // Logo : priorité D.logoUrl, sinon src de l'img du header
-  var logoSrc=(D&&D.logoUrl)||'';
+  var logoSrc=ficheLogoSrc();
   if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
   var logoHtml=logoSrc
     ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
@@ -13719,7 +13728,7 @@ function renderRecensementNuisibles(){
   var mm=(today.getMonth()+1).toString().padStart(2,'0');
   var yyyy=today.getFullYear();
   var todayStr=dd+'/'+mm+'/'+yyyy;
-  var logoSrc=(D&&D.logoUrl)||'';
+  var logoSrc=ficheLogoSrc();
   if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
   var logoHtml=logoSrc
     ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
@@ -14069,7 +14078,7 @@ function renderListeProduitsChimiques(){
   var mm=(today.getMonth()+1).toString().padStart(2,'0');
   var yyyy=today.getFullYear();
   var todayStr=dd+'/'+mm+'/'+yyyy;
-  var logoSrc=(D&&D.logoUrl)||'';
+  var logoSrc=ficheLogoSrc();
   if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
   var logoHtml=logoSrc
     ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
@@ -14212,7 +14221,7 @@ function renderKpiFiche(){
   var yyyy=today.getFullYear();
   var todayStr=dd+'/'+mm+'/'+yyyy;
 
-  var logoSrc=(D&&D.logoUrl)||'';
+  var logoSrc=ficheLogoSrc();
   if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
   var logoHtml=logoSrc
     ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
