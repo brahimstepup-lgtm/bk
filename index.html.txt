@@ -13836,6 +13836,23 @@ function renderKpiFiche(){
   });
   h+='</tbody></table>';
 
+  // ── Graphiques des indicateurs (Chart.js) ─────────────────────
+  var chartDefs=[
+    {id:'kpiChartTG',  label:'Taux de Gravité (TG)',          arr:m.tg_months,   obj:0.8,  lower:true,  color:'#e8445a'},
+    {id:'kpiChartTF',  label:'Taux de Fréquence (TF)',        arr:m.tf1_months,  obj:30,   lower:true,  color:'#f5a623'},
+    {id:'kpiChartENV', label:'Énergie — Ratio ELT (kWh/u.p.)',arr:m.relt_months, obj:350,  lower:true,  color:'#0ea5e9'},
+    {id:'kpiChartTVM', label:'TVM — Visite médicale (%)',     arr:m.tvm_months,  obj:95,   lower:false, color:'#10c985'}
+  ];
+  h+='<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#0c4a6e;margin:0 0 8px">Graphiques des indicateurs</div>';
+  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">';
+  chartDefs.forEach(function(cd){
+    h+='<div style="border:1px solid #cbd5e1;border-radius:6px;padding:9px 11px;background:#fff">';
+    h+='<div style="font-size:10px;font-weight:700;color:'+cd.color+';margin-bottom:5px">'+esc(cd.label)+' · <span style="color:#94a3b8;font-weight:600">obj. '+(cd.lower?'≤ ':'≥ ')+fmtNum(cd.obj)+'</span></div>';
+    h+='<div style="height:150px;position:relative"><canvas id="'+cd.id+'"></canvas></div>';
+    h+='</div>';
+  });
+  h+='</div>';
+
   // ── Détail mensuel par indicateur ─────────────────────────────
   function monthlyBlock(title,color,arr,obj,lower,unit){
     arr=arr||[];
@@ -13902,11 +13919,45 @@ function renderKpiFiche(){
 
   h+='</div>';
   body.innerHTML=h;
+
+  // ── Instanciation des graphiques (après injection du HTML) ────
+  chartDefs.forEach(function(cd){
+    var arr=cd.arr||[], labels=[], vals=[], cols=[];
+    for(var i=0;i<Math.max(arr.length,hdrs.length,12);i++){
+      if(arr[i]==null||arr[i]==='') continue;
+      var vv=parseFloat(arr[i]); if(isNaN(vv)) continue;
+      labels.push(mlabel(i)); vals.push(vv);
+      var ok=cd.lower?vv<=cd.obj:vv>=cd.obj;
+      cols.push(ok?'#10c985':'#e8445a');
+    }
+    if(!vals.length) return;
+    var ds=[
+      {type:'bar',label:cd.label,data:vals,backgroundColor:cols,borderRadius:4,maxBarThickness:34},
+      {type:'line',label:'Objectif',data:vals.map(function(){return cd.obj;}),borderColor:'#334155',borderDash:[5,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0}
+    ];
+    mkChart(cd.id,'bar',labels,ds,{responsive:true,maintainAspectRatio:false,animation:false,
+      plugins:{legend:{display:false},tooltip:{enabled:true}},
+      scales:{x:{ticks:{color:'#64748b',font:{size:9}},grid:{display:false}},
+              y:{beginAtZero:true,ticks:{color:'#94a3b8',font:{size:9}},grid:{color:'rgba(0,0,0,.06)'}}}});
+  });
 }
 
 function printKpiFiche(){
   var el=document.getElementById('kpiFichePrint');
   if(!el){ window.print(); return; }
+  // Les graphiques Chart.js (canvas) ne se transfèrent pas via innerHTML :
+  // on clone la fiche puis on remplace chaque canvas par son image PNG.
+  var clone=el.cloneNode(true);
+  var srcCanvas=el.querySelectorAll('canvas');
+  var dstCanvas=clone.querySelectorAll('canvas');
+  for(var i=0;i<srcCanvas.length;i++){
+    try{
+      var img=document.createElement('img');
+      img.src=srcCanvas[i].toDataURL('image/png');
+      img.style.cssText='width:100%;height:auto;display:block';
+      if(dstCanvas[i]&&dstCanvas[i].parentNode) dstCanvas[i].parentNode.replaceChild(img,dstCanvas[i]);
+    }catch(e){}
+  }
   var w=window.open('','_blank','width=1050,height=800');
   if(!w) return;
   var styles='<style>'
@@ -13914,17 +13965,19 @@ function printKpiFiche(){
     +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:20px 28px;margin:0;font-size:10px}'
     +'table{border-collapse:collapse;width:100%}'
     +'th,td{padding:5px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top}'
+    +'img{max-width:100%}'
     +'@media print{'
     +'  body{padding:10px 14px}'
     +'  @page{margin:1cm;size:A4 portrait}'
+    +'  div[style*="grid"]{page-break-inside:avoid}'
     +'}'
     +'</style>';
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fiche KPI HSE — PLA-MQA-05</title>'+styles+'</head><body>');
-  w.document.write(el.innerHTML);
+  w.document.write(clone.innerHTML);
   w.document.write('</body></html>');
   w.document.close();
   w.focus();
-  setTimeout(function(){ w.print(); }, 400);
+  setTimeout(function(){ w.print(); }, 500);
 }
 
 /* ══════════════════════════════════════════════════════════════
