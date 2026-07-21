@@ -4626,6 +4626,10 @@ html.light .pests-search-input{background:#edf2f7}
       <div id="mAcc-actions" style="display:none">
         <div class="modal-section"><div class="modal-sec-title"><span>✅</span>Actions correctives</div><div class="act-list" id="mAccActions"></div></div>
         <div class="info-grid" style="margin-top:10px">
+          <div class="info-item"><div class="info-lbl">Responsable</div><div class="info-val" id="mAccResp2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Délai</div><div class="info-val" id="mAccDelai2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Avancement</div><div class="info-val" id="mAccAvanc2">—</div></div>
+          <div class="info-item"><div class="info-lbl">Efficacité</div><div class="info-val" id="mAccEff2">—</div></div>
           <div class="info-item"><div class="info-lbl">Nom</div><div class="info-val" id="mAccNom2">—</div></div>
           <div class="info-item"><div class="info-lbl">Date</div><div class="info-val" id="mAccDate2">—</div></div>
           <div class="info-item"><div class="info-lbl">Structure</div><div class="info-val" id="mAccStruct2">—</div></div>
@@ -6930,6 +6934,10 @@ function openAccModal(acc){
   document.getElementById('mAccActions').innerHTML=accActLines.length
     ?accActLines.map(function(l,i){return'<div class="act-item"><div class="act-num">'+(i+1)+'</div>'+esc(l.replace(/^[-•*#\\ ]+/,'').trim())+'</div>';}).join('')
     :'<div class="info-item"><div class="info-val" style="color:var(--text3)">Actions non renseignées</div></div>';
+  document.getElementById('mAccResp2').textContent=acc.responsable||'—';
+  document.getElementById('mAccDelai2').textContent=acc.delai||'—';
+  document.getElementById('mAccAvanc2').textContent=acc.avancement||'—';
+  document.getElementById('mAccEff2').textContent=acc.efficacite||'—';
   document.getElementById('mAccNom2').textContent=acc.nom||'—';
   document.getElementById('mAccDate2').textContent=acc.date||'—';
   document.getElementById('mAccStruct2').textContent=acc.structure||'—';
@@ -7277,8 +7285,8 @@ function renderAccActionPlan(){
   // ── Tableau du plan d'action (statique) ───────────────────────
   h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px">';
   h+='<thead><tr style="background:#0c4a6e;color:#fff">';
-  [['N°','width:32px;text-align:center'],['Constat / Cause racine','width:24%'],['Action corrective / préventive','width:26%'],
-   ['Responsable','width:12%'],['Délai',''],['Statut','width:11%;text-align:center']].forEach(function(c){
+  [['N°','width:30px;text-align:center'],['Constat / Cause racine','width:21%'],['Action corrective / préventive','width:24%'],
+   ['Responsable','width:11%'],['Délai','width:9%'],['Avancement','width:10%;text-align:center'],['Efficacité','width:10%;text-align:center']].forEach(function(c){
     h+='<th style="'+td+';color:#fff;font-weight:700;text-transform:uppercase;font-size:8.5px;'+(c[1]||'')+'">'+c[0]+'</th>';
   });
   h+='</tr></thead><tbody>';
@@ -7287,20 +7295,22 @@ function renderAccActionPlan(){
       var constat=(a.cause||a.nature||'').trim();
       var ref='AT : '+(a.nom||'—')+(a.date?' ('+a.date+')':'');
       var action=(a.action&&String(a.action).trim())?String(a.action).trim():'À définir';
-      var statut=(a.action&&String(a.action).trim())?'En cours':'À planifier';
+      var statut=(a.avancement&&String(a.avancement).trim())?String(a.avancement).trim()
+                 :((a.action&&String(a.action).trim())?'En cours':'À planifier');
       var bg=i%2===0?'#fff':'#f8fafc';
       h+='<tr style="background:'+bg+'">';
       h+='<td style="'+td+';text-align:center;color:#94a3b8;font-weight:700">'+(i+1)+'</td>';
       h+='<td style="'+td+'"><div style="font-weight:600;color:#1e293b">'+esc(constat||'—')+'</div>'
         +'<div style="font-size:8.5px;color:#64748b;margin-top:2px">'+esc(ref)+'</div></td>';
       h+='<td style="'+td+';color:#334155">'+esc(action)+'</td>';
-      h+='<td style="'+td+';color:#334155">'+esc(a.fonction||'—')+'</td>';
-      h+='<td style="'+td+';color:#334155">À définir</td>';
+      h+='<td style="'+td+';color:#334155">'+esc(a.responsable||'—')+'</td>';
+      h+='<td style="'+td+';color:#334155;white-space:nowrap">'+esc(a.delai||'—')+'</td>';
       h+='<td style="'+td+';text-align:center">'+apStatutBadge(statut)+'</td>';
+      h+='<td style="'+td+';text-align:center;color:#334155">'+esc(a.efficacite||'—')+'</td>';
       h+='</tr>';
     });
   }else{
-    h+='<tr><td style="'+td+';text-align:center;color:#94a3b8;font-style:italic" colspan="6">Aucun accident sur la période — aucune action à planifier.</td></tr>';
+    h+='<tr><td style="'+td+';text-align:center;color:#94a3b8;font-style:italic" colspan="7">Aucun accident sur la période — aucune action à planifier.</td></tr>';
   }
   h+='</tbody></table>';
 

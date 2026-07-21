@@ -3822,11 +3822,21 @@ function getData() {
       if (mIn) return mIn[1].trim();
       return '';
     }
-    // ── Détection des colonnes de pièces jointes par en-tête ──────
-    //   • ENR HSE 01 — Déclaration d'accident  (défaut : colonne K)
-    //   • ENR HSE 62 — Enquête d'accident      (détectée par en-tête)
-    var COL_DECL = 10;      // colonne K par défaut (pièce jointe existante)
-    var COL_ENQ_ACC = -1;   // colonne « enquête » si un en-tête la désigne
+    // ── Détection des colonnes par en-tête (robuste au décalage) ──
+    //   Structure réelle de la feuille « Bilan des Accidents » :
+    //     I=Cause  J=Circonstance  K=rapport déclaration  L=rapport
+    //     enquête  M=ACTION  N=Delai  O=RESPONSABLE  P=Avancement
+    //     Q=Efficacité.
+    //   Pièces jointes (réf. inversées côté client) :
+    //     • Déclaration d'accident → colonne K
+    //     • Enquête d'accident     → colonne L
+    var COL_DECL = 10;      // K — rapport de déclaration
+    var COL_ENQ_ACC = 11;   // L — rapport d'enquête
+    var COL_ACTION = 12;    // M — ACTION
+    var COL_DELAI  = 13;    // N — Delai
+    var COL_RESP   = 14;    // O — RESPONSABLE
+    var COL_AVANC  = 15;    // P — Avancement
+    var COL_EFF    = 16;    // Q — Efficacité
     for (var hr = 0; hr < Math.min(accData.length, 10); hr++) {
       var hrow = accData[hr] || [];
       var joined = normalize(hrow.join(' '));
@@ -3835,12 +3845,15 @@ function getData() {
         for (var hc = 0; hc < hrow.length; hc++) {
           var hh = normalize(String(hrow[hc]||'').replace(/[\n\r#]/g,'').trim());
           if (!hh) continue;
-          if (hh.indexOf('62') > -1 || hh.indexOf('enquet') > -1) {
-            COL_ENQ_ACC = hc;
-          } else if (hh.indexOf('01') > -1 || hh.indexOf('declaration') > -1 ||
-                     (hh.indexOf('piece') > -1 && hh.indexOf('joint') > -1)) {
-            COL_DECL = hc;
-          }
+          if (hh.indexOf('enquet') > -1)               COL_ENQ_ACC = hc;
+          else if (hh.indexOf('declaration') > -1)     COL_DECL    = hc;
+          else if (hh.indexOf('action') > -1)          COL_ACTION  = hc;
+          else if (hh.indexOf('delai') > -1)           COL_DELAI   = hc;
+          else if (hh.indexOf('responsable') > -1)     COL_RESP    = hc;
+          else if (hh.indexOf('avancement') > -1 ||
+                   hh.indexOf('statut') > -1 ||
+                   hh.indexOf('etat') > -1)            COL_AVANC   = hc;
+          else if (hh.indexOf('efficacit') > -1)       COL_EFF     = hc;
         }
         break;
       }
@@ -3868,10 +3881,14 @@ function getData() {
         njp:toNumZ(r[7]),
         cause:isNull(r[8])?'':String(r[8]).trim(),
         circonstance:isNull(r[9])?'':String(r[9]).trim(),
-        pj:accCellUrl(i, 10),
+        pj:accCellUrl(i, COL_DECL),
         pjDecl:accCellUrl(i, COL_DECL),
         pjEnq:(COL_ENQ_ACC >= 0) ? accCellUrl(i, COL_ENQ_ACC) : '',
-        action:isNull(r[11])?'':String(r[11]).trim()
+        action:isNull(r[COL_ACTION])?'':String(r[COL_ACTION]).trim(),
+        delai:isNull(r[COL_DELAI])?'':String(r[COL_DELAI]).trim(),
+        responsable:isNull(r[COL_RESP])?'':String(r[COL_RESP]).trim(),
+        avancement:isNull(r[COL_AVANC])?'':String(r[COL_AVANC]).trim(),
+        efficacite:isNull(r[COL_EFF])?'':String(r[COL_EFF]).trim()
       });
     }
     out.accidents.sort(function(a,b){ return !a.isoDate?1:!b.isoDate?-1:b.isoDate.localeCompare(a.isoDate); });
