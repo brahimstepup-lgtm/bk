@@ -6936,7 +6936,7 @@ function openAccModal(acc){
     :'<div class="info-item"><div class="info-val" style="color:var(--text3)">Actions non renseignées</div></div>';
   document.getElementById('mAccResp2').textContent=acc.responsable||'—';
   document.getElementById('mAccDelai2').textContent=acc.delai||'—';
-  document.getElementById('mAccAvanc2').textContent=acc.avancement||'—';
+  document.getElementById('mAccAvanc2').textContent=(pctAvancement(acc.avancement).txt)||'—';
   document.getElementById('mAccEff2').textContent=acc.efficacite||'—';
   document.getElementById('mAccNom2').textContent=acc.nom||'—';
   document.getElementById('mAccDate2').textContent=acc.date||'—';
@@ -7235,13 +7235,41 @@ function openAccActionPlanForm(){
   modal.style.display='flex';
   renderAccActionPlan();
 }
-// Badge de statut (document non modifiable → statut dérivé des données).
+// Avancement : la feuille source stocke des fractions (1 = 100 %,
+// 0.5 = 50 %, 0.75 = 75 %). On renvoie le libellé formaté en % et le
+// pourcentage numérique (0..100) pour la couleur du badge.
+//  • valeur avec « % »  → conservée telle quelle
+//  • nombre 0 < v ≤ 1   → fraction → v × 100 %
+//  • nombre v > 1       → déjà en % → v %
+//  • texte (ex. « En cours ») → conservé, sans pourcentage
+function pctAvancement(v){
+  var s=String(v==null?'':v).trim();
+  if(!s) return {txt:'', pct:null};
+  if(s.indexOf('%')>-1){
+    var np=parseFloat(s.replace('%','').replace(',','.'));
+    return {txt:(isNaN(np)?s:(fmtNum(np)+' %')), pct:(isNaN(np)?null:np)};
+  }
+  var num=parseFloat(s.replace(',','.'));
+  if(isNaN(num)) return {txt:s, pct:null};
+  var pct=(num>0 && num<=1) ? num*100 : num;
+  return {txt:fmtNum(Math.round(pct*100)/100)+' %', pct:pct};
+}
+// Badge de statut / avancement (document non modifiable → dérivé des données).
 function apStatutBadge(st){
-  var s=String(st||'').toLowerCase(), c;
-  if(s.indexOf('clot')>-1||s.indexOf('réal')>-1||s.indexOf('real')>-1) c={bg:'#dcfce7',bd:'#86efac',t:'#166534'};
-  else if(s.indexOf('cours')>-1)                                        c={bg:'#fef9c3',bd:'#fde047',t:'#854d0e'};
-  else                                                                  c={bg:'#fee2e2',bd:'#fca5a5',t:'#991b1b'};
-  return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.bd+';color:'+c.t+';font-weight:700;font-size:9px;white-space:nowrap">'+esc(st)+'</span>';
+  var info=pctAvancement(st), c, label;
+  if(info.pct!=null){
+    label=info.txt;
+    if(info.pct>=100)     c={bg:'#dcfce7',bd:'#86efac',t:'#166534'};
+    else if(info.pct>0)   c={bg:'#fef9c3',bd:'#fde047',t:'#854d0e'};
+    else                  c={bg:'#fee2e2',bd:'#fca5a5',t:'#991b1b'};
+  }else{
+    label=String(st||'');
+    var s=label.toLowerCase();
+    if(s.indexOf('clot')>-1||s.indexOf('réal')>-1||s.indexOf('real')>-1) c={bg:'#dcfce7',bd:'#86efac',t:'#166534'};
+    else if(s.indexOf('cours')>-1)                                        c={bg:'#fef9c3',bd:'#fde047',t:'#854d0e'};
+    else                                                                  c={bg:'#fee2e2',bd:'#fca5a5',t:'#991b1b'};
+  }
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.bd+';color:'+c.t+';font-weight:700;font-size:9px;white-space:nowrap">'+esc(label)+'</span>';
 }
 // Document « Plan d'action » (PLA-MAQ-09) — mise en page professionnelle,
 // entièrement statique (aucun champ de saisie, aucun bouton d'édition).
