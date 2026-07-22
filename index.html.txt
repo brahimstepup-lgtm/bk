@@ -7055,6 +7055,9 @@ function downloadAccPj(rawUrl,filename){
     .withFailureHandler(function(){ window.open(rawUrl,'_blank'); })
     .getAccidentAttachment(id);
 }
+// Téléchargement générique d'un document Drive (contrats, ENR, …) sous
+// un nom normalisé. Réutilise le même mécanisme que les PJ accidents.
+function downloadDriveDoc(rawUrl,filename){ downloadAccPj(rawUrl,filename); }
 
 /* ══════════════════════════════════════════════════════════════
    BILAN AT — SYNTHÈSE GRAPHIQUE (Réf. ENR HSE 25)
@@ -9332,11 +9335,22 @@ function renderEnregistrements(){
       : '<span style="color:var(--text3);font-size:10px">—</span>';
 
     var safeCode = escAttr(e.code || '');
-    var docHtml = '<a href="#" rel="noopener" '
+    var enrDlName = escAttr(((e.code ? e.code + ' - ' : '') + (e.intitule || 'Enregistrement HSE'))
+                    .replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
+    var docHtml = '<div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+      + '<a href="#" rel="noopener" '
       + 'class="tag-btn has-photo" title="Documents de cet enregistrement (liste + téléversement)" '
       + 'data-enr-code="'+safeCode+'" data-enr-title="'+safeTitle+'" data-enr-url="'+safeUrl+'" '
       + 'onclick="openEnrDocs(this.getAttribute(\'data-enr-code\'),this.getAttribute(\'data-enr-title\'),this.getAttribute(\'data-enr-url\'));return false;" '
-      + 'style="text-decoration:none">🗂️</a>';
+      + 'style="text-decoration:none">🗂️</a>'
+      + (e.url
+          ? '<a href="'+safeUrl+'" rel="noopener" '
+            + 'class="tag-btn has-photo" title="Télécharger le document" '
+            + 'data-dl-url="'+safeUrl+'" data-dl-name="'+enrDlName+'" '
+            + 'onclick="downloadDriveDoc(this.getAttribute(\'data-dl-url\'),this.getAttribute(\'data-dl-name\'));return false;" '
+            + 'style="text-decoration:none">⬇️</a>'
+          : '')
+      + '</div>';
 
     return '<tr>'
       + '<td class="mono" style="font-size:10px;color:var(--text3)">'+(i+1)+'</td>'
@@ -9590,13 +9604,23 @@ function renderContracts(){
         var finTxt   = dateFinHtml(c);
         var statTxt  = contractStatutBadge(c);
 
+        var dlName = escAttr(('Contrat - ' + (c.intitule || c.id || 'document') + (c.tiers ? ' - ' + c.tiers : ''))
+                      .replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
         var docHtml = c.url
-          ? '<a href="' + safeUrl + '" rel="noopener" '
+          ? '<div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+            + '<a href="' + safeUrl + '" rel="noopener" '
             + 'class="tag-btn has-photo" '
             + 'title="Ouvrir le document dans le dashboard" '
             + 'data-c-url="' + safeUrl + '" data-c-title="' + safeTitle + '" '
             + 'onclick="openContractEmbed(this.getAttribute(\'data-c-url\'),this.getAttribute(\'data-c-title\'));return false;" '
             + 'style="text-decoration:none">📑</a>'
+            + '<a href="' + safeUrl + '" rel="noopener" '
+            + 'class="tag-btn has-photo" '
+            + 'title="Télécharger le document" '
+            + 'data-dl-url="' + safeUrl + '" data-dl-name="' + dlName + '" '
+            + 'onclick="downloadDriveDoc(this.getAttribute(\'data-dl-url\'),this.getAttribute(\'data-dl-name\'));return false;" '
+            + 'style="text-decoration:none">⬇️</a>'
+            + '</div>'
           : '<span class="tag-btn no-photo" title="Lien non disponible" style="cursor:default">—</span>';
 
         return '<tr>'
