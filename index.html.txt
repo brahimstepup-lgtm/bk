@@ -2379,6 +2379,11 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ VEILLE RÉGLEMENTAIRE ═══ -->
 <div id="veille" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:11px">
+    <button class="crud-btn add" style="font-size:11px;padding:6px 14px"
+            onclick="printVeille()"
+            title="Télécharger le recueil (ENR-HSE 26) au format PDF">🖨️ Télécharger PDF</button>
+  </div>
   <div class="card" style="margin-bottom:14px">
     <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>Recueil et Évaluation des Exigences Légales Applicables et Autres Exigences — SOBCO 3</div>
     <p style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:0">
@@ -6360,6 +6365,74 @@ function renderVeilleScoring(){
     +'</div>';
 
   host.innerHTML='<div>'+listHtml+'</div>'+gaugeHtml;
+}
+
+// Téléchargement PDF du recueil de veille réglementaire (Réf. ENR-HSE 26)
+// — cartouche (logo Palmary) + scoring + tableau complet.
+function printVeille(){
+  try{ renderVeilleScoring(); }catch(e){}
+  var scoreEl=document.getElementById('veilleScore');
+  var tableEl=document.getElementById('veilleTable');
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">'
+    +'<tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:14px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Recueil et Évaluation des Exigences Légales Applicables et Autres Exigences</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Veille réglementaire HSE — SOBCO 3</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>'
+    +'</td>'
+    +'<td style="'+td+';width:190px;padding:0;vertical-align:top">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 26</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
+
+  var scoreHtml=scoreEl
+    ? '<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#0c4a6e;margin:0 0 8px">Scoring de conformité réglementaire</div>'
+      +'<div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:center;margin-bottom:16px">'+scoreEl.innerHTML+'</div>'
+    : '';
+  var tableHtml=tableEl
+    ? '<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#0c4a6e;margin:4px 0 8px">Tableau de veille réglementaire</div>'
+      +'<div>'+tableEl.outerHTML+'</div>'
+    : '';
+
+  var w=window.open('','_blank','width=1100,height=800');
+  if(!w) return;
+  // Variables CSS (thème clair) pour que les couleurs var(--…) du
+  // tableau/scoring s'affichent correctement dans le PDF.
+  var styles='<style>'
+    +':root{--p4:#0d7fa8;--purple:#7c3aed;--green:#0f9d63;--amber:#c47d0a;--red:#c0392b;'
+      +'--text:#142532;--text2:#284e64;--text3:#557082;--border:#c2cdd9;'
+      +'--bg2:#f5f8fb;--bg3:#eef3f7;--bg4:#e2e9f0;--bg5:#d4dde6;}'
+    +'*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#142532;padding:18px 24px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'#veilleTable th,#veilleTable td{padding:5px 7px;border:1px solid #cbd5e1;font-size:9px;vertical-align:top;text-align:left}'
+    +'#veilleTable thead th{background:#0c4a6e;color:#fff;text-transform:uppercase;font-size:8.5px}'
+    +'#veilleTable td[rowspan]{background:#eef3f7;text-align:center;vertical-align:middle;font-weight:700;color:#0d7fa8}'
+    +'img{max-width:100%}'
+    +'@media print{body{padding:8px 12px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}'
+    +'</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recueil de veille réglementaire — ENR-HSE 26</title>'+styles+'</head><body>');
+  w.document.write(head+scoreHtml+tableHtml);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Recueil de veille réglementaire (ENR-HSE 26) · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
 }
 
 // ══ MODALS ════════════════════════════════════════════════════
