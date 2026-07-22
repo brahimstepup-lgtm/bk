@@ -9055,12 +9055,21 @@ function renderProcedures(){
         var dateHtml   = (dateUnspec !== null) ? dateUnspec
           : '<span class="mono" style="font-size:11px">'+esc(p.dateVersion)+'</span>';
 
+        var procDlName = escAttr(((p.reference ? p.reference + ' - ' : '') + (p.titre || 'Procedure HSE'))
+                          .replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
         var docHtml = p.url
-          ? '<a href="'+safeUrl+'" rel="noopener" '
+          ? '<div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+            + '<a href="'+safeUrl+'" rel="noopener" '
             + 'class="tag-btn has-photo" title="Ouvrir la procédure dans le dashboard" '
             + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeTitle+'" '
             + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
             + 'style="text-decoration:none">📄</a>'
+            + '<a href="'+safeUrl+'" rel="noopener" '
+            + 'class="tag-btn has-photo" title="Télécharger la procédure" '
+            + 'data-dl-url="'+safeUrl+'" data-dl-name="'+procDlName+'" '
+            + 'onclick="downloadDriveDoc(this.getAttribute(\'data-dl-url\'),this.getAttribute(\'data-dl-name\'));return false;" '
+            + 'style="text-decoration:none">⬇️</a>'
+            + '</div>'
           : '<span class="tag-btn no-photo" title="Document non disponible" '
             + 'style="cursor:default">—</span>';
 
@@ -9153,10 +9162,16 @@ function renderEnrDocs(r){
       + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
       + 'style="color:var(--p3);text-decoration:underline;font-weight:600;cursor:pointer;font-size:11px">Modèle / formulaire vierge</a></td>'
       + '<td><span style="color:var(--text3);font-size:10px">—</span></td>'
-      + '<td style="text-align:center"><a href="'+muUrl+'" rel="noopener" class="tag-btn has-photo" '
+      + '<td style="text-align:center"><div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+      + '<a href="'+muUrl+'" rel="noopener" class="tag-btn has-photo" title="Ouvrir dans le dashboard" '
       + 'data-proc-url="'+muUrl+'" data-proc-title="'+muLbl+'" '
       + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
-      + 'style="text-decoration:none">📄</a></td>'
+      + 'style="text-decoration:none">📄</a>'
+      + '<a href="'+muUrl+'" rel="noopener" class="tag-btn has-photo" title="Télécharger" '
+      + 'data-dl-url="'+muUrl+'" data-dl-name="'+muLbl+'" '
+      + 'onclick="downloadDriveDoc(this.getAttribute(\'data-dl-url\'),this.getAttribute(\'data-dl-name\'));return false;" '
+      + 'style="text-decoration:none">⬇️</a>'
+      + '</div></td>'
       + '</tr>';
   }
 
@@ -9178,10 +9193,16 @@ function renderEnrDocs(r){
       + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer;font-size:11px">'
       + esc(f.name || '—') + '</a></td>'
       + '<td><span class="mono" style="font-size:10px">'+esc(ds)+'</span></td>'
-      + '<td style="text-align:center"><a href="'+fUrl+'" rel="noopener" class="tag-btn has-photo" '
+      + '<td style="text-align:center"><div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+      + '<a href="'+fUrl+'" rel="noopener" class="tag-btn has-photo" '
       + 'title="Ouvrir dans le dashboard" data-proc-url="'+fUrl+'" data-proc-title="'+fLbl+'" '
       + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
-      + 'style="text-decoration:none">📄</a></td>'
+      + 'style="text-decoration:none">📄</a>'
+      + '<a href="'+fUrl+'" rel="noopener" class="tag-btn has-photo" title="Télécharger" '
+      + 'data-dl-url="'+fUrl+'" data-dl-name="'+fLbl+'" '
+      + 'onclick="downloadDriveDoc(this.getAttribute(\'data-dl-url\'),this.getAttribute(\'data-dl-name\'));return false;" '
+      + 'style="text-decoration:none">⬇️</a>'
+      + '</div></td>'
       + '</tr>';
   }).join('');
 
@@ -10054,11 +10075,20 @@ function renderPermits(){
         if (p.hasPhoto) {
           var safeUrl   = escAttr(p.photoUrl || '');
           var safeTitle = escAttr((p.id ? p.id + ' — ' : '') + (p.titre || 'Permis de travail'));
-          pjHtml = '<a href="#" rel="noopener" '
+          var permDlName = escAttr(('Permis - ' + (p.id ? p.id + ' - ' : '') + (p.titre || 'permis de travail'))
+                            .replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
+          pjHtml = '<div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+                 + '<a href="#" rel="noopener" '
                  + 'class="tag-btn has-photo" '
                  + 'title="Ouvrir la pièce jointe dans le dashboard" '
                  + 'data-p-url="' + safeUrl + '" data-p-title="' + safeTitle + '" '
-                 + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;">📎</a>';
+                 + 'onclick="openPermitEmbed(this.getAttribute(\'data-p-url\'),this.getAttribute(\'data-p-title\'));return false;">📎</a>'
+                 + '<a href="' + safeUrl + '" rel="noopener" '
+                 + 'class="tag-btn has-photo" title="Télécharger la pièce jointe" '
+                 + 'data-dl-url="' + safeUrl + '" data-dl-name="' + permDlName + '" '
+                 + 'onclick="downloadDriveDoc(this.getAttribute(\'data-dl-url\'),this.getAttribute(\'data-dl-name\'));return false;" '
+                 + 'style="text-decoration:none">⬇️</a>'
+                 + '</div>';
         } else {
           pjHtml = '<span class="tag-btn no-photo" title="Aucune pièce jointe" style="cursor:default">—</span>';
         }
