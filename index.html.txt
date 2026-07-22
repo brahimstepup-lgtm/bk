@@ -1950,7 +1950,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('inc',this)">⚠️ Incidents</button>
   <button class="tab"    onclick="goTab('tags',this)">🏷️ TAGs</button>
   <button class="tab"    onclick="goTab('risk',this);renderRisk()">🛡️ Analyse Risques</button>
-  <button class="tab"    onclick="goTab('actions',this);renderActions()">📋 Plan d'actions</button>
+  <button class="tab"    onclick="goTab('actions',this);renderActions()">📋 Plan d'actions globale</button>
   <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
@@ -2246,7 +2246,7 @@ html.light .pests-search-input{background:#edf2f7}
   <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
     <button class="btn" onclick="openActionsSource()" style="font-size:11px;padding:6px 12px">📊 Ouvrir le fichier source</button>
   </div>
-  <div class="tsum" id="actSum">⏳ Ouvrez l'onglet pour charger le plan d'actions global…</div>
+  <div class="tsum" id="actSum">⏳ Ouvrez l'onglet pour charger le plan d'actions globale…</div>
   <div class="kpi-grid" id="actKpi"></div>
   <div class="row2">
     <div class="card"><div class="ct"><span class="ct-dot"></span>Répartition par statut</div><div class="cw" style="height:250px"><canvas id="actStatutC"></canvas></div></div>
@@ -6863,23 +6863,101 @@ var _actData=null, _actLoading=false;
 var ACTIONS_SOURCE_URL='https://docs.google.com/spreadsheets/d/1SI9RssYHEIAJ2djA8wfX1aQyVIoIR7auylmzkJBZ1f4/edit?gid=1664347988';
 var ACT_STATUT_COL={'Clôturé / Terminé':'#10c985','En cours':'#0da8d2','En retard':'#e8445a','Non démarré':'#f5a623','Non renseigné':'#7c8b99'};
 function openActionsSource(){ openCleaningEmbed(ACTIONS_SOURCE_URL,'Plan d\'actions global — fichier source','CLASSEUR SOURCE','📋'); }
+// ── PLAN D'ACTIONS GLOBALE ────────────────────────────────────
+// Alimenté automatiquement par les actions déjà présentes dans le
+// dashboard : accidents (Bilan AT), incidents et TAGs. Chaque action
+// devient une ligne du plan, avec statut/priorité dérivés des données.
+function actOverdue(frDate){
+  var iso=isoFromFr(frDate); if(!iso) return false;
+  var d=new Date(iso+'T23:59:59'); if(isNaN(d.getTime())) return false;
+  return d.getTime()<Date.now();
+}
+function actResolveStatut(rawStatut, pct, hasAction, echFr){
+  var s=veilleNorm(rawStatut);
+  if(s.indexOf('clotur')>-1||s.indexOf('termine')>-1||s.indexOf('ferme')>-1||
+     s.indexOf('realise')>-1||s.indexOf('closed')>-1||(pct!=null&&pct>=100)) return 'Clôturé / Terminé';
+  if(actOverdue(echFr)) return 'En retard';
+  if(s.indexOf('retard')>-1) return 'En retard';
+  if(s.indexOf('cours')>-1||s.indexOf('ouvert')>-1||s.indexOf('open')>-1||
+     s.indexOf('progress')>-1||(pct!=null&&pct>0)||hasAction) return 'En cours';
+  return 'Non démarré';
+}
+function actTop(entries, field, n){
+  var m={};
+  entries.forEach(function(e){ var v=String(e[field]||'').trim(); if(v&&v!=='—') m[v]=(m[v]||0)+1; });
+  return Object.keys(m).map(function(k){return {name:k,count:m[k]};})
+    .sort(function(a,b){return b.count-a.count;}).slice(0,n||12);
+}
+function buildActionsFromDashboard(){
+  var statutOrder=['Clôturé / Terminé','En cours','En retard','Non démarré','Non renseigné'];
+  var entries=[];
+  var acc=(D&&D.accidents)||[], inc=(D&&D.incidents)||[], tags=(D&&D.tags)||[];
+  acc.forEach(function(a,i){
+    if(!a.nom||String(a.nom).length<3) return;
+    var pinfo=pctAvancement(a.avancement);
+    var hasAction=!!(a.action&&String(a.action).trim());
+    entries.push({
+      id:'AT-'+(i+1), source:'Accidents / Bilan AT',
+      site:a.lieu||'—', cat:a.nature||'Accident',
+      desc:a.cause||a.circonstance||'—',
+      action:hasAction?String(a.action).trim():'À définir',
+      resp:a.responsable||a.fonction||'—',
+      prioRaw:'Élevée',
+      dCrea:a.date||'—', dEch:a.delai||'—', dClot:'—',
+      statut:actResolveStatut(a.avancement, pinfo.pct, hasAction, a.delai)
+    });
+  });
+  inc.forEach(function(x){
+    var hasAction=!!(x.actions&&String(x.actions).trim());
+    var g=x.gravite||0;
+    entries.push({
+      id:'INC-'+(x.id||''), source:'Incidents',
+      site:x.lieu||'—', cat:x.type||'Incident',
+      desc:x.description||x.causes||'—',
+      action:hasAction?String(x.actions).trim():'À définir',
+      resp:x.responsable||'—',
+      prioRaw:g>=3?'Élevée':(g>=2?'Moyenne':'Faible'),
+      dCrea:x.date||'—', dEch:x.delai||'—', dClot:'—',
+      statut:actResolveStatut(x.statut, null, hasAction, x.delai)
+    });
+  });
+  tags.forEach(function(t){
+    var hasAction=!!((t.action&&String(t.action).trim())||(t.propositions&&String(t.propositions).trim()));
+    entries.push({
+      id:'TAG-'+(t.id||''), source:'TAGs',
+      site:t.zone||t.emplacement||'—', cat:'Situation dangereuse (TAG)',
+      desc:t.description||'—',
+      action:hasAction?String(t.action||t.propositions).trim():'À définir',
+      resp:t.responsable||'—',
+      prioRaw:tagIsOpen(t)?'Moyenne':'Faible',
+      dCrea:t.dateCreate||'—', dEch:t.dateCible||'—', dClot:'—',
+      statut:actResolveStatut(t.statut, null, hasAction, t.dateCible)
+    });
+  });
+  var statutCounts=statutOrder.map(function(s){return entries.filter(function(e){return e.statut===s;}).length;});
+  var bySource=['Accidents / Bilan AT','Incidents','TAGs'].map(function(sn){
+    var sub=entries.filter(function(e){return e.source===sn;});
+    return {name:sn, niv:statutOrder.map(function(s){return sub.filter(function(e){return e.statut===s;}).length;})};
+  }).filter(function(x){return x.niv.reduce(function(a,b){return a+b;},0)>0;});
+  var prioOrder=['Élevée','Moyenne','Faible'];
+  var prioCounts=prioOrder.map(function(p){return entries.filter(function(e){return e.prioRaw===p;}).length;});
+  var total=entries.length;
+  var clot=statutCounts[0], enCours=statutCounts[1], enRetard=statutCounts[2], nonDemarre=statutCounts[3];
+  return {
+    ok:true, total:total, sheet:'Dashboard — accidents · incidents · TAGs',
+    statutOrder:statutOrder, statutCounts:statutCounts, bySource:bySource,
+    responsables:actTop(entries,'resp',12), sites:actTop(entries,'site',10), categories:actTop(entries,'cat',12),
+    prioOrder:prioOrder, prioCounts:prioCounts, entries:entries,
+    kpis:{ clot:clot, tauxClot: total?Math.round(clot/total*100):0,
+      enCours:enCours, enRetard:enRetard, enRetardPct: total?Math.round(enRetard/total*100):0,
+      prioElevee:prioCounts[0], nonDemarre:nonDemarre }
+  };
+}
 function renderActions(){
-  if(_actData){ _renderActionsAll(); return; }
-  if(_actLoading) return;
-  _actLoading=true;
   var sum=document.getElementById('actSum');
-  if(sum) sum.innerHTML='⏳ Chargement du plan d\'actions global…';
-  google.script.run
-    .withSuccessHandler(function(res){
-      _actLoading=false;
-      if(!res||!res.ok){ if(sum) sum.innerHTML='⚠️ '+esc((res&&res.error)||'Erreur de chargement.'); return; }
-      _actData=res; _renderActionsAll();
-    })
-    .withFailureHandler(function(err){
-      _actLoading=false;
-      if(sum) sum.innerHTML='⚠️ Erreur réseau : '+esc((err&&err.message)||String(err));
-    })
-    .getActionPlanForClient();
+  if(!D){ if(sum) sum.innerHTML='⏳ Chargement des données du dashboard…'; return; }
+  _actData=buildActionsFromDashboard();
+  _renderActionsAll();
 }
 function _renderActionsAll(){
   var d=_actData; if(!d) return;
