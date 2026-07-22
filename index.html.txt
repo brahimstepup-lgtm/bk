@@ -9274,11 +9274,19 @@ function renderProcedures(){
         if(e.url){
           var safeUrl = escAttr(e.url);
           var safeLbl = escAttr(e.label || 'Document');
-          return '<a class="btn btn-ai" href="'+safeUrl+'" rel="noopener" '
+          var dlName  = escAttr(String(e.label || 'Document')
+                        .replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
+          return '<span style="display:inline-flex;gap:6px;align-items:center">'
+               + '<a class="btn btn-ai" href="'+safeUrl+'" rel="noopener" '
                + 'data-proc-url="'+safeUrl+'" data-proc-title="'+safeLbl+'" '
                + 'onclick="openProcedureEmbed(this.getAttribute(\'data-proc-url\'),this.getAttribute(\'data-proc-title\'));return false;" '
                + 'style="text-decoration:none;font-size:11px;padding:8px 14px;cursor:pointer">'
-               + '📑 ' + esc(e.label) + ' <span style="opacity:.7">↗</span></a>';
+               + '📑 ' + esc(e.label) + ' <span style="opacity:.7">↗</span></a>'
+               + '<a class="btn" href="'+safeUrl+'" rel="noopener" title="Télécharger le document" '
+               + 'data-dl-url="'+safeUrl+'" data-dl-name="'+dlName+'" '
+               + 'onclick="downloadDriveDoc(this.getAttribute(\'data-dl-url\'),this.getAttribute(\'data-dl-name\'));return false;" '
+               + 'style="text-decoration:none;font-size:11px;padding:8px 12px;cursor:pointer">⬇️</a>'
+               + '</span>';
         }
         return '<span class="btn" style="cursor:default;font-size:11px;padding:8px 14px">📑 '
              + esc(e.label) + '</span>';
