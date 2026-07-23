@@ -6685,8 +6685,13 @@ function renderVeilleScoring(){
     // Nouveau domaine : la ligne porte la cellule « Champ » (rowspan
     // ou ligne complète à 8 colonnes).
     if((tds[0].hasAttribute&&tds[0].hasAttribute('rowspan')) || tds.length>=8){
-      current=(tds[0].textContent||'').trim();
-      if(!doms[current]){ doms[current]={sum:0,n:0}; order.push(current); }
+      var champTxt=(tds[0].textContent||'').trim();
+      // Ignore une cellule « Champ » vide / factice (« — ») : évite un
+      // domaine parasite sans nom dans le scoring.
+      if(champTxt && champTxt!=='—'){
+        current=champTxt;
+        if(!doms[current]){ doms[current]={sum:0,n:0}; order.push(current); }
+      }
     }
     if(!current) return;
     // Conf. % = avant-avant-dernière colonne (Action & Réf. Doc. suivent).
@@ -6700,7 +6705,10 @@ function renderVeilleScoring(){
 
   var items=order.map(function(name){
     var d=doms[name];
-    return {name:name, score:d.n?Math.round(d.sum/d.n):0};
+    return {name:name, score:d.n?Math.round(d.sum/d.n):0, n:d.n};
+  }).filter(function(it){
+    // On n'affiche que les domaines nommés ayant au moins une valeur de conformité.
+    return it.n>0 && it.name && it.name!=='—';
   });
   var overall=items.length?Math.round(items.reduce(function(a,b){return a+b.score;},0)/items.length):0;
 
