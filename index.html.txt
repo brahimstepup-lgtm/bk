@@ -5657,13 +5657,38 @@ function canonHazard(raw){
   if(fam) return {key:fam, label:fam};
   return {key:s, label:String(raw).trim()};   // inconnu : dédoublonne casse/accents
 }
+// Clé de regroupement générique, insensible à la casse, aux accents,
+// aux espaces multiples et à la ponctuation finale. Utilisée partout
+// pour éviter que la même valeur saisie différemment (« Zone A » /
+// « zone a  » / « ZONE A. ») compte comme plusieurs catégories.
+function normKey(s){ return veilleNorm(s).replace(/[.;:,()\-–—/]+$/,'').trim(); }
+// Agrège une liste de valeurs en [{name,count}] en fusionnant les
+// variantes de saisie. Le libellé affiché est la variante la plus
+// fréquente (puis la plus courte). Trié par fréquence décroissante ;
+// tronqué à `limit` si fourni.
+function tally(values, limit){
+  var m={};
+  (values||[]).forEach(function(v){
+    var raw=String(v==null?'':v).trim(); if(!raw) return;
+    var k=normKey(raw); if(!k) return;
+    if(!m[k]) m[k]={variants:{}, total:0};
+    m[k].variants[raw]=(m[k].variants[raw]||0)+1; m[k].total++;
+  });
+  var out=Object.keys(m).map(function(k){
+    var vs=m[k].variants;
+    var label=Object.keys(vs).sort(function(a,b){return vs[b]-vs[a] || a.length-b.length;})[0];
+    return {name:label, count:m[k].total};
+  });
+  out.sort(function(a,b){return b.count-a.count;});
+  return limit?out.slice(0,limit):out;
+}
 function buildSensibCharts(){
   function kill(k){ if(_sensibCharts[k]){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } }
   kill('hazard'); kill('dept'); kill('team');
-  var hazards={}, depts={};
+  var hazards={}, deptVals=[];
   _sensibData.forEach(function(r){
     if(r.hazard){ var c=canonHazard(r.hazard); if(c.key){ if(!hazards[c.key]) hazards[c.key]={label:c.label,count:0}; hazards[c.key].count++; } }
-    if(r.department) depts[r.department]=(depts[r.department]||0)+1;
+    if(r.department) deptVals.push(r.department);
   });
   function mkBar(cid,labels,vals,key){
     var el=document.getElementById(cid); if(!el) return;
@@ -5671,8 +5696,8 @@ function buildSensibCharts(){
   }
   var hK=Object.keys(hazards).sort(function(a,b){return hazards[b].count-hazards[a].count;}).slice(0,8);
   mkBar('sensibHazardC',hK.map(function(k){return hazards[k].label;}),hK.map(function(k){return hazards[k].count;}),'hazard');
-  var dK=Object.keys(depts).sort(function(a,b){return depts[b]-depts[a];}).slice(0,8);
-  mkBar('sensibDeptC',dK,dK.map(function(k){return depts[k];}),'dept');
+  var dT=tally(deptVals,8);
+  mkBar('sensibDeptC',dT.map(function(x){return x.name;}),dT.map(function(x){return x.count;}),'dept');
 }
 
 // ── Brique 3 : Leaderboard formateurs ─────────────────────────
@@ -7106,10 +7131,7 @@ function actResolveStatut(rawStatut, pct, hasAction, echFr){
   return 'Non démarré';
 }
 function actTop(entries, field, n){
-  var m={};
-  entries.forEach(function(e){ var v=String(e[field]||'').trim(); if(v&&v!=='—') m[v]=(m[v]||0)+1; });
-  return Object.keys(m).map(function(k){return {name:k,count:m[k]};})
-    .sort(function(a,b){return b.count-a.count;}).slice(0,n||12);
+  return tally(entries.map(function(e){ var v=String(e[field]||'').trim(); return (v&&v!=='—')?v:''; }), n||12);
 }
 function buildActionsFromDashboard(){
   var statutOrder=['Clôturé / Terminé','En cours','En retard','Non démarré','Non renseigné'];
@@ -7843,9 +7865,8 @@ function renderAccBilan(){
   // ── Agrégations ────────────────────────────────────────────────
   var MO=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
   function topCount(field,limit,cut){
-    var mp={}; accs.forEach(function(a){ var v=a[field]; if(v){ var k=String(v).substring(0,cut||30); mp[k]=(mp[k]||0)+1; } });
-    var ks=Object.keys(mp).sort(function(x,y){return mp[y]-mp[x];}).slice(0,limit||6);
-    return {labels:ks,data:ks.map(function(k){return mp[k];})};
+    var t=tally(accs.map(function(a){return a[field];}), limit||6);
+    return {labels:t.map(function(x){return String(x.name).substring(0,cut||30);}), data:t.map(function(x){return x.count;})};
   }
   var njpM={}, cntM={};
   accs.forEach(function(a){ var mo=a.mois||'—'; njpM[mo]=(njpM[mo]||0)+(a.njp||0); cntM[mo]=(cntM[mo]||0)+1; });
@@ -8266,10 +8287,8 @@ function renderIncidents(incs){
     kpiCard('Clôturés',cl,'g','soldés','k-g',null,null)
   ].join('');
   // Zones
-  var zones={};
-  incs.forEach(function(i){if(i.lieu){var z=i.lieu.substring(0,25);zones[z]=(zones[z]||0)+1;}});
-  var zk=Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];}).slice(0,5);
-  mkChart('zoneC','bar',zk,[{data:zk.map(function(k){return zones[k];}),backgroundColor:[C.red,C.amber,C.p2,C.teal,C.purple],borderRadius:5}],
+  var izt=tally(incs.map(function(i){return i.lieu;}),5);
+  mkChart('zoneC','bar',izt.map(function(x){return String(x.name).substring(0,25);}),[{data:izt.map(function(x){return x.count;}),backgroundColor:[C.red,C.amber,C.p2,C.teal,C.purple],borderRadius:5}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
   // Causes racines (statique)
   document.getElementById('causeGrid').innerHTML=[
@@ -8430,19 +8449,15 @@ function applyTagF(){
   ].join('');
 
   // Types de dangers
-  var types={};
-  filtered.forEach(function(t){if(t.type){var ty=t.type.substring(0,22);types[ty]=(types[ty]||0)+1;}});
-  var tk=Object.keys(types).sort(function(a,b){return types[b]-types[a];}).slice(0,6);
+  var tt=tally(filtered.map(function(t){return t.type;}),6);
   if(charts['dangerC'])charts['dangerC'].destroy();
-  if(tk.length>0) new Chart(document.getElementById('dangerC'),{type:'doughnut',
-    data:{labels:tk,datasets:[{data:tk.map(function(k){return types[k];}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green,C.orange],borderWidth:0,hoverOffset:4}]},
+  if(tt.length>0) new Chart(document.getElementById('dangerC'),{type:'doughnut',
+    data:{labels:tt.map(function(x){return String(x.name).substring(0,22);}),datasets:[{data:tt.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green,C.orange],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});
 
   // Zones TAGs
-  var tzones={};
-  filtered.forEach(function(t){if(t.zone||t.emplacement){var z=(t.zone||t.emplacement).substring(0,18);tzones[z]=(tzones[z]||0)+1;}});
-  var tzk=Object.keys(tzones).sort(function(a,b){return tzones[b]-tzones[a];}).slice(0,6);
-  mkChart('tagZoneC','bar',tzk,[{data:tzk.map(function(k){return tzones[k];}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
+  var tzt=tally(filtered.map(function(t){return t.zone||t.emplacement;}),6);
+  mkChart('tagZoneC','bar',tzt.map(function(x){return String(x.name).substring(0,18);}),[{data:tzt.map(function(x){return x.count;}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
 
   // Table avec vignettes Avant / Après inline (chargement asynchrone)
@@ -8609,18 +8624,15 @@ function renderAccidents(accs){
   var njpL=[],njpD=[];
   ['Janvier','Février','Mars','Avril'].forEach(function(mo){if(njpM[mo]>=0){njpL.push(mo.substring(0,3));njpD.push(njpM[mo]);}});
   if(njpL.length>0) mkChart('njpC','bar',njpL,[{data:njpD,backgroundColor:[C.red,'rgba(232,68,90,.7)','rgba(232,68,90,.5)','rgba(232,68,90,.4)'],borderRadius:5}],BASE);
-  var zones={};accs.forEach(function(a){if(a.lieu){var z=a.lieu.substring(0,25);zones[z]=(zones[z]||0)+1;}});
-  var zk=Object.keys(zones).sort(function(a,b){return zones[b]-zones[a];}).slice(0,5);
-  if(zk.length>0) mkChart('accZC','bar',zk,[{data:zk.map(function(k){return zones[k];}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
+  var zt=tally(accs.map(function(a){return a.lieu;}),5);
+  if(zt.length>0) mkChart('accZC','bar',zt.map(function(x){return String(x.name).substring(0,25);}),[{data:zt.map(function(x){return x.count;}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
-  var causes={};accs.forEach(function(a){if(a.cause){var c=a.cause.substring(0,35);causes[c]=(causes[c]||0)+1;}});
-  var ck=Object.keys(causes).sort(function(a,b){return causes[b]-causes[a];}).slice(0,5);
-  if(ck.length>0) mkChart('accCC','bar',ck,[{data:ck.map(function(k){return causes[k];}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.purple],borderRadius:4}],
+  var ct=tally(accs.map(function(a){return a.cause;}),5);
+  if(ct.length>0) mkChart('accCC','bar',ct.map(function(x){return String(x.name).substring(0,35);}),[{data:ct.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.purple],borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
-  var foncs={};accs.forEach(function(a){if(a.fonction){var f=a.fonction.substring(0,25);foncs[f]=(foncs[f]||0)+1;}});
-  var fk=Object.keys(foncs).sort(function(a,b){return foncs[b]-foncs[a];}).slice(0,5);
-  if(fk.length>0){if(charts['accFC'])charts['accFC'].destroy();new Chart(document.getElementById('accFC'),{type:'doughnut',
-    data:{labels:fk,datasets:[{data:fk.map(function(k){return foncs[k];}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
+  var ft=tally(accs.map(function(a){return a.fonction;}),5);
+  if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();new Chart(document.getElementById('accFC'),{type:'doughnut',
+    data:{labels:ft.map(function(x){return String(x.name).substring(0,25);}),datasets:[{data:ft.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});}
   var ab=document.getElementById('accBody'); ab.innerHTML='';
   if(accs.length===0){ab.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">Aucun accident</td></tr>';return;}
@@ -10493,12 +10505,8 @@ function renderPermitsCharts(list){
   } catch(e){}
 
   // 2. Répartition par type (donut)
-  var typeMap = {};
-  list.forEach(function(p){
-    var t = (p.type || '').trim() || '— Non spécifié —';
-    typeMap[t] = (typeMap[t]||0) + 1;
-  });
-  var tk = Object.keys(typeMap).sort(function(a,b){return typeMap[b]-typeMap[a];}).slice(0, 8);
+  var ptt = tally(list.map(function(p){ return (p.type || '').trim() || '— Non spécifié —'; }), 8);
+  var tk = ptt.map(function(x){return x.name;});
   if (charts['permitsTypeC']) charts['permitsTypeC'].destroy();
   if (tk.length > 0) {
     try {
@@ -10507,7 +10515,7 @@ function renderPermitsCharts(list){
         data:{
           labels:tk,
           datasets:[{
-            data:tk.map(function(k){return typeMap[k];}),
+            data:ptt.map(function(x){return x.count;}),
             backgroundColor:[C.p4,C.amber,C.green,C.red,C.purple,C.teal,C.orange,C.p2],
             borderWidth:0,
             hoverOffset:4
@@ -10525,19 +10533,17 @@ function renderPermitsCharts(list){
   }
 
   // 3. Répartition par zone (Top 10 — barres horizontales)
-  var zoneMap = {};
+  var zoneVals = [];
   list.forEach(function(p){
     var z = (p.zone || p.interventions || '').trim();
     if (!z) return;
     // Si le champ contient plusieurs zones séparées par virgule / point-virgule, on splitte
     z.split(/\s*[;,/]\s*/).forEach(function(part){
-      var v = part.trim(); if (!v) return;
-      // Limiter la longueur pour l'affichage
-      if (v.length > 40) v = v.substring(0,38) + '…';
-      zoneMap[v] = (zoneMap[v]||0) + 1;
+      var v = part.trim(); if (v) zoneVals.push(v);
     });
   });
-  var zk = Object.keys(zoneMap).sort(function(a,b){return zoneMap[b]-zoneMap[a];}).slice(0, 10);
+  var pzt = tally(zoneVals, 10);
+  var zk = pzt.map(function(x){ var v=String(x.name); return v.length>40 ? v.substring(0,38)+'…' : v; });
   if (charts['permitsZoneC']) charts['permitsZoneC'].destroy();
   if (zk.length > 0) {
     try {
@@ -10547,7 +10553,7 @@ function renderPermitsCharts(list){
           labels:zk,
           datasets:[{
             label:'Permis',
-            data:zk.map(function(k){return zoneMap[k];}),
+            data:pzt.map(function(x){return x.count;}),
             backgroundColor:C.green,
             borderColor:C.teal,
             borderWidth:1,
