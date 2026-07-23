@@ -2161,6 +2161,8 @@ html.light .pests-search-input{background:#edf2f7}
       <span class="tag-filter-lbl">📍 Zone :</span>
       <select class="tag-dropdown" id="tagFilterZone" onchange="applyTagF()"><option value="all">Toutes</option></select>
     </div>
+    <button class="btn" onclick="applyTagF()" style="font-size:11px;padding:6px 14px;background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;border-color:var(--p3);font-weight:600" title="Appliquer les filtres">🔍 Filtrer</button>
+    <button class="btn" onclick="clearTagFilters()" style="font-size:11px;padding:6px 12px" title="Réinitialiser les filtres">↺ Réinitialiser</button>
     <div class="tag-stats-row" id="tagStatsRow" style="margin-bottom:0;margin-left:auto"></div>
   </div>
 
