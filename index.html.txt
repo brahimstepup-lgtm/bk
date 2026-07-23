@@ -5682,6 +5682,19 @@ function tally(values, limit){
   out.sort(function(a,b){return b.count-a.count;});
   return limit?out.slice(0,limit):out;
 }
+// Comme tally(), mais regroupe par famille de risque canonique
+// (canonHazard) : fusionne « Danger mécanique », « Mécanique »,
+// « Risque mécanique »… en une seule catégorie.
+function tallyHazard(values, limit){
+  var m={};
+  (values||[]).forEach(function(v){
+    var c=canonHazard(v); if(!c.key) return;
+    if(!m[c.key]) m[c.key]={name:c.label,count:0};
+    m[c.key].count++;
+  });
+  var out=Object.keys(m).map(function(k){return m[k];}).sort(function(a,b){return b.count-a.count;});
+  return limit?out.slice(0,limit):out;
+}
 function buildSensibCharts(){
   function kill(k){ if(_sensibCharts[k]){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } }
   kill('hazard'); kill('dept'); kill('team');
@@ -8336,21 +8349,22 @@ function isoFromFr(s){
 }
 function populateTagDropdowns(){
   if(!D||!D.tags) return;
-  var resps=new Set(),zones=new Set();
-  D.tags.forEach(function(t){
-    if(t.responsable&&t.responsable.trim()) resps.add(t.responsable.trim());
-    var z=(t.zone||t.emplacement||'').trim(); if(z) zones.add(z);
-  });
+  // Listes dédoublonnées (casse/accents/espaces) : une seule entrée par
+  // responsable / zone, alignée avec le filtrage normalisé.
+  var resps=tally(D.tags.map(function(t){return t.responsable;}));
+  var zones=tally(D.tags.map(function(t){return t.zone||t.emplacement;}));
+  resps.sort(function(a,b){return a.name.localeCompare(b.name);});
+  zones.sort(function(a,b){return a.name.localeCompare(b.name);});
   // Préserver la sélection courante lors d'un re-rendu (actualisation auto)
   var rSel=document.getElementById('tagFilterResp');
   var rCur=rSel.value||'all';
-  rSel.innerHTML='<option value="all">Tous ('+resps.size+')</option>';
-  Array.from(resps).sort().forEach(function(r){rSel.innerHTML+='<option value="'+esc(r)+'">'+esc(r)+'</option>';});
+  rSel.innerHTML='<option value="all">Tous ('+resps.length+')</option>';
+  resps.forEach(function(r){rSel.innerHTML+='<option value="'+esc(r.name)+'">'+esc(r.name)+'</option>';});
   rSel.value=rCur; if(rSel.value!==rCur) rSel.value='all';
   var zSel=document.getElementById('tagFilterZone');
   var zCur=zSel.value||'all';
-  zSel.innerHTML='<option value="all">Toutes ('+zones.size+')</option>';
-  Array.from(zones).sort().forEach(function(z){zSel.innerHTML+='<option value="'+esc(z)+'">'+esc(z)+'</option>';});
+  zSel.innerHTML='<option value="all">Toutes ('+zones.length+')</option>';
+  zones.forEach(function(z){zSel.innerHTML+='<option value="'+esc(z.name)+'">'+esc(z.name)+'</option>';});
   zSel.value=zCur; if(zSel.value!==zCur) zSel.value='all';
 }
 function setTagStat(val,el){
@@ -8397,8 +8411,10 @@ function applyTagF(){
     var isOpen=tagIsOpen(t);
     if(tagStatFilter==='open'&&!isOpen) return false;
     if(tagStatFilter==='closed'&&isOpen) return false;
-    if(filterResp!=='all'&&(t.responsable||'').trim()!==filterResp) return false;
-    if(filterZone!=='all'){var z=(t.zone||t.emplacement||'').trim();if(z!==filterZone)return false;}
+    // Comparaison normalisée (casse/accents/espaces) pour que le filtre
+    // capture toutes les variantes de saisie d'une même zone/responsable.
+    if(filterResp!=='all' && normKey(t.responsable)!==normKey(filterResp)) return false;
+    if(filterZone!=='all' && normKey(t.zone||t.emplacement)!==normKey(filterZone)) return false;
     if(p!=='all'){
       if(!t.isoDate) return p==='ytd';
       var pts=t.isoDate.split('-');
@@ -8448,8 +8464,8 @@ function applyTagF(){
     kpiCard('Clôture',fmtNum(cloPct)+'%','g','obj.95%','k-g',cloPct,cloPct>=95?C.green:cloPct>50?C.amber:C.red)
   ].join('');
 
-  // Types de dangers
-  var tt=tally(filtered.map(function(t){return t.type;}),6);
+  // Types de dangers (regroupés par famille de risque canonique)
+  var tt=tallyHazard(filtered.map(function(t){return t.type;}),6);
   if(charts['dangerC'])charts['dangerC'].destroy();
   if(tt.length>0) new Chart(document.getElementById('dangerC'),{type:'doughnut',
     data:{labels:tt.map(function(x){return String(x.name).substring(0,22);}),datasets:[{data:tt.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green,C.orange],borderWidth:0,hoverOffset:4}]},
