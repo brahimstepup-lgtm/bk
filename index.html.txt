@@ -6168,9 +6168,15 @@ function chimiquesRender() {
     var fdsCell;
     if (r.fds.toLowerCase() === 'oui') {
       if (r.fdsUrl) {
-        fdsCell = '<button onclick="chimiquesViewFds(\''+escH(r.fdsUrl)+'\')" '
+        var fdsName = escH(('FDS - ' + (r.name || 'produit')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
+        fdsCell = '<div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+          +'<button onclick="chimiquesViewFds(\''+escH(r.fdsUrl)+'\')" '
           +'style="background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3);'
-          +'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">📄 Voir FDS</button>';
+          +'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">📄 Voir FDS</button>'
+          +'<button onclick="downloadDriveDoc(\''+escH(r.fdsUrl)+'\',\''+fdsName+'\')" title="Télécharger la FDS" '
+          +'style="background:rgba(13,168,210,.15);color:var(--p4);border:1px solid rgba(13,168,210,.3);'
+          +'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">⬇️</button>'
+          +'</div>';
       } else {
         fdsCell = '<span style="color:var(--green);font-size:11px;font-weight:600">✅ Oui</span>';
       }
@@ -11007,9 +11013,15 @@ function chimiquesRender() {
     var fdsCell;
     if (r.fds.toLowerCase() === 'oui') {
       if (r.fdsUrl) {
-        fdsCell = '<button onclick="chimiquesViewFds(\'' + escAttr(r.fdsUrl) + '\')" '
+        var fdsName2 = escAttr(('FDS - ' + (r.name || 'produit')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
+        fdsCell = '<div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+          + '<button onclick="chimiquesViewFds(\'' + escAttr(r.fdsUrl) + '\')" '
           + 'style="background:rgba(16,201,133,.15);color:var(--green);border:1px solid rgba(16,201,133,.3);'
-          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">📄 Voir FDS</button>';
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">📄 Voir FDS</button>'
+          + '<button onclick="downloadDriveDoc(\'' + escAttr(r.fdsUrl) + '\',\'' + fdsName2 + '\')" title="Télécharger la FDS" '
+          + 'style="background:rgba(13,168,210,.15);color:var(--p4);border:1px solid rgba(13,168,210,.3);'
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">⬇️</button>'
+          + '</div>';
       } else {
         fdsCell = '<span style="color:var(--green);font-size:11px;font-weight:600">✅ Oui</span>';
       }
