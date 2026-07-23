@@ -1954,6 +1954,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('acc',this)">🩺 Bilan AT</button>
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
+  <button class="tab"    onclick="goTab('cphs',this);renderCphs()">🏛️ CPHS</button>
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('enr',this)">🗂️ Enregistrements</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
@@ -2274,6 +2275,30 @@ html.light .pests-search-input{background:#edf2f7}
         <thead><tr><th>ID</th><th>Source</th><th>Site / Lieu</th><th>Catégorie</th><th>Problème</th><th>Action corrective</th><th>Responsable</th><th>Priorité</th><th>Créée</th><th>Échéance</th><th>Clôture</th><th>Statut</th></tr></thead>
         <tbody id="actBody"></tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CPHS ═══ -->
+<div id="cphs" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:11px;color:var(--text3)">Commission Paritaire d'Hygiène et de Sécurité — <span id="cphsSheetName" style="font-family:'JetBrains Mono',monospace;color:var(--text2)">source dynamique</span></div>
+    <button class="btn" onclick="printCphs()" style="font-size:11px;padding:6px 12px" title="Télécharger le dossier CPHS au format PDF">🖨️ Télécharger PDF</button>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>📁 Documents CPHS par mois
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">PV · Règlement intérieur · PV d'installation · Décision</span>
+    </div>
+    <div id="cphsDocsBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>📋 Plan d'action CPHS
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">Mois · Action · Responsable · Date cible · État</span>
+    </div>
+    <div id="cphsActionsBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
     </div>
   </div>
 </div>
@@ -6447,6 +6472,134 @@ function goTab(id,el){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
   document.getElementById(id).classList.add('on'); el.classList.add('on');
   if(id==='veille'){ try{ renderVeilleScoring(); }catch(e){} }
+  if(id==='cphs'){ try{ renderCphs(); }catch(e){} }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CPHS — rendu dynamique (feuille « pv cphs … »)
+   ──────────────────────────────────────────────────────────────
+   Documents mensuels (PV, règlement intérieur, PV d'installation,
+   décision) avec boutons Voir/Télécharger + plan d'action CPHS.
+   ══════════════════════════════════════════════════════════════ */
+function cphsEtatBadge(v){
+  var s=veilleNorm(v);
+  if(!s) return '<span style="color:var(--text3);font-size:10px">—</span>';
+  var c;
+  if(s.indexOf('clotur')>-1||s.indexOf('termine')>-1||s.indexOf('realise')>-1||s.indexOf('fait')>-1) c={bg:'rgba(16,201,133,.14)',bd:'rgba(16,201,133,.45)',t:'var(--green)'};
+  else if(s.indexOf('cours')>-1||s.indexOf('planif')>-1) c={bg:'rgba(245,166,35,.14)',bd:'rgba(245,166,35,.45)',t:'var(--amber)'};
+  else if(s.indexOf('retard')>-1||s.indexOf('non')>-1) c={bg:'rgba(232,68,90,.14)',bd:'rgba(232,68,90,.45)',t:'var(--red)'};
+  else c={bg:'rgba(13,168,210,.14)',bd:'rgba(13,168,210,.4)',t:'var(--p4)'};
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.bd+';color:'+c.t+';font-weight:700;font-size:9px">'+esc(v)+'</span>';
+}
+function renderCphs(){
+  var docsBox=document.getElementById('cphsDocsBox');
+  var actBox=document.getElementById('cphsActionsBox');
+  var nameEl=document.getElementById('cphsSheetName');
+  var cphs=(D&&D.cphs)||{};
+  if(nameEl) nameEl.textContent=cphs.sheetName||'source dynamique';
+  var headers=cphs.docHeaders||[];
+  var docs=cphs.documents||[];
+  var actions=cphs.actions||[];
+
+  // ── Documents par mois ──────────────────────────────────────
+  if(docsBox){
+    if(!docs.length){
+      docsBox.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucun document CPHS trouvé dans le fichier source.</div>';
+    }else{
+      var th='<th>Mois</th>'+headers.map(function(h){return '<th style="text-align:center">'+esc(h)+'</th>';}).join('');
+      var rows=docs.map(function(d){
+        var cells=(d.links||[]).map(function(url,ci){
+          var label=headers[ci]||'Document';
+          if(!url||!/^https?:\/\//i.test(url)) return '<td style="text-align:center;color:var(--text3)">—</td>';
+          var fname=escAttr((String(label)+' - '+(d.mois||'')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim());
+          var safeUrl=escAttr(url), safeTitle=escAttr(String(label)+' · '+(d.mois||''));
+          return '<td style="text-align:center"><div style="display:inline-flex;gap:6px;align-items:center;justify-content:center">'
+            +'<a href="'+safeUrl+'" rel="noopener" class="tag-btn has-photo" title="Ouvrir dans le dashboard" '
+            +'data-u="'+safeUrl+'" data-t="'+safeTitle+'" onclick="viewAccPj(this.getAttribute(\'data-u\'),this.getAttribute(\'data-t\'));return false;" style="text-decoration:none">📄</a>'
+            +'<a href="'+safeUrl+'" rel="noopener" class="tag-btn has-photo" title="Télécharger" '
+            +'data-u="'+safeUrl+'" data-n="'+fname+'" onclick="downloadDriveDoc(this.getAttribute(\'data-u\'),this.getAttribute(\'data-n\'));return false;" style="text-decoration:none">⬇️</a>'
+            +'</div></td>';
+        }).join('');
+        return '<tr><td style="font-weight:600;color:var(--text)">'+esc(d.mois||'—')+'</td>'+cells+'</tr>';
+      }).join('');
+      docsBox.innerHTML='<div class="tblw"><table><thead><tr>'+th+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    }
+  }
+
+  // ── Plan d'action CPHS ──────────────────────────────────────
+  if(actBox){
+    var real=actions.filter(function(a){return a.action||a.responsable||a.dateCible||a.etat;});
+    if(!real.length){
+      actBox.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucune action CPHS renseignée dans le fichier source.</div>';
+    }else{
+      var arows=real.map(function(a,i){
+        return '<tr>'
+          +'<td class="mono" style="font-size:10px;color:var(--text3);text-align:center">'+(i+1)+'</td>'
+          +'<td><span class="rbadge">'+esc(a.mois||'—')+'</span></td>'
+          +'<td>'+esc(a.action||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(a.responsable||'—')+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(a.dateCible||'—')+'</td>'
+          +'<td style="text-align:center">'+cphsEtatBadge(a.etat)+'</td>'
+          +'</tr>';
+      }).join('');
+      actBox.innerHTML='<div class="tblw"><table><thead><tr><th>#</th><th>Mois</th><th>Action</th><th>Responsable</th><th>Date cible</th><th>État</th></tr></thead><tbody>'+arows+'</tbody></table></div>';
+    }
+  }
+}
+function printCphs(){
+  var cphs=(D&&D.cphs)||{};
+  var headers=cphs.docHeaders||[], docs=cphs.documents||[], actions=(cphs.actions||[]).filter(function(a){return a.action||a.responsable||a.dateCible||a.etat;});
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9.5px;vertical-align:top;color:#334155';
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Dossier CPHS</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Commission Paritaire d\'Hygiène et de Sécurité — SOBCO 3</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">CPHS '+today.getFullYear()+'</td></tr></table>';
+  var docTable='';
+  if(docs.length){
+    docTable='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:4px 0 6px">Documents par mois</div>'
+      +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +'<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">Mois</th>'
+      +headers.map(function(h){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(h)+'</th>';}).join('')
+      +'</tr></thead><tbody>'
+      +docs.map(function(d,i){
+        return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'"><td style="'+tdc+';font-weight:700">'+esc(d.mois||'—')+'</td>'
+          +(d.links||[]).map(function(u){return '<td style="'+tdc+';text-align:center">'+(u&&/^https?:/.test(u)?'<a href="'+esc(u)+'" style="color:#0369a1">Lien</a>':'—')+'</td>';}).join('')
+          +'</tr>';
+      }).join('')+'</tbody></table>';
+  }
+  var actTable='';
+  if(actions.length){
+    actTable='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:4px 0 6px">Plan d\'action CPHS</div>'
+      +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +['#','Mois','Action','Responsable','Date cible','État'].map(function(c){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+c+'</th>';}).join('')
+      +'</tr></thead><tbody>'
+      +actions.map(function(a,i){
+        return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+          +'<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>'
+          +'<td style="'+tdc+';font-weight:700">'+esc(a.mois||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(a.action||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(a.responsable||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(a.dateCible||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(a.etat||'—')+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+  if(!docs.length && !actions.length){ docTable='<div style="text-align:center;color:#94a3b8;padding:30px;font-style:italic">Aucune donnée CPHS dans le fichier source.</div>'; }
+  var w=window.open('','_blank','width=1050,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Dossier CPHS</title>'+styles+'</head><body>');
+  w.document.write(head+docTable+actTable);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Dossier CPHS · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
 }
 function goAI(){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
@@ -9198,6 +9351,7 @@ function render(data){
   document.getElementById('loader').style.display='none';
   document.getElementById('main').style.display='block';
   try{ renderVeilleScoring(); }catch(e){}
+  try{ renderCphs(); }catch(e){}
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
   document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
   document.getElementById('h-tf').textContent='TF: '+fmtNum(m.tf1_ytd);

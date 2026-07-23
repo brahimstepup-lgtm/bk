@@ -1185,6 +1185,126 @@ function readVeille(ss) {
   return { entries: entries, sheetName: sheetName };
 }
 
+// ════════════════════════════════════════════════════════════
+// CPHS — lecture dynamique de la feuille « pv cphs … »
+// ────────────────────────────────────────────────────────────
+// Deux tableaux dans la même feuille :
+//   • Documents par mois (gauche) : date/mois + PV, règlement
+//     intérieur, PV d'installation, décision (liens Drive).
+//   • Plan d'action (droite) : mois, action, responsable, date
+//     cible, état.
+// Renvoie { sheetName, docHeaders:[…], documents:[{mois,links:[…]}],
+//           actions:[{mois,action,responsable,dateCible,etat}] }.
+// ════════════════════════════════════════════════════════════
+function readCphs(ss) {
+  var res = { sheetName:'', docHeaders:[], documents:[], actions:[] };
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      if (normalize(sheets[i].getName()).indexOf('cphs') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) { Logger.log('CPHS sheet NOT found'); return res; }
+    res.sheetName = sh.getName();
+
+    var range = sh.getDataRange();
+    var data  = range.getValues();
+    var rich = null, formulas = null;
+    try { rich = range.getRichTextValues(); } catch(e0) {}
+    try { formulas = range.getFormulas();   } catch(eF) {}
+    if (!data || data.length < 2) return res;
+
+    function cellUrl(r, c) {
+      if (c < 0) return '';
+      if (formulas && formulas[r] && formulas[r][c]) {
+        var f = String(formulas[r][c] || '');
+        var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i); if (mH) return mH[1].trim();
+        var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);              if (mU) return mU[1].trim();
+      }
+      if (rich && rich[r] && rich[r][c]) {
+        var rt = rich[r][c];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl(); if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) for (var k = 0; k < runs.length; k++) {
+            var ru = runs[k].getLinkUrl && runs[k].getLinkUrl(); if (ru) return String(ru).trim();
+          }
+        } catch(eR) {}
+      }
+      var v = (data[r] || [])[c];
+      if (isNull(v)) return '';
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var m = s.match(/(https?:\/\/[^\s,;]+)/i);
+      return m ? m[1].trim() : '';
+    }
+    function txt(r, c) { return (c >= 0 && data[r] && !isNull(data[r][c])) ? String(data[r][c]).trim() : ''; }
+
+    // ── Bloc DOCUMENTS (gauche) : en-tête contenant « date » + « pv »
+    var docHdrRow = -1, colDate = -1, docCols = [];
+    for (var r = 0; r < Math.min(data.length, 14); r++) {
+      var joined = normalize((data[r] || []).join(' '));
+      if (joined.indexOf('date') > -1 && joined.indexOf('pv') > -1) { docHdrRow = r; break; }
+    }
+    if (docHdrRow > -1) {
+      var hrow = data[docHdrRow];
+      for (var c = 0; c < hrow.length; c++) {
+        var h = normalize(String(hrow[c] || '').trim());
+        if ((h === 'date' || h.indexOf('mois') > -1) && colDate < 0) { colDate = c; break; }
+      }
+      if (colDate < 0) colDate = 0;
+      // Colonnes documents = en-têtes non vides après la date, jusqu'au 1er trou.
+      for (var c2 = colDate + 1; c2 < hrow.length; c2++) {
+        var lbl = String(hrow[c2] || '').trim();
+        if (!lbl) break;
+        docCols.push({ idx:c2, label:lbl });
+      }
+      res.docHeaders = docCols.map(function(d){ return d.label; });
+      for (var rr = docHdrRow + 1; rr < data.length; rr++) {
+        var mois = txt(rr, colDate);
+        var links = docCols.map(function(d){ return cellUrl(rr, d.idx); });
+        var hasLink = links.some(function(u){ return !!u; });
+        if (!mois && !hasLink) continue;
+        res.documents.push({ mois: mois || '—', links: links });
+      }
+    }
+
+    // ── Bloc PLAN D'ACTION (droite) : cellule « plan d'action » ──
+    var planCol = -1, planTitleRow = -1;
+    for (var pr = 0; pr < Math.min(data.length, 14) && planTitleRow < 0; pr++) {
+      var prow = data[pr] || [];
+      for (var pc = 0; pc < prow.length; pc++) {
+        var pv = normalize(String(prow[pc] || '').trim());
+        if (pv.indexOf('plan') > -1 && pv.indexOf('action') > -1) { planCol = pc; planTitleRow = pr; break; }
+      }
+    }
+    if (planTitleRow > -1) {
+      // Ligne de sous-en-têtes = ligne suivante non vide.
+      var subRow = planTitleRow + 1;
+      while (subRow < data.length && normalize((data[subRow] || []).join(' ')).replace(/\s/g,'') === '') subRow++;
+      var A = { mois:-1, action:-1, resp:-1, cible:-1, etat:-1 };
+      var srow = data[subRow] || [];
+      for (var sc = Math.max(0, planCol); sc < srow.length; sc++) {
+        var sh2 = normalize(String(srow[sc] || '').trim());
+        if (!sh2) continue;
+        if (A.mois<0 && sh2.indexOf('mois')>-1) A.mois=sc;
+        else if (A.action<0 && sh2.indexOf('action')>-1) A.action=sc;
+        else if (A.resp<0 && (sh2.indexOf('respons')>-1 || sh2.indexOf('respens')>-1)) A.resp=sc;
+        else if (A.cible<0 && (sh2.indexOf('cible')>-1 || sh2.indexOf('date')>-1 || sh2.indexOf('echeance')>-1)) A.cible=sc;
+        else if (A.etat<0 && (sh2.indexOf('etat')>-1 || sh2.indexOf('statut')>-1 || sh2.indexOf('avancement')>-1)) A.etat=sc;
+      }
+      if (A.mois < 0) A.mois = planCol;
+      for (var ar = subRow + 1; ar < data.length; ar++) {
+        var mo = txt(ar, A.mois), ac = txt(ar, A.action), re = txt(ar, A.resp),
+            ci = txt(ar, A.cible), et = txt(ar, A.etat);
+        if (!mo && !ac && !re && !ci && !et) continue;
+        res.actions.push({ mois:mo, action:ac, responsable:re, dateCible:ci, etat:et });
+      }
+    }
+    Logger.log('CPHS: ' + res.documents.length + ' doc(s), ' + res.actions.length + ' action(s)');
+  } catch (e) { Logger.log('readCphs error: ' + e.message); }
+  return res;
+}
+
 function readProcedures(ss) {
   var entries = [];
   var extras  = [];
@@ -3583,6 +3703,9 @@ function getData() {
   var vg = readVeille(ss);
   out.veille          = (vg && vg.entries)   ? vg.entries   : [];
   out.veilleSheetName = (vg && vg.sheetName) ? vg.sheetName : '';
+
+  // ── CPHS (feuille "pv cphs …") ────────────────────────────
+  out.cphs = readCphs(ss);
 
   // ── Enregistrements HSE (feuille "enregistrements") ──────
   var en = readEnregistrements(ss);
