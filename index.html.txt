@@ -5634,20 +5634,43 @@ function buildSensibProgressBars(){
 
 // ── Brique 1 : Graphiques ──────────────────────────────────────
 var _SCOLS=['#0da8d2','#f5a623','#10c985','#e8445a','#7b5ea7','#4ab8c1','#d4a843','#6ec97b','#e88a5a'];
+// Canonicalise un « type de risque » saisi librement (casse, accents,
+// variantes d'orthographe, troncatures) vers une famille unique, afin
+// d'éviter les doublons dans les regroupements (ex. « Danger Mécanique »,
+// « danger mecanique », « Mécanique (happement) » → « Danger mécanique »).
+function canonHazard(raw){
+  var s=veilleNorm(raw); if(!s) return {key:'',label:''};
+  var hasMec=/mecaniq|\bmeca\b|happ|ecras|coince|machine|organe en mouvement/.test(s);
+  var hasElec=/electr/.test(s);
+  var fam=null;
+  if(hasMec&&hasElec)                               fam='Danger mécanique et électrique';
+  else if(hasMec)                                   fam='Danger mécanique';
+  else if(hasElec)                                  fam='Risque électrique';
+  else if(/gliss|chute|plain pied/.test(s))         fam='Glissade / Chute';
+  else if(/brul|thermiq/.test(s))                   fam='Brûlure / Risque thermique';
+  else if(/chimiq|corrosif|acide/.test(s))          fam='Risque chimique';
+  else if(/bruit/.test(s))                          fam='Bruit';
+  else if(/incendie|\bfeu\b|explos/.test(s))        fam='Incendie / Explosion';
+  else if(/hauteur/.test(s))                        fam='Travail en hauteur';
+  else if(/manutention|posture|lombaire|\bdos\b/.test(s)) fam='Manutention / Gestes & postures';
+  else if(/coup|tranchant/.test(s))                 fam='Coupure';
+  if(fam) return {key:fam, label:fam};
+  return {key:s, label:String(raw).trim()};   // inconnu : dédoublonne casse/accents
+}
 function buildSensibCharts(){
   function kill(k){ if(_sensibCharts[k]){ _sensibCharts[k].destroy(); delete _sensibCharts[k]; } }
   kill('hazard'); kill('dept'); kill('team');
   var hazards={}, depts={};
   _sensibData.forEach(function(r){
-    if(r.hazard) hazards[r.hazard]=(hazards[r.hazard]||0)+1;
+    if(r.hazard){ var c=canonHazard(r.hazard); if(c.key){ if(!hazards[c.key]) hazards[c.key]={label:c.label,count:0}; hazards[c.key].count++; } }
     if(r.department) depts[r.department]=(depts[r.department]||0)+1;
   });
   function mkBar(cid,labels,vals,key){
     var el=document.getElementById(cid); if(!el) return;
     _sensibCharts[key]=new Chart(el,{type:'bar',data:{labels:labels,datasets:[{data:vals,backgroundColor:_SCOLS.slice(0,vals.length),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'var(--text2)',font:{size:9}},grid:{display:false}},y:{ticks:{color:'var(--text3)',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}}}}});
   }
-  var hK=Object.keys(hazards).sort(function(a,b){return hazards[b]-hazards[a];}).slice(0,8);
-  mkBar('sensibHazardC',hK,hK.map(function(k){return hazards[k];}),'hazard');
+  var hK=Object.keys(hazards).sort(function(a,b){return hazards[b].count-hazards[a].count;}).slice(0,8);
+  mkBar('sensibHazardC',hK.map(function(k){return hazards[k].label;}),hK.map(function(k){return hazards[k].count;}),'hazard');
   var dK=Object.keys(depts).sort(function(a,b){return depts[b]-depts[a];}).slice(0,8);
   mkBar('sensibDeptC',dK,dK.map(function(k){return depts[k];}),'dept');
 }
