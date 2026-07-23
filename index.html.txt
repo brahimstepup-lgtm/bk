@@ -6488,9 +6488,42 @@ function veilleScoreColor(v){
   if(v>=25) return {t:'#f5a623',bg:'rgba(245,166,35,.14)',bd:'rgba(245,166,35,.45)'};
   return {t:'#e8445a',bg:'rgba(232,68,90,.14)',bd:'rgba(232,68,90,.45)'};
 }
+// Rendu dynamique du tableau de veille depuis le fichier source
+// (D.veille). Si aucune donnée n'est disponible, le tableau statique
+// intégré est conservé. Regroupe par « Champ » (rowspan).
+function renderVeilleTable(){
+  var tbl=document.getElementById('veilleTable'); if(!tbl) return;
+  var rows=(D&&D.veille)||[];
+  if(!rows.length) return;
+  var tbody=tbl.querySelector('tbody'); if(!tbody) return;
+  var groups=[], cur=null;
+  rows.forEach(function(r){
+    var champ=r.champ||'—';
+    if(!cur||cur.champ!==champ){ cur={champ:champ, items:[]}; groups.push(cur); }
+    cur.items.push(r);
+  });
+  function cc(v){ if(v==null) return 'var(--text3)'; if(v>=75) return 'var(--green)'; if(v>=25) return 'var(--amber)'; return 'var(--red)'; }
+  var html='';
+  groups.forEach(function(g){
+    g.items.forEach(function(r,idx){
+      html+='<tr>';
+      if(idx===0) html+='<td rowspan="'+g.items.length+'" style="font-weight:700;color:var(--p4)">'+esc(g.champ)+'</td>';
+      html+='<td class="mono" style="font-size:10px">'+esc(r.prescription||'—')+'</td>'
+        +'<td style="font-size:10px">'+esc(r.synthese||'—')+'</td>'
+        +'<td>'+(r.autorisation?'<span class="rbadge">'+esc(r.autorisation)+'</span>':'<span style="color:var(--text3);font-size:10px">—</span>')+'</td>'
+        +'<td class="mono">'+esc(r.expiration||'—')+'</td>'
+        +'<td><span style="color:'+cc(r.conf)+';font-weight:700">'+(r.conf==null?'—':r.conf+'%')+'</span></td>'
+        +'<td style="font-size:10px">'+esc(r.action||'—')+'</td>'
+        +'<td class="mono" style="font-size:9px">'+esc(r.refDoc||'—')+'</td>'
+        +'</tr>';
+    });
+  });
+  tbody.innerHTML=html;
+}
 function renderVeilleScoring(){
   var host=document.getElementById('veilleScore');
   if(!host) return;
+  try{ renderVeilleTable(); }catch(e){}
   var rows=document.querySelectorAll('#veilleTable tbody tr');
   var doms={}, order=[], current=null;
   var total=0, ge75=0, mid=0, lt25=0;

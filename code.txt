@@ -1091,6 +1091,100 @@ function readCleaningPlan(ss) {
 //   2) RichTextValues.getLinkUrl()
 //   3) URL en clair dans la valeur brute
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// VEILLE RÉGLEMENTAIRE — lecture dynamique du fichier source
+// ────────────────────────────────────────────────────────────
+// Recherche une feuille de veille (« veille », « recueil »,
+// « exigences légales », « réglementaire »…), détecte les colonnes
+// par en-tête et renvoie une ligne par prescription :
+//   { champ, prescription, synthese, autorisation, expiration,
+//     conf (0..100), action, refDoc }
+// Le « champ » (domaine) est reporté sur les lignes suivantes quand
+// la cellule est fusionnée/vide (regroupement). Tolérant : renvoie
+// [] si aucune feuille n'est trouvée (le tableau statique reste).
+// ════════════════════════════════════════════════════════════
+function readVeille(ss) {
+  var entries = [], sheetName = '';
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('veille') > -1 || n.indexOf('recueil') > -1 ||
+          (n.indexOf('exigence') > -1 && n.indexOf('legal') > -1) ||
+          n.indexOf('reglementaire') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) { Logger.log('Veille sheet NOT found'); return { entries: entries, sheetName: sheetName }; }
+    sheetName = sh.getName();
+    Logger.log('Veille sheet found: ' + sheetName);
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 2) return { entries: entries, sheetName: sheetName };
+
+    // ── Détection de la ligne d'en-tête + des colonnes ──────────
+    var C = { champ:-1, presc:-1, synth:-1, autor:-1, expir:-1, conf:-1, action:-1, ref:-1 };
+    var hdrRow = -1;
+    for (var r = 0; r < Math.min(data.length, 12); r++) {
+      var joined = normalize((data[r] || []).join(' '));
+      if (joined.indexOf('conform') > -1 ||
+          (joined.indexOf('prescription') > -1 && joined.indexOf('champ') > -1)) {
+        var row = data[r];
+        for (var c = 0; c < row.length; c++) {
+          var h = normalize(String(row[c] || '').replace(/[\n\r#]/g,' ').trim());
+          if (!h) continue;
+          if (C.champ<0 && (h.indexOf('champ')>-1 || h.indexOf('domaine')>-1 || h.indexOf('application')>-1)) C.champ=c;
+          else if (C.presc<0 && (h.indexOf('prescription')>-1 || h.indexOf('texte')>-1 || h.indexOf('titre')>-1 || h.indexOf('reference')>-1)) C.presc=c;
+          else if (C.synth<0 && (h.indexOf('synthese')>-1 || h.indexOf('contenu')>-1 || h.indexOf('resume')>-1 || h.indexOf('exigence')>-1)) C.synth=c;
+          else if (C.autor<0 && (h.indexOf('autorisation')>-1 || h.indexOf('type')>-1)) C.autor=c;
+          else if (C.expir<0 && (h.indexOf('expiration')>-1 || h.indexOf('echeance')>-1 || h.indexOf('validite')>-1)) C.expir=c;
+          else if (C.conf<0 && (h.indexOf('conform')>-1 || h.indexOf('conf %')>-1 || h==='conf' || h.indexOf('taux')>-1 || h.indexOf('%')>-1)) C.conf=c;
+          else if (C.action<0 && h.indexOf('action')>-1) C.action=c;
+          else if (C.ref<0 && (h.indexOf('ref')>-1 && h.indexOf('doc')>-1)) C.ref=c;
+        }
+        hdrRow = r; break;
+      }
+    }
+    if (hdrRow < 0 || C.conf < 0) { Logger.log('Veille header/conf column not detected'); return { entries: entries, sheetName: sheetName }; }
+    if (C.champ < 0) C.champ = 0;
+
+    // ── Conformité : « 100% », « 75 % », 0.75, 100 → 0..100 ─────
+    function parseConf(v) {
+      if (isNull(v)) return null;
+      var s = String(v).trim();
+      var m = s.match(/(-?\d+(?:[.,]\d+)?)\s*%/);
+      if (m) return Math.round(parseFloat(m[1].replace(',','.')));
+      var num = parseFloat(s.replace(',','.'));
+      if (isNaN(num)) return null;
+      if (num > 0 && num <= 1) return Math.round(num * 100);
+      return Math.round(num);
+    }
+    function cell(row, idx) { return (idx>=0 && !isNull(row[idx])) ? String(row[idx]).trim() : ''; }
+
+    var curChamp = '';
+    for (var rr = hdrRow + 1; rr < data.length; rr++) {
+      var row = data[rr];
+      if (!row) continue;
+      var ch = cell(row, C.champ);
+      if (ch) curChamp = ch;
+      var conf = parseConf(row[C.conf]);
+      var presc = cell(row, C.presc), synth = cell(row, C.synth);
+      // Ligne ignorée si ni prescription/synthèse ni conformité.
+      if (!presc && !synth && conf === null) continue;
+      entries.push({
+        champ: curChamp || '—',
+        prescription: presc,
+        synthese: synth,
+        autorisation: cell(row, C.autor),
+        expiration: cell(row, C.expir),
+        conf: conf,
+        action: cell(row, C.action),
+        refDoc: cell(row, C.ref)
+      });
+    }
+    Logger.log('Veille rows: ' + entries.length);
+  } catch (e) { Logger.log('readVeille error: ' + e.message); }
+  return { entries: entries, sheetName: sheetName };
+}
+
 function readProcedures(ss) {
   var entries = [];
   var extras  = [];
@@ -3484,6 +3578,11 @@ function getData() {
   var pr = readProcedures(ss);
   out.procedures        = (pr && pr.entries) ? pr.entries : [];
   out.proceduresExtras  = (pr && pr.extras)  ? pr.extras  : [];
+
+  // ── Veille réglementaire (feuille "veille" / "recueil …") ──
+  var vg = readVeille(ss);
+  out.veille          = (vg && vg.entries)   ? vg.entries   : [];
+  out.veilleSheetName = (vg && vg.sheetName) ? vg.sheetName : '';
 
   // ── Enregistrements HSE (feuille "enregistrements") ──────
   var en = readEnregistrements(ss);
