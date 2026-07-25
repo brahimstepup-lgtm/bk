@@ -3606,7 +3606,14 @@ html.light .pests-search-input{background:#edf2f7}
       </select>
       <button onclick="chimiquesResetFilters()"
               style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:11px;cursor:pointer">↺ Reset</button>
+      <button onclick="printChimiques()" title="Rapport produits chimiques &amp; FDS (PDF)"
+              style="padding:7px 14px;background:linear-gradient(135deg,var(--p1),var(--p2));border:1px solid var(--p3);border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">🖨️ Rapport (PDF)</button>
     </div>
+  </div>
+  <!-- Analyse : classement par famille / type et par danger -->
+  <div class="row2" id="chimiquesChartsWrap" style="display:none">
+    <div class="card"><div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Classement par famille / type</div><div class="cw" style="height:230px"><canvas id="chimiquesTypeC"></canvas></div></div>
+    <div class="card"><div class="ct"><span class="ct-dot" style="background:var(--red)"></span>Classement par danger</div><div class="cw" style="height:230px"><canvas id="chimiquesDangerC"></canvas></div></div>
   </div>
   <div class="card">
     <div class="ct">
@@ -11140,6 +11147,110 @@ if (typeof window.normalize !== 'function') {
 }
 
 
+// ══ PRODUITS CHIMIQUES — analyse par famille & par danger ══════
+// La famille provient des lignes « catégorie » de la feuille source ;
+// le danger est déduit du nom du produit (heuristique mots-clés).
+function chimType(name){
+  var s=veilleNorm(name);
+  if(/acide|sulfuriq|chlorhydriq|nitriq|phosphoriq/.test(s)) return 'Acides';
+  if(/soude|caustique|potasse|hydroxyde|base forte/.test(s)) return 'Bases';
+  if(/javel|hypochlorite|\bchlore\b/.test(s)) return 'Chlorés';
+  if(/desinfect|biocide|bacteric|fongicide|algicide/.test(s)) return 'Désinfectants / biocides';
+  if(/detergent|nettoyant|degraissant|savon|tensioactif/.test(s)) return 'Détergents';
+  if(/tartre|detartrant|sequestrant|dispersant|floculant|coagulant|inhibiteur|osmose|membrane|resine/.test(s)) return 'Traitement des eaux';
+  if(/\bsel\b|pastille|chlorure de sodium|regenerant/.test(s)) return 'Sels / régénérants';
+  return 'Autres';
+}
+function chimDanger(name){
+  var s=veilleNorm(name);
+  if(/acide|sulfuriq|chlorhydriq|nitriq|phosphoriq/.test(s)) return 'Corrosif — acide';
+  if(/soude|caustique|potasse|hydroxyde|base forte/.test(s)) return 'Corrosif — base';
+  if(/javel|hypochlorite|\bchlore\b|peroxyde|oxydant|comburant/.test(s)) return 'Oxydant / comburant';
+  if(/inflammable|solvant|alcool|essence|acetone|white spirit/.test(s)) return 'Inflammable';
+  if(/desinfect|biocide|bacteric|fongicide|algicide/.test(s)) return 'Biocide / désinfectant';
+  if(/detergent|nettoyant|degraissant|savon|tensioactif/.test(s)) return 'Irritant (détergent)';
+  if(/tartre|detartrant|sequestrant|dispersant|floculant|coagulant|inhibiteur/.test(s)) return 'Traitement des eaux';
+  if(/\bsel\b|pastille|chlorure de sodium/.test(s)) return 'Non dangereux / faible';
+  return 'Non classé';
+}
+function chimClassified(){
+  var out=[], curFam='';
+  (_chimiquesData||[]).forEach(function(r){
+    if(r.isCategory){ curFam=dechetsCleanCell(r.name); return; }
+    if(!r.name) return;
+    out.push({ name:r.name, qty:r.qty, fds:r.fds, fdsUrl:r.fdsUrl,
+      emplacement:r.emplacement, localisation:r.localisation,
+      famille:(curFam||chimType(r.name)), danger:chimDanger(r.name) });
+  });
+  return out;
+}
+function chimiquesRenderCharts(){
+  var wrap=document.getElementById('chimiquesChartsWrap'); if(!wrap) return;
+  var prods=chimClassified();
+  if(!prods.length){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  var tType=tally(prods.map(function(p){return p.famille;}),10);
+  var tDanger=tally(prods.map(function(p){return p.danger;}),10);
+  var PAL=[C.p4,C.amber,C.green,C.red,C.purple,C.teal,C.orange,'#8b5cf6','#14b8a6','#ec4899'];
+  mkChart('chimiquesTypeC','doughnut',tType.map(function(x){return x.name;}),
+    [{data:tType.map(function(x){return x.count;}),backgroundColor:PAL,borderWidth:0,hoverOffset:4}],
+    {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'});
+  mkChart('chimiquesDangerC','bar',tDanger.map(function(x){return x.name;}),
+    [{data:tDanger.map(function(x){return x.count;}),backgroundColor:tDanger.map(function(x,i){return PAL[i%PAL.length];}),borderRadius:4}],
+    Object.assign({},BASE,{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:C.grid},ticks:{color:C.txt,precision:0},beginAtZero:true},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+}
+function printChimiques(){
+  var prods=chimClassified();
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+  var fdsOk=prods.filter(function(p){return String(p.fds||'').toLowerCase()==='oui';}).length;
+  var tType=tally(prods.map(function(p){return p.famille;}),20);
+  var tDanger=tally(prods.map(function(p){return p.danger;}),20);
+  function imgOf(id){ var el=document.getElementById(id); if(!el||!el.toDataURL) return ''; try{return el.toDataURL('image/png');}catch(e){return '';} }
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Produits chimiques &amp; FDS</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Analyse : classement par famille et par danger — SOBCO 3</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:140px;text-align:center;vertical-align:middle;font-size:9.5px;color:#334155">'+prods.length+' produits<br>'+fdsOk+' avec FDS</td></tr></table>';
+  function distTable(title,arr){
+    return '<div style="font-size:11px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:0 0 5px">'+title+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;border:1px solid #cbd5e1;margin-bottom:12px"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +'<th style="'+tdc+';color:#fff;font-weight:700">Catégorie</th><th style="'+tdc+';text-align:right;color:#fff;font-weight:700">Nb produits</th></tr></thead><tbody>'
+      +arr.map(function(t,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'"><td style="'+tdc+'">'+esc(t.name)+'</td><td style="'+tdc+';text-align:right;font-weight:700">'+t.count+'</td></tr>';}).join('')
+      +'</tbody></table>';
+  }
+  var evoT=imgOf('chimiquesTypeC'), evoD=imgOf('chimiquesDangerC');
+  var charts2=(evoT||evoD)?'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">'
+    +(evoT?'<div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px"><div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:4px">Par famille</div><img src="'+evoT+'" style="width:100%"></div>':'')
+    +(evoD?'<div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px"><div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:4px">Par danger</div><img src="'+evoD+'" style="width:100%"></div>':'')
+    +'</div>':'';
+  var invTable='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:2px 0 6px">Inventaire</div>'
+    +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
+    +['Produit','Famille','Danger','Qté','FDS','Emplacement'].map(function(c){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+c+'</th>';}).join('')
+    +'</tr></thead><tbody>'
+    +prods.map(function(p,i){
+      var fdsTxt=p.fdsUrl?('<a href="'+esc(p.fdsUrl)+'" style="color:#0369a1">FDS</a>'):(String(p.fds||'').toLowerCase()==='oui'?'Oui':'—');
+      return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+        +'<td style="'+tdc+';font-weight:600">'+esc(p.name)+'</td><td style="'+tdc+'">'+esc(p.famille)+'</td><td style="'+tdc+'">'+esc(p.danger)+'</td>'
+        +'<td style="'+tdc+';text-align:center">'+esc(p.qty||'—')+'</td><td style="'+tdc+';text-align:center">'+fdsTxt+'</td><td style="'+tdc+'">'+esc(p.emplacement||'—')+'</td></tr>';
+    }).join('')
+    +'</tbody></table>';
+  var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}img{max-width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}div[style*="grid"]{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Produits chimiques & FDS</title>'+styles+'</head><body>');
+  w.document.write(head+'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+distTable('Répartition par famille',tType)+distTable('Répartition par danger',tDanger)+'</div>'+charts2+invTable);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:10px">SOBCO 3 — HSE · Produits chimiques &amp; FDS · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },600);
+}
+
 // ══ PRODUITS CHIMIQUES ET FDS ══════════════════════════════════
 var _chimiquesData = [];
 
@@ -11194,6 +11305,8 @@ function chimiquesRender() {
     if (r.fds.toLowerCase() === 'oui') fdsOk++;
     else fdsMissing++;
   });
+
+  try{ chimiquesRenderCharts(); }catch(e){}
 
   // KPIs
   var kpiRow = document.getElementById('chimiquesKpiRow');
