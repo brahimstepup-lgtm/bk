@@ -5337,14 +5337,31 @@ function readDechetsData() {
         } catch(eR) {}
       }
       var v = data[rIdx][cIdx];
-      if (isNull(v)) return '';
       if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
         try { return String(v.getUrl() || '').trim(); } catch(eU) {}
       }
-      var s = String(v).trim();
-      if (/^https?:\/\//i.test(s)) return s;
-      var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
-      if (mIn) return mIn[1].trim();
+      if (!isNull(v)) {
+        var s = String(v).trim();
+        if (/^https?:\/\//i.test(s)) return s;
+        var mIn = s.match(/(https?:\/\/[^\s,;]+)/i);
+        if (mIn) return mIn[1].trim();
+      }
+      // Repli ciblé : lit le lien RichText de CETTE cellule (capte un lien
+      // posé sur un nombre — ex. « 350 » — que la lecture par lot a manqué).
+      try {
+        var rtv = sh.getRange(rIdx + 1, cIdx + 1).getRichTextValue();
+        if (rtv) {
+          var u2 = rtv.getLinkUrl && rtv.getLinkUrl();
+          if (u2) return String(u2).trim();
+          var runs2 = rtv.getRuns && rtv.getRuns();
+          if (runs2 && runs2.length) {
+            for (var k2 = 0; k2 < runs2.length; k2++) {
+              var ru2 = runs2[k2].getLinkUrl && runs2[k2].getLinkUrl();
+              if (ru2) return String(ru2).trim();
+            }
+          }
+        }
+      } catch(eRt) {}
       return '';
     }
 
