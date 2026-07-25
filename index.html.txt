@@ -15063,6 +15063,7 @@ function renderKpiFiche(){
     {lbl:'Taux de Fréquence (TF)',          v:m.tf1_ytd, obj:30,   objTxt:'≤ 30',   lower:true},
     {lbl:'Énergie — Ratio ELT (kWh/u.p.)',  v:m.ratio_elt_ytd, obj:350,  objTxt:'≤ 350',  lower:true},
     {lbl:'Énergie — Ratio GAZ (m³/u.p.)',   v:m.ratio_gaz_ytd, obj:1200, objTxt:'≤ 1200', lower:true},
+    {lbl:'Énergie — Ratio EAU (m³/u.p.)',   v:m.ratio_eau_ytd, obj:5,    objTxt:'≤ 5',    lower:true},
     {lbl:'TVM — Taux de visite médicale (%)',v:m.tvm,    obj:95,   objTxt:'≥ 95 %', lower:false}
   ];
   h+='<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#0c4a6e;margin:0 0 6px">Synthèse des indicateurs (cumul annuel — YTD)</div>';
@@ -15090,6 +15091,8 @@ function renderKpiFiche(){
     {id:'kpiChartTG',  label:'Taux de Gravité (TG)',          arr:m.tg_months,   obj:0.8,  lower:true,  color:'#e8445a'},
     {id:'kpiChartTF',  label:'Taux de Fréquence (TF)',        arr:m.tf1_months,  obj:30,   lower:true,  color:'#f5a623'},
     {id:'kpiChartENV', label:'Énergie — Ratio ELT (kWh/u.p.)',arr:m.relt_months, obj:350,  lower:true,  color:'#0ea5e9'},
+    {id:'kpiChartGAZ', label:'Énergie — Ratio GAZ (m³/u.p.)', arr:m.rgaz_months, obj:1200, lower:true,  color:'#8b5cf6'},
+    {id:'kpiChartEAU', label:'Énergie — Ratio EAU (m³/u.p.)', arr:m.reau_months, obj:5,    lower:true,  color:'#14b8a6'},
     {id:'kpiChartTVM', label:'TVM — Visite médicale (%)',     arr:m.tvm_months,  obj:95,   lower:false, color:'#10c985'}
   ];
   h+='<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;color:#0c4a6e;margin:0 0 8px">Graphiques des indicateurs</div>';
@@ -15135,6 +15138,7 @@ function renderKpiFiche(){
   h+=monthlyBlock('Taux de Fréquence (TF)',      '#f5a623', m.tf1_months, 30,  true,  '');
   h+=monthlyBlock('Énergie — Ratio ELT (kWh/u.p.)','#0ea5e9', m.relt_months, 350, true, '');
   h+=monthlyBlock('Énergie — Ratio GAZ (m³/u.p.)', '#8b5cf6', m.rgaz_months, 1200,true, '');
+  h+=monthlyBlock('Énergie — Ratio EAU (m³/u.p.)', '#14b8a6', m.reau_months, 5,   true, '');
   h+=monthlyBlock('TVM — Taux de visite médicale','#10c985', m.tvm_months, 95,  false, '%');
 
   // ── Bloc consommations énergétiques (YTD) ─────────────────────
