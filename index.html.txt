@@ -3610,6 +3610,20 @@ html.light .pests-search-input{background:#edf2f7}
               style="padding:7px 14px;background:linear-gradient(135deg,var(--p1),var(--p2));border:1px solid var(--p3);border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">🖨️ Rapport (PDF)</button>
     </div>
   </div>
+  <!-- Modale : analyse FDS (danger réel extrait du PDF) -->
+  <div class="modal-bg" id="fdsInfoModal" style="display:none" onclick="if(event.target===this)closeModal('fdsInfoModal')">
+    <div class="modal-panel" style="max-width:560px;width:94vw" onclick="event.stopPropagation()">
+      <div class="modal-top">
+        <div class="modal-badge" style="background:rgba(232,68,90,.18);border-color:var(--red)">🔬</div>
+        <div class="modal-hdr-info">
+          <div class="modal-hdr-id" style="font-size:10px;color:var(--text3)">ANALYSE FDS</div>
+          <div class="modal-hdr-name" id="fdsInfoTitle">Produit</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('fdsInfoModal')">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="fdsInfoBody"></div>
+    </div>
+  </div>
   <!-- Analyse : classement par famille / type et par danger -->
   <div class="row2" id="chimiquesChartsWrap" style="display:none">
     <div class="card"><div class="ct"><span class="ct-dot" style="background:var(--p4)"></span>Classement par famille / type</div><div class="cw" style="height:230px"><canvas id="chimiquesTypeC"></canvas></div></div>
@@ -11150,6 +11164,48 @@ if (typeof window.normalize !== 'function') {
 // ══ PRODUITS CHIMIQUES — analyse par famille & par danger ══════
 // La famille provient des lignes « catégorie » de la feuille source ;
 // le danger est déduit du nom du produit (heuristique mots-clés).
+// ── Analyse RÉELLE des FDS (extraite du contenu des PDF Drive) ──
+// Classification SGH vérifiée dans la FDS. Clé : identifiant Drive du
+// fichier FDS (prioritaire) et/ou nom(s) de produit normalisé(s).
+var FDS_DB = [
+  { ids:['1aZt2tnqKyI2zOq-Airjm9jxVpmEpG_aT'], names:['soude caustique','soude caustique a 30','naoh','hydroxyde de sodium'],
+    mention:'Danger', pictos:['GHS05'], danger:'Corrosif',
+    hcodes:['H290 — Peut être corrosif pour les métaux','H314 — Provoque de graves brûlures de la peau et de graves lésions des yeux','H318 — Provoque de graves lésions des yeux'],
+    epi:'Gants nitrile (EN 374), lunettes/écran facial, protection respiratoire P2', stockage:'15–25 °C, récipient résistant à la corrosion, fermé de façon étanche' },
+  { ids:['1lLcQpRO_D_QAi3XDTzOdMJc1n1bVHjXI'], names:['ac8836','ac 8836','ac8836 circuit fermes'],
+    mention:'Attention', pictos:['GHS07'], danger:'Irritant (yeux)',
+    hcodes:['H319 — Provoque une sévère irritation des yeux'],
+    epi:'Gants de protection, lunettes de protection / écran facial', stockage:'10–35 °C, à l’abri de la lumière' },
+  { ids:['1SksPIl5I_m4RxAfg95vjwn8rF2dHmRBC'], names:['dcl94','dcl 94'],
+    mention:'Attention', pictos:['GHS07'], danger:'Nocif',
+    hcodes:['H302 — Nocif en cas d’ingestion','EUH031 — Au contact d’un acide, dégage un gaz toxique'],
+    epi:'Gants, lunettes ; protection respiratoire FFP2 si ventilation insuffisante', stockage:'10–35 °C, à l’écart des acides' },
+  { ids:['1khJx8O556u4CPENUuHXohHT67V8zx0Hk'], names:['acide peracetique','acide peracétique'],
+    mention:'Danger', pictos:['GHS02','GHS05','GHS07','GHS09'], danger:'Corrosif · Comburant · Inflammable',
+    hcodes:['H226 — Liquide et vapeurs inflammables','H242 — Peut s’enflammer (peroxyde organique)','H302 — Nocif en cas d’ingestion','H312 — Nocif par contact cutané','H314 — Provoque de graves brûlures','H332 — Nocif par inhalation','H335 — Peut irriter les voies respiratoires','H400 — Très toxique pour les organismes aquatiques'],
+    epi:'Gants, lunettes/écran facial, protection respiratoire ; à l’écart des matières combustibles', stockage:'Frais, ventilé, à l’écart des matières combustibles et des acides/bases' }
+];
+var _fdsById=null, _fdsByName=null;
+function fdsBuildIndex(){
+  if(_fdsById) return;
+  _fdsById={}; _fdsByName={};
+  FDS_DB.forEach(function(f){
+    (f.ids||[]).forEach(function(id){ _fdsById[id]=f; });
+    (f.names||[]).forEach(function(n){ _fdsByName[normKey(n)]=f; });
+  });
+}
+// Retourne l'analyse FDS d'un produit (par id de fichier puis par nom).
+function getFdsInfo(product){
+  fdsBuildIndex();
+  var id=extractDriveIdFront(product&&product.fdsUrl);
+  if(id && _fdsById[id]) return _fdsById[id];
+  var k=normKey(product&&product.name);
+  if(k && _fdsByName[k]) return _fdsByName[k];
+  // Correspondance partielle sur le nom (ex. « AC8836 circuit fermés »)
+  var keys=Object.keys(_fdsByName);
+  for(var i=0;i<keys.length;i++){ if(k.indexOf(keys[i])>-1||keys[i].indexOf(k)>-1) return _fdsByName[keys[i]]; }
+  return null;
+}
 function chimType(name){
   var s=veilleNorm(name);
   if(/acide|sulfuriq|chlorhydriq|nitriq|phosphoriq/.test(s)) return 'Acides';
@@ -11178,11 +11234,43 @@ function chimClassified(){
   (_chimiquesData||[]).forEach(function(r){
     if(r.isCategory){ curFam=dechetsCleanCell(r.name); return; }
     if(!r.name) return;
-    out.push({ name:r.name, qty:r.qty, fds:r.fds, fdsUrl:r.fdsUrl,
+    var item={ name:r.name, qty:r.qty, fds:r.fds, fdsUrl:r.fdsUrl,
       emplacement:r.emplacement, localisation:r.localisation,
-      famille:(curFam||chimType(r.name)), danger:chimDanger(r.name) });
+      famille:(curFam||chimType(r.name)), danger:chimDanger(r.name), fdsVerified:false };
+    var info=getFdsInfo(item);
+    if(info){ item.fdsInfo=info; item.danger=info.danger; item.fdsVerified=true; }
+    out.push(item);
   });
   return out;
+}
+// Affiche l'analyse FDS extraite (modale) pour un produit donné.
+function showFdsInfo(pname){
+  var prods=chimClassified();
+  var p=null; for(var i=0;i<prods.length;i++){ if(prods[i].name===pname){ p=prods[i]; break; } }
+  var info=p&&p.fdsInfo;
+  var body=document.getElementById('fdsInfoBody');
+  var title=document.getElementById('fdsInfoTitle');
+  if(title) title.textContent=(p?p.name:'Produit');
+  if(body){
+    if(!info){ body.innerHTML='<div style="color:var(--text3);font-size:12px;padding:8px">Aucune analyse FDS disponible pour ce produit. Le classement affiché est déduit du nom.</div>'; }
+    else{
+      var mColor=/danger/i.test(info.mention)?'var(--red)':'var(--amber)';
+      body.innerHTML=''
+        +'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'
+          +'<span style="padding:4px 12px;border-radius:6px;font-weight:800;font-size:12px;color:#fff;background:'+mColor+'">'+esc(info.mention||'—')+'</span>'
+          +(info.pictos||[]).map(function(g){return '<span style="padding:3px 9px;border-radius:6px;background:var(--bg4);border:1px solid var(--border);font-family:monospace;font-size:11px;color:var(--text2)">'+esc(g)+'</span>';}).join('')
+          +'<span style="margin-left:auto;padding:3px 10px;border-radius:6px;background:rgba(232,68,90,.14);border:1px solid rgba(232,68,90,.4);color:var(--red);font-weight:700;font-size:11px">'+esc(info.danger||'')+'</span>'
+        +'</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin:6px 0 4px">Mentions de danger</div>'
+        +'<ul style="margin:0 0 10px;padding-left:18px;font-size:12px;color:var(--text);line-height:1.5">'+(info.hcodes||[]).map(function(h){return '<li>'+esc(h)+'</li>';}).join('')+'</ul>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin:6px 0 3px">EPI recommandés</div>'
+        +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'+esc(info.epi||'—')+'</div>'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;color:var(--text3);margin:6px 0 3px">Stockage</div>'
+        +'<div style="font-size:12px;color:var(--text2);margin-bottom:8px">'+esc(info.stockage||'—')+'</div>'
+        +'<div style="font-size:9px;color:var(--text3);margin-top:8px;border-top:1px solid var(--border);padding-top:6px">✔ Données extraites de la fiche de données de sécurité (FDS).</div>';
+    }
+  }
+  openModal('fdsInfoModal');
 }
 function chimiquesRenderCharts(){
   var wrap=document.getElementById('chimiquesChartsWrap'); if(!wrap) return;
@@ -11366,6 +11454,9 @@ function chimiquesRender() {
           + '<button onclick="downloadDriveDoc(\'' + escAttr(r.fdsUrl) + '\',\'' + fdsName2 + '\')" title="Télécharger la FDS" '
           + 'style="background:rgba(13,168,210,.15);color:var(--p4);border:1px solid rgba(13,168,210,.3);'
           + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">⬇️</button>'
+          + (getFdsInfo(r) ? '<button onclick="showFdsInfo(\'' + escAttr(r.name).replace(/'/g,'&#39;') + '\')" title="Danger réel extrait de la FDS" '
+              + 'style="background:rgba(232,68,90,.15);color:var(--red);border:1px solid rgba(232,68,90,.3);'
+              + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">🔬</button>' : '')
           + '</div>';
       } else {
         fdsCell = '<span style="color:var(--green);font-size:11px;font-weight:600">✅ Oui</span>';
