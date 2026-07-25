@@ -2352,6 +2352,11 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ ÉNERGIE ═══ -->
 <div id="env" class="page">
+  <div style="display:flex;justify-content:flex-end;margin-bottom:11px">
+    <button class="crud-btn add" style="font-size:11px;padding:6px 14px"
+            onclick="printEnergyReport()"
+            title="Générer le rapport de suivi énergétique (PDF)">📊 Rapport de suivi énergétique</button>
+  </div>
   <div class="egrid" id="egrids"></div>
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px">
     <span style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace">VUE :</span>
@@ -8697,6 +8702,115 @@ function updateEnvCharts(){
   mkChart('eltC','line',ce.labels,eltDs,envOpts);
   mkChart('gazC','line',cg.labels,gazDs,envOpts);
   mkChart('eauC','bar',cw.labels,eauDs,envOpts);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RAPPORT DE SUIVI ÉNERGÉTIQUE (PDF)
+   ──────────────────────────────────────────────────────────────
+   Synthèse des consommations et ratios (ELT · GAZ · EAU) avec
+   objectifs, évolution mensuelle et statut de conformité.
+   ══════════════════════════════════════════════════════════════ */
+function printEnergyReport(){
+  var m=(D&&D.metrics)||{};
+  var hdrs=(D&&D.monthHeaders)||[];
+  function mlabel(i){ return (hdrs[i]?String(hdrs[i]).replace(/-\d{2,4}$/,'').trim():'')||ML[i]||('M'+(i+1)); }
+  function val(v){ return (v===null||v===undefined||v==='')?'—':fmtNum(v); }
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+
+  function statut(v,obj){
+    if(v===null||v===undefined||v===''||obj==null) return {t:'—',bg:'#f1f5f9',bd:'#d0d0d0',c:'#64748b'};
+    return (parseFloat(v)<=obj)?{t:'✔ Conforme',bg:'#dcfce7',bd:'#86efac',c:'#166534'}
+                              :{t:'✖ Écart',   bg:'#fee2e2',bd:'#fca5a5',c:'#991b1b'};
+  }
+  function monthlyBlock(title,color,arr,obj,unit){
+    arr=arr||[]; var idx=[];
+    for(var i=0;i<Math.max(arr.length,hdrs.length,12);i++){ if(arr[i]!=null&&arr[i]!=='') idx.push(i); }
+    var t='<div style="font-size:11px;font-weight:800;color:'+color+';margin:0 0 5px;display:flex;align-items:center;gap:6px">'
+      +'<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:'+color+'"></span>'+esc(title)
+      +(obj!=null?'<span style="font-size:9px;color:#94a3b8;font-weight:600;margin-left:auto">Objectif ≤ '+fmtNum(obj)+(unit||'')+'</span>':'')+'</div>';
+    if(!idx.length){ t+='<div style="font-size:10px;color:#94a3b8;font-style:italic;margin-bottom:12px">Aucune donnée mensuelle.</div>'; return t; }
+    t+='<table style="width:100%;border-collapse:collapse;border:1px solid #cbd5e1;margin-bottom:14px"><tr style="background:#f1f5f9">';
+    t+='<td style="'+td+';font-weight:700;color:#475569;width:70px">Mois</td>';
+    idx.forEach(function(i){ t+='<td style="'+td+';text-align:center;font-weight:700;color:#334155">'+esc(mlabel(i))+'</td>'; });
+    t+='</tr><tr><td style="'+td+';font-weight:700;color:'+color+'">Valeur</td>';
+    idx.forEach(function(i){
+      var v=arr[i], c=(obj==null)?'#0f172a':(parseFloat(v)<=obj?'#166534':'#991b1b');
+      t+='<td style="'+td+';text-align:center;font-weight:700;color:'+c+'">'+fmtNum(v)+(unit||'')+'</td>';
+    });
+    t+='</tr></table>';
+    return t;
+  }
+
+  var h='<div id="energyReportPrint">';
+  // En-tête
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Rapport de suivi énergétique</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Électricité · Gaz · Eau — consommations &amp; ratios par unité produite</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:170px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1">SUIVI-ÉNERGIE</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td><td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
+
+  // Synthèse YTD
+  var rows=[
+    {lbl:'Consommation Électricité (kWh)', v:m.elt_ytd, obj:null, objTxt:'—'},
+    {lbl:'Consommation Gaz (m³)',          v:m.gaz_ytd, obj:null, objTxt:'—'},
+    {lbl:'Consommation Eau (m³)',          v:m.eau_ytd, obj:null, objTxt:'—'},
+    {lbl:'Ratio ELT (kWh/u.p.)',           v:m.ratio_elt_ytd, obj:350,  objTxt:'≤ 350'},
+    {lbl:'Ratio GAZ (m³/u.p.)',            v:m.ratio_gaz_ytd, obj:1200, objTxt:'≤ 1200'},
+    {lbl:'Ratio EAU (m³/u.p.)',            v:m.ratio_eau_ytd, obj:5,    objTxt:'≤ 5'}
+  ];
+  h+='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:0 0 6px">Synthèse (cumul annuel — YTD)</div>';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px"><thead><tr style="background:#0c4a6e;color:#fff">'
+    +'<th style="'+td+';color:#fff;font-weight:700;font-size:9px">Indicateur</th>'
+    +'<th style="'+td+';width:120px;text-align:center;color:#fff;font-weight:700;font-size:9px">Valeur YTD</th>'
+    +'<th style="'+td+';width:90px;text-align:center;color:#fff;font-weight:700;font-size:9px">Objectif</th>'
+    +'<th style="'+td+';width:110px;text-align:center;color:#fff;font-weight:700;font-size:9px">Statut</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var s=statut(r.v,r.obj), bg=i%2===0?'#fff':'#f8fafc';
+    h+='<tr style="background:'+bg+'"><td style="'+td+';font-weight:700;color:#1e293b">'+esc(r.lbl)+'</td>'
+      +'<td style="'+td+';text-align:center;font-weight:800;font-size:12px;color:#0f172a">'+val(r.v)+'</td>'
+      +'<td style="'+td+';text-align:center;color:#555">'+r.objTxt+'</td>'
+      +'<td style="'+td+';text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:4px;background:'+s.bg+';border:1px solid '+s.bd+';color:'+s.c+';font-weight:700;font-size:9px;white-space:nowrap">'+s.t+'</span></td></tr>';
+  });
+  h+='</tbody></table>';
+
+  // Évolution mensuelle
+  h+='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:0 0 8px">Évolution mensuelle des ratios</div>';
+  h+=monthlyBlock('Ratio ELT (kWh/u.p.)','#f5a623', m.relt_months, 350, '');
+  h+=monthlyBlock('Ratio GAZ (m³/u.p.)', '#e8445a', m.rgaz_months, 1200,'');
+  h+=monthlyBlock('Ratio EAU (m³/u.p.)', '#14b8a6', m.reau_months, 5,   '');
+  h+='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:2px 0 8px">Évolution mensuelle des consommations</div>';
+  h+=monthlyBlock('Électricité (kWh)','#f59e0b', m.elt_months, null, '');
+  h+=monthlyBlock('Gaz (m³)',         '#ef4444', m.gaz_months, null, '');
+  h+=monthlyBlock('Eau (m³)',         '#0ea5e9', m.eau_months, null, '');
+
+  // Note + signatures
+  h+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;padding:8px 12px;font-size:9.5px;color:#1e3a5f;margin:2px 0 14px">'
+    +'ℹ️ <strong>Objectifs :</strong> Ratio ELT ≤ 350 kWh/UP · Ratio GAZ ≤ 1200 m³/UP · Ratio EAU ≤ 5 m³/UP. Les ratios sont exprimés par unité produite (UP).</div>';
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><tr>'
+    +['Établi par','Vérifié par','Approuvé par'].map(function(l){
+      return '<td style="'+td+';width:33%;text-align:center;padding:18px 8px"><div style="font-size:10px;font-weight:700;margin-bottom:28px">'+l+'</div>'
+        +'<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div></td>';
+    }).join('')+'</tr></table>';
+  h+='</div>';
+
+  var w=window.open('','_blank','width=1050,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 portrait}table{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport de suivi énergétique</title>'+styles+'</head><body>');
+  w.document.write(h);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:10px">SOBCO 3 — HSE · Rapport de suivi énergétique · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
 }
 
 // ══ NETTOYAGE ═════════════════════════════════════════════════
