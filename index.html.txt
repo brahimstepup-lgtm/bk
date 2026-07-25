@@ -11183,7 +11183,23 @@ var FDS_DB = [
   { ids:['1khJx8O556u4CPENUuHXohHT67V8zx0Hk'], names:['acide peracetique','acide peracétique'],
     mention:'Danger', pictos:['GHS02','GHS05','GHS07','GHS09'], danger:'Corrosif · Comburant · Inflammable',
     hcodes:['H226 — Liquide et vapeurs inflammables','H242 — Peut s’enflammer (peroxyde organique)','H302 — Nocif en cas d’ingestion','H312 — Nocif par contact cutané','H314 — Provoque de graves brûlures','H332 — Nocif par inhalation','H335 — Peut irriter les voies respiratoires','H400 — Très toxique pour les organismes aquatiques'],
-    epi:'Gants, lunettes/écran facial, protection respiratoire ; à l’écart des matières combustibles', stockage:'Frais, ventilé, à l’écart des matières combustibles et des acides/bases' }
+    epi:'Gants, lunettes/écran facial, protection respiratoire ; à l’écart des matières combustibles', stockage:'Frais, ventilé, à l’écart des matières combustibles et des acides/bases' },
+  { ids:['1N4LcKqcCZWfdUZFOGc9sdhVru6TFngDV'], names:['as461','as 461'],
+    mention:'—', pictos:[], danger:'Non classé dangereux',
+    hcodes:['Aucune mention de danger — mélange non classé (antitartre osmose inverse, base faible, pH 10–11)'],
+    epi:'Gants et lunettes de protection (précaution générale)', stockage:'10–35 °C, à l’abri de la lumière' },
+  { ids:['1HSoRH6lwxQlnBHay6deOdmj9LkVNtVo6'], names:['alg60','alg 60'],
+    mention:'Attention', pictos:['GHS07','GHS09'], danger:'Irritant · Dangereux pour l’environnement',
+    hcodes:['H315 — Provoque une irritation cutanée','H319 — Provoque une sévère irritation des yeux','H412 — Nocif pour les organismes aquatiques (effets à long terme)'],
+    epi:'Gants, lunettes/écran facial ; éviter le rejet dans l’environnement', stockage:'10–35 °C, à l’abri de la lumière' },
+  { ids:['1GSJHDth1K2dMoKxQ08SPVeQU8VIw2Gvy'], names:['bd5600','bd 5600'],
+    mention:'—', pictos:[], danger:'Non classé dangereux',
+    hcodes:['Aucune mention de danger — mélange non classé (biodispersant)'],
+    epi:'Gants en cas de contact prolongé, lunettes de sécurité (EN 166)', stockage:'10–35 °C, à l’abri de la lumière' },
+  { ids:['1SoUonV9w504V7DtfOvP4NNsVdhQo35s4'], names:['osmoclean'],
+    mention:'Attention', pictos:['GHS07'], danger:'Irritant (yeux)',
+    hcodes:['H319 — Provoque une sévère irritation des yeux (acide citrique)'],
+    epi:'Gants (EN 374), lunettes de sécurité (EN 166)', stockage:'10–35 °C, à l’abri de la lumière' }
 ];
 var _fdsById=null, _fdsByName=null;
 function fdsBuildIndex(){
