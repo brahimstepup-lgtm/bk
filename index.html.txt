@@ -3654,6 +3654,8 @@ html.light .pests-search-input{background:#edf2f7}
               style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:11px;cursor:pointer">↺ Reset</button>
       <a id="dechetsSourceLink" href="#" target="_blank" rel="noopener"
          style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--p4);font-size:11px;text-decoration:none">↗ Ouvrir la feuille</a>
+      <button onclick="printDechets()" title="Générer le rapport de suivi des déchets (PDF)"
+              style="padding:7px 14px;background:linear-gradient(135deg,var(--p1),var(--p2));border:1px solid var(--p3);border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">🖨️ Rapport de suivi (PDF)</button>
     </div>
   </div>
   <!-- Graphiques : évolution mensuelle -->
@@ -6509,6 +6511,93 @@ function dechetsRenderCharts(headers, rows){
       }catch(e){}
     });
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   RAPPORT DE SUIVI DES DÉCHETS (PDF)
+   ══════════════════════════════════════════════════════════════ */
+function printDechets(){
+  var D2=_dechetsData||{headers:[],rows:[]};
+  var headers=D2.headers||[], rows=D2.rows||[];
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+
+  // Détection colonne mois + colonnes numériques (types)
+  var moCol=-1;
+  for(var c=0;c<headers.length;c++){ var h=String(headers[c]||'').toLowerCase();
+    if(moCol<0 && (h.indexOf('mois')>-1||h.indexOf('date')>-1||h.indexOf('periode')>-1||h.indexOf('période')>-1)) moCol=c; }
+  if(moCol<0) moCol=0;
+  var typeCols=[];
+  for(var c2=0;c2<headers.length;c2++){ if(c2===moCol||!dechetsCleanCell(headers[c2])) continue;
+    if(rows.some(function(r){return dechetsToNum((r.cells||[])[c2])!=null;})) typeCols.push(c2); }
+  var mRows=rows.filter(function(r){ return dechetsCleanCell((r.cells||[])[moCol])!==''; });
+
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Rapport de suivi des déchets</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Fiche de suivi des déchets — SOBCO 3</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">SUIVI-DÉCHETS<br>'+today.getFullYear()+'</td></tr></table>';
+
+  // Synthèse : total par type
+  var synth='';
+  if(typeCols.length){
+    var totals=typeCols.map(function(c){ var s=0; mRows.forEach(function(r){ var n=dechetsToNum((r.cells||[])[c]); if(n!=null)s+=n; }); return {label:dechetsCleanCell(headers[c]),total:s}; });
+    synth='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:0 0 6px">Synthèse — total par type (cumul)</div>'
+      +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +'<th style="'+tdc+';color:#fff;font-weight:700">Type de déchet</th><th style="'+tdc+';text-align:right;color:#fff;font-weight:700">Total cumulé</th></tr></thead><tbody>'
+      +totals.map(function(t,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'"><td style="'+tdc+';font-weight:600">'+esc(t.label)+'</td><td style="'+tdc+';text-align:right;font-weight:700">'+fmtNum(t.total)+'</td></tr>';}).join('')
+      +'</tbody></table>';
+  }
+
+  // Graphiques (images des canvases rendus)
+  function imgOf(id){ var el=document.getElementById(id); if(!el||!el.toDataURL) return ''; try{ return el.toDataURL('image/png'); }catch(e){ return ''; } }
+  var charts2='';
+  var evoImg=imgOf('dechetsEvoC'), typeImg=imgOf('dechetsTypeC');
+  if(evoImg||typeImg){
+    charts2='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">'
+      +(evoImg?'<div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px"><div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:4px">Total mensuel</div><img src="'+evoImg+'" style="width:100%"></div>':'')
+      +(typeImg?'<div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px"><div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:4px">Total par type</div><img src="'+typeImg+'" style="width:100%"></div>':'')
+      +'</div>';
+  }
+  var mini='';
+  var miniImgs=_dechetsMiniCharts.map(function(id,i){
+    var im=imgOf(id); if(!im) return '';
+    var lbl=typeCols[i]!=null?dechetsCleanCell(headers[typeCols[i]]):('Type '+(i+1));
+    return '<div style="border:1px solid #cbd5e1;border-radius:6px;padding:8px"><div style="font-size:9.5px;font-weight:700;color:#334155;margin-bottom:4px">'+esc(lbl)+'</div><img src="'+im+'" style="width:100%"></div>';
+  }).filter(Boolean);
+  if(miniImgs.length){
+    mini='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:2px 0 6px">Évolution mensuelle par type</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'+miniImgs.join('')+'</div>';
+  }
+
+  // Tableau des données
+  var dataTable='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:2px 0 6px">Détail mensuel</div>'
+    +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
+    +headers.map(function(h){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(dechetsCleanCell(h))+'</th>';}).join('')
+    +'</tr></thead><tbody>'
+    +mRows.map(function(r,i){
+      return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+        +headers.map(function(h,ci){ var v=dechetsCleanCell((r.cells||[])[ci]);
+          var isMonth=(ci===moCol);
+          return '<td style="'+tdc+(isMonth?';font-weight:700':'')+'">'+esc(v||'—')+'</td>'; }).join('')
+        +'</tr>';
+    }).join('')
+    +'</tbody></table>';
+
+  var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}img{max-width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}div[style*="grid"]{page-break-inside:avoid}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rapport de suivi des déchets</title>'+styles+'</head><body>');
+  w.document.write(head+synth+charts2+mini+dataTable);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:10px">SOBCO 3 — HSE · Rapport de suivi des déchets · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },600);
 }
 
 
