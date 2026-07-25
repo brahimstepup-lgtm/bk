@@ -5374,13 +5374,15 @@ function readDechetsData() {
       }
       if (!anyVal) continue;
 
-      var cells = [];
-      for (var ci = 0; ci < out.headers.length; ci++) cells.push(safeText(row[ci]));
-
+      var cells = [], cellUrls = [];
+      for (var ci = 0; ci < out.headers.length; ci++) {
+        cells.push(safeText(row[ci]));
+        cellUrls.push(cellUrl(i, ci));   // lien éventuel porté par la cellule (chiffre cliquable)
+      }
       var url = '';
-      for (var ci = 0; ci < out.headers.length && !url; ci++) url = cellUrl(i, ci);
+      for (var ci = 0; ci < cellUrls.length && !url; ci++) if (cellUrls[ci]) url = cellUrls[ci];
 
-      out.rows.push({ cells: cells, url: url });
+      out.rows.push({ cells: cells, cellUrls: cellUrls, url: url });
     }
   } catch(e) {
     out.error = e.toString();
