@@ -8684,9 +8684,19 @@ function updateEnvCharts(){
   document.getElementById('tEau').textContent=isR?'Ratio EAU m³/UP':'Eau m³';
   var eA=isR?m.relt_months:m.elt_months,gA=isR?m.rgaz_months:m.gaz_months,wA=isR?m.reau_months:m.eau_months;
   var ce=cleanMonths(eA||[],hdrs),cg=cleanMonths(gA||[],hdrs),cw=cleanMonths(wA||[],hdrs);
-  mkChart('eltC','line',ce.labels,[{data:ce.data,borderColor:C.amber,backgroundColor:'rgba(245,166,35,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.amber}],BASE);
-  mkChart('gazC','line',cg.labels,[{data:cg.data,borderColor:C.red,backgroundColor:'rgba(232,68,90,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.red}],BASE);
-  mkChart('eauC','bar',cw.labels,[{data:cw.data,backgroundColor:[C.p1,'rgba(9,99,126,.7)','rgba(9,99,126,.5)'],borderRadius:5}],BASE);
+  // Ligne d'objectif (uniquement en mode Ratios) : ELT ≤350, GAZ ≤1200, EAU ≤5.
+  function objDs(obj,labels){
+    return {type:'line',label:'Objectif ≤ '+fmtNum(obj),data:labels.map(function(){return obj;}),
+      borderColor:'rgba(120,139,153,.9)',borderDash:[6,4],borderWidth:1.6,pointRadius:0,fill:false,tension:0};
+  }
+  var envOpts=Object.assign({},BASE,{plugins:{legend:{display:isR,labels:{color:C.txt,font:{size:9},boxWidth:12}}}});
+  var eltDs=[{data:ce.data,borderColor:C.amber,backgroundColor:'rgba(245,166,35,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.amber,label:'Ratio ELT'}];
+  var gazDs=[{data:cg.data,borderColor:C.red,backgroundColor:'rgba(232,68,90,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.red,label:'Ratio GAZ'}];
+  var eauDs=[{data:cw.data,backgroundColor:[C.p1,'rgba(9,99,126,.7)','rgba(9,99,126,.5)','rgba(9,99,126,.4)','rgba(9,99,126,.35)'],borderRadius:5,label:'Ratio EAU'}];
+  if(isR){ eltDs.push(objDs(350,ce.labels)); gazDs.push(objDs(1200,cg.labels)); eauDs.push(objDs(5,cw.labels)); }
+  mkChart('eltC','line',ce.labels,eltDs,envOpts);
+  mkChart('gazC','line',cg.labels,gazDs,envOpts);
+  mkChart('eauC','bar',cw.labels,eauDs,envOpts);
 }
 
 // ══ NETTOYAGE ═════════════════════════════════════════════════
