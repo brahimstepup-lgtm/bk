@@ -4928,6 +4928,7 @@ html.light .pests-search-input{background:#edf2f7}
         <div class="modal-hdr-name" id="clnEmbedTitle">—</div>
         <div class="cln-embed-actions">
           <a id="clnEmbedNewTab" class="cln-embed-newtab" href="#" target="_blank" rel="noopener noreferrer">↗ Ouvrir dans un onglet</a>
+          <button id="clnEmbedDl" class="cln-embed-newtab" style="cursor:pointer;border:0" onclick="clnEmbedDownload()">⬇️ Télécharger</button>
         </div>
       </div>
       <button class="modal-close" onclick="closeModal('clnEmbedModal')">✕</button>
@@ -9257,6 +9258,22 @@ function clnToEmbedUrl(url){
   // Pas reconnu → renvoyer tel quel (le navigateur peut bloquer si X-Frame-Options)
   return url;
 }
+var _clnEmbedSrc = null;
+// Télécharge le document actuellement affiché dans la visionneuse.
+// Un blob (généré côté client) est téléchargé directement ; un lien
+// Drive passe par downloadDriveDoc (nom normalisé).
+function clnEmbedDownload(){
+  if(!_clnEmbedSrc || !_clnEmbedSrc.url){ showToast('Aucun document à télécharger.','error'); return; }
+  var url=_clnEmbedSrc.url;
+  var name=String(_clnEmbedSrc.name||'document').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  if(/^blob:|^data:/.test(url)){
+    var a=document.createElement('a');
+    a.href=url; a.download=/\.pdf$/i.test(name)?name:(name+'.pdf');
+    document.body.appendChild(a); a.click(); setTimeout(function(){a.remove();},1200);
+    return;
+  }
+  downloadDriveDoc(url, name.replace(/\.[a-z0-9]{2,4}$/i,''));
+}
 function openCleaningEmbed(rawUrl, title, kind, icon){
   var modal   = document.getElementById('clnEmbedModal');
   var iframe  = document.getElementById('clnEmbedFrame');
@@ -9272,6 +9289,8 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
   kindEl.textContent  = kind  || 'DOCUMENT';
   if (badgeEl && icon) badgeEl.textContent = icon;
   newTab.href = rawUrl;
+  // Mémorise la source pour le bouton « Télécharger ».
+  _clnEmbedSrc = { url: rawUrl, name: (title || 'document') };
 
   // Loader visible pendant le chargement
   loader.classList.remove('hide');
@@ -9388,7 +9407,28 @@ function sapRun(p, kind){
     .withSuccessHandler(function(r){
       sapLoading = false;
       if (r && r.ok && r.url) {
-        openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋');
+        // L'aperçu Drive en iframe est souvent bloqué par Chrome : on
+        // récupère le PDF via le serveur et on l'affiche en blob local
+        // (fiable + téléchargeable). Repli sur l'URL Drive si échec.
+        var id = extractDriveIdFront(r.url);
+        if (id) {
+          google.script.run
+            .withSuccessHandler(function(res){
+              if (res && res.dataUrl) {
+                try {
+                  fetch(res.dataUrl).then(function(x){return x.blob();}).then(function(b){
+                    var bu = URL.createObjectURL(b);
+                    openCleaningEmbed(bu, r.name || 'Plan d\'action', kind, '📋');
+                    _clnEmbedSrc = { url: bu, name: r.name || 'Plan d\'action.pdf' };
+                  }).catch(function(){ openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋'); });
+                } catch(eF){ openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋'); }
+              } else { openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋'); }
+            })
+            .withFailureHandler(function(){ openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋'); })
+            .getAccidentAttachment(id);
+        } else {
+          openCleaningEmbed(r.url, r.name || 'Plan d\'action', kind, '📋');
+        }
       } else if (r && r.ok && r.b64) {
         // Repli sans Drive : le serveur renvoie le PDF en base64 →
         // blob URL local affiché dans le viewer intégré.
