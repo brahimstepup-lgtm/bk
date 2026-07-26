@@ -1941,7 +1941,7 @@ html.light .pests-search-input{background:#edf2f7}
 
 <div id="loader" class="loader">
   <div class="spin"></div>
-  <div style="color:var(--text3);font-size:12px">Connexion Google Sheets + Drive…</div>
+  <div style="color:var(--text3);font-size:12px">Chargement des données…</div>
 </div>
 
 <div id="main" style="display:none">
@@ -2246,7 +2246,8 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ PLAN D'ACTIONS GLOBAL ═══ -->
 <div id="actions" class="page">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
+    <button class="btn" onclick="printActionsPlan()" style="font-size:11px;padding:6px 12px;background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;border-color:var(--p3);font-weight:600">🖨️ Télécharger PDF</button>
     <button class="btn" onclick="openActionsSource()" style="font-size:11px;padding:6px 12px">📊 Ouvrir le fichier source</button>
   </div>
   <div class="tsum" id="actSum">⏳ Ouvrez l'onglet pour charger le plan d'actions globale…</div>
@@ -7379,6 +7380,70 @@ function renderActionsTable(){
   if(show.length===0) h='<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:18px">Aucune action pour ce filtre</td></tr>';
   else if(rows.length>CAP) h+='<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:10px">… '+(rows.length-CAP)+' actions supplémentaires — affinez le filtre</td></tr>';
   var tb=document.getElementById('actBody'); if(tb) tb.innerHTML=h;
+}
+// Rapport PDF du plan d'actions globale (respecte les filtres actifs).
+function printActionsPlan(){
+  if(!_actData){ _actData=buildActionsFromDashboard(); }
+  var d=_actData; if(!d){ showToast('Aucune donnée à exporter.','error'); return; }
+  var q=((document.getElementById('actFilter')||{}).value||'').toLowerCase().trim();
+  var fst=(document.getElementById('actFStatut')||{}).value||'';
+  var fsr=(document.getElementById('actFSource')||{}).value||'';
+  var rows=(d.entries||[]).filter(function(x){
+    if(fst && x.statut!==fst) return false;
+    if(fsr && x.source!==fsr) return false;
+    if(q && (x.id+' '+x.source+' '+x.site+' '+x.cat+' '+x.desc+' '+x.action+' '+x.resp+' '+x.prioRaw+' '+x.statut).toLowerCase().indexOf(q)===-1) return false;
+    return true;
+  });
+  var k=d.kpis||{};
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:4px 6px;border:1px solid #d0d0d0;font-size:8.5px;vertical-align:top;color:#334155';
+  var SC={'Clôturé / Terminé':'#166534','En cours':'#0369a1','En retard':'#991b1b','Non démarré':'#854d0e','Non renseigné':'#64748b'};
+
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'actions globale</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Actions HSE — accidents · incidents · TAGs</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-size:9.5px;color:#334155">'+rows.length+' action(s)<br>clôturées '+(k.tauxClot||0)+'%</td></tr></table>';
+
+  var synth='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">'
+    +[['Total',d.total,'#0369a1'],['Clôturées',k.clot,'#166534'],['En cours',k.enCours,'#0369a1'],['En retard',k.enRetard,'#991b1b'],['Non démarrées',k.nonDemarre,'#854d0e']]
+      .map(function(p){return '<span style="padding:5px 12px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc"><strong style="color:'+p[2]+'">'+(p[1]!=null?p[1]:'—')+'</strong> '+p[0]+'</span>';}).join('')
+    +'</div>';
+
+  var tbl='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
+    +['N°','Source','Site / Lieu','Catégorie','Problème','Action corrective','Resp.','Prio.','Échéance','Statut'].map(function(c){return '<th style="'+tdc+';color:#fff;font-weight:700;text-transform:uppercase;font-size:8px">'+c+'</th>';}).join('')
+    +'</tr></thead><tbody>'
+    +(rows.length?rows.map(function(x,i){
+      var sc=SC[x.statut]||'#334155';
+      return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+        +'<td style="'+tdc+';font-weight:700">'+esc(x.id)+'</td>'
+        +'<td style="'+tdc+'">'+esc(x.source)+'</td>'
+        +'<td style="'+tdc+'">'+esc(x.site)+'</td>'
+        +'<td style="'+tdc+'">'+esc(x.cat)+'</td>'
+        +'<td style="'+tdc+'">'+esc(x.desc)+'</td>'
+        +'<td style="'+tdc+'">'+esc(x.action)+'</td>'
+        +'<td style="'+tdc+'">'+esc(x.resp)+'</td>'
+        +'<td style="'+tdc+';text-align:center">'+esc(x.prioRaw)+'</td>'
+        +'<td style="'+tdc+';white-space:nowrap">'+esc(x.dEch)+'</td>'
+        +'<td style="'+tdc+';font-weight:700;color:'+sc+'">'+esc(x.statut)+'</td></tr>';
+    }).join('')
+    :'<tr><td colspan="10" style="'+tdc+';text-align:center;color:#94a3b8;font-style:italic">Aucune action.</td></tr>')
+    +'</tbody></table>';
+
+  var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:16px 20px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}@media print{body{padding:8px 10px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plan d\'actions globale</title>'+styles+'</head><body>');
+  w.document.write(head+synth+tbl);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:10px">SOBCO 3 — HSE · Plan d\'actions globale · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },400);
 }
 function kpiCard(lbl,val,color,sub,cls,pct,bc){
   var bar='';
