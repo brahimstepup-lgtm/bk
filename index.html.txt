@@ -2078,6 +2078,9 @@ html.light .pests-search-input{background:#edf2f7}
     <button class="crud-btn add" style="margin-left:auto;font-size:10px;padding:4px 10px"
             onclick="openSectionActionPlan('incidents')"
             title="Générer et afficher le plan d'action (PDF) à partir des incidents de la section">📋 Plan d'action</button>
+    <button class="crud-btn add" style="font-size:10px;padding:4px 10px"
+            onclick="downloadSectionActionPlan('incidents')"
+            title="Générer et télécharger le plan d'action (PDF)">⬇️ Télécharger</button>
   </div>
   <div class="kpi-grid" id="incKpi"></div>
   <div class="row2">
@@ -2120,6 +2123,9 @@ html.light .pests-search-input{background:#edf2f7}
     <button class="crud-btn add" style="font-size:10px;padding:4px 10px;flex-shrink:0"
             onclick="openSectionActionPlan('tags')"
             title="Générer et afficher le plan d'action (PDF) à partir des TAGs de la section">📋 Plan d'action</button>
+    <button class="crud-btn add" style="font-size:10px;padding:4px 10px;flex-shrink:0"
+            onclick="downloadSectionActionPlan('tags')"
+            title="Générer et télécharger le plan d'action (PDF)">⬇️ Télécharger</button>
   </div>
 
   <!-- Chips statut + période -->
@@ -9448,6 +9454,49 @@ function sapRun(p, kind){
       sapLoading = false;
       showToast('Erreur : ' + ((e && e.message) || e), 'error');
     })
+    .generateSectionActionPlanForClient(p);
+}
+// Génère le plan d'action d'une section et le TÉLÉCHARGE directement
+// (sans passer par la visionneuse).
+function downloadSectionActionPlan(section){
+  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs'};
+  var p=sapPayload(section);
+  if(!p || !p.rows.length){ showToast('Aucune donnée dans cette section.','error'); return; }
+  if(sapLoading) return; sapLoading=true;
+  showToast('Génération du plan d\'action PDF ('+p.rows.length+' lignes)…','success');
+  function dlBlob(blob,name){
+    var u=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=u; a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(u); a.remove(); },1500);
+    showToast('Téléchargement lancé.','success');
+  }
+  google.script.run
+    .withSuccessHandler(function(r){
+      sapLoading=false;
+      var name=(r&&r.name)||('Plan d\'action — '+(LBL[section]||section)+'.pdf');
+      if(!/\.pdf$/i.test(name)) name+='.pdf';
+      if(r&&r.ok&&r.b64){
+        try{ var bin=atob(r.b64),arr=new Uint8Array(bin.length);
+          for(var i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i);
+          dlBlob(new Blob([arr],{type:'application/pdf'}),name); return;
+        }catch(eB){}
+      }
+      if(r&&r.ok&&r.url){
+        var id=extractDriveIdFront(r.url);
+        if(id){
+          google.script.run
+            .withSuccessHandler(function(res){
+              if(res&&res.dataUrl){ fetch(res.dataUrl).then(function(x){return x.blob();}).then(function(b){dlBlob(b,name);}).catch(function(){ window.open(r.url,'_blank'); }); }
+              else window.open(r.url,'_blank');
+            })
+            .withFailureHandler(function(){ window.open(r.url,'_blank'); })
+            .getAccidentAttachment(id);
+        } else window.open(r.url,'_blank');
+        return;
+      }
+      showToast((r&&r.error)||'Échec de la génération.','error');
+    })
+    .withFailureHandler(function(e){ sapLoading=false; showToast('Erreur : '+((e&&e.message)||e),'error'); })
     .generateSectionActionPlanForClient(p);
 }
 
