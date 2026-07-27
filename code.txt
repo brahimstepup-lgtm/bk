@@ -4221,40 +4221,38 @@ function calcMetrics(d) {
   // feuille KPI (rapport identique à celui utilisé pour les calculer) :
   //   TF_mois = AT_mois·1e6 / H_mois  ⇒  H_mois = AT_mois·1e6 / TF_mois
   //   TG_mois = JP_mois·1e3 / H_mois  ⇒  H_mois = JP_mois·1e3 / TG_mois
-  // Un mois sans accident ni journée perdue (TF=TG=0) ne permet pas de
-  // retrouver ses heures : on les remplace par la moyenne des mois connus,
-  // de sorte que le dénominateur cumulé continue de croître.
+  // Un mois dont les heures travaillées sont indéterminables — ni accident
+  // ni journée perdue pour les reconstruire, typiquement le mois courant
+  // pas encore renseigné (ex. juillet) — est EXCLU du cumul YTD : il n'est
+  // ni compté dans le calcul, ni tracé sur la courbe (valeur null).
   var _tfM = mths('Taux de Fréquence (TF1)'),
       _tgM = mths('Taux de Gravité (TG)'),
       _atM = mths('Accident Travail (AT) (Total)'),
       _jpM = mths('Jours Perdus');
   var _n = Math.max(_tfM.length, _tgM.length, _atM.length, _jpM.length);
-  var _hoursM = [], _has = [], _sumH = 0, _cntH = 0;
+  var _hoursM = [];
   for (var _i = 0; _i < _n; _i++) {
     var _tf = _tfM[_i], _tg = _tgM[_i], _at = _atM[_i], _jp = _jpM[_i];
-    _has.push(_tf != null || _tg != null || _at != null || _jp != null);
     var _h = null;
     if (_tf != null && _tf > 0 && _at != null)      _h = _at * 1000000 / _tf;
     else if (_tg != null && _tg > 0 && _jp != null) _h = _jp * 1000 / _tg;
-    _hoursM.push(_h);
-    if (_h != null) { _sumH += _h; _cntH++; }
+    _hoursM.push(_h);   // null = heures travaillées absentes ⇒ mois ignoré
   }
-  var _avgH = _cntH > 0 ? _sumH / _cntH : 0;
-  for (var _j = 0; _j < _n; _j++)
-    if (_has[_j] && _hoursM[_j] == null) _hoursM[_j] = _avgH;
-  // Cumul YTD conforme aux références (ISO 45001 / INRS / OIT) :
+  // Cumul YTD conforme aux références (ISO 45001 / INRS / OIT), calculé
+  // uniquement sur les mois dont les heures travaillées sont connues :
   //   TF YTD = Σ accidents avec arrêt cumulés × 1e6 / Σ heures cumulées
   //   TG YTD = Σ journées perdues cumulées   × 1e3 / Σ heures cumulées
   // Le taux cumulé peut légitimement baisser un mois sans accident (le
   // dénominateur d'heures croît à numérateur constant) : cette baisse
   // traduit une amélioration de la performance et n'est pas corrigée.
   var _cumAT = 0, _cumJP = 0, _cumH = 0, _tfYtdM = [], _tgYtdM = [],
-      _tfCum = null, _tgCum = null;
+      _tfCum = null, _tgCum = null, _cntH = 0;
   for (var _k2 = 0; _k2 < _n; _k2++) {
-    if (!_has[_k2]) { _tfYtdM.push(null); _tgYtdM.push(null); continue; }
+    if (_hoursM[_k2] == null) { _tfYtdM.push(null); _tgYtdM.push(null); continue; }
+    _cntH++;
     _cumAT += (_atM[_k2] || 0);
     _cumJP += (_jpM[_k2] || 0);
-    _cumH  += (_hoursM[_k2] || 0);
+    _cumH  += _hoursM[_k2];
     _tfYtdM.push(_cumH > 0 ? Math.round(_cumAT * 1000000 / _cumH * 100) / 100 : 0);
     _tgYtdM.push(_cumH > 0 ? Math.round(_cumJP * 1000    / _cumH * 100) / 100 : 0);
     _tfCum = _tfYtdM[_tfYtdM.length - 1];
