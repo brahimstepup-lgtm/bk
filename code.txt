@@ -4245,16 +4245,25 @@ function calcMetrics(d) {
   // Le taux cumulé peut légitimement baisser un mois sans accident (le
   // dénominateur d'heures croît à numérateur constant) : cette baisse
   // traduit une amélioration de la performance et n'est pas corrigée.
+  // Arrays cumulés exposés (numérateurs + heures) pour l'infobulle de
+  // détail au clic sur un point du graphique — null pour les mois exclus.
   var _cumAT = 0, _cumJP = 0, _cumH = 0, _tfYtdM = [], _tgYtdM = [],
+      _cumATM = [], _cumJPM = [], _cumHM = [],
       _tfCum = null, _tgCum = null, _cntH = 0;
   for (var _k2 = 0; _k2 < _n; _k2++) {
-    if (_hoursM[_k2] == null) { _tfYtdM.push(null); _tgYtdM.push(null); continue; }
+    if (_hoursM[_k2] == null) {
+      _tfYtdM.push(null); _tgYtdM.push(null);
+      _cumATM.push(null); _cumJPM.push(null); _cumHM.push(null);
+      continue;
+    }
     _cntH++;
     _cumAT += (_atM[_k2] || 0);
     _cumJP += (_jpM[_k2] || 0);
     _cumH  += _hoursM[_k2];
     _tfYtdM.push(_cumH > 0 ? Math.round(_cumAT * 1000000 / _cumH * 100) / 100 : 0);
     _tgYtdM.push(_cumH > 0 ? Math.round(_cumJP * 1000    / _cumH * 100) / 100 : 0);
+    _cumATM.push(_cumAT); _cumJPM.push(_cumJP);
+    _cumHM.push(Math.round(_cumH));
     _tfCum = _tfYtdM[_tfYtdM.length - 1];
     _tgCum = _tgYtdM[_tgYtdM.length - 1];
   }
@@ -4266,6 +4275,7 @@ function calcMetrics(d) {
   return {
     tf1_ytd:_tf1_ytd,tg_ytd:_tg_ytd,
     tf1_ytd_months:_tfYtdM,tg_ytd_months:_tgYtdM,jp_months:_jpM,hours_months:_hoursM,
+    ytd_cumAT:_cumATM,ytd_cumJP:_cumJPM,ytd_cumH:_cumHM,
     at_fatal:ytd('Accident Travail (FATAL)'),at_majeur:ytd('Accident Travail (MAJEUR)'),
     at_mineur:ytd('Accident Travail (MINEUR)'),at_total:ytd('Accident Travail (AT) (Total)'),
     jp_ytd:ytd('Jours Perdus'),inc_ytd:ytd('Accident Travail (SANS AT) - INCIDENT'),

@@ -2288,6 +2288,21 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
+<!-- ═══ DÉTAIL POINT KPI (TF / TG) — clic sur un point du graphique ═══ -->
+<div class="modal-bg" id="kpiPointModal" style="display:none" onclick="if(event.target===this)closeModal('kpiPointModal')">
+  <div class="modal-panel" style="max-width:440px;width:94vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="kpiPtBadge" style="background:rgba(245,166,35,.18);border-color:var(--amber)">📈</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-size:10px;color:var(--text3)" id="kpiPtKind">DÉTAIL DU CALCUL</div>
+        <div class="modal-hdr-name" id="kpiPtTitle">Indicateur</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('kpiPointModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="kpiPtBody"></div>
+  </div>
+</div>
+
 <!-- ═══ CPHS ═══ -->
 <div id="cphs" class="page">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:8px">
@@ -7078,7 +7093,7 @@ function printVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -7761,12 +7776,89 @@ function drawChart(cid,tid,sel,m,hdrs){
     // affichent le cumul annuel : la courbe est continue et ne « redescend »
     // pas à chaque mois sans accident.
     var series=(viewMode==='ytd'&&dat.arrYtd)?dat.arrYtd:dat.arr;
+    // Indices des mois réellement affichés (non nuls) → pour retrouver les
+    // données réelles au clic sur un point.
+    var idxMap=[];
+    for(var _q=0;_q<Math.min((series||[]).length,12);_q++){ if(series[_q]!==null&&series[_q]!==undefined) idxMap.push(_q); }
     var cd=cleanMonths(series||[],hdrs);
-    if(viewMode==='ytd'&&dat.ytd!=null){ cd.labels.push('YTD'); cd.data.push(dat.ytd); }
+    var isKpi=(sel==='tf1'||sel==='tg');
+    var meta=isKpi?buildKpiMeta(sel,m,idxMap,cd.labels):null;
+    if(viewMode==='ytd'&&dat.ytd!=null){
+      cd.labels.push('YTD'); cd.data.push(dat.ytd);
+      if(meta) meta.push(buildKpiYtdPoint(sel,m));
+    }
     var ds=[{label:dat.t,data:cd.data,borderColor:dat.c,backgroundColor:dat.c+'22',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:dat.c}];
     if(dat.obj) ds.push({label:'Obj.',data:cd.labels.map(function(){return dat.obj;}),borderColor:'rgba(232,68,90,.5)',borderDash:[5,4],borderWidth:1.5,pointRadius:0});
-    mkChart(cid,'line',cd.labels,ds,Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}}));
+    var opts=Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}});
+    _kpiMeta[cid]=meta;
+    if(isKpi){
+      opts.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':'default'; };
+      opts.onClick=function(evt,els){ if(els&&els.length) showKpiPointDetail(cid,els[0].index); };
+    }
+    mkChart(cid,'line',cd.labels,ds,opts);
   }
+}
+// ── Détail du calcul au clic sur un point TF / TG ─────────────
+var _kpiMeta={};
+function buildKpiMeta(sel,m,idxMap,labels){
+  var hoursM=m.hours_months||[], atM=m.at_months||[], jpM=m.jp_months||[];
+  var cumH=m.ytd_cumH||[], cumAT=m.ytd_cumAT||[], cumJP=m.ytd_cumJP||[];
+  var ytd=(viewMode==='ytd'), base=(sel==='tf1'?1000000:1000);
+  return idxMap.map(function(mi,p){
+    if(ytd) return {ind:sel,mode:'ytd',mois:labels[p],hours:cumH[mi],num:(sel==='tf1'?cumAT[mi]:cumJP[mi]),base:base};
+    return {ind:sel,mode:'mois',mois:labels[p],hours:(hoursM[mi]!=null?Math.round(hoursM[mi]):null),num:(sel==='tf1'?atM[mi]:jpM[mi]),base:base};
+  });
+}
+function buildKpiYtdPoint(sel,m){
+  var cumH=m.ytd_cumH||[], cumAT=m.ytd_cumAT||[], cumJP=m.ytd_cumJP||[];
+  var li=-1; for(var i=cumH.length-1;i>=0;i--){ if(cumH[i]!=null){li=i;break;} }
+  return {ind:sel,mode:'ytd',mois:'YTD',hours:(li>=0?cumH[li]:null),num:(li>=0?(sel==='tf1'?cumAT[li]:cumJP[li]):null),base:(sel==='tf1'?1000000:1000)};
+}
+function fmtInt(n){ return (n==null)?'—':Math.round(n).toLocaleString('fr-FR'); }
+function showKpiPointDetail(cid,idx){
+  var meta=_kpiMeta[cid]; if(!meta||idx<0||!meta[idx]) return;
+  var d=meta[idx], isTF=(d.ind==='tf1');
+  var col=isTF?'var(--amber)':'var(--red)';
+  var name=isTF?'Taux de Fréquence (TF)':'Taux de Gravité (TG)';
+  var numLbl=isTF?'Accidents avec arrêt':'Journées perdues';
+  var baseTxt=isTF?'1 000 000':'1 000';
+  var isYtd=(d.mode==='ytd');
+  var scope=isYtd?(d.mois==='YTD'?'cumul annuel (YTD)':'cumul au '+d.mois):'mois de '+d.mois;
+  var numScope=isYtd?'cumulé'+(isTF?'s':'es'):'du mois';
+  var hScope=isYtd?'cumulées':'du mois';
+  var val=(d.hours&&d.hours>0&&d.num!=null)?(d.num*d.base/d.hours):null;
+  var valTxt=(val==null)?'—':(Math.round(val*100)/100).toLocaleString('fr-FR');
+  var badge=document.getElementById('kpiPtBadge');
+  badge.textContent=isTF?'📈':'⚠️';
+  badge.style.background=isTF?'rgba(245,166,35,.18)':'rgba(232,68,90,.18)';
+  badge.style.borderColor=col;
+  document.getElementById('kpiPtKind').textContent=(isYtd?'CUMUL ANNUEL (YTD) · ':'MENSUEL · ')+'DÉTAIL DU CALCUL';
+  document.getElementById('kpiPtTitle').textContent=name+' — '+(d.mois==='YTD'?'YTD':d.mois);
+  var row=function(lbl,v,c){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3);font-size:11px">'+lbl+'</span><span style="font-weight:700;font-size:12px;color:'+(c||'var(--text)')+'">'+v+'</span></div>'; };
+  var noHours=(d.hours==null||d.hours<=0);
+  var h='';
+  h+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Portée : <b style="color:var(--text2)">'+esc(scope)+'</b></div>';
+  h+=row(numLbl+' ('+numScope+')', fmtInt(d.num), col);
+  h+=row('Heures travaillées ('+hScope+')', noHours?'non disponible':fmtInt(d.hours));
+  h+=row('Base de calcul', '× '+baseTxt);
+  // Formule littérale + substitution numérique
+  h+='<div style="margin-top:12px;padding:11px 12px;background:var(--bg2,rgba(127,127,127,.08));border-radius:8px;border:1px solid var(--border)">';
+  h+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Formule</div>';
+  h+='<div style="font-size:11.5px;color:var(--text2);line-height:1.5">'+name.split(' (')[0]+' = ('+numLbl.toLowerCase()+' '+numScope+' × '+baseTxt+') ÷ heures travaillées '+hScope+'</div>';
+  if(!noHours&&d.num!=null){
+    h+='<div style="font-size:12px;color:var(--text);margin-top:8px;font-family:\'JetBrains Mono\',monospace">= ('+fmtInt(d.num)+' × '+baseTxt+') ÷ '+fmtInt(d.hours)+'</div>';
+    h+='<div style="font-size:16px;font-weight:800;color:'+col+';margin-top:6px">= '+valTxt+'</div>';
+  }else{
+    h+='<div style="font-size:11px;color:var(--red);margin-top:8px">Heures travaillées absentes pour cette période → indicateur non calculé.</div>';
+  }
+  h+='</div>';
+  if(isYtd){
+    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">Les heures travaillées sont reconstituées à partir des taux mensuels de la feuille KPI. Cumul depuis le 1<sup>er</sup> janvier — conforme ISO 45001 / INRS.</div>';
+  }else{
+    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">Valeur du mois isolé (non cumulée). Heures reconstituées à partir du taux mensuel de la feuille KPI.</div>';
+  }
+  document.getElementById('kpiPtBody').innerHTML=h;
+  openModal('kpiPointModal');
 }
 function updateC1(){ if(D) drawChart('c1','tC1',document.getElementById('selC1').value,D.metrics,D.monthHeaders); }
 function updateC2(){ if(D) drawChart('c2','tC2',document.getElementById('selC2').value,D.metrics,D.monthHeaders); }
