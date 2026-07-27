@@ -7633,8 +7633,8 @@ function renderPyramid(){
 function getCD(sel,m,hdrs){
   var map={
     at:{t:'Accidents AT',sp:'at'},
-    tf1:{t:'TF',c:C.amber,arr:m.tf1_months,ytd:m.tf1_ytd,obj:30,lower:true},
-    tg: {t:'TG',c:C.red,  arr:m.tg_months, ytd:m.tg_ytd, obj:0.8,lower:true},
+    tf1:{t:'TF',c:C.amber,arr:m.tf1_months,arrYtd:m.tf1_ytd_months,ytd:m.tf1_ytd,obj:30,lower:true},
+    tg: {t:'TG',c:C.red,  arr:m.tg_months, arrYtd:m.tg_ytd_months, ytd:m.tg_ytd, obj:0.8,lower:true},
     tvm:{t:'TVM %',c:C.p3,arr:m.tvm_months,ytd:m.tvm,    obj:95, lower:false},
     inc:{t:'Incidents',c:C.purple,arr:m.inc_months,ytd:m.inc_ytd},
     tags:{t:'TAGs',c:C.green,arr:m.tags_months,ytd:m.tags_ytd},
@@ -7665,7 +7665,11 @@ function drawChart(cid,tid,sel,m,hdrs){
         scales:{x:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt}},
                 y:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt,stepSize:1}}}}));
   } else {
-    var cd=cleanMonths(dat.arr||[],hdrs);
+    // En mode YTD, les indicateurs disposant d'une série cumulée (TF, TG)
+    // affichent le cumul annuel : la courbe est continue et ne « redescend »
+    // pas à chaque mois sans accident.
+    var series=(viewMode==='ytd'&&dat.arrYtd)?dat.arrYtd:dat.arr;
+    var cd=cleanMonths(series||[],hdrs);
     if(viewMode==='ytd'&&dat.ytd!=null){ cd.labels.push('YTD'); cd.data.push(dat.ytd); }
     var ds=[{label:dat.t,data:cd.data,borderColor:dat.c,backgroundColor:dat.c+'22',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:dat.c}];
     if(dat.obj) ds.push({label:'Obj.',data:cd.labels.map(function(){return dat.obj;}),borderColor:'rgba(232,68,90,.5)',borderDash:[5,4],borderWidth:1.5,pointRadius:0});
