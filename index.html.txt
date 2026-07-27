@@ -9820,7 +9820,6 @@ function render(data){
     kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
     kpiCard('Incidents',   (m.nb_incidents!=null?m.nb_incidents:((D&&D.incidents)?D.incidents.length:m.inc_ytd)), 'b','Sans AT · enregistrés', 'k-b',null,null),
     kpiCard('TAGs',        m.tags_ytd,       'g','YTD cumulé',   'k-g',null,null),
-    kpiCard('Taux TAGs',   fmtNum(m.taux_tags)+'%',  'r','Obj.≥20%',     'k-r',p(m.taux_tags,20,false),bc(m.taux_tags,20,false)),
     kpiCard('TVM',         fmtNum(m.tvm)+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
     kpiCard('Résol.TAGs',  fmtNum(m.taux_res_tags)+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
   ].join('');
