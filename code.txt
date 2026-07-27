@@ -4216,26 +4216,43 @@ function calcMetrics(d) {
   // Les indicateurs sont recalculés en cumul depuis le 1er janvier :
   //   TF YTD = (Σ accidents avec arrêt × 1 000 000) / Σ heures travaillées
   //   TG YTD = (Σ journées perdues × 1 000)         / Σ heures travaillées
-  // Les heures travaillées mensuelles ne sont pas saisies telles quelles :
-  // on les reconstruit à partir des taux mensuels déjà présents dans la
-  // feuille KPI (rapport identique à celui utilisé pour les calculer) :
+  // Heures travaillées mensuelles — SOURCE FIABLE PRIORITAIRE : si la
+  // feuille KPI contient une ligne « Heures travaillées » (ou équivalent),
+  // on utilise ces valeurs réelles. À défaut seulement, on les reconstruit
+  // à partir des taux mensuels :
   //   TF_mois = AT_mois·1e6 / H_mois  ⇒  H_mois = AT_mois·1e6 / TF_mois
   //   TG_mois = JP_mois·1e3 / H_mois  ⇒  H_mois = JP_mois·1e3 / TG_mois
-  // Un mois dont les heures travaillées sont indéterminables — ni accident
-  // ni journée perdue pour les reconstruire, typiquement le mois courant
-  // pas encore renseigné (ex. juillet) — est EXCLU du cumul YTD : il n'est
-  // ni compté dans le calcul, ni tracé sur la courbe (valeur null).
+  // Un mois dont les heures travaillées sont absentes (cellule vide ou non
+  // reconstituable, ex. mois courant) est EXCLU du cumul YTD : ni compté
+  // dans le calcul, ni tracé sur la courbe (valeur null).
   var _tfM = mths('Taux de Fréquence (TF1)'),
       _tgM = mths('Taux de Gravité (TG)'),
       _atM = mths('Accident Travail (AT) (Total)'),
       _jpM = mths('Jours Perdus');
-  var _n = Math.max(_tfM.length, _tgM.length, _atM.length, _jpM.length);
+  // Recherche d'une ligne « heures travaillées » réelle dans la feuille KPI.
+  var _hoursKey = null;
+  for (var _kk in k) {
+    if (!k.hasOwnProperty(_kk)) continue;
+    var _kn = normalize(_kk);
+    if (_kn.indexOf('heure') > -1 &&
+        (_kn.indexOf('travaill') > -1 || _kn.indexOf('travail') > -1 || _kn.indexOf('prest') > -1)) { _hoursKey = _kk; break; }
+    if (_kn.indexOf('volume horaire') > -1 || _kn.indexOf('masse horaire') > -1) { _hoursKey = _kk; break; }
+  }
+  var _realHoursM = _hoursKey ? mths(_hoursKey) : null;
+  var _hoursSource = _hoursKey ? 'reelles' : 'reconstituees';
+  var _n = Math.max(_tfM.length, _tgM.length, _atM.length, _jpM.length,
+                    _realHoursM ? _realHoursM.length : 0);
   var _hoursM = [];
   for (var _i = 0; _i < _n; _i++) {
-    var _tf = _tfM[_i], _tg = _tgM[_i], _at = _atM[_i], _jp = _jpM[_i];
     var _h = null;
-    if (_tf != null && _tf > 0 && _at != null)      _h = _at * 1000000 / _tf;
-    else if (_tg != null && _tg > 0 && _jp != null) _h = _jp * 1000 / _tg;
+    if (_realHoursM) {
+      // Valeurs réelles : une cellule vide (null) = heures absentes ⇒ exclu.
+      _h = (_realHoursM[_i] != null && _realHoursM[_i] > 0) ? _realHoursM[_i] : null;
+    } else {
+      var _tf = _tfM[_i], _tg = _tgM[_i], _at = _atM[_i], _jp = _jpM[_i];
+      if (_tf != null && _tf > 0 && _at != null)      _h = _at * 1000000 / _tf;
+      else if (_tg != null && _tg > 0 && _jp != null) _h = _jp * 1000 / _tg;
+    }
     _hoursM.push(_h);   // null = heures travaillées absentes ⇒ mois ignoré
   }
   // Cumul YTD conforme aux références (ISO 45001 / INRS / OIT), calculé
@@ -4276,6 +4293,7 @@ function calcMetrics(d) {
     tf1_ytd:_tf1_ytd,tg_ytd:_tg_ytd,
     tf1_ytd_months:_tfYtdM,tg_ytd_months:_tgYtdM,jp_months:_jpM,hours_months:_hoursM,
     ytd_cumAT:_cumATM,ytd_cumJP:_cumJPM,ytd_cumH:_cumHM,
+    hours_source:_hoursSource,hours_label:(_hoursKey||''),
     at_fatal:ytd('Accident Travail (FATAL)'),at_majeur:ytd('Accident Travail (MAJEUR)'),
     at_mineur:ytd('Accident Travail (MINEUR)'),at_total:ytd('Accident Travail (AT) (Total)'),
     jp_ytd:ytd('Jours Perdus'),inc_ytd:ytd('Accident Travail (SANS AT) - INCIDENT'),

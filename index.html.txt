@@ -7852,10 +7852,14 @@ function showKpiPointDetail(cid,idx){
     h+='<div style="font-size:11px;color:var(--red);margin-top:8px">Heures travaillées absentes pour cette période → indicateur non calculé.</div>';
   }
   h+='</div>';
+  var hSrc=(D&&D.metrics&&D.metrics.hours_source)||'reconstituees';
+  var hSrcTxt=(hSrc==='reelles')
+    ? 'Heures travaillées issues de la feuille KPI (valeurs réelles saisies).'
+    : 'Heures travaillées reconstituées à partir des taux mensuels de la feuille KPI.';
   if(isYtd){
-    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">Les heures travaillées sont reconstituées à partir des taux mensuels de la feuille KPI. Cumul depuis le 1<sup>er</sup> janvier — conforme ISO 45001 / INRS.</div>';
+    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">'+hSrcTxt+' Cumul depuis le 1<sup>er</sup> janvier — conforme ISO 45001 / INRS.</div>';
   }else{
-    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">Valeur du mois isolé (non cumulée). Heures reconstituées à partir du taux mensuel de la feuille KPI.</div>';
+    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">Valeur du mois isolé (non cumulée). '+hSrcTxt+'</div>';
   }
   document.getElementById('kpiPtBody').innerHTML=h;
   openModal('kpiPointModal');
