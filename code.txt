@@ -4242,23 +4242,23 @@ function calcMetrics(d) {
   var _avgH = _cntH > 0 ? _sumH / _cntH : 0;
   for (var _j = 0; _j < _n; _j++)
     if (_has[_j] && _hoursM[_j] == null) _hoursM[_j] = _avgH;
-  // La courbe cumulée YTD ne doit jamais « redescendre » : un mois sans
-  // accident abaisse mathématiquement le taux cumulé (plus d'heures, même
-  // nombre d'accidents), ce qui n'est pas lisible en mode YTD. On reporte
-  // donc le niveau maximum atteint (cumul monotone non décroissant).
+  // Cumul YTD conforme aux références (ISO 45001 / INRS / OIT) :
+  //   TF YTD = Σ accidents avec arrêt cumulés × 1e6 / Σ heures cumulées
+  //   TG YTD = Σ journées perdues cumulées   × 1e3 / Σ heures cumulées
+  // Le taux cumulé peut légitimement baisser un mois sans accident (le
+  // dénominateur d'heures croît à numérateur constant) : cette baisse
+  // traduit une amélioration de la performance et n'est pas corrigée.
   var _cumAT = 0, _cumJP = 0, _cumH = 0, _tfYtdM = [], _tgYtdM = [],
-      _tfCum = null, _tgCum = null, _tfPeak = null, _tgPeak = null;
+      _tfCum = null, _tgCum = null;
   for (var _k2 = 0; _k2 < _n; _k2++) {
     if (!_has[_k2]) { _tfYtdM.push(null); _tgYtdM.push(null); continue; }
     _cumAT += (_atM[_k2] || 0);
     _cumJP += (_jpM[_k2] || 0);
     _cumH  += (_hoursM[_k2] || 0);
-    var _tfv = _cumH > 0 ? Math.round(_cumAT * 1000000 / _cumH * 100) / 100 : 0;
-    var _tgv = _cumH > 0 ? Math.round(_cumJP * 1000    / _cumH * 100) / 100 : 0;
-    if (_tfPeak == null || _tfv > _tfPeak) _tfPeak = _tfv; else _tfv = _tfPeak;
-    if (_tgPeak == null || _tgv > _tgPeak) _tgPeak = _tgv; else _tgv = _tgPeak;
-    _tfYtdM.push(_tfv); _tgYtdM.push(_tgv);
-    _tfCum = _tfv; _tgCum = _tgv;
+    _tfYtdM.push(_cumH > 0 ? Math.round(_cumAT * 1000000 / _cumH * 100) / 100 : 0);
+    _tgYtdM.push(_cumH > 0 ? Math.round(_cumJP * 1000    / _cumH * 100) / 100 : 0);
+    _tfCum = _tfYtdM[_tfYtdM.length - 1];
+    _tgCum = _tgYtdM[_tgYtdM.length - 1];
   }
   // Valeur YTD finale = dernier point cumulé (repli sur la valeur saisie
   // dans la feuille si aucune donnée mensuelle exploitable).
