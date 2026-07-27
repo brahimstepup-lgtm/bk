@@ -1305,6 +1305,67 @@ function readCphs(ss) {
   return res;
 }
 
+// ════════════════════════════════════════════════════════════
+// CPHS — plan d'action (feuille dédiée « plan d'action cphs »)
+// ────────────────────────────────────────────────────────────
+// Le plan d'action CPHS a été déplacé dans sa propre feuille, avec
+// un schéma enrichi : Mois · N° · Action / Mesure · Secteur / Domaine
+// · Responsables · Délai / Échéance · Statut · Indicateur & Suivi.
+// Renvoie { sheetName, rows:[{mois,num,action,secteur,responsable,
+//           delai,statut,indicateur}] }.
+// ════════════════════════════════════════════════════════════
+function readCphsPlan(ss) {
+  var res = { sheetName:'', rows:[] };
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var nm = normalize(sheets[i].getName());
+      if (nm.indexOf('plan') > -1 && nm.indexOf('action') > -1 && nm.indexOf('cphs') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) { Logger.log('CPHS plan sheet NOT found'); return res; }
+    res.sheetName = sh.getName();
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 2) return res;
+
+    // Ligne d'en-tête = 1re ligne non vide.
+    var hdrRow = 0;
+    while (hdrRow < data.length && normalize((data[hdrRow] || []).join('')).replace(/\s/g,'') === '') hdrRow++;
+    var hrow = data[hdrRow] || [];
+
+    // Repérage des colonnes par mots-clés (robuste au réordonnancement).
+    var C = { mois:-1, num:-1, action:-1, secteur:-1, resp:-1, delai:-1, statut:-1, indic:-1 };
+    for (var c = 0; c < hrow.length; c++) {
+      var h = normalize(String(hrow[c] || '').trim());
+      if (!h) continue;
+      if (C.mois < 0 && h.indexOf('mois') > -1) C.mois = c;
+      else if (C.num < 0 && (h === 'n' || h.indexOf('n°') > -1 || h === 'no' || h.indexOf('numero') > -1)) C.num = c;
+      else if (C.action < 0 && (h.indexOf('action') > -1 || h.indexOf('mesure') > -1)) C.action = c;
+      else if (C.secteur < 0 && (h.indexOf('secteur') > -1 || h.indexOf('domaine') > -1)) C.secteur = c;
+      else if (C.resp < 0 && (h.indexOf('respons') > -1 || h.indexOf('respens') > -1)) C.resp = c;
+      else if (C.delai < 0 && (h.indexOf('delai') > -1 || h.indexOf('echeance') > -1 || h.indexOf('cible') > -1 || h.indexOf('date') > -1)) C.delai = c;
+      else if (C.statut < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1 || h.indexOf('avancement') > -1)) C.statut = c;
+      else if (C.indic < 0 && (h.indexOf('indicateur') > -1 || h.indexOf('suivi') > -1)) C.indic = c;
+    }
+
+    function txt(r, c) { return (c >= 0 && data[r] && !isNull(data[r][c])) ? String(data[r][c]).trim() : ''; }
+    for (var r = hdrRow + 1; r < data.length; r++) {
+      var mois = txt(r, C.mois), num = txt(r, C.num), action = txt(r, C.action),
+          secteur = txt(r, C.secteur), resp = txt(r, C.resp), delai = txt(r, C.delai),
+          statut = txt(r, C.statut), indic = txt(r, C.indic);
+      // Ignorer les lignes de total / entêtes répétées / vides.
+      if (!mois && !action && !resp && !statut && !indic && !secteur) continue;
+      if (normalize(mois).indexOf('total') > -1) continue;
+      res.rows.push({
+        mois:mois, num:num, action:action, secteur:secteur,
+        responsable:resp, delai:delai, statut:statut, indicateur:indic
+      });
+    }
+    Logger.log('CPHS plan: ' + res.rows.length + ' action(s)');
+  } catch (e) { Logger.log('readCphsPlan error: ' + e.message); }
+  return res;
+}
+
 function readProcedures(ss) {
   var entries = [];
   var extras  = [];
@@ -3706,6 +3767,8 @@ function getData() {
 
   // ── CPHS (feuille "pv cphs …") ────────────────────────────
   out.cphs = readCphs(ss);
+  // Plan d'action CPHS (feuille dédiée « plan d'action cphs »)
+  out.cphs.plan = readCphsPlan(ss);
 
   // ── Enregistrements HSE (feuille "enregistrements") ──────
   var en = readEnregistrements(ss);

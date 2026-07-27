@@ -2302,11 +2302,22 @@ html.light .pests-search-input{background:#edf2f7}
       <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="cphsActionsCard">
     <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>📋 Plan d'action CPHS
       <span style="color:var(--text3);font-size:9px;margin-left:6px">Mois · Action · Responsable · Date cible · État</span>
     </div>
     <div id="cphsActionsBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
+    </div>
+  </div>
+  <div class="card" id="cphsPlanCard" style="margin-top:14px;display:none">
+    <div class="ct" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="ct-dot" style="background:var(--amber)"></span>📋 Plan d'action CPHS
+      <span style="color:var(--text3);font-size:9px">Mois · N° · Action · Secteur · Responsables · Échéance · Statut · Indicateur</span>
+      <span id="cphsPlanSrc" style="color:var(--text3);font-size:9px;font-family:'JetBrains Mono',monospace;margin-left:2px"></span>
+      <button class="btn" onclick="printCphsPlan()" style="font-size:10px;padding:5px 11px;margin-left:auto" title="Télécharger le plan d'action CPHS au format PDF">🖨️ Télécharger PDF</button>
+    </div>
+    <div id="cphsPlanBox" style="margin-top:10px">
       <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
     </div>
   </div>
@@ -6709,6 +6720,87 @@ function renderCphs(){
       actBox.innerHTML='<div class="tblw"><table><thead><tr><th>#</th><th>Mois</th><th>Action</th><th>Responsable</th><th>Date cible</th><th>État</th></tr></thead><tbody>'+arows+'</tbody></table></div>';
     }
   }
+
+  // ── Plan d'action CPHS détaillé (feuille « plan d'action cphs ») ──
+  var plan=cphs.plan||{};
+  var prows=(plan.rows||[]).filter(function(p){return p.action||p.responsable||p.statut||p.indicateur||p.secteur;});
+  var planCard=document.getElementById('cphsPlanCard');
+  var planBox=document.getElementById('cphsPlanBox');
+  var planSrc=document.getElementById('cphsPlanSrc');
+  var actCard=document.getElementById('cphsActionsCard');
+  if(prows.length){
+    if(planCard) planCard.style.display='';
+    // La feuille dédiée remplace l'ancien bloc « plan d'action » de la
+    // feuille pv cphs : on masque ce dernier pour éviter les doublons.
+    if(actCard) actCard.style.display='none';
+    if(planSrc) planSrc.textContent=plan.sheetName?('· '+plan.sheetName):'';
+    if(planBox){
+      var trs=prows.map(function(p,i){
+        return '<tr>'
+          +'<td class="mono" style="font-size:10px;color:var(--text3);text-align:center">'+esc(p.num||String(i+1))+'</td>'
+          +'<td><span class="rbadge">'+esc(p.mois||'—')+'</span></td>'
+          +'<td style="min-width:180px">'+esc(p.action||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(p.secteur||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(p.responsable||'—')+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(p.delai||'—')+'</td>'
+          +'<td style="text-align:center">'+cphsEtatBadge(p.statut)+'</td>'
+          +'<td style="font-size:10px">'+esc(p.indicateur||'—')+'</td>'
+          +'</tr>';
+      }).join('');
+      planBox.innerHTML='<div class="tblw"><table><thead><tr>'
+        +'<th>N°</th><th>Mois</th><th>Action / Mesure</th><th>Secteur / Domaine</th>'
+        +'<th>Responsables</th><th>Délai / Échéance</th><th>Statut</th><th>Indicateur &amp; Suivi</th>'
+        +'</tr></thead><tbody>'+trs+'</tbody></table></div>';
+    }
+  }else{
+    if(planCard) planCard.style.display='none';
+    if(actCard) actCard.style.display='';
+  }
+}
+function printCphsPlan(){
+  var plan=((D&&D.cphs&&D.cphs.plan)||{});
+  var rows=(plan.rows||[]).filter(function(p){return p.action||p.responsable||p.statut||p.indicateur||p.secteur;});
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'action CPHS</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Commission Paritaire d\'Hygiène et de Sécurité — SOBCO 3</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">CPHS '+today.getFullYear()+'</td></tr></table>';
+  var table;
+  if(rows.length){
+    table='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +['N°','Mois','Action / Mesure','Secteur / Domaine','Responsables','Délai / Échéance','Statut','Indicateur & Suivi']
+        .map(function(c){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+c+'</th>';}).join('')
+      +'</tr></thead><tbody>'
+      +rows.map(function(p,i){
+        return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+          +'<td style="'+tdc+';text-align:center;color:#94a3b8">'+esc(p.num||String(i+1))+'</td>'
+          +'<td style="'+tdc+';font-weight:700">'+esc(p.mois||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.action||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.secteur||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.responsable||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.delai||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.statut||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.indicateur||'—')+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }else{
+    table='<div style="text-align:center;color:#94a3b8;padding:30px;font-style:italic">Aucune action renseignée dans le plan d\'action CPHS.</div>';
+  }
+  var w=window.open('','_blank','width=1050,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plan d\'action CPHS</title>'+styles+'</head><body>');
+  w.document.write(head+table);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Plan d\'action CPHS · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
 }
 function printCphs(){
   var cphs=(D&&D.cphs)||{};
