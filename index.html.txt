@@ -490,6 +490,12 @@ html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
 .cln-plan-zone{flex:1;color:var(--text)}
 .cln-plan-arrow{color:var(--text3);font-size:14px}
 .cln-plan-empty{text-align:center;padding:28px 12px;color:var(--text3);font-size:12px;line-height:1.6}
+.cln-plan-cell{display:flex;align-items:stretch;gap:0}
+.cln-plan-cell .cln-plan-btn{flex:1;border-top-right-radius:0;border-bottom-right-radius:0;border-right:none}
+.cln-dl-btn{flex-shrink:0;border:1px solid var(--border);border-left:none;border-radius:0 10px 10px 0;
+  background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;cursor:pointer;padding:0 16px;
+  font-size:15px;display:flex;align-items:center;justify-content:center;transition:filter .15s}
+.cln-dl-btn:hover{filter:brightness(1.12)}
 @media(max-width:600px){.cln-plan-grid{grid-template-columns:1fr}}
 
 /* ── Sous-texte « produits » dans le bouton zone ── */
@@ -2288,6 +2294,21 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
+<!-- ═══ DÉTAIL POINT KPI (TF / TG) — clic sur un point du graphique ═══ -->
+<div class="modal-bg" id="kpiPointModal" style="display:none" onclick="if(event.target===this)closeModal('kpiPointModal')">
+  <div class="modal-panel" style="max-width:440px;width:94vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="kpiPtBadge" style="background:rgba(245,166,35,.18);border-color:var(--amber)">📈</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-id" style="font-size:10px;color:var(--text3)" id="kpiPtKind">DÉTAIL DU CALCUL</div>
+        <div class="modal-hdr-name" id="kpiPtTitle">Indicateur</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('kpiPointModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="kpiPtBody"></div>
+  </div>
+</div>
+
 <!-- ═══ CPHS ═══ -->
 <div id="cphs" class="page">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:8px">
@@ -2302,11 +2323,22 @@ html.light .pests-search-input{background:#edf2f7}
       <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
     </div>
   </div>
-  <div class="card">
+  <div class="card" id="cphsActionsCard">
     <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>📋 Plan d'action CPHS
       <span style="color:var(--text3);font-size:9px;margin-left:6px">Mois · Action · Responsable · Date cible · État</span>
     </div>
     <div id="cphsActionsBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
+    </div>
+  </div>
+  <div class="card" id="cphsPlanCard" style="margin-top:14px;display:none">
+    <div class="ct" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="ct-dot" style="background:var(--amber)"></span>📋 Plan d'action CPHS
+      <span style="color:var(--text3);font-size:9px">Mois · N° · Action · Secteur · Responsables · Échéance · Statut · Indicateur</span>
+      <span id="cphsPlanSrc" style="color:var(--text3);font-size:9px;font-family:'JetBrains Mono',monospace;margin-left:2px"></span>
+      <button class="btn" onclick="printCphsPlan()" style="font-size:10px;padding:5px 11px;margin-left:auto" title="Télécharger le plan d'action CPHS au format PDF">🖨️ Télécharger PDF</button>
+    </div>
+    <div id="cphsPlanBox" style="margin-top:10px">
       <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
     </div>
   </div>
@@ -4653,6 +4685,7 @@ html.light .pests-search-input{background:#edf2f7}
         <div class="modal-section"><div class="modal-sec-title"><span>📌</span>Informations</div><div class="info-grid" id="mIncInfoGrid"></div></div>
         <div class="modal-section" id="mIncDescSec"><div class="modal-sec-title"><span>📝</span>Description</div><div class="desc-box" id="mIncDesc"></div></div>
         <div class="modal-section" id="mIncCauseSec"><div class="modal-sec-title"><span>🔎</span>Causes</div><div class="desc-box amber" id="mIncCauses"></div></div>
+        <div class="modal-section" id="mIncPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><div id="mIncPjList" style="display:flex;flex-direction:column;gap:8px"></div></div>
       </div>
       <div id="mInc-m5" style="display:none">
         <div class="modal-section"><div class="modal-sec-title"><span>🔍</span>Méthode des 5M</div><div class="m5-grid" id="mIncM5"></div></div>
@@ -6709,6 +6742,87 @@ function renderCphs(){
       actBox.innerHTML='<div class="tblw"><table><thead><tr><th>#</th><th>Mois</th><th>Action</th><th>Responsable</th><th>Date cible</th><th>État</th></tr></thead><tbody>'+arows+'</tbody></table></div>';
     }
   }
+
+  // ── Plan d'action CPHS détaillé (feuille « plan d'action cphs ») ──
+  var plan=cphs.plan||{};
+  var prows=(plan.rows||[]).filter(function(p){return p.action||p.responsable||p.statut||p.indicateur||p.secteur;});
+  var planCard=document.getElementById('cphsPlanCard');
+  var planBox=document.getElementById('cphsPlanBox');
+  var planSrc=document.getElementById('cphsPlanSrc');
+  var actCard=document.getElementById('cphsActionsCard');
+  if(prows.length){
+    if(planCard) planCard.style.display='';
+    // La feuille dédiée remplace l'ancien bloc « plan d'action » de la
+    // feuille pv cphs : on masque ce dernier pour éviter les doublons.
+    if(actCard) actCard.style.display='none';
+    if(planSrc) planSrc.textContent=plan.sheetName?('· '+plan.sheetName):'';
+    if(planBox){
+      var trs=prows.map(function(p,i){
+        return '<tr>'
+          +'<td class="mono" style="font-size:10px;color:var(--text3);text-align:center">'+esc(p.num||String(i+1))+'</td>'
+          +'<td><span class="rbadge">'+esc(p.mois||'—')+'</span></td>'
+          +'<td style="min-width:180px">'+esc(p.action||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(p.secteur||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(p.responsable||'—')+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(p.delai||'—')+'</td>'
+          +'<td style="text-align:center">'+cphsEtatBadge(p.statut)+'</td>'
+          +'<td style="font-size:10px">'+esc(p.indicateur||'—')+'</td>'
+          +'</tr>';
+      }).join('');
+      planBox.innerHTML='<div class="tblw"><table><thead><tr>'
+        +'<th>N°</th><th>Mois</th><th>Action / Mesure</th><th>Secteur / Domaine</th>'
+        +'<th>Responsables</th><th>Délai / Échéance</th><th>Statut</th><th>Indicateur &amp; Suivi</th>'
+        +'</tr></thead><tbody>'+trs+'</tbody></table></div>';
+    }
+  }else{
+    if(planCard) planCard.style.display='none';
+    if(actCard) actCard.style.display='';
+  }
+}
+function printCphsPlan(){
+  var plan=((D&&D.cphs&&D.cphs.plan)||{});
+  var rows=(plan.rows||[]).filter(function(p){return p.action||p.responsable||p.statut||p.indicateur||p.secteur;});
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'action CPHS</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">Commission Paritaire d\'Hygiène et de Sécurité — SOBCO 3</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">CPHS '+today.getFullYear()+'</td></tr></table>';
+  var table;
+  if(rows.length){
+    table='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +['N°','Mois','Action / Mesure','Secteur / Domaine','Responsables','Délai / Échéance','Statut','Indicateur & Suivi']
+        .map(function(c){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+c+'</th>';}).join('')
+      +'</tr></thead><tbody>'
+      +rows.map(function(p,i){
+        return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+          +'<td style="'+tdc+';text-align:center;color:#94a3b8">'+esc(p.num||String(i+1))+'</td>'
+          +'<td style="'+tdc+';font-weight:700">'+esc(p.mois||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.action||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.secteur||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.responsable||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.delai||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.statut||'—')+'</td>'
+          +'<td style="'+tdc+'">'+esc(p.indicateur||'—')+'</td></tr>';
+      }).join('')+'</tbody></table>';
+  }else{
+    table='<div style="text-align:center;color:#94a3b8;padding:30px;font-style:italic">Aucune action renseignée dans le plan d\'action CPHS.</div>';
+  }
+  var w=window.open('','_blank','width=1050,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plan d\'action CPHS</title>'+styles+'</head><body>');
+  w.document.write(head+table);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Plan d\'action CPHS · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
 }
 function printCphs(){
   var cphs=(D&&D.cphs)||{};
@@ -6986,7 +7100,7 @@ function printVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -7633,8 +7747,8 @@ function renderPyramid(){
 function getCD(sel,m,hdrs){
   var map={
     at:{t:'Accidents AT',sp:'at'},
-    tf1:{t:'TF',c:C.amber,arr:m.tf1_months,ytd:m.tf1_ytd,obj:30,lower:true},
-    tg: {t:'TG',c:C.red,  arr:m.tg_months, ytd:m.tg_ytd, obj:0.8,lower:true},
+    tf1:{t:'TF',c:C.amber,arr:m.tf1_months,arrYtd:m.tf1_ytd_months,ytd:m.tf1_ytd,obj:30,lower:true},
+    tg: {t:'TG',c:C.red,  arr:m.tg_months, arrYtd:m.tg_ytd_months, ytd:m.tg_ytd, obj:0.8,lower:true},
     tvm:{t:'TVM %',c:C.p3,arr:m.tvm_months,ytd:m.tvm,    obj:95, lower:false},
     inc:{t:'Incidents',c:C.purple,arr:m.inc_months,ytd:m.inc_ytd},
     tags:{t:'TAGs',c:C.green,arr:m.tags_months,ytd:m.tags_ytd},
@@ -7665,12 +7779,97 @@ function drawChart(cid,tid,sel,m,hdrs){
         scales:{x:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt}},
                 y:{stacked:true,grid:{color:C.grid},ticks:{color:C.txt,stepSize:1}}}}));
   } else {
-    var cd=cleanMonths(dat.arr||[],hdrs);
-    if(viewMode==='ytd'&&dat.ytd!=null){ cd.labels.push('YTD'); cd.data.push(dat.ytd); }
+    // En mode YTD, les indicateurs disposant d'une série cumulée (TF, TG)
+    // affichent le cumul annuel : la courbe est continue et ne « redescend »
+    // pas à chaque mois sans accident.
+    var series=(viewMode==='ytd'&&dat.arrYtd)?dat.arrYtd:dat.arr;
+    // Indices des mois réellement affichés (non nuls) → pour retrouver les
+    // données réelles au clic sur un point.
+    var idxMap=[];
+    for(var _q=0;_q<Math.min((series||[]).length,12);_q++){ if(series[_q]!==null&&series[_q]!==undefined) idxMap.push(_q); }
+    var cd=cleanMonths(series||[],hdrs);
+    var isKpi=(sel==='tf1'||sel==='tg');
+    var meta=isKpi?buildKpiMeta(sel,m,idxMap,cd.labels):null;
+    if(viewMode==='ytd'&&dat.ytd!=null){
+      cd.labels.push('YTD'); cd.data.push(dat.ytd);
+      if(meta) meta.push(buildKpiYtdPoint(sel,m));
+    }
     var ds=[{label:dat.t,data:cd.data,borderColor:dat.c,backgroundColor:dat.c+'22',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:dat.c}];
     if(dat.obj) ds.push({label:'Obj.',data:cd.labels.map(function(){return dat.obj;}),borderColor:'rgba(232,68,90,.5)',borderDash:[5,4],borderWidth:1.5,pointRadius:0});
-    mkChart(cid,'line',cd.labels,ds,Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}}));
+    var opts=Object.assign({},BASE,{plugins:{legend:{display:true,labels:{color:C.txt,font:{size:10},boxWidth:10}}}});
+    _kpiMeta[cid]=meta;
+    if(isKpi){
+      opts.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':'default'; };
+      opts.onClick=function(evt,els){ if(els&&els.length) showKpiPointDetail(cid,els[0].index); };
+    }
+    mkChart(cid,'line',cd.labels,ds,opts);
   }
+}
+// ── Détail du calcul au clic sur un point TF / TG ─────────────
+var _kpiMeta={};
+function buildKpiMeta(sel,m,idxMap,labels){
+  var hoursM=m.hours_months||[], atM=m.at_months||[], jpM=m.jp_months||[];
+  var cumH=m.ytd_cumH||[], cumAT=m.ytd_cumAT||[], cumJP=m.ytd_cumJP||[];
+  var ytd=(viewMode==='ytd'), base=(sel==='tf1'?1000000:1000);
+  return idxMap.map(function(mi,p){
+    if(ytd) return {ind:sel,mode:'ytd',mois:labels[p],hours:cumH[mi],num:(sel==='tf1'?cumAT[mi]:cumJP[mi]),base:base};
+    return {ind:sel,mode:'mois',mois:labels[p],hours:(hoursM[mi]!=null?Math.round(hoursM[mi]):null),num:(sel==='tf1'?atM[mi]:jpM[mi]),base:base};
+  });
+}
+function buildKpiYtdPoint(sel,m){
+  var cumH=m.ytd_cumH||[], cumAT=m.ytd_cumAT||[], cumJP=m.ytd_cumJP||[];
+  var li=-1; for(var i=cumH.length-1;i>=0;i--){ if(cumH[i]!=null){li=i;break;} }
+  return {ind:sel,mode:'ytd',mois:'YTD',hours:(li>=0?cumH[li]:null),num:(li>=0?(sel==='tf1'?cumAT[li]:cumJP[li]):null),base:(sel==='tf1'?1000000:1000)};
+}
+function fmtInt(n){ return (n==null)?'—':Math.round(n).toLocaleString('fr-FR'); }
+function showKpiPointDetail(cid,idx){
+  var meta=_kpiMeta[cid]; if(!meta||idx<0||!meta[idx]) return;
+  var d=meta[idx], isTF=(d.ind==='tf1');
+  var col=isTF?'var(--amber)':'var(--red)';
+  var name=isTF?'Taux de Fréquence (TF)':'Taux de Gravité (TG)';
+  var numLbl=isTF?'Accidents avec arrêt':'Journées perdues';
+  var baseTxt=isTF?'1 000 000':'1 000';
+  var isYtd=(d.mode==='ytd');
+  var scope=isYtd?(d.mois==='YTD'?'cumul annuel (YTD)':'cumul au '+d.mois):'mois de '+d.mois;
+  var numScope=isYtd?'cumulé'+(isTF?'s':'es'):'du mois';
+  var hScope=isYtd?'cumulées':'du mois';
+  var val=(d.hours&&d.hours>0&&d.num!=null)?(d.num*d.base/d.hours):null;
+  var valTxt=(val==null)?'—':(Math.round(val*100)/100).toLocaleString('fr-FR');
+  var badge=document.getElementById('kpiPtBadge');
+  badge.textContent=isTF?'📈':'⚠️';
+  badge.style.background=isTF?'rgba(245,166,35,.18)':'rgba(232,68,90,.18)';
+  badge.style.borderColor=col;
+  document.getElementById('kpiPtKind').textContent=(isYtd?'CUMUL ANNUEL (YTD) · ':'MENSUEL · ')+'DÉTAIL DU CALCUL';
+  document.getElementById('kpiPtTitle').textContent=name+' — '+(d.mois==='YTD'?'YTD':d.mois);
+  var row=function(lbl,v,c){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3);font-size:11px">'+lbl+'</span><span style="font-weight:700;font-size:12px;color:'+(c||'var(--text)')+'">'+v+'</span></div>'; };
+  var noHours=(d.hours==null||d.hours<=0);
+  var h='';
+  h+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Portée : <b style="color:var(--text2)">'+esc(scope)+'</b></div>';
+  h+=row(numLbl+' ('+numScope+')', fmtInt(d.num), col);
+  h+=row('Heures travaillées ('+hScope+')', noHours?'non disponible':fmtInt(d.hours));
+  h+=row('Base de calcul', '× '+baseTxt);
+  // Formule littérale + substitution numérique
+  h+='<div style="margin-top:12px;padding:11px 12px;background:var(--bg2,rgba(127,127,127,.08));border-radius:8px;border:1px solid var(--border)">';
+  h+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Formule</div>';
+  h+='<div style="font-size:11.5px;color:var(--text2);line-height:1.5">'+name.split(' (')[0]+' = ('+numLbl.toLowerCase()+' '+numScope+' × '+baseTxt+') ÷ heures travaillées '+hScope+'</div>';
+  if(!noHours&&d.num!=null){
+    h+='<div style="font-size:12px;color:var(--text);margin-top:8px;font-family:\'JetBrains Mono\',monospace">= ('+fmtInt(d.num)+' × '+baseTxt+') ÷ '+fmtInt(d.hours)+'</div>';
+    h+='<div style="font-size:16px;font-weight:800;color:'+col+';margin-top:6px">= '+valTxt+'</div>';
+  }else{
+    h+='<div style="font-size:11px;color:var(--red);margin-top:8px">Heures travaillées absentes pour cette période → indicateur non calculé.</div>';
+  }
+  h+='</div>';
+  var hSrc=(D&&D.metrics&&D.metrics.hours_source)||'reconstituees';
+  var hSrcTxt=(hSrc==='reelles')
+    ? 'Heures travaillées issues de la feuille KPI (valeurs réelles saisies).'
+    : 'Heures travaillées reconstituées à partir des taux mensuels de la feuille KPI.';
+  if(isYtd){
+    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">'+hSrcTxt+' Cumul depuis le 1<sup>er</sup> janvier — conforme ISO 45001 / INRS.</div>';
+  }else{
+    h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">Valeur du mois isolé (non cumulée). '+hSrcTxt+'</div>';
+  }
+  document.getElementById('kpiPtBody').innerHTML=h;
+  openModal('kpiPointModal');
 }
 function updateC1(){ if(D) drawChart('c1','tC1',document.getElementById('selC1').value,D.metrics,D.monthHeaders); }
 function updateC2(){ if(D) drawChart('c2','tC2',document.getElementById('selC2').value,D.metrics,D.monthHeaders); }
@@ -7716,6 +7915,7 @@ function openIncModal(inc){
   if(desc){document.getElementById('mIncDesc').textContent=desc;dSec.style.display='block';}else dSec.style.display='none';
   var causes=cleanMd(inc.causes||''),cSec=document.getElementById('mIncCauseSec');
   if(causes){document.getElementById('mIncCauses').textContent=causes;cSec.style.display='block';}else cSec.style.display='none';
+  renderIncPjList(inc);
   var m5=parse5M(cleanMd(inc.analyse5m||inc.causes||''));
   var m5Def=[{key:'MO',lbl:"Main-d'œuvre",ico:'👷',cls:'m5-mo',col:'var(--amber)'},
     {key:'MAT',lbl:'Matière/Matériel',ico:'📦',cls:'m5-mat',col:'var(--p3)'},
@@ -7872,6 +8072,52 @@ function renderAccPjList(acc){
   if(n===0){ sec.style.display='none'; list.innerHTML=''; return; }
   sec.style.display='block';
   list.innerHTML=html;
+}
+// ── Pièce jointe des incidents (fiche/rapport d'enquête) ──────
+// Affichée dans l'onglet « Infos » du modal incident, à l'identique de
+// la section « Pièces jointes » du Bilan AT (réf. ENR HSE 01 + boutons
+// Voir / Télécharger).
+var INC_PJ_DOCS=[
+  {ref:'ENR HSE 01', key:'enqueteUrl', label:"Fiche d'enquête d'incident", color:'#7c3aed'}
+];
+function incPjFileName(inc,ref,label){
+  var clean=function(s){ return String(s||'').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim(); };
+  var nom=clean(inc.victime)||('INC-'+(inc.id||''));
+  var d=clean(inc.date);
+  return (ref.replace(/\s+/g,'-')+' '+label+' - '+nom+(d?' - '+d:'')).replace(/\s+/g,' ').trim();
+}
+function renderIncPjList(inc){
+  var sec=document.getElementById('mIncPjSec');
+  var list=document.getElementById('mIncPjList');
+  if(!sec||!list) return;
+  var html='', n=0;
+  INC_PJ_DOCS.forEach(function(doc){
+    var url=(inc&&inc[doc.key])||'';
+    if(!url || !/^https?:\/\//i.test(url)) return;
+    n++;
+    var fname=incPjFileName(inc,doc.ref,doc.label);
+    html+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
+        +'border:1px solid var(--border);border-radius:9px;padding:9px 11px;background:var(--bg3)">'
+      +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;font-weight:700;'
+        +'padding:3px 8px;border-radius:5px;white-space:nowrap;color:#fff;background:'+doc.color+'">'+esc(doc.ref)+'</span>'
+      +'<div style="flex:1;min-width:120px">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--text)">'+esc(doc.label)+'</div>'
+        +'<div style="font-size:9px;color:var(--text3);word-break:break-word">'+esc(fname)+'</div>'
+      +'</div>'
+      +'<button type="button" class="acc-pj-btn" style="padding:7px 12px;font-size:10px" '
+        +'onclick="viewIncPj('+jsq(url)+','+jsq(doc.ref+' — '+doc.label+' · '+(inc.victime||('INC-'+(inc.id||''))))+')">👁️ Voir</button>'
+      +'<button type="button" class="acc-pj-btn" style="padding:7px 12px;font-size:10px;'
+        +'background:linear-gradient(135deg,#0a7a9a,#0da8d2)" '
+        +'onclick="downloadAccPj('+jsq(url)+','+jsq(fname)+')">⬇️ Télécharger</button>'
+      +'</div>';
+  });
+  if(n===0){ sec.style.display='none'; list.innerHTML=''; return; }
+  sec.style.display='block';
+  list.innerHTML=html;
+}
+function viewIncPj(url,title){
+  if(!url) return;
+  openCleaningEmbed(url, title||'Pièce jointe', 'PIÈCE JOINTE · INCIDENT', '📎');
 }
 // Guillemets sûrs pour insertion dans un attribut onclick.
 function jsq(s){ return "'"+String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')+"'"; }
@@ -8529,17 +8775,28 @@ function populateTagDropdowns(){
   var zones=tally(D.tags.map(function(t){return t.zone||t.emplacement;}));
   resps.sort(function(a,b){return a.name.localeCompare(b.name);});
   zones.sort(function(a,b){return a.name.localeCompare(b.name);});
-  // Préserver la sélection courante lors d'un re-rendu (actualisation auto)
-  var rSel=document.getElementById('tagFilterResp');
-  var rCur=rSel.value||'all';
-  rSel.innerHTML='<option value="all">Tous ('+resps.length+')</option>';
-  resps.forEach(function(r){rSel.innerHTML+='<option value="'+esc(r.name)+'">'+esc(r.name)+'</option>';});
-  rSel.value=rCur; if(rSel.value!==rCur) rSel.value='all';
-  var zSel=document.getElementById('tagFilterZone');
-  var zCur=zSel.value||'all';
-  zSel.innerHTML='<option value="all">Toutes ('+zones.length+')</option>';
-  zones.forEach(function(z){zSel.innerHTML+='<option value="'+esc(z.name)+'">'+esc(z.name)+'</option>';});
-  zSel.value=zCur; if(zSel.value!==zCur) zSel.value='all';
+  // Construction via l'API DOM (et non innerHTML) : la valeur d'option est
+  // posée en propriété .value, insensible à l'échappement HTML. Une valeur
+  // contenant un guillemet (") ne peut donc plus casser l'attribut et
+  // neutraliser le filtre. La sélection courante est préservée lors des
+  // actualisations automatiques.
+  function fillSel(sel,items,allLbl){
+    if(!sel) return;
+    var cur=sel.value||'all';
+    while(sel.firstChild) sel.removeChild(sel.firstChild);
+    var o0=document.createElement('option');
+    o0.value='all'; o0.textContent=allLbl+' ('+items.length+')';
+    sel.appendChild(o0);
+    items.forEach(function(it){
+      var o=document.createElement('option');
+      o.value=it.name;          // propriété DOM → aucun risque d'échappement
+      o.textContent=it.name;
+      sel.appendChild(o);
+    });
+    sel.value=cur; if(sel.value!==cur) sel.value='all';
+  }
+  fillSel(document.getElementById('tagFilterResp'),resps,'Tous');
+  fillSel(document.getElementById('tagFilterZone'),zones,'Toutes');
 }
 function setTagStat(val,el){
   tagStatFilter=val;
@@ -8641,7 +8898,12 @@ function applyTagF(){
   // Types de dangers (regroupés par famille de risque canonique)
   var tt=tallyHazard(filtered.map(function(t){return t.type;}),6);
   if(charts['dangerC'])charts['dangerC'].destroy();
-  if(tt.length>0) new Chart(document.getElementById('dangerC'),{type:'doughnut',
+  // IMPORTANT : mémoriser l'instance dans charts['dangerC'] pour qu'elle
+  // soit détruite au rendu suivant. Sans ça, Chart.js lève « Canvas is
+  // already in use » à chaque changement de filtre, ce qui interrompait
+  // applyTagF AVANT le rendu de la liste (compteur mis à jour mais lignes
+  // inchangées → filtres « sans effet »).
+  if(tt.length>0) charts['dangerC']=new Chart(document.getElementById('dangerC'),{type:'doughnut',
     data:{labels:tt.map(function(x){return String(x.name).substring(0,22);}),datasets:[{data:tt.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green,C.orange],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});
 
@@ -8821,7 +9083,7 @@ function renderAccidents(accs){
   if(ct.length>0) mkChart('accCC','bar',ct.map(function(x){return String(x.name).substring(0,35);}),[{data:ct.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.purple],borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
   var ft=tally(accs.map(function(a){return a.fonction;}),5);
-  if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();new Chart(document.getElementById('accFC'),{type:'doughnut',
+  if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();charts['accFC']=new Chart(document.getElementById('accFC'),{type:'doughnut',
     data:{labels:ft.map(function(x){return String(x.name).substring(0,25);}),datasets:[{data:ft.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});}
   var ab=document.getElementById('accBody'); ab.innerHTML='';
@@ -9051,7 +9313,7 @@ function openCleaningPlan(){
     var link = clnPlanResolveLink(z.label);
     var disabled = !link;
     var safeTitle = esc(z.label);
-    html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
+    var mainBtn = '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
          +  (disabled
               ? 'disabled title="Lien plan non défini dans la feuille nettoyage 1"'
               : 'onclick="openCleaningPlanLink(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent(z.label)+'\')"'
@@ -9061,6 +9323,14 @@ function openCleaningPlan(){
          +    '<span class="cln-plan-zone">'+safeTitle+'</span>'
          +    '<span class="cln-plan-arrow">'+(disabled?'⛔':'↗')+'</span>'
          +  '</button>';
+    if (disabled) {
+      html += mainBtn;
+    } else {
+      html += '<div class="cln-plan-cell">'+mainBtn
+           +  '<button class="cln-dl-btn" title="Télécharger le plan de '+safeTitle+'" '
+           +  'onclick="downloadCleaningDoc(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent('Plan nettoyage - '+z.label)+'\')">⬇️</button>'
+           +  '</div>';
+    }
   });
   list.innerHTML = html;
   list.style.display  = 'grid';
@@ -9078,6 +9348,15 @@ function openCleaningPlanLink(encoded, encodedTitle){
     return;
   }
   openCleaningEmbed(url, title || 'Plan de nettoyage', 'PLAN DE NETTOYAGE', '📋');
+}
+// Téléchargement d'un document de nettoyage (plan de zone ou fiche FDS
+// produit) sous un nom lisible. Réutilise le mécanisme Drive générique.
+function downloadCleaningDoc(encoded, encodedName){
+  var url=''; try{ url=decodeURIComponent(encoded||''); }catch(e){ url=encoded||''; }
+  var name=''; try{ name=decodeURIComponent(encodedName||''); }catch(e2){ name=encodedName||''; }
+  if(!url || !/^https?:\/\//i.test(url)) return;
+  var fname=String(name||'Document').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  downloadDriveDoc(url, fname);
 }
 
 // ── PRODUITS UTILISÉS ────────────────────────────────────────
@@ -9139,12 +9418,16 @@ function openCleaningProducts(){
       var subSpan = '<span class="cln-plan-sub">'+esc(subTxt)+'</span>';
 
       if (hasLink) {
-        html += '<button class="cln-plan-btn" '
+        html += '<div class="cln-plan-cell">'
+             +  '<button class="cln-plan-btn" '
              +  'onclick="openCleaningProductsLink(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent(name)+'\')">'
              +    '<span class="cln-plan-icon">'+icon+'</span>'
              +    '<span class="cln-plan-zone">'+esc(name)+subSpan+'</span>'
              +    '<span class="cln-plan-arrow">'+arrow+'</span>'
-             +  '</button>';
+             +  '</button>'
+             +  '<button class="cln-dl-btn" title="Télécharger la fiche FDS de '+esc(name)+'" '
+             +  'onclick="downloadCleaningDoc(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent('FDS - '+name)+'\')">⬇️</button>'
+             +  '</div>';
       } else {
         html += '<button class="cln-plan-btn disabled" disabled '
              +  'title="'+esc(text || 'Aucune fiche renseignée')+'">'
@@ -9197,12 +9480,16 @@ function openCleaningProducts(){
     }
 
     if (hasLink) {
-      html += '<button class="cln-plan-btn" '
+      html += '<div class="cln-plan-cell">'
+           +  '<button class="cln-plan-btn" '
            +  'onclick="openCleaningProductsLink(\''+encodeURIComponent(p.link)+'\',\''+encodeURIComponent(z.label)+'\')">'
            +    '<span class="cln-plan-icon">'+z.icon+'</span>'
            +    '<span class="cln-plan-zone">'+safeTitle+subTxt+'</span>'
            +    '<span class="cln-plan-arrow">'+arrow+'</span>'
-           +  '</button>';
+           +  '</button>'
+           +  '<button class="cln-dl-btn" title="Télécharger les produits utilisés — '+safeTitle+'" '
+           +  'onclick="downloadCleaningDoc(\''+encodeURIComponent(p.link)+'\',\''+encodeURIComponent('Produits utilisés - '+z.label)+'\')">⬇️</button>'
+           +  '</div>';
     } else {
       // Pas de lien → bouton informatif (texte seulement)
       html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
@@ -15158,8 +15445,13 @@ function renderRecensementNuisibles(){
       traitements:[{icon:'🧲',label:'Piège à phéromone'},{icon:'⚡',label:'Fly-killer UV'}]
     },
     {
+      icon:'🪳', nom:'Cafards (Blattes)', couleur:'#b45309', bg:'#fff7ed',
+      description:'Blattes nocturnes proliférant dans les zones chaudes et humides (cuisines, canalisations, vestiaires, chaufferies). Vectrices de bactéries (salmonelle, E. coli) et d\'allergènes, elles contaminent denrées et surfaces. Une infestation se repère aux déjections, mues et à une odeur caractéristique.',
+      traitements:[{icon:'💊',label:'Gel insecticide'},{icon:'📦',label:'Piège à colle'},{icon:'🧹',label:'Nettoyage / Hygiène'}]
+    },
+    {
       icon:'🐛', nom:'Autres insectes', couleur:'#94a3b8', bg:'#f8fafc',
-      description:'Blattes, coléoptères, fourmis et autres arthropodes pouvant contaminer les zones de production. Présence souvent liée à l\'hygiène des locaux et aux fissures de bâtiment.',
+      description:'Coléoptères, fourmis et autres arthropodes pouvant contaminer les zones de production. Présence souvent liée à l\'hygiène des locaux et aux fissures de bâtiment.',
       traitements:[{icon:'💊',label:'Gel insecticide'},{icon:'🧹',label:'Nettoyage / Hygiène'}]
     }
   ];
@@ -15379,11 +15671,18 @@ function renderFichesTechniques(){
       var safeNom=(r.nom||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var safeBadge=badge.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var safeUrl=(r.url||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var fname=((badge&&badge!=='FT'?badge+' - ':'')+(r.nom||'Fiche technique')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+      var safeFname=fname.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var onclick="openFicheViewer('"+safeNom+"','"+safeBadge+"','"+safeUrl+"');return false;";
-      h+='<a href="'+r.url+'" onclick="'+onclick+'" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);text-decoration:none;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.10)\'" onmouseout="this.style.boxShadow=\'none\'">';
+      var dlclick="downloadDriveDoc('"+safeUrl+"','"+safeFname+"');return false;";
+      h+='<div style="display:flex;align-items:stretch;border-radius:12px;border:1.5px solid var(--border);background:var(--card);overflow:hidden;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.10)\'" onmouseout="this.style.boxShadow=\'none\'">';
+      h+='<a href="'+r.url+'" onclick="'+onclick+'" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;text-decoration:none;cursor:pointer;flex:1;min-width:0">';
       h+=inner;
       h+='<span style="font-size:16px;color:var(--text3);flex-shrink:0">↗</span>';
       h+='</a>';
+      h+='<button type="button" onclick="'+dlclick+'" title="Télécharger la fiche" '
+        +'style="flex-shrink:0;border:none;border-left:1.5px solid var(--border);background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;cursor:pointer;padding:0 15px;font-size:15px;display:flex;align-items:center;justify-content:center">⬇️</button>';
+      h+='</div>';
     } else {
       h+='<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);opacity:.7">';
       h+=inner;

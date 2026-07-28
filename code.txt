@@ -1305,6 +1305,67 @@ function readCphs(ss) {
   return res;
 }
 
+// ════════════════════════════════════════════════════════════
+// CPHS — plan d'action (feuille dédiée « plan d'action cphs »)
+// ────────────────────────────────────────────────────────────
+// Le plan d'action CPHS a été déplacé dans sa propre feuille, avec
+// un schéma enrichi : Mois · N° · Action / Mesure · Secteur / Domaine
+// · Responsables · Délai / Échéance · Statut · Indicateur & Suivi.
+// Renvoie { sheetName, rows:[{mois,num,action,secteur,responsable,
+//           delai,statut,indicateur}] }.
+// ════════════════════════════════════════════════════════════
+function readCphsPlan(ss) {
+  var res = { sheetName:'', rows:[] };
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var nm = normalize(sheets[i].getName());
+      if (nm.indexOf('plan') > -1 && nm.indexOf('action') > -1 && nm.indexOf('cphs') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) { Logger.log('CPHS plan sheet NOT found'); return res; }
+    res.sheetName = sh.getName();
+
+    var data = sh.getDataRange().getValues();
+    if (!data || data.length < 2) return res;
+
+    // Ligne d'en-tête = 1re ligne non vide.
+    var hdrRow = 0;
+    while (hdrRow < data.length && normalize((data[hdrRow] || []).join('')).replace(/\s/g,'') === '') hdrRow++;
+    var hrow = data[hdrRow] || [];
+
+    // Repérage des colonnes par mots-clés (robuste au réordonnancement).
+    var C = { mois:-1, num:-1, action:-1, secteur:-1, resp:-1, delai:-1, statut:-1, indic:-1 };
+    for (var c = 0; c < hrow.length; c++) {
+      var h = normalize(String(hrow[c] || '').trim());
+      if (!h) continue;
+      if (C.mois < 0 && h.indexOf('mois') > -1) C.mois = c;
+      else if (C.num < 0 && (h === 'n' || h.indexOf('n°') > -1 || h === 'no' || h.indexOf('numero') > -1)) C.num = c;
+      else if (C.action < 0 && (h.indexOf('action') > -1 || h.indexOf('mesure') > -1)) C.action = c;
+      else if (C.secteur < 0 && (h.indexOf('secteur') > -1 || h.indexOf('domaine') > -1)) C.secteur = c;
+      else if (C.resp < 0 && (h.indexOf('respons') > -1 || h.indexOf('respens') > -1)) C.resp = c;
+      else if (C.delai < 0 && (h.indexOf('delai') > -1 || h.indexOf('echeance') > -1 || h.indexOf('cible') > -1 || h.indexOf('date') > -1)) C.delai = c;
+      else if (C.statut < 0 && (h.indexOf('statut') > -1 || h.indexOf('etat') > -1 || h.indexOf('avancement') > -1)) C.statut = c;
+      else if (C.indic < 0 && (h.indexOf('indicateur') > -1 || h.indexOf('suivi') > -1)) C.indic = c;
+    }
+
+    function txt(r, c) { return (c >= 0 && data[r] && !isNull(data[r][c])) ? String(data[r][c]).trim() : ''; }
+    for (var r = hdrRow + 1; r < data.length; r++) {
+      var mois = txt(r, C.mois), num = txt(r, C.num), action = txt(r, C.action),
+          secteur = txt(r, C.secteur), resp = txt(r, C.resp), delai = txt(r, C.delai),
+          statut = txt(r, C.statut), indic = txt(r, C.indic);
+      // Ignorer les lignes de total / entêtes répétées / vides.
+      if (!mois && !action && !resp && !statut && !indic && !secteur) continue;
+      if (normalize(mois).indexOf('total') > -1) continue;
+      res.rows.push({
+        mois:mois, num:num, action:action, secteur:secteur,
+        responsable:resp, delai:delai, statut:statut, indicateur:indic
+      });
+    }
+    Logger.log('CPHS plan: ' + res.rows.length + ' action(s)');
+  } catch (e) { Logger.log('readCphsPlan error: ' + e.message); }
+  return res;
+}
+
 function readProcedures(ss) {
   var entries = [];
   var extras  = [];
@@ -3706,6 +3767,8 @@ function getData() {
 
   // ── CPHS (feuille "pv cphs …") ────────────────────────────
   out.cphs = readCphs(ss);
+  // Plan d'action CPHS (feuille dédiée « plan d'action cphs »)
+  out.cphs.plan = readCphsPlan(ss);
 
   // ── Enregistrements HSE (feuille "enregistrements") ──────
   var en = readEnregistrements(ss);
@@ -4148,8 +4211,89 @@ function calcMetrics(d) {
     }
   });
   var clClosed = clTotal - clOpen;
+
+  // ── TF / TG en cumul annuel (Year-To-Date) ─────────────────
+  // Les indicateurs sont recalculés en cumul depuis le 1er janvier :
+  //   TF YTD = (Σ accidents avec arrêt × 1 000 000) / Σ heures travaillées
+  //   TG YTD = (Σ journées perdues × 1 000)         / Σ heures travaillées
+  // Heures travaillées mensuelles — SOURCE FIABLE PRIORITAIRE : si la
+  // feuille KPI contient une ligne « Heures travaillées » (ou équivalent),
+  // on utilise ces valeurs réelles. À défaut seulement, on les reconstruit
+  // à partir des taux mensuels :
+  //   TF_mois = AT_mois·1e6 / H_mois  ⇒  H_mois = AT_mois·1e6 / TF_mois
+  //   TG_mois = JP_mois·1e3 / H_mois  ⇒  H_mois = JP_mois·1e3 / TG_mois
+  // Un mois dont les heures travaillées sont absentes (cellule vide ou non
+  // reconstituable, ex. mois courant) est EXCLU du cumul YTD : ni compté
+  // dans le calcul, ni tracé sur la courbe (valeur null).
+  var _tfM = mths('Taux de Fréquence (TF1)'),
+      _tgM = mths('Taux de Gravité (TG)'),
+      _atM = mths('Accident Travail (AT) (Total)'),
+      _jpM = mths('Jours Perdus');
+  // Recherche d'une ligne « heures travaillées » réelle dans la feuille KPI.
+  var _hoursKey = null;
+  for (var _kk in k) {
+    if (!k.hasOwnProperty(_kk)) continue;
+    var _kn = normalize(_kk);
+    if (_kn.indexOf('heure') > -1 &&
+        (_kn.indexOf('travaill') > -1 || _kn.indexOf('travail') > -1 || _kn.indexOf('prest') > -1)) { _hoursKey = _kk; break; }
+    if (_kn.indexOf('volume horaire') > -1 || _kn.indexOf('masse horaire') > -1) { _hoursKey = _kk; break; }
+  }
+  var _realHoursM = _hoursKey ? mths(_hoursKey) : null;
+  var _hoursSource = _hoursKey ? 'reelles' : 'reconstituees';
+  var _n = Math.max(_tfM.length, _tgM.length, _atM.length, _jpM.length,
+                    _realHoursM ? _realHoursM.length : 0);
+  var _hoursM = [];
+  for (var _i = 0; _i < _n; _i++) {
+    var _h = null;
+    if (_realHoursM) {
+      // Valeurs réelles : une cellule vide (null) = heures absentes ⇒ exclu.
+      _h = (_realHoursM[_i] != null && _realHoursM[_i] > 0) ? _realHoursM[_i] : null;
+    } else {
+      var _tf = _tfM[_i], _tg = _tgM[_i], _at = _atM[_i], _jp = _jpM[_i];
+      if (_tf != null && _tf > 0 && _at != null)      _h = _at * 1000000 / _tf;
+      else if (_tg != null && _tg > 0 && _jp != null) _h = _jp * 1000 / _tg;
+    }
+    _hoursM.push(_h);   // null = heures travaillées absentes ⇒ mois ignoré
+  }
+  // Cumul YTD conforme aux références (ISO 45001 / INRS / OIT), calculé
+  // uniquement sur les mois dont les heures travaillées sont connues :
+  //   TF YTD = Σ accidents avec arrêt cumulés × 1e6 / Σ heures cumulées
+  //   TG YTD = Σ journées perdues cumulées   × 1e3 / Σ heures cumulées
+  // Le taux cumulé peut légitimement baisser un mois sans accident (le
+  // dénominateur d'heures croît à numérateur constant) : cette baisse
+  // traduit une amélioration de la performance et n'est pas corrigée.
+  // Arrays cumulés exposés (numérateurs + heures) pour l'infobulle de
+  // détail au clic sur un point du graphique — null pour les mois exclus.
+  var _cumAT = 0, _cumJP = 0, _cumH = 0, _tfYtdM = [], _tgYtdM = [],
+      _cumATM = [], _cumJPM = [], _cumHM = [],
+      _tfCum = null, _tgCum = null, _cntH = 0;
+  for (var _k2 = 0; _k2 < _n; _k2++) {
+    if (_hoursM[_k2] == null) {
+      _tfYtdM.push(null); _tgYtdM.push(null);
+      _cumATM.push(null); _cumJPM.push(null); _cumHM.push(null);
+      continue;
+    }
+    _cntH++;
+    _cumAT += (_atM[_k2] || 0);
+    _cumJP += (_jpM[_k2] || 0);
+    _cumH  += _hoursM[_k2];
+    _tfYtdM.push(_cumH > 0 ? Math.round(_cumAT * 1000000 / _cumH * 100) / 100 : 0);
+    _tgYtdM.push(_cumH > 0 ? Math.round(_cumJP * 1000    / _cumH * 100) / 100 : 0);
+    _cumATM.push(_cumAT); _cumJPM.push(_cumJP);
+    _cumHM.push(Math.round(_cumH));
+    _tfCum = _tfYtdM[_tfYtdM.length - 1];
+    _tgCum = _tgYtdM[_tgYtdM.length - 1];
+  }
+  // Valeur YTD finale = dernier point cumulé (repli sur la valeur saisie
+  // dans la feuille si aucune donnée mensuelle exploitable).
+  var _tf1_ytd = (_cntH > 0 && _tfCum != null) ? _tfCum : ytd('Taux de Fréquence (TF1)');
+  var _tg_ytd  = (_cntH > 0 && _tgCum != null) ? _tgCum : ytd('Taux de Gravité (TG)');
+
   return {
-    tf1_ytd:ytd('Taux de Fréquence (TF1)'),tg_ytd:ytd('Taux de Gravité (TG)'),
+    tf1_ytd:_tf1_ytd,tg_ytd:_tg_ytd,
+    tf1_ytd_months:_tfYtdM,tg_ytd_months:_tgYtdM,jp_months:_jpM,hours_months:_hoursM,
+    ytd_cumAT:_cumATM,ytd_cumJP:_cumJPM,ytd_cumH:_cumHM,
+    hours_source:_hoursSource,hours_label:(_hoursKey||''),
     at_fatal:ytd('Accident Travail (FATAL)'),at_majeur:ytd('Accident Travail (MAJEUR)'),
     at_mineur:ytd('Accident Travail (MINEUR)'),at_total:ytd('Accident Travail (AT) (Total)'),
     jp_ytd:ytd('Jours Perdus'),inc_ytd:ytd('Accident Travail (SANS AT) - INCIDENT'),
