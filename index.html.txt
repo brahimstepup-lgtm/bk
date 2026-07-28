@@ -16463,13 +16463,65 @@ function pestMapRenderFloors(){
   + '<button type="button" class="pestmap-floor-btn" onclick="downloadPestMapPlan()"'
   + ' title="Télécharger le plan de l\'étage affiché" style="margin-left:auto;background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
 }
-// Télécharge le plan (image Drive) de l'étage actuellement affiché.
+// Télécharge le plan de l'étage affiché AVEC les repères (composite),
+// exactement comme à l'écran : l'image est récupérée côté serveur en
+// data-URL (sans souci CORS), puis les repères numérotés/colorés sont
+// dessinés dessus sur un canvas avant export PNG. Repli sur le fichier
+// Drive source si l'image ne peut pas être composée (ex. PDF).
 function downloadPestMapPlan(){
   var floor=(pestMapFloors&&pestMapFloors[pestMapFloorIdx])||{};
-  var url=floor.rawUrl||floor.url||(floor.fileId?('https://drive.google.com/file/d/'+floor.fileId+'/view'):'');
-  if(!url){ showToast('Aucun plan à télécharger pour cet étage.','error'); return; }
-  var name=('Cartographie dispositifs - '+(floor.zone||'plan')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
-  downloadDriveDoc(url,name);
+  var fid=floor.fileId||extractDriveIdFront(floor.rawUrl||floor.url||'');
+  var fname=('Cartographie dispositifs - '+(floor.zone||'plan')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  var srcUrl=floor.rawUrl||floor.url||(fid?('https://drive.google.com/file/d/'+fid+'/view'):'');
+  if(!fid){ if(srcUrl) downloadDriveDoc(srcUrl,fname); else showToast('Aucun plan à télécharger pour cet étage.','error'); return; }
+  showToast('Préparation du plan (avec repères)…','success');
+  var glueSet={}, mechSet={};
+  ((D&&D.pestGlueNums)||[]).forEach(function(n){glueSet[String(n)]=1;});
+  ((D&&D.pestMechNums)||[]).forEach(function(n){mechSet[String(n)]=1;});
+  var pts=(pestMapPointsForFloor(floor.zone)||[]).map(function(p){
+    var et=p.type;
+    if(et==='int'&&glueSet[String(p.num)]&&!mechSet[String(p.num)]) et='glue';
+    return {num:p.num,x:p.x,y:p.y,type:et};
+  });
+  function fallback(){ downloadDriveDoc(srcUrl,fname); }
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res||!res.dataUrl){ fallback(); return; }
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var W=img.naturalWidth||img.width, H=img.naturalHeight||img.height;
+          var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+          var ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,W,H);
+          var mh=Math.max(18,Math.min(46,W*0.02)), fs=Math.round(mh*0.56);
+          ctx.font='700 '+fs+'px "JetBrains Mono", monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          var COL={blue:{bg:'#2f7ed8',fg:'#fff',bd:'rgba(255,255,255,.9)'},yellow:{bg:'#f4d11a',fg:'#1a1a1a',bd:'rgba(0,0,0,.55)'},pink:{bg:'#ec4899',fg:'#fff',bd:'rgba(255,255,255,.9)'}};
+          var TC={ext:'blue',int:'yellow',glue:'pink'};
+          pts.forEach(function(p){
+            var c=COL[TC[p.type]||'blue']||COL.blue, label=String(p.num);
+            var tw=ctx.measureText(label).width, w=Math.max(mh,tw+mh*0.6), h=mh, r=Math.max(3,mh*0.2);
+            var cx=p.x/100*W, cy=p.y/100*H, x=cx-w/2, y=cy-h/2;
+            ctx.beginPath();
+            ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+            ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=mh*0.2; ctx.shadowOffsetY=mh*0.06;
+            ctx.fillStyle=c.bg; ctx.fill();
+            ctx.shadowColor='transparent'; ctx.lineWidth=Math.max(1.4,mh*0.09); ctx.strokeStyle=c.bd; ctx.stroke();
+            ctx.fillStyle=c.fg; ctx.fillText(label,cx,cy);
+          });
+          cv.toBlob(function(blob){
+            if(!blob){ fallback(); return; }
+            var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname+'.png';
+            document.body.appendChild(a); a.click();
+            setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
+            showToast('Téléchargement lancé.','success');
+          },'image/png');
+        }catch(e){ fallback(); }
+      };
+      img.onerror=fallback;
+      img.src=res.dataUrl;
+    })
+    .withFailureHandler(fallback)
+    .getAccidentAttachment(fid);
 }
 function pestMapSetFloor(i){
   if(i===pestMapFloorIdx) return;
