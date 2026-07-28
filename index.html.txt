@@ -2377,6 +2377,10 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="card"><div class="ct"><span class="ct-dot"></span>Par fonction</div><div class="cw" style="height:170px"><canvas id="accFC"></canvas></div></div>
   </div>
   <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:#7c3aed"></span>Répartition par siège de lésion <span style="color:var(--text3);font-size:9px;margin-left:4px">Partie du corps touchée</span></div>
+    <div class="cw" style="height:200px"><canvas id="accSiegeC"></canvas></div>
+  </div>
+  <div class="card">
     <div class="ct"><span class="ct-dot"></span>Bilan AT — <span id="accCount">—</span>
       <span style="color:var(--p4);font-size:9px;margin-left:4px">↗ Cliquer pour détails · Plus récent en haut</span>
     </div>
@@ -9086,6 +9090,11 @@ function renderAccidents(accs){
   if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();charts['accFC']=new Chart(document.getElementById('accFC'),{type:'doughnut',
     data:{labels:ft.map(function(x){return String(x.name).substring(0,25);}),datasets:[{data:ft.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});}
+  // Répartition par siège de lésion (partie du corps touchée) — barres horizontales.
+  var st=tally(accs.map(function(a){return a.siege;}),8);
+  mkChart('accSiegeC','bar',st.map(function(x){return String(x.name).substring(0,28);}),
+    [{data:st.map(function(x){return x.count;}),backgroundColor:'rgba(124,58,237,.78)',borderRadius:4}],
+    Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt,stepSize:1}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
   var ab=document.getElementById('accBody'); ab.innerHTML='';
   if(accs.length===0){ab.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">Aucun accident</td></tr>';return;}
   accs.forEach(function(a){
