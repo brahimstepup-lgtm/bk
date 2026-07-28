@@ -490,6 +490,12 @@ html.light .cln-thumb-ph,html.light .cln-thumb-load{background:#e8edf2}
 .cln-plan-zone{flex:1;color:var(--text)}
 .cln-plan-arrow{color:var(--text3);font-size:14px}
 .cln-plan-empty{text-align:center;padding:28px 12px;color:var(--text3);font-size:12px;line-height:1.6}
+.cln-plan-cell{display:flex;align-items:stretch;gap:0}
+.cln-plan-cell .cln-plan-btn{flex:1;border-top-right-radius:0;border-bottom-right-radius:0;border-right:none}
+.cln-dl-btn{flex-shrink:0;border:1px solid var(--border);border-left:none;border-radius:0 10px 10px 0;
+  background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;cursor:pointer;padding:0 16px;
+  font-size:15px;display:flex;align-items:center;justify-content:center;transition:filter .15s}
+.cln-dl-btn:hover{filter:brightness(1.12)}
 @media(max-width:600px){.cln-plan-grid{grid-template-columns:1fr}}
 
 /* ── Sous-texte « produits » dans le bouton zone ── */
@@ -9307,7 +9313,7 @@ function openCleaningPlan(){
     var link = clnPlanResolveLink(z.label);
     var disabled = !link;
     var safeTitle = esc(z.label);
-    html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
+    var mainBtn = '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
          +  (disabled
               ? 'disabled title="Lien plan non défini dans la feuille nettoyage 1"'
               : 'onclick="openCleaningPlanLink(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent(z.label)+'\')"'
@@ -9317,6 +9323,14 @@ function openCleaningPlan(){
          +    '<span class="cln-plan-zone">'+safeTitle+'</span>'
          +    '<span class="cln-plan-arrow">'+(disabled?'⛔':'↗')+'</span>'
          +  '</button>';
+    if (disabled) {
+      html += mainBtn;
+    } else {
+      html += '<div class="cln-plan-cell">'+mainBtn
+           +  '<button class="cln-dl-btn" title="Télécharger le plan de '+safeTitle+'" '
+           +  'onclick="downloadCleaningDoc(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent('Plan nettoyage - '+z.label)+'\')">⬇️</button>'
+           +  '</div>';
+    }
   });
   list.innerHTML = html;
   list.style.display  = 'grid';
@@ -9334,6 +9348,15 @@ function openCleaningPlanLink(encoded, encodedTitle){
     return;
   }
   openCleaningEmbed(url, title || 'Plan de nettoyage', 'PLAN DE NETTOYAGE', '📋');
+}
+// Téléchargement d'un document de nettoyage (plan de zone ou fiche FDS
+// produit) sous un nom lisible. Réutilise le mécanisme Drive générique.
+function downloadCleaningDoc(encoded, encodedName){
+  var url=''; try{ url=decodeURIComponent(encoded||''); }catch(e){ url=encoded||''; }
+  var name=''; try{ name=decodeURIComponent(encodedName||''); }catch(e2){ name=encodedName||''; }
+  if(!url || !/^https?:\/\//i.test(url)) return;
+  var fname=String(name||'Document').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  downloadDriveDoc(url, fname);
 }
 
 // ── PRODUITS UTILISÉS ────────────────────────────────────────
@@ -9395,12 +9418,16 @@ function openCleaningProducts(){
       var subSpan = '<span class="cln-plan-sub">'+esc(subTxt)+'</span>';
 
       if (hasLink) {
-        html += '<button class="cln-plan-btn" '
+        html += '<div class="cln-plan-cell">'
+             +  '<button class="cln-plan-btn" '
              +  'onclick="openCleaningProductsLink(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent(name)+'\')">'
              +    '<span class="cln-plan-icon">'+icon+'</span>'
              +    '<span class="cln-plan-zone">'+esc(name)+subSpan+'</span>'
              +    '<span class="cln-plan-arrow">'+arrow+'</span>'
-             +  '</button>';
+             +  '</button>'
+             +  '<button class="cln-dl-btn" title="Télécharger la fiche FDS de '+esc(name)+'" '
+             +  'onclick="downloadCleaningDoc(\''+encodeURIComponent(link)+'\',\''+encodeURIComponent('FDS - '+name)+'\')">⬇️</button>'
+             +  '</div>';
       } else {
         html += '<button class="cln-plan-btn disabled" disabled '
              +  'title="'+esc(text || 'Aucune fiche renseignée')+'">'
@@ -9453,12 +9480,16 @@ function openCleaningProducts(){
     }
 
     if (hasLink) {
-      html += '<button class="cln-plan-btn" '
+      html += '<div class="cln-plan-cell">'
+           +  '<button class="cln-plan-btn" '
            +  'onclick="openCleaningProductsLink(\''+encodeURIComponent(p.link)+'\',\''+encodeURIComponent(z.label)+'\')">'
            +    '<span class="cln-plan-icon">'+z.icon+'</span>'
            +    '<span class="cln-plan-zone">'+safeTitle+subTxt+'</span>'
            +    '<span class="cln-plan-arrow">'+arrow+'</span>'
-           +  '</button>';
+           +  '</button>'
+           +  '<button class="cln-dl-btn" title="Télécharger les produits utilisés — '+safeTitle+'" '
+           +  'onclick="downloadCleaningDoc(\''+encodeURIComponent(p.link)+'\',\''+encodeURIComponent('Produits utilisés - '+z.label)+'\')">⬇️</button>'
+           +  '</div>';
     } else {
       // Pas de lien → bouton informatif (texte seulement)
       html += '<button class="cln-plan-btn'+(disabled?' disabled':'')+'" '
