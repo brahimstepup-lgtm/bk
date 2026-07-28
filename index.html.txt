@@ -2172,6 +2172,8 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="tag-stats-row" id="tagStatsRow" style="margin-bottom:0;margin-left:auto"></div>
   </div>
 
+  <!-- DEBUG TEMPORAIRE : montre en direct ce que le filtre lit réellement -->
+  <div id="tagFilterDebug" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--amber);background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.35);border-radius:6px;padding:5px 10px;margin-bottom:10px;word-break:break-all">🔧 debug filtres — sélectionnez un responsable/zone pour voir…</div>
   <div class="kpi-grid" id="tagKpi"></div>
   <div class="row2">
     <div class="card"><div class="ct"><span class="ct-dot"></span>Types de dangers</div><div class="cw" style="height:195px"><canvas id="dangerC"></canvas></div></div>
@@ -8881,6 +8883,16 @@ function applyTagF(){
     +'<span class="tag-stat-pill tsp-closed">Fermés : '+closedAll+'</span>'
     +(filtered.length!==total?'<span class="tag-stat-pill tsp-filtered">Filtrés : <strong>'+filtered.length+'</strong></span>':'');
   document.getElementById('tagListCount').textContent=filtered.length+' résultats';
+  // DEBUG TEMPORAIRE : affiche exactement les valeurs lues par le filtre.
+  var _dbg=document.getElementById('tagFilterDebug');
+  if(_dbg){
+    var _sampleResp=(filterResp!=='all')?(' | 1er TAG resp="'+((D.tags[0]&&D.tags[0].responsable)||'')+'"→norm="'+normKey((D.tags[0]&&D.tags[0].responsable)||'')+'" vs sel-norm="'+normKey(filterResp)+'"'):'';
+    _dbg.textContent='🔧 lu par le filtre → resp='+JSON.stringify(filterResp)
+      +' · zone='+JSON.stringify(filterZone)
+      +' · période='+p+' · statut='+tagStatFilter
+      +' · recherche='+JSON.stringify(searchVal)
+      +' ⟶ '+filtered.length+' / '+total+' TAGs'+_sampleResp;
+  }
 
   document.getElementById('tagKpi').innerHTML=[
     kpiCard('Filtrés',filtered.length,'b','TAGs','k-b',null,null),
