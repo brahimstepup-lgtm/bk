@@ -16459,7 +16459,17 @@ function pestMapRenderFloors(){
   el.innerHTML = pestMapFloors.map(function(f,i){
     return '<button type="button" class="pestmap-floor-btn'+(i===pestMapFloorIdx?' on':'')+'"'
       + ' onclick="pestMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
-  }).join('');
+  }).join('')
+  + '<button type="button" class="pestmap-floor-btn" onclick="downloadPestMapPlan()"'
+  + ' title="Télécharger le plan de l\'étage affiché" style="margin-left:auto;background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
+}
+// Télécharge le plan (image Drive) de l'étage actuellement affiché.
+function downloadPestMapPlan(){
+  var floor=(pestMapFloors&&pestMapFloors[pestMapFloorIdx])||{};
+  var url=floor.rawUrl||floor.url||(floor.fileId?('https://drive.google.com/file/d/'+floor.fileId+'/view'):'');
+  if(!url){ showToast('Aucun plan à télécharger pour cet étage.','error'); return; }
+  var name=('Cartographie dispositifs - '+(floor.zone||'plan')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  downloadDriveDoc(url,name);
 }
 function pestMapSetFloor(i){
   if(i===pestMapFloorIdx) return;
@@ -16641,7 +16651,16 @@ function flyMapRenderFloors(){
   el.innerHTML=flyMapFloors.map(function(f,i){
     return '<button type="button" class="pestmap-floor-btn'+(i===flyMapFloorIdx?' on':'')+'"'
       + ' onclick="flyMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
-  }).join('');
+  }).join('')
+  + '<button type="button" class="pestmap-floor-btn" onclick="downloadFlyMapPlan()"'
+  + ' title="Télécharger le plan de l\'étage affiché" style="margin-left:auto;background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
+}
+function downloadFlyMapPlan(){
+  var floor=(flyMapFloors&&flyMapFloors[flyMapFloorIdx])||{};
+  var url=floor.rawUrl||floor.url||(floor.fileId?('https://drive.google.com/file/d/'+floor.fileId+'/view'):'');
+  if(!url){ showToast('Aucun plan à télécharger pour cet étage.','error'); return; }
+  var name=('Cartographie fly-killers - '+(floor.zone||'plan')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  downloadDriveDoc(url,name);
 }
 function flyMapSetFloor(i){ if(i===flyMapFloorIdx) return; flyMapFloorIdx=i; renderFlyMap(); }
 function flyShowPlaceholder(html){
