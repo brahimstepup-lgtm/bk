@@ -9091,56 +9091,61 @@ function renderAccSiegeBody(accs){
   var max=0; for(var mk in counts){ if(counts[mk]>max) max=counts[mk]; }
   function col(region){
     var c=counts[region]||0;
-    if(c<=0) return {f:'rgba(56,189,248,.10)',s:'rgba(56,189,248,.5)'};
+    if(c<=0) return {f:'url(#bodyBase)',s:'rgba(120,150,175,.55)'};
     var t=max>0?c/max:1;
-    return {f:'rgba(232,68,90,'+(0.30+0.62*t).toFixed(2)+')',s:'rgba(232,68,90,.95)'};
+    return {f:'rgba(232,68,90,'+(0.34+0.60*t).toFixed(2)+')',s:'rgba(200,30,55,.9)'};
   }
   function shp(region,svg){ var c=col(region); return svg.replace('%F%',c.f).replace('%S%',c.s); }
-  var BADGE={tete:[100,38],cou:[100,68],epaule:[70,92],bras:[56,150],main:[56,220],tronc:[100,132],bassin:[100,200],jambe:[89,312],pied:[89,402]};
+  var BADGE={tete:[110,40],cou:[131,70],epaule:[76,95],bras:[60,152],main:[62,218],tronc:[110,128],bassin:[110,196],jambe:[98,320],pied:[95,420]};
   function badge(region){
     var c=counts[region]||0; if(c<=0) return '';
     var p=BADGE[region];
-    return '<g><circle cx="'+p[0]+'" cy="'+p[1]+'" r="12" fill="#fff" stroke="#e8445a" stroke-width="2"/>'
-      +'<text x="'+p[0]+'" y="'+(p[1]+4)+'" text-anchor="middle" font-size="12" font-weight="800" fill="#b91c1c" font-family="Inter,sans-serif">'+c+'</text></g>';
+    return '<g filter="url(#bdsh)"><circle cx="'+p[0]+'" cy="'+p[1]+'" r="12.5" fill="#fff"/>'
+      +'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="12.5" fill="none" stroke="#e8445a" stroke-width="2.2"/>'
+      +'<text x="'+p[0]+'" y="'+(p[1]+4.5)+'" text-anchor="middle" font-size="12" font-weight="800" fill="#c81e37" font-family="Inter,sans-serif">'+c+'</text></g>';
   }
-  var svg='<svg viewBox="0 0 200 425" width="190" style="max-width:48%;min-width:150px;height:auto;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><g stroke-width="1.5">';
-  svg+=shp('bassin','<path d="M76 180 L124 180 L116 218 L84 218 Z" fill="%F%" stroke="%S%"/>');
-  svg+=shp('tronc','<rect x="74" y="84" width="52" height="100" rx="16" fill="%F%" stroke="%S%"/>');
-  svg+=shp('epaule','<circle cx="70" cy="92" r="15" fill="%F%" stroke="%S%"/>');
-  svg+=shp('epaule','<circle cx="130" cy="92" r="15" fill="%F%" stroke="%S%"/>');
-  svg+=shp('bras','<rect x="47" y="88" width="18" height="122" rx="9" fill="%F%" stroke="%S%"/>');
-  svg+=shp('bras','<rect x="135" y="88" width="18" height="122" rx="9" fill="%F%" stroke="%S%"/>');
-  svg+=shp('jambe','<rect x="80" y="214" width="18" height="178" rx="9" fill="%F%" stroke="%S%"/>');
-  svg+=shp('jambe','<rect x="102" y="214" width="18" height="178" rx="9" fill="%F%" stroke="%S%"/>');
-  svg+=shp('main','<circle cx="56" cy="220" r="13" fill="%F%" stroke="%S%"/>');
-  svg+=shp('main','<circle cx="144" cy="220" r="13" fill="%F%" stroke="%S%"/>');
-  svg+=shp('pied','<ellipse cx="89" cy="402" rx="14" ry="10" fill="%F%" stroke="%S%"/>');
-  svg+=shp('pied','<ellipse cx="111" cy="402" rx="14" ry="10" fill="%F%" stroke="%S%"/>');
-  svg+=shp('cou','<rect x="90" y="60" width="20" height="16" rx="5" fill="%F%" stroke="%S%"/>');
-  svg+=shp('tete','<circle cx="100" cy="38" r="26" fill="%F%" stroke="%S%"/>');
-  svg+='</g><g>';
+  var body=''
+   +shp('bassin','<path d="M84 176 L136 176 L143 206 Q110 222 77 206 Z" fill="%F%" stroke="%S%"/>')
+   +shp('tronc','<path d="M80 86 Q77 82 92 82 L128 82 Q143 82 140 86 L134 152 Q134 168 137 180 L83 180 Q86 168 86 152 Z" fill="%F%" stroke="%S%"/>')
+   +shp('epaule','<ellipse cx="76" cy="94" rx="17" ry="14" fill="%F%" stroke="%S%"/>')
+   +shp('epaule','<ellipse cx="144" cy="94" rx="17" ry="14" fill="%F%" stroke="%S%"/>')
+   +shp('bras','<path d="M62 92 Q52 94 53 108 L59 196 Q59 208 68 208 Q77 208 77 196 L78 106 Q79 96 70 92 Z" fill="%F%" stroke="%S%"/>')
+   +shp('bras','<path d="M158 92 Q168 94 167 108 L161 196 Q161 208 152 208 Q143 208 143 196 L142 106 Q141 96 150 92 Z" fill="%F%" stroke="%S%"/>')
+   +shp('main','<path d="M55 201 Q49 203 49 216 Q49 231 65 231 Q78 231 78 217 L78 200 Q68 210 55 201 Z" fill="%F%" stroke="%S%"/>')
+   +shp('main','<path d="M165 201 Q171 203 171 216 Q171 231 155 231 Q142 231 142 217 L142 200 Q152 210 165 201 Z" fill="%F%" stroke="%S%"/>')
+   +shp('jambe','<path d="M84 202 Q79 208 82 226 L90 404 Q90 414 99 414 Q107 414 107 404 L106 226 Q109 210 104 202 Z" fill="%F%" stroke="%S%"/>')
+   +shp('jambe','<path d="M136 202 Q141 208 138 226 L130 404 Q130 414 121 414 Q113 414 113 404 L114 226 Q111 210 116 202 Z" fill="%F%" stroke="%S%"/>')
+   +shp('pied','<path d="M89 410 Q82 410 81 421 Q81 431 98 431 L107 431 Q108 419 104 408 Z" fill="%F%" stroke="%S%"/>')
+   +shp('pied','<path d="M131 410 Q138 410 139 421 Q139 431 122 431 L113 431 Q112 419 116 408 Z" fill="%F%" stroke="%S%"/>')
+   +shp('cou','<path d="M100 62 L120 62 L123 82 L97 82 Z" fill="%F%" stroke="%S%"/>')
+   +shp('tete','<ellipse cx="110" cy="40" rx="25" ry="29" fill="%F%" stroke="%S%"/>');
+  var svg='<svg viewBox="0 0 220 448" width="205" style="max-width:46%;min-width:158px;height:auto;flex-shrink:0" xmlns="http://www.w3.org/2000/svg">'
+   +'<defs><linearGradient id="bodyBase" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcecf7"/><stop offset="1" stop-color="#c4dcec"/></linearGradient>'
+   +'<filter id="bsh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(40,78,100,.22)"/></filter>'
+   +'<filter id="bdsh"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="rgba(0,0,0,.22)"/></filter></defs>'
+   +'<g filter="url(#bsh)" stroke-width="1.4" stroke-linejoin="round">'+body+'</g><g>';
   ['tete','cou','epaule','bras','main','tronc','bassin','jambe','pied'].forEach(function(r){ svg+=badge(r); });
   svg+='</g></svg>';
 
   var RLBL={tete:'Tête',cou:'Cou',epaule:'Épaules',bras:'Bras / coude',main:'Mains / doigts',tronc:'Tronc / dos',bassin:'Bassin / hanche',jambe:'Jambes / genou',pied:'Pieds / chevilles'};
   var rows=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
-  var lst='<div style="min-width:170px;flex:1;max-width:300px">';
-  lst+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
+  var lst='<div style="min-width:190px;flex:1;max-width:320px">';
+  lst+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:10px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
   if(rows.length===0){
     lst+='<div style="font-size:11px;color:var(--text3)">Aucun siège de lésion renseigné pour ce filtre.</div>';
   }else{
     rows.forEach(function(r){
-      var c=col(r);
-      lst+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
-        +'<span style="width:12px;height:12px;border-radius:3px;background:'+c.f+';border:1px solid '+c.s+';flex-shrink:0"></span>'
-        +'<span style="flex:1;font-size:11px;color:var(--text)">'+esc(RLBL[r]||r)+'</span>'
-        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;font-weight:700;color:var(--red)">'+counts[r]+'</span>'
-        +'</div>';
+      var c=col(r), pct=max>0?Math.round(counts[r]/max*100):0;
+      lst+='<div style="margin-bottom:9px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+        +'<span style="width:11px;height:11px;border-radius:3px;background:'+(c.f.indexOf('url')>-1?'#cfe2f0':c.f)+';border:1px solid '+c.s+';flex-shrink:0"></span>'
+        +'<span style="flex:1;font-size:11.5px;color:var(--text2);font-weight:500">'+esc(RLBL[r]||r)+'</span>'
+        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:800;color:var(--red)">'+counts[r]+'</span></div>'
+        +'<div style="height:5px;border-radius:3px;background:rgba(120,150,175,.15);overflow:hidden"><div style="height:100%;width:'+pct+'%;border-radius:3px;background:linear-gradient(90deg,rgba(232,68,90,.55),#e8445a)"></div></div></div>';
     });
   }
   var uKeys=Object.keys(unmapped).sort(function(a,b){return unmapped[b]-unmapped[a];});
   if(uKeys.length){
-    lst+='<div style="font-size:9px;color:var(--text3);margin-top:8px;line-height:1.5">Autres / non localisés : '
+    lst+='<div style="font-size:9px;color:var(--text3);margin-top:10px;line-height:1.5;padding-top:8px;border-top:1px dashed var(--border)"><b>Non localisés :</b> '
       +uKeys.slice(0,6).map(function(k){return esc(k)+' ('+unmapped[k]+')';}).join(' · ')
       +(uKeys.length>6?' …':'')+'</div>';
   }
