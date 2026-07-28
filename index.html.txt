@@ -15647,11 +15647,18 @@ function renderFichesTechniques(){
       var safeNom=(r.nom||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var safeBadge=badge.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var safeUrl=(r.url||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var fname=((badge&&badge!=='FT'?badge+' - ':'')+(r.nom||'Fiche technique')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+      var safeFname=fname.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var onclick="openFicheViewer('"+safeNom+"','"+safeBadge+"','"+safeUrl+"');return false;";
-      h+='<a href="'+r.url+'" onclick="'+onclick+'" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);text-decoration:none;cursor:pointer;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.10)\'" onmouseout="this.style.boxShadow=\'none\'">';
+      var dlclick="downloadDriveDoc('"+safeUrl+"','"+safeFname+"');return false;";
+      h+='<div style="display:flex;align-items:stretch;border-radius:12px;border:1.5px solid var(--border);background:var(--card);overflow:hidden;transition:box-shadow .15s" onmouseover="this.style.boxShadow=\'0 4px 16px rgba(0,0,0,.10)\'" onmouseout="this.style.boxShadow=\'none\'">';
+      h+='<a href="'+r.url+'" onclick="'+onclick+'" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;text-decoration:none;cursor:pointer;flex:1;min-width:0">';
       h+=inner;
       h+='<span style="font-size:16px;color:var(--text3);flex-shrink:0">↗</span>';
       h+='</a>';
+      h+='<button type="button" onclick="'+dlclick+'" title="Télécharger la fiche" '
+        +'style="flex-shrink:0;border:none;border-left:1.5px solid var(--border);background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;cursor:pointer;padding:0 15px;font-size:15px;display:flex;align-items:center;justify-content:center">⬇️</button>';
+      h+='</div>';
     } else {
       h+='<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-radius:12px;border:1.5px solid var(--border);background:var(--card);opacity:.7">';
       h+=inner;
