@@ -2354,7 +2354,11 @@ html.light .pests-search-input{background:#edf2f7}
     </select>
     <select class="pf-sel" id="accMo" style="display:none" onchange="applyAccF()">
       <option value="Janvier">Janvier</option><option value="Février">Février</option>
-      <option value="Mars">Mars</option><option value="Avril" selected>Avril</option>
+      <option value="Mars">Mars</option><option value="Avril">Avril</option>
+      <option value="Mai">Mai</option><option value="Juin">Juin</option>
+      <option value="Juillet">Juillet</option><option value="Août">Août</option>
+      <option value="Septembre">Septembre</option><option value="Octobre">Octobre</option>
+      <option value="Novembre">Novembre</option><option value="Décembre">Décembre</option>
     </select>
     <input type="date" class="pf-input" id="accD1" style="display:none" onchange="applyAccF()">
     <span id="accSep" style="display:none;color:var(--text3);font-size:10px">→</span>
@@ -9156,18 +9160,27 @@ function renderAccidents(accs){
   window._accFiltered=accs;   // conservé pour le Bilan AT (ENR HSE 25) et le plan d'action
   document.getElementById('accStat').textContent=accs.length+' accidents';
   var totalNJP=0; accs.forEach(function(a){totalNJP+=a.njp;});
-  var njpM={Janvier:0,Février:0,Mars:0,Avril:0};
-  accs.forEach(function(a){if(njpM[a.mois]!==undefined)njpM[a.mois]+=a.njp;});
-  var maxMois=Object.keys(njpM).reduce(function(a,b){return njpM[a]>njpM[b]?a:b;},'Janvier');
+  // NJP et nombre d'accidents par mois — dynamique sur les 12 mois, on
+  // n'affiche que les mois réellement présents dans les données (ordre
+  // chronologique), pour que le graphe reste toujours à jour.
+  var MOIS_ORDRE=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var njpM={}, moisCount={};
+  MOIS_ORDRE.forEach(function(m){ njpM[m]=0; moisCount[m]=0; });
+  accs.forEach(function(a){ if(njpM[a.mois]!==undefined){ njpM[a.mois]+=a.njp; moisCount[a.mois]++; } });
+  var moisAff=MOIS_ORDRE.filter(function(m){ return moisCount[m]>0; });
+  var maxNJP=0; moisAff.forEach(function(m){ if(njpM[m]>maxNJP) maxNJP=njpM[m]; });
+  var moisMaxAccid=moisAff.length?moisAff.reduce(function(a,b){return moisCount[a]>=moisCount[b]?a:b;}):'—';
   document.getElementById('accCount').textContent=accs.length+' accidents';
   document.getElementById('accSum').innerHTML=
     '<div class="acc-card"><div class="acc-val" style="color:var(--red)">'+fmtNum(accs.length)+'</div><div class="acc-lbl">AT filtrés</div></div>'+
     '<div class="acc-card"><div class="acc-val" style="color:var(--amber)">'+fmtNum(totalNJP)+'</div><div class="acc-lbl">NJP total</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+fmtNum(njpM[maxMois])+'</div><div class="acc-lbl">NJP max</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--green)">'+maxMois+'</div><div class="acc-lbl">Mois +accid.</div></div>';
-  var njpL=[],njpD=[];
-  ['Janvier','Février','Mars','Avril'].forEach(function(mo){if(njpM[mo]>=0){njpL.push(mo.substring(0,3));njpD.push(njpM[mo]);}});
-  if(njpL.length>0) mkChart('njpC','bar',njpL,[{data:njpD,backgroundColor:[C.red,'rgba(232,68,90,.7)','rgba(232,68,90,.5)','rgba(232,68,90,.4)'],borderRadius:5}],BASE);
+    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+fmtNum(maxNJP)+'</div><div class="acc-lbl">NJP max / mois</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--green)">'+moisMaxAccid+'</div><div class="acc-lbl">Mois +accid.</div></div>';
+  var njpL=moisAff.map(function(m){return m.substring(0,3);});
+  var njpD=moisAff.map(function(m){return njpM[m];});
+  var maxBar=Math.max.apply(null,njpD.concat([1]));
+  var njpColors=njpD.map(function(v){ return 'rgba(232,68,90,'+(0.35+0.60*(v/maxBar)).toFixed(2)+')'; });
+  mkChart('njpC','bar',njpL,[{data:njpD,backgroundColor:njpColors,borderRadius:5}],BASE);
   var zt=tally(accs.map(function(a){return a.lieu;}),5);
   if(zt.length>0) mkChart('accZC','bar',zt.map(function(x){return String(x.name).substring(0,25);}),[{data:zt.map(function(x){return x.count;}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
