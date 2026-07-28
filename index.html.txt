@@ -2377,8 +2377,8 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="card"><div class="ct"><span class="ct-dot"></span>Par fonction</div><div class="cw" style="height:170px"><canvas id="accFC"></canvas></div></div>
   </div>
   <div class="card">
-    <div class="ct"><span class="ct-dot" style="background:#7c3aed"></span>Répartition par siège de lésion <span style="color:var(--text3);font-size:9px;margin-left:4px">Partie du corps touchée</span></div>
-    <div class="cw" style="height:200px"><canvas id="accSiegeC"></canvas></div>
+    <div class="ct"><span class="ct-dot" style="background:#7c3aed"></span>Répartition par siège de lésion <span style="color:var(--text3);font-size:9px;margin-left:4px">Cartographie du corps · partie touchée</span></div>
+    <div id="accSiegeBody" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center;padding:10px 4px 4px"></div>
   </div>
   <div class="card">
     <div class="ct"><span class="ct-dot"></span>Bilan AT — <span id="accCount">—</span>
@@ -9064,6 +9064,89 @@ function applyAccF(){
   });
   renderAccidents(filtered);
 }
+// ── Cartographie du corps : siège de lésion → région anatomique ──
+// Mappe le libellé libre du « siège de lésion » vers une région du
+// schéma corporel, par mots-clés (insensible casse/accents).
+function accSiegeRegion(s){
+  var n=veilleNorm(s).replace(/œ/g,'oe').replace(/æ/g,'ae'); if(!n) return null;
+  if(/main|doigt|pouce|index|majeur|annulaire|auriculaire|paume|phalange|poignet|metacarp/.test(n)) return 'main';
+  if(/pied|orteil|talon|cheville|plante|malleole|metatars/.test(n)) return 'pied';
+  if(/tete|crane|visage|face|oeil|yeux|nez|oreille|front|machoire|dent|cuir chevelu|tempe|joue|levre|menton/.test(n)) return 'tete';
+  if(/cou|nuque|cervical|gorge|larynx/.test(n)) return 'cou';
+  if(/epaule|clavicule|omoplate|scapula|deltoide/.test(n)) return 'epaule';
+  if(/bras|coude|humerus|avant-bras|avant bras|cubitus|radius|membre superieur/.test(n)) return 'bras';
+  if(/jambe|cuisse|genou|tibia|mollet|rotule|femur|patella|perone|membre inferieur/.test(n)) return 'jambe';
+  if(/bassin|hanche|pelvis|fessier|fesse|sacrum|coccyx|pubis|aine/.test(n)) return 'bassin';
+  if(/dos|colonne|lombaire|rachis|thorax|poitrine|torse|tronc|cote|cotes|abdomen|ventre|sternum|thoracique|dorsal|flanc|reins/.test(n)) return 'tronc';
+  return null;   // non localisé → listé dans « Autres »
+}
+function renderAccSiegeBody(accs){
+  var box=document.getElementById('accSiegeBody'); if(!box) return;
+  var counts={}, unmapped={}, totalMapped=0;
+  (accs||[]).forEach(function(a){
+    var r=accSiegeRegion(a&&a.siege);
+    if(r){ counts[r]=(counts[r]||0)+1; totalMapped++; }
+    else { var k=String((a&&a.siege)||'').trim(); if(k) unmapped[k]=(unmapped[k]||0)+1; }
+  });
+  var max=0; for(var mk in counts){ if(counts[mk]>max) max=counts[mk]; }
+  function col(region){
+    var c=counts[region]||0;
+    if(c<=0) return {f:'rgba(56,189,248,.10)',s:'rgba(56,189,248,.5)'};
+    var t=max>0?c/max:1;
+    return {f:'rgba(232,68,90,'+(0.30+0.62*t).toFixed(2)+')',s:'rgba(232,68,90,.95)'};
+  }
+  function shp(region,svg){ var c=col(region); return svg.replace('%F%',c.f).replace('%S%',c.s); }
+  var BADGE={tete:[100,38],cou:[100,68],epaule:[70,92],bras:[56,150],main:[56,220],tronc:[100,132],bassin:[100,200],jambe:[89,312],pied:[89,402]};
+  function badge(region){
+    var c=counts[region]||0; if(c<=0) return '';
+    var p=BADGE[region];
+    return '<g><circle cx="'+p[0]+'" cy="'+p[1]+'" r="12" fill="#fff" stroke="#e8445a" stroke-width="2"/>'
+      +'<text x="'+p[0]+'" y="'+(p[1]+4)+'" text-anchor="middle" font-size="12" font-weight="800" fill="#b91c1c" font-family="Inter,sans-serif">'+c+'</text></g>';
+  }
+  var svg='<svg viewBox="0 0 200 425" width="190" style="max-width:48%;min-width:150px;height:auto;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><g stroke-width="1.5">';
+  svg+=shp('bassin','<path d="M76 180 L124 180 L116 218 L84 218 Z" fill="%F%" stroke="%S%"/>');
+  svg+=shp('tronc','<rect x="74" y="84" width="52" height="100" rx="16" fill="%F%" stroke="%S%"/>');
+  svg+=shp('epaule','<circle cx="70" cy="92" r="15" fill="%F%" stroke="%S%"/>');
+  svg+=shp('epaule','<circle cx="130" cy="92" r="15" fill="%F%" stroke="%S%"/>');
+  svg+=shp('bras','<rect x="47" y="88" width="18" height="122" rx="9" fill="%F%" stroke="%S%"/>');
+  svg+=shp('bras','<rect x="135" y="88" width="18" height="122" rx="9" fill="%F%" stroke="%S%"/>');
+  svg+=shp('jambe','<rect x="80" y="214" width="18" height="178" rx="9" fill="%F%" stroke="%S%"/>');
+  svg+=shp('jambe','<rect x="102" y="214" width="18" height="178" rx="9" fill="%F%" stroke="%S%"/>');
+  svg+=shp('main','<circle cx="56" cy="220" r="13" fill="%F%" stroke="%S%"/>');
+  svg+=shp('main','<circle cx="144" cy="220" r="13" fill="%F%" stroke="%S%"/>');
+  svg+=shp('pied','<ellipse cx="89" cy="402" rx="14" ry="10" fill="%F%" stroke="%S%"/>');
+  svg+=shp('pied','<ellipse cx="111" cy="402" rx="14" ry="10" fill="%F%" stroke="%S%"/>');
+  svg+=shp('cou','<rect x="90" y="60" width="20" height="16" rx="5" fill="%F%" stroke="%S%"/>');
+  svg+=shp('tete','<circle cx="100" cy="38" r="26" fill="%F%" stroke="%S%"/>');
+  svg+='</g><g>';
+  ['tete','cou','epaule','bras','main','tronc','bassin','jambe','pied'].forEach(function(r){ svg+=badge(r); });
+  svg+='</g></svg>';
+
+  var RLBL={tete:'Tête',cou:'Cou',epaule:'Épaules',bras:'Bras / coude',main:'Mains / doigts',tronc:'Tronc / dos',bassin:'Bassin / hanche',jambe:'Jambes / genou',pied:'Pieds / chevilles'};
+  var rows=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
+  var lst='<div style="min-width:170px;flex:1;max-width:300px">';
+  lst+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
+  if(rows.length===0){
+    lst+='<div style="font-size:11px;color:var(--text3)">Aucun siège de lésion renseigné pour ce filtre.</div>';
+  }else{
+    rows.forEach(function(r){
+      var c=col(r);
+      lst+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="width:12px;height:12px;border-radius:3px;background:'+c.f+';border:1px solid '+c.s+';flex-shrink:0"></span>'
+        +'<span style="flex:1;font-size:11px;color:var(--text)">'+esc(RLBL[r]||r)+'</span>'
+        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;font-weight:700;color:var(--red)">'+counts[r]+'</span>'
+        +'</div>';
+    });
+  }
+  var uKeys=Object.keys(unmapped).sort(function(a,b){return unmapped[b]-unmapped[a];});
+  if(uKeys.length){
+    lst+='<div style="font-size:9px;color:var(--text3);margin-top:8px;line-height:1.5">Autres / non localisés : '
+      +uKeys.slice(0,6).map(function(k){return esc(k)+' ('+unmapped[k]+')';}).join(' · ')
+      +(uKeys.length>6?' …':'')+'</div>';
+  }
+  lst+='</div>';
+  box.innerHTML=svg+lst;
+}
 function renderAccidents(accs){
   window._accFiltered=accs;   // conservé pour le Bilan AT (ENR HSE 25) et le plan d'action
   document.getElementById('accStat').textContent=accs.length+' accidents';
@@ -9090,11 +9173,8 @@ function renderAccidents(accs){
   if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();charts['accFC']=new Chart(document.getElementById('accFC'),{type:'doughnut',
     data:{labels:ft.map(function(x){return String(x.name).substring(0,25);}),datasets:[{data:ft.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});}
-  // Répartition par siège de lésion (partie du corps touchée) — barres horizontales.
-  var st=tally(accs.map(function(a){return a.siege;}),8);
-  mkChart('accSiegeC','bar',st.map(function(x){return String(x.name).substring(0,28);}),
-    [{data:st.map(function(x){return x.count;}),backgroundColor:'rgba(124,58,237,.78)',borderRadius:4}],
-    Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt,stepSize:1}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
+  // Répartition par siège de lésion — cartographie du corps humain (SVG).
+  renderAccSiegeBody(accs);
   var ab=document.getElementById('accBody'); ab.innerHTML='';
   if(accs.length===0){ab.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">Aucun accident</td></tr>';return;}
   accs.forEach(function(a){
