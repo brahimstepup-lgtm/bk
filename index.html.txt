@@ -15409,8 +15409,13 @@ function renderRecensementNuisibles(){
       traitements:[{icon:'🧲',label:'Piège à phéromone'},{icon:'⚡',label:'Fly-killer UV'}]
     },
     {
+      icon:'🪳', nom:'Cafards (Blattes)', couleur:'#b45309', bg:'#fff7ed',
+      description:'Blattes nocturnes proliférant dans les zones chaudes et humides (cuisines, canalisations, vestiaires, chaufferies). Vectrices de bactéries (salmonelle, E. coli) et d\'allergènes, elles contaminent denrées et surfaces. Une infestation se repère aux déjections, mues et à une odeur caractéristique.',
+      traitements:[{icon:'💊',label:'Gel insecticide'},{icon:'📦',label:'Piège à colle'},{icon:'🧹',label:'Nettoyage / Hygiène'}]
+    },
+    {
       icon:'🐛', nom:'Autres insectes', couleur:'#94a3b8', bg:'#f8fafc',
-      description:'Blattes, coléoptères, fourmis et autres arthropodes pouvant contaminer les zones de production. Présence souvent liée à l\'hygiène des locaux et aux fissures de bâtiment.',
+      description:'Coléoptères, fourmis et autres arthropodes pouvant contaminer les zones de production. Présence souvent liée à l\'hygiène des locaux et aux fissures de bâtiment.',
       traitements:[{icon:'💊',label:'Gel insecticide'},{icon:'🧹',label:'Nettoyage / Hygiène'}]
     }
   ];
