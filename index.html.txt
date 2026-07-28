@@ -2172,8 +2172,6 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="tag-stats-row" id="tagStatsRow" style="margin-bottom:0;margin-left:auto"></div>
   </div>
 
-  <!-- DEBUG TEMPORAIRE : montre en direct ce que le filtre lit réellement -->
-  <div id="tagFilterDebug" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--amber);background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.35);border-radius:6px;padding:5px 10px;margin-bottom:10px;word-break:break-all">🔧 debug filtres — sélectionnez un responsable/zone pour voir…</div>
   <div class="kpi-grid" id="tagKpi"></div>
   <div class="row2">
     <div class="card"><div class="ct"><span class="ct-dot"></span>Types de dangers</div><div class="cw" style="height:195px"><canvas id="dangerC"></canvas></div></div>
@@ -8883,16 +8881,6 @@ function applyTagF(){
     +'<span class="tag-stat-pill tsp-closed">Fermés : '+closedAll+'</span>'
     +(filtered.length!==total?'<span class="tag-stat-pill tsp-filtered">Filtrés : <strong>'+filtered.length+'</strong></span>':'');
   document.getElementById('tagListCount').textContent=filtered.length+' résultats';
-  // DEBUG TEMPORAIRE : affiche exactement les valeurs lues par le filtre.
-  var _dbg=document.getElementById('tagFilterDebug');
-  if(_dbg){
-    var _sampleResp=(filterResp!=='all')?(' | 1er TAG resp="'+((D.tags[0]&&D.tags[0].responsable)||'')+'"→norm="'+normKey((D.tags[0]&&D.tags[0].responsable)||'')+'" vs sel-norm="'+normKey(filterResp)+'"'):'';
-    _dbg.textContent='🔧 lu par le filtre → resp='+JSON.stringify(filterResp)
-      +' · zone='+JSON.stringify(filterZone)
-      +' · période='+p+' · statut='+tagStatFilter
-      +' · recherche='+JSON.stringify(searchVal)
-      +' ⟶ '+filtered.length+' / '+total+' TAGs'+_sampleResp;
-  }
 
   document.getElementById('tagKpi').innerHTML=[
     kpiCard('Filtrés',filtered.length,'b','TAGs','k-b',null,null),
@@ -8904,7 +8892,12 @@ function applyTagF(){
   // Types de dangers (regroupés par famille de risque canonique)
   var tt=tallyHazard(filtered.map(function(t){return t.type;}),6);
   if(charts['dangerC'])charts['dangerC'].destroy();
-  if(tt.length>0) new Chart(document.getElementById('dangerC'),{type:'doughnut',
+  // IMPORTANT : mémoriser l'instance dans charts['dangerC'] pour qu'elle
+  // soit détruite au rendu suivant. Sans ça, Chart.js lève « Canvas is
+  // already in use » à chaque changement de filtre, ce qui interrompait
+  // applyTagF AVANT le rendu de la liste (compteur mis à jour mais lignes
+  // inchangées → filtres « sans effet »).
+  if(tt.length>0) charts['dangerC']=new Chart(document.getElementById('dangerC'),{type:'doughnut',
     data:{labels:tt.map(function(x){return String(x.name).substring(0,22);}),datasets:[{data:tt.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green,C.orange],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});
 
@@ -9084,7 +9077,7 @@ function renderAccidents(accs){
   if(ct.length>0) mkChart('accCC','bar',ct.map(function(x){return String(x.name).substring(0,35);}),[{data:ct.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.purple],borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
   var ft=tally(accs.map(function(a){return a.fonction;}),5);
-  if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();new Chart(document.getElementById('accFC'),{type:'doughnut',
+  if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();charts['accFC']=new Chart(document.getElementById('accFC'),{type:'doughnut',
     data:{labels:ft.map(function(x){return String(x.name).substring(0,25);}),datasets:[{data:ft.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});}
   var ab=document.getElementById('accBody'); ab.innerHTML='';
