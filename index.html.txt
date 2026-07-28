@@ -8769,17 +8769,28 @@ function populateTagDropdowns(){
   var zones=tally(D.tags.map(function(t){return t.zone||t.emplacement;}));
   resps.sort(function(a,b){return a.name.localeCompare(b.name);});
   zones.sort(function(a,b){return a.name.localeCompare(b.name);});
-  // Préserver la sélection courante lors d'un re-rendu (actualisation auto)
-  var rSel=document.getElementById('tagFilterResp');
-  var rCur=rSel.value||'all';
-  rSel.innerHTML='<option value="all">Tous ('+resps.length+')</option>';
-  resps.forEach(function(r){rSel.innerHTML+='<option value="'+esc(r.name)+'">'+esc(r.name)+'</option>';});
-  rSel.value=rCur; if(rSel.value!==rCur) rSel.value='all';
-  var zSel=document.getElementById('tagFilterZone');
-  var zCur=zSel.value||'all';
-  zSel.innerHTML='<option value="all">Toutes ('+zones.length+')</option>';
-  zones.forEach(function(z){zSel.innerHTML+='<option value="'+esc(z.name)+'">'+esc(z.name)+'</option>';});
-  zSel.value=zCur; if(zSel.value!==zCur) zSel.value='all';
+  // Construction via l'API DOM (et non innerHTML) : la valeur d'option est
+  // posée en propriété .value, insensible à l'échappement HTML. Une valeur
+  // contenant un guillemet (") ne peut donc plus casser l'attribut et
+  // neutraliser le filtre. La sélection courante est préservée lors des
+  // actualisations automatiques.
+  function fillSel(sel,items,allLbl){
+    if(!sel) return;
+    var cur=sel.value||'all';
+    while(sel.firstChild) sel.removeChild(sel.firstChild);
+    var o0=document.createElement('option');
+    o0.value='all'; o0.textContent=allLbl+' ('+items.length+')';
+    sel.appendChild(o0);
+    items.forEach(function(it){
+      var o=document.createElement('option');
+      o.value=it.name;          // propriété DOM → aucun risque d'échappement
+      o.textContent=it.name;
+      sel.appendChild(o);
+    });
+    sel.value=cur; if(sel.value!==cur) sel.value='all';
+  }
+  fillSel(document.getElementById('tagFilterResp'),resps,'Tous');
+  fillSel(document.getElementById('tagFilterZone'),zones,'Toutes');
 }
 function setTagStat(val,el){
   tagStatFilter=val;
