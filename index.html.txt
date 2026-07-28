@@ -4679,6 +4679,7 @@ html.light .pests-search-input{background:#edf2f7}
         <div class="modal-section"><div class="modal-sec-title"><span>📌</span>Informations</div><div class="info-grid" id="mIncInfoGrid"></div></div>
         <div class="modal-section" id="mIncDescSec"><div class="modal-sec-title"><span>📝</span>Description</div><div class="desc-box" id="mIncDesc"></div></div>
         <div class="modal-section" id="mIncCauseSec"><div class="modal-sec-title"><span>🔎</span>Causes</div><div class="desc-box amber" id="mIncCauses"></div></div>
+        <div class="modal-section" id="mIncPjSec" style="display:none"><div class="modal-sec-title"><span>📎</span>Pièce jointe</div><div id="mIncPjList" style="display:flex;flex-direction:column;gap:8px"></div></div>
       </div>
       <div id="mInc-m5" style="display:none">
         <div class="modal-section"><div class="modal-sec-title"><span>🔍</span>Méthode des 5M</div><div class="m5-grid" id="mIncM5"></div></div>
@@ -7908,6 +7909,7 @@ function openIncModal(inc){
   if(desc){document.getElementById('mIncDesc').textContent=desc;dSec.style.display='block';}else dSec.style.display='none';
   var causes=cleanMd(inc.causes||''),cSec=document.getElementById('mIncCauseSec');
   if(causes){document.getElementById('mIncCauses').textContent=causes;cSec.style.display='block';}else cSec.style.display='none';
+  renderIncPjList(inc);
   var m5=parse5M(cleanMd(inc.analyse5m||inc.causes||''));
   var m5Def=[{key:'MO',lbl:"Main-d'œuvre",ico:'👷',cls:'m5-mo',col:'var(--amber)'},
     {key:'MAT',lbl:'Matière/Matériel',ico:'📦',cls:'m5-mat',col:'var(--p3)'},
@@ -8064,6 +8066,52 @@ function renderAccPjList(acc){
   if(n===0){ sec.style.display='none'; list.innerHTML=''; return; }
   sec.style.display='block';
   list.innerHTML=html;
+}
+// ── Pièce jointe des incidents (fiche/rapport d'enquête) ──────
+// Affichée dans l'onglet « Infos » du modal incident, à l'identique de
+// la section « Pièces jointes » du Bilan AT (réf. ENR HSE 01 + boutons
+// Voir / Télécharger).
+var INC_PJ_DOCS=[
+  {ref:'ENR HSE 01', key:'enqueteUrl', label:"Fiche d'enquête d'incident", color:'#7c3aed'}
+];
+function incPjFileName(inc,ref,label){
+  var clean=function(s){ return String(s||'').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim(); };
+  var nom=clean(inc.victime)||('INC-'+(inc.id||''));
+  var d=clean(inc.date);
+  return (ref.replace(/\s+/g,'-')+' '+label+' - '+nom+(d?' - '+d:'')).replace(/\s+/g,' ').trim();
+}
+function renderIncPjList(inc){
+  var sec=document.getElementById('mIncPjSec');
+  var list=document.getElementById('mIncPjList');
+  if(!sec||!list) return;
+  var html='', n=0;
+  INC_PJ_DOCS.forEach(function(doc){
+    var url=(inc&&inc[doc.key])||'';
+    if(!url || !/^https?:\/\//i.test(url)) return;
+    n++;
+    var fname=incPjFileName(inc,doc.ref,doc.label);
+    html+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;'
+        +'border:1px solid var(--border);border-radius:9px;padding:9px 11px;background:var(--bg3)">'
+      +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:9px;font-weight:700;'
+        +'padding:3px 8px;border-radius:5px;white-space:nowrap;color:#fff;background:'+doc.color+'">'+esc(doc.ref)+'</span>'
+      +'<div style="flex:1;min-width:120px">'
+        +'<div style="font-size:11px;font-weight:600;color:var(--text)">'+esc(doc.label)+'</div>'
+        +'<div style="font-size:9px;color:var(--text3);word-break:break-word">'+esc(fname)+'</div>'
+      +'</div>'
+      +'<button type="button" class="acc-pj-btn" style="padding:7px 12px;font-size:10px" '
+        +'onclick="viewIncPj('+jsq(url)+','+jsq(doc.ref+' — '+doc.label+' · '+(inc.victime||('INC-'+(inc.id||''))))+')">👁️ Voir</button>'
+      +'<button type="button" class="acc-pj-btn" style="padding:7px 12px;font-size:10px;'
+        +'background:linear-gradient(135deg,#0a7a9a,#0da8d2)" '
+        +'onclick="downloadAccPj('+jsq(url)+','+jsq(fname)+')">⬇️ Télécharger</button>'
+      +'</div>';
+  });
+  if(n===0){ sec.style.display='none'; list.innerHTML=''; return; }
+  sec.style.display='block';
+  list.innerHTML=html;
+}
+function viewIncPj(url,title){
+  if(!url) return;
+  openCleaningEmbed(url, title||'Pièce jointe', 'PIÈCE JOINTE · INCIDENT', '📎');
 }
 // Guillemets sûrs pour insertion dans un attribut onclick.
 function jsq(s){ return "'"+String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')+"'"; }
