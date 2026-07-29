@@ -1961,6 +1961,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
   <button class="tab"    onclick="goTab('cphs',this);renderCphs()">🏛️ CPHS</button>
+  <button class="tab"    onclick="goTab('simulation',this);renderSimulations()">🚨 Simulation évacuation</button>
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('enr',this)">🗂️ Enregistrements</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
@@ -2339,6 +2340,37 @@ html.light .pests-search-input{background:#edf2f7}
       <button class="btn" onclick="printCphsPlan()" style="font-size:10px;padding:5px 11px;margin-left:auto" title="Télécharger le plan d'action CPHS au format PDF">🖨️ Télécharger PDF</button>
     </div>
     <div id="cphsPlanBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SIMULATION ÉVACUATION & EXERCICES D'URGENCE ═══ -->
+<div id="simulation" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:11px;color:var(--text3)">
+      <span id="simTitle" style="color:var(--text2);font-weight:600">Planning annuel de simulation d'évacuation &amp; exercices d'urgence</span>
+      <span id="simMeta" style="font-family:'JetBrains Mono',monospace;margin-left:6px"></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a id="simSrc" href="#" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:11px;padding:6px 12px;text-decoration:none;display:none">↗ Ouvrir dans Sheets</a>
+      <button class="btn" onclick="printSimulations()" style="font-size:11px;padding:6px 12px" title="Télécharger le planning au format PDF">🖨️ Télécharger PDF</button>
+    </div>
+  </div>
+  <div class="kpi-grid" id="simKpi"></div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--red)"></span>🚨 Exercices de simulation
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">Trimestre · Mois · Type · Zone · Statut · Délai cible · Responsable</span>
+    </div>
+    <div id="simExBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>🛠️ Suivi des actions correctives
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">Action · Exercice · Responsable · Date limite · Statut · Priorité</span>
+    </div>
+    <div id="simActBox" style="margin-top:10px">
       <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
     </div>
   </div>
@@ -6678,6 +6710,7 @@ function goTab(id,el){
   document.getElementById(id).classList.add('on'); el.classList.add('on');
   if(id==='veille'){ try{ renderVeilleScoring(); }catch(e){} }
   if(id==='cphs'){ try{ renderCphs(); }catch(e){} }
+  if(id==='simulation'){ try{ renderSimulations(); }catch(e){} }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -6883,6 +6916,123 @@ function printCphs(){
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Dossier CPHS</title>'+styles+'</head><body>');
   w.document.write(head+docTable+actTable);
   w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Dossier CPHS · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
+}
+/* ══════════════════════════════════════════════════════════════
+   SIMULATION ÉVACUATION & EXERCICES D'URGENCE — rendu dynamique
+   (feuille « Planning Annuel de Simulation… »)
+   ══════════════════════════════════════════════════════════════ */
+function simPrioBadge(v){
+  var s=veilleNorm(v); if(!s) return '<span style="color:var(--text3);font-size:10px">—</span>';
+  var c;
+  if(s.indexOf('haute')>-1||s.indexOf('elev')>-1||s.indexOf('urgent')>-1||s.indexOf('critique')>-1) c={bg:'rgba(232,68,90,.14)',bd:'rgba(232,68,90,.45)',t:'var(--red)'};
+  else if(s.indexOf('moyen')>-1) c={bg:'rgba(245,166,35,.14)',bd:'rgba(245,166,35,.45)',t:'var(--amber)'};
+  else if(s.indexOf('faible')>-1||s.indexOf('bas')>-1) c={bg:'rgba(16,201,133,.14)',bd:'rgba(16,201,133,.45)',t:'var(--green)'};
+  else c={bg:'rgba(13,168,210,.14)',bd:'rgba(13,168,210,.4)',t:'var(--p4)'};
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.bd+';color:'+c.t+';font-weight:700;font-size:9px">'+esc(v)+'</span>';
+}
+function renderSimulations(){
+  var S=(D&&D.simulations)||{};
+  var ex=S.exercices||[], act=S.actions||[];
+  var titleEl=document.getElementById('simTitle'); if(titleEl&&S.title) titleEl.textContent=S.title;
+  var metaEl=document.getElementById('simMeta');
+  if(metaEl){ var parts=[]; if(S.site)parts.push(S.site); if(S.service)parts.push(S.service); if(S.annee)parts.push(String(S.annee)); metaEl.textContent=parts.length?('· '+parts.join(' · ')):''; }
+  var srcEl=document.getElementById('simSrc'); if(srcEl){ if(S.sourceUrl){srcEl.href=S.sourceUrl;srcEl.style.display='';}else srcEl.style.display='none'; }
+  function isDone(s){ s=veilleNorm(s); return s.indexOf('realis')>-1||s.indexOf('termine')>-1||s.indexOf('clotur')>-1||s.indexOf('fait')>-1; }
+  function isPlan(s){ s=veilleNorm(s); return s.indexOf('planif')>-1||s.indexOf('prevu')>-1||s.indexOf('a faire')>-1||s.indexOf('a venir')>-1; }
+  var nDone=ex.filter(function(e){return isDone(e.statut);}).length;
+  var nPlan=ex.filter(function(e){return isPlan(e.statut);}).length;
+  var actOpen=act.filter(function(a){return !isDone(a.statut);}).length;
+  var pctDone=ex.length?Math.round(nDone/ex.length*100):0;
+  var kp=document.getElementById('simKpi');
+  if(kp) kp.innerHTML=[
+    kpiCard('Exercices', ex.length, 'b', 'Planifiés '+(S.annee||''), 'k-b', null,null),
+    kpiCard('Réalisés', nDone, 'g', fmtNum(pctDone)+'%', 'k-g', pctDone, C.green),
+    kpiCard('Planifiés', nPlan, 'a', 'À venir', 'k-a', null,null),
+    kpiCard('Actions correct.', act.length, 'r', actOpen+' en cours', 'k-r', null,null)
+  ].join('');
+  var exBox=document.getElementById('simExBox');
+  if(exBox){
+    if(!ex.length){ exBox.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucun exercice de simulation renseigné dans le fichier source.</div>'; }
+    else{
+      var rows=ex.map(function(e){
+        return '<tr>'
+          +'<td class="mono" style="text-align:center;color:var(--text3)">'+esc(e.num||'—')+'</td>'
+          +'<td style="text-align:center"><span class="rbadge">'+esc(e.trimestre||'—')+'</span></td>'
+          +'<td style="font-size:10px">'+esc(e.mois||'—')+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(e.date||'—')+'</td>'
+          +'<td style="min-width:150px">'+esc(e.type||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(e.zone||'—')+'</td>'
+          +'<td style="text-align:center">'+cphsEtatBadge(e.statut)+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(e.delai||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(e.responsable||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(e.remarques||'—')+'</td>'
+          +'</tr>';
+      }).join('');
+      exBox.innerHTML='<div class="tblw"><table><thead><tr><th>N°</th><th>Trim.</th><th>Mois</th><th>Date prévue</th><th>Type de simulation</th><th>Zone</th><th>Statut</th><th>Délai cible</th><th>Responsable</th><th>Anomalies &amp; remarques</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    }
+  }
+  var actBox=document.getElementById('simActBox');
+  if(actBox){
+    if(!act.length){ actBox.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucune action corrective renseignée.</div>'; }
+    else{
+      var arows=act.map(function(a){
+        return '<tr>'
+          +'<td class="mono" style="text-align:center;color:var(--p4)">'+esc(a.num||'—')+'</td>'
+          +'<td style="text-align:center"><span class="rbadge">'+esc(a.rattache||'—')+'</span></td>'
+          +'<td style="min-width:200px">'+esc(a.description||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(a.departement||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(a.responsable||'—')+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(a.dateLimite||'—')+'</td>'
+          +'<td style="text-align:center">'+cphsEtatBadge(a.statut)+'</td>'
+          +'<td style="text-align:center">'+simPrioBadge(a.priorite)+'</td>'
+          +'</tr>';
+      }).join('');
+      actBox.innerHTML='<div class="tblw"><table><thead><tr><th>Action</th><th>Exercice</th><th>Description</th><th>Département</th><th>Responsable</th><th>Date limite</th><th>Statut</th><th>Priorité</th></tr></thead><tbody>'+arows+'</tbody></table></div>';
+    }
+  }
+}
+function printSimulations(){
+  var S=(D&&D.simulations)||{};
+  var ex=S.exercices||[], act=S.actions||[];
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:14px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">'+esc(S.title||'Planning de simulation d\'évacuation')+'</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">'+esc([S.site,S.service].filter(Boolean).join(' — '))+'</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Édité le : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:120px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">'+esc(String(S.annee||today.getFullYear()))+'</td></tr></table>';
+  function tbl(title,cols,rows){
+    return '<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:4px 0 6px">'+title+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +cols.map(function(c){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+c+'</th>';}).join('')
+      +'</tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+  var body='';
+  if(ex.length){
+    body+=tbl('Exercices de simulation',['N°','Trim.','Mois','Date','Type','Zone','Statut','Délai cible','Responsable','Remarques'],
+      ex.map(function(e,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+        +['num','trimestre','mois','date','type','zone','statut','delai','responsable','remarques'].map(function(k){return '<td style="'+tdc+'">'+esc(e[k]||'')+'</td>';}).join('')+'</tr>';}).join(''));
+  }
+  if(act.length){
+    body+=tbl('Suivi des actions correctives',['Action','Exercice','Description','Département','Responsable','Date limite','Statut','Priorité'],
+      act.map(function(a,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+        +['num','rattache','description','departement','responsable','dateLimite','statut','priorite'].map(function(k){return '<td style="'+tdc+'">'+esc(a[k]||'')+'</td>';}).join('')+'</tr>';}).join(''));
+  }
+  if(!ex.length&&!act.length){ body='<div style="text-align:center;color:#94a3b8;padding:30px;font-style:italic">Aucune donnée de simulation dans le fichier source.</div>'; }
+  var w=window.open('','_blank','width=1050,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Planning de simulation d\'évacuation</title>'+styles+'</head><body>');
+  w.document.write(head+body);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Planning de simulation d\'évacuation · édité le '+todayStr+'</div>');
   w.document.write('</body></html>');
   w.document.close(); w.focus();
   setTimeout(function(){ w.print(); },500);
@@ -10186,6 +10336,7 @@ function render(data){
   document.getElementById('main').style.display='block';
   try{ renderVeilleScoring(); }catch(e){}
   try{ renderCphs(); }catch(e){}
+  try{ renderSimulations(); }catch(e){}
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
   document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
   document.getElementById('h-tf').textContent='TF: '+fmtNum(m.tf1_ytd);
