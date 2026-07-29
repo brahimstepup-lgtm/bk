@@ -6958,8 +6958,17 @@ function renderSimulations(){
     if(!ex.length){ exBox.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucun exercice de simulation renseigné dans le fichier source.</div>'; }
     else{
       var rows=ex.map(function(e){
+        var numCell='<div style="font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--text2)">'+esc(e.num||'—')+'</div>';
+        if(e.reportUrl && /^https?:\/\//i.test(e.reportUrl)){
+          var rt='Rapport simulation N° '+(e.num||'')+(e.type?' · '+e.type:'');
+          var rfn=('Rapport simulation - '+(e.num||'')+(e.type?' - '+e.type:'')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+          numCell+='<div style="display:flex;gap:4px;justify-content:center;margin-top:5px">'
+            +'<button type="button" class="acc-pj-btn" style="padding:3px 7px;font-size:9px" onclick="viewSimReport('+jsq(e.reportUrl)+','+jsq(rt)+')" title="Voir le rapport de simulation">👁️</button>'
+            +'<button type="button" class="acc-pj-btn" style="padding:3px 7px;font-size:9px;background:linear-gradient(135deg,#0a7a9a,#0da8d2)" onclick="downloadDriveDoc('+jsq(e.reportUrl)+','+jsq(rfn)+')" title="Télécharger le rapport">⬇️</button>'
+            +'</div>';
+        }
         return '<tr>'
-          +'<td class="mono" style="text-align:center;color:var(--text3)">'+esc(e.num||'—')+'</td>'
+          +'<td style="text-align:center;vertical-align:middle">'+numCell+'</td>'
           +'<td style="text-align:center"><span class="rbadge">'+esc(e.trimestre||'—')+'</span></td>'
           +'<td style="font-size:10px">'+esc(e.mois||'—')+'</td>'
           +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(e.date||'—')+'</td>'
@@ -6993,6 +7002,10 @@ function renderSimulations(){
       actBox.innerHTML='<div class="tblw"><table><thead><tr><th>Action</th><th>Exercice</th><th>Description</th><th>Département</th><th>Responsable</th><th>Date limite</th><th>Statut</th><th>Priorité</th></tr></thead><tbody>'+arows+'</tbody></table></div>';
     }
   }
+}
+function viewSimReport(url,title){
+  if(!url) return;
+  openCleaningEmbed(url, title||'Rapport de simulation', 'RAPPORT DE SIMULATION', '🚨');
 }
 function printSimulations(){
   var S=(D&&D.simulations)||{};

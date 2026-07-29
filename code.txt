@@ -1389,7 +1389,11 @@ function readSimulations(ss) {
     res.sheetName = sh.getName();
     res.sourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + sh.getSheetId() + '#gid=' + sh.getSheetId();
 
-    var data = sh.getDataRange().getValues();
+    var range = sh.getDataRange();
+    var data = range.getValues();
+    var rich = null, formulas = null;
+    try { rich = range.getRichTextValues(); } catch (e0) {}
+    try { formulas = range.getFormulas();   } catch (eF) {}
     if (!data || !data.length) return res;
     function txt(r, c) { return (r >= 0 && c >= 0 && data[r] && !isNull(data[r][c])) ? String(data[r][c]).trim() : ''; }
     function dtxt(r, c) {
@@ -1397,6 +1401,32 @@ function readSimulations(ss) {
       var v = data[r][c];
       if (v instanceof Date && !isNaN(v.getTime())) return Utilities.formatDate(v, 'GMT+1', 'dd/MM/yyyy');
       return String(v).trim();
+    }
+    // Récupère l'URL du rapport lié à une cellule (formule HYPERLINK,
+    // lien rich-text, ou URL brute collée).
+    function cellUrl(r, c) {
+      if (c < 0) return '';
+      if (formulas && formulas[r] && formulas[r][c]) {
+        var f = String(formulas[r][c] || '');
+        var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i); if (mH) return mH[1].trim();
+        var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);              if (mU) return mU[1].trim();
+      }
+      if (rich && rich[r] && rich[r][c]) {
+        var rt = rich[r][c];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl(); if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) for (var k = 0; k < runs.length; k++) {
+            var ru = runs[k].getLinkUrl && runs[k].getLinkUrl(); if (ru) return String(ru).trim();
+          }
+        } catch (eR) {}
+      }
+      var v = (data[r] || [])[c];
+      if (isNull(v)) return '';
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var m = s.match(/(https?:\/\/[^\s,;]+)/i);
+      return m ? m[1].trim() : '';
     }
 
     // ── Métadonnées (libellé en A, valeur en B) ──
@@ -1436,9 +1466,14 @@ function readSimulations(ss) {
         var st = txt(r3, E.statut != null ? E.statut : -1);
         if (!num && !typ && !st) continue;
         if (normalize(num).indexOf('exercice') > -1) continue;
+        // Lien du rapport de simulation : porté par la cellule « N° »
+        // (repli : 1er lien trouvé sur la ligne).
+        var rurl = cellUrl(r3, E.num != null ? E.num : 0);
+        if (!rurl) { var rr = data[r3] || []; for (var cc = 0; cc < rr.length; cc++) { var u2 = cellUrl(r3, cc); if (u2) { rurl = u2; break; } } }
         res.exercices.push({
           num:num, trimestre:txt(r3, E.trim), mois:txt(r3, E.mois), date:dtxt(r3, E.date != null ? E.date : -1),
-          type:typ, zone:txt(r3, E.zone), statut:st, delai:txt(r3, E.delai), responsable:txt(r3, E.resp), remarques:txt(r3, E.rem)
+          type:typ, zone:txt(r3, E.zone), statut:st, delai:txt(r3, E.delai), responsable:txt(r3, E.resp), remarques:txt(r3, E.rem),
+          reportUrl:rurl
         });
       }
     }
