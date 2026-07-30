@@ -7229,6 +7229,8 @@ function printVeille(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
       +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
     +'</table></td></tr></table>';
@@ -7711,10 +7713,21 @@ function printActionsPlan(){
   var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
     +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
     +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
-    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'actions globale</div>'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'actions HSE globale</div>'
     +'<div style="font-size:11px;color:#444;margin-top:3px">Actions HSE — accidents · incidents · TAGs</div>'
     +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
-    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-size:9.5px;color:#334155">'+rows.length+' action(s)<br>clôturées '+(k.tauxClot||0)+'%</td></tr></table>';
+    // Cartouche documentaire standard (comme les autres ENR)
+    +'<td style="'+td+';width:190px;padding:0;vertical-align:top">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 31</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
 
   var synth='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">'
     +[['Total',d.total,'#0369a1'],['Clôturées',k.clot,'#166534'],['En cours',k.enCours,'#0369a1'],['En retard',k.enRetard,'#991b1b'],['Non démarrées',k.nonDemarre,'#854d0e']]
