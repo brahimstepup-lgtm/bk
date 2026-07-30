@@ -4501,6 +4501,18 @@ function callGemini(prompt) {
 
 // ── Exposées au client ────────────────────────────────────────
 function getDataForClient()           { return getData(); }
+// ── Sonde de version (détection immédiate des changements) ─────
+// Renvoie la date de dernière modification du classeur. Appel très
+// léger (une simple métadonnée Drive) : le client peut l'interroger
+// fréquemment, puis ne déclencher une lecture complète (getData, qui
+// parcourt une vingtaine de feuilles) que lorsque la valeur change.
+function getDataVersionForClient() {
+  try {
+    return { ok:true, v:DriveApp.getFileById(SHEET_ID).getLastUpdated().getTime() };
+  } catch (e) {
+    return { ok:false, v:0, error:String(e && e.message || e) };
+  }
+}
 function askGeminiForClient(p)        { return callGemini(p); }
 // PHOTO PROXY — retourne base64 de l'image Drive
 // Logo (Drive) encodé en data-URL, mis en cache par identifiant de

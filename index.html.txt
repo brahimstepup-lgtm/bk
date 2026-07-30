@@ -10498,7 +10498,7 @@ function render(data){
 // jours sans AT (héros), AT, TF, TG, jours perdus, presqu'accidents,
 // TVM, TAGs ouverts, résolution TAGs. Horloge en direct +
 // rafraîchissement automatique des données toutes les 10 minutes.
-var tvOpen=false, tvClockTimer=null, tvRefreshTimer=null, tvRefreshBusy=false;
+var tvOpen=false, tvClockTimer=null, tvRefreshTimer=null, tvVersionTimer=null, tvRefreshBusy=false;
 
 // Statut sémaphore : 'g' conforme, 'a' vigilance, 'r' alerte, 'n' info
 function tvStatus(v,obj,lower){
@@ -10671,6 +10671,13 @@ function openTvDash(){
   if(tvRefreshTimer){ clearInterval(tvRefreshTimer); }
   tvClockTimer=setInterval(tvTick,1000);
   tvRefreshTimer=setInterval(function(){ tvSilentRefresh(false); },TV_HEARTBEAT_MS);
+  // Sonde de version : toute modification du classeur déclenche une
+  // actualisation immédiate, sans attendre le cycle de 10 minutes.
+  if(tvVersionTimer) clearInterval(tvVersionTimer);
+  tvVersionTimer=setInterval(function(){
+    if(!tvOpen) return;
+    pollDataVersion(function(){ tvSilentRefresh(true); });
+  },VERSION_POLL_TV_MS);
   // Plein écran navigateur (facultatif : ignoré si refusé)
   try{
     var el=document.documentElement;
@@ -10683,6 +10690,7 @@ function closeTvDash(){
   document.body.style.overflow='';
   if(tvClockTimer){ clearInterval(tvClockTimer); tvClockTimer=null; }
   if(tvRefreshTimer){ clearInterval(tvRefreshTimer); tvRefreshTimer=null; }
+  if(tvVersionTimer){ clearInterval(tvVersionTimer); tvVersionTimer=null; }
   try{ if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); }catch(e){}
 }
 document.addEventListener('keydown',function(e){
@@ -17178,6 +17186,36 @@ function refreshData(){
 // ne sont pas reconstruits, et les dropdowns gardent leur valeur).
 var _silentBusy=false;
 var AUTO_REFRESH_MS=5*60*1000;   // 5 minutes
+// ══ SONDE DE VERSION — détection immédiate des changements ════
+// Une lecture complète (getDataForClient) parcourt une vingtaine de
+// feuilles : impossible à interroger en continu. On interroge donc la
+// date de dernière modification du classeur, quasi instantanée, et on
+// ne déclenche une lecture complète QUE si elle a changé. Résultat :
+// toute modification (dashboard ou saisie directe dans le Sheet) est
+// répercutée en quelques secondes au lieu d'attendre le cycle long.
+var VERSION_POLL_TV_MS=15*1000;    // écran usine : réactivité maximale
+var VERSION_POLL_DASH_MS=30*1000;  // tableau de bord
+var _dataVersion=0, _versionBusy=false, _versionSeq=0;
+function pollDataVersion(onChanged){
+  if(_versionBusy) return;
+  _versionBusy=true;
+  var seq=++_versionSeq;
+  // Chien de garde : google.script.run peut ne jamais rappeler.
+  setTimeout(function(){ if(_versionBusy&&seq===_versionSeq) _versionBusy=false; },30*1000);
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(seq!==_versionSeq) return;
+      _versionBusy=false;
+      if(!res||!res.ok||!res.v) return;
+      if(!_dataVersion){ _dataVersion=res.v; return; }      // 1er appel : référence
+      if(res.v>_dataVersion){                                // le classeur a changé
+        _dataVersion=res.v;
+        if(onChanged) onChanged();
+      }
+    })
+    .withFailureHandler(function(){ if(seq===_versionSeq) _versionBusy=false; })
+    .getDataVersionForClient();
+}
 var _silentSeq=0;
 function silentRefresh(){
   if(_silentBusy) return;
@@ -17208,6 +17246,14 @@ setInterval(function(){
   if(document.querySelector('.crud-modal-bg.open')) return;    // saisie en cours — ne pas perturber
   silentRefresh();
 },AUTO_REFRESH_MS);
+// Sonde de version (tableau de bord) : répercute une modification du
+// classeur en quelques secondes, sans attendre le cycle de 5 minutes.
+setInterval(function(){
+  if(document.hidden||!D) return;
+  if(typeof tvOpen!=='undefined'&&tvOpen) return;              // le Mode TV a sa propre sonde
+  if(document.querySelector('.crud-modal-bg.open')) return;    // saisie en cours
+  pollDataVersion(function(){ silentRefresh(); });
+},VERSION_POLL_DASH_MS);
 // Retour sur l'onglet après une absence : rafraîchir si les données datent.
 document.addEventListener('visibilitychange',function(){
   if(document.hidden||!D) return;
