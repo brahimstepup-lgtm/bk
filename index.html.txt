@@ -10340,6 +10340,19 @@ function render(data){
     m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
   })();
 
+  // ── MODE TV : re-rendu AU PLUS TÔT ───────────────────────────
+  // L'écran usine est mis à jour ici, avant le rendu du tableau de
+  // bord. Raison : une exception dans n'importe quelle section du
+  // rendu (graphique, tableau…) empêchait d'atteindre le
+  // renderTvDash() de fin de fonction. L'affichage TV restait alors
+  // figé sur d'anciennes valeurs alors que l'horodatage, lui, était
+  // bien actualisé (D est posé dès la 1re ligne) — d'où des chiffres
+  // périmés affichés comme « à jour ». Isolé dans son propre
+  // try/catch pour ne jamais bloquer le reste du rendu.
+  if(typeof tvOpen!=='undefined'&&tvOpen){
+    try{ renderTvDash(); }catch(eTv){ console.error('[TV] renderTvDash:',eTv); }
+  }
+
   // En-tête : conserver le badge « BK » (blanc sur fond rouge) comme
   // logo d'origine — on n'injecte pas de logo Drive dans l'en-tête.
   // (Le logo Palmary/ENR ne concerne que les fiches & PDF.)
@@ -10633,7 +10646,9 @@ function tvSilentRefresh(force){
     .withSuccessHandler(function(data){
       if(seq!==tvFetchSeq) return;                        // réponse tardive : ignorée
       tvRefreshBusy=false; tvFailStreak=0;
-      if(data){ try{ render(data); }catch(e){} }
+      // Ne pas avaler l'erreur en silence : c'est ce qui masquait un
+      // rendu partiel (données fraîches mais tuiles TV non redessinées).
+      if(data){ try{ render(data); }catch(e){ console.error('[TV] render:',e); } }
       tvUpdateStamp();
     })
     .withFailureHandler(function(){
@@ -17178,7 +17193,7 @@ function silentRefresh(){
     .withSuccessHandler(function(data){
       if(seq!==_silentSeq) return;
       _silentBusy=false;
-      if(data){ try{ render(data); }catch(e){} }
+      if(data){ try{ render(data); }catch(e){ console.error('[refresh] render:',e); } }
     })
     .withFailureHandler(function(){
       if(seq!==_silentSeq) return;
