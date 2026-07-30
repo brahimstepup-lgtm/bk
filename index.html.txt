@@ -6450,7 +6450,25 @@ function dechetsRender(){
       var v = (r.cells && r.cells[ci] != null) ? r.cells[ci] : '';
       var disp = dechetsCleanCell(v);
       var cu = (r.cellUrls && r.cellUrls[ci]) ? r.cellUrls[ci] : '';
-      if (cu){
+      // Une cellule dont la valeur EST une URL (colonne « Lien Drive ») :
+      // on n'affiche pas l'URL brute mais deux boutons Voir / Télécharger.
+      var rawUrl = cu || (/^https?:\/\//i.test(String(disp).trim()) ? String(disp).trim() : '');
+      var showAsBtns = rawUrl && (/^https?:\/\//i.test(String(disp).trim())
+                                  || /lien|drive|url|fichier|document/.test(veilleNorm(h)));
+      if (showAsBtns){
+        var vid  = sensibDriveFileId(rawUrl);
+        var mois = (r.cells && r.cells[0] != null) ? String(r.cells[0]).trim() : '';
+        var dlNm = ('Suivi déchets' + (mois ? ' - ' + mois : '')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+        var vOc  = vid ? "sensibViewPj('"+escH(vid)+"')" : "window.open('"+escH(rawUrl)+"','_blank')";
+        html += '<td style="text-align:center;white-space:nowrap">'
+          + '<button onclick="'+vOc+';return false;" title="Voir le document" '
+          + 'style="background:rgba(74,144,226,.15);color:var(--p4);border:1px solid rgba(74,144,226,.35);'
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">👁️</button> '
+          + '<button onclick="downloadDriveDoc('+jsq(rawUrl)+','+jsq(dlNm)+');return false;" title="Télécharger" '
+          + 'style="background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border:none;'
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">⬇️</button>'
+          + '</td>';
+      } else if (cu){
         // Chiffre / valeur portant un lien → rendu cliquable (visionneuse
         // intégrée pour un fichier Drive, sinon ouverture du lien).
         var fid = sensibDriveFileId(cu);
