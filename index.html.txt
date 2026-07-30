@@ -10572,11 +10572,13 @@ function tvUpdateStamp(){
   var ts=window._lastDataTs||Date.parse(D.ts||'')||Date.now();
   var ageMin=Math.max(0,Math.round((Date.now()-ts)/60000));
   var when=new Date(D.ts||ts).toLocaleString('fr-FR');
-  var age=tvRefreshBusy?'actualisation en cours…'
-    :(ageMin<1?'à l\'instant':('il y a '+ageMin+' min'));
+  var age;
+  if(tvRefreshBusy)        age='actualisation en cours…';
+  else if(tvFailStreak>0)  age='⚠ synchro en échec ('+tvFailStreak+') · il y a '+ageMin+' min';
+  else                     age=(ageMin<1?'à l\'instant':('il y a '+ageMin+' min'));
   el.textContent='↻ Données : '+when+' · '+age;
-  // Signal visuel si la synchro décroche (données anormalement vieilles).
-  el.style.color=(!tvRefreshBusy&&ageMin>=TV_STALE_WARN_MIN)?'#f5a623':'';
+  // Signal visuel si la synchro décroche (échec ou données trop vieilles).
+  el.style.color=(tvFailStreak>0||(!tvRefreshBusy&&ageMin>=TV_STALE_WARN_MIN))?'#f5a623':'';
 }
 function tvTick(){
   var now=new Date();
@@ -10596,24 +10598,47 @@ var TV_REFRESH_MS=10*60*1000;      // fraîcheur cible des données
 var TV_HEARTBEAT_MS=60*1000;       // fréquence de vérification
 var TV_RETRY_MS=90*1000;           // nouvelle tentative après un échec
 var TV_STALE_WARN_MIN=20;          // au-delà : pied de page en orange
-var tvLastTryTs=0;
+var TV_FETCH_TIMEOUT_MS=75*1000;   // chien de garde : appel resté sans réponse
+var TV_HARD_RELOAD_MIN=30;         // au-delà : rechargement complet de la page
+var tvLastTryTs=0, tvFetchSeq=0, tvFailStreak=0;
 function tvSilentRefresh(force){
-  if(!tvOpen||tvRefreshBusy) return;
+  if(!tvOpen) return;
   var now=Date.now();
   var dataTs=window._lastDataTs||Date.parse((D&&D.ts)||'')||0;
+  // ── Dernier recours ─────────────────────────────────────────
+  // Sur une page ouverte en continu, la session de la Web App Apps
+  // Script finit par mourir : google.script.run ne rappelle alors NI le
+  // succès NI l'échec, et aucun réessai ne peut aboutir. Seul un
+  // rechargement complet rétablit la session.
+  if(dataTs && now-dataTs > TV_HARD_RELOAD_MIN*60000){
+    try{ location.reload(); }catch(e){}
+    return;
+  }
+  if(tvRefreshBusy) return;
   if(!force){
     if(dataTs&&now-dataTs<TV_REFRESH_MS) return;          // encore frais
     if(tvLastTryTs&&now-tvLastTryTs<TV_RETRY_MS) return;  // évite le matraquage
   }
+  var seq=++tvFetchSeq;
   tvRefreshBusy=true; tvLastTryTs=now; tvUpdateStamp();
+  // Chien de garde : si l'appel ne revient jamais (cas observé), on
+  // libère le verrou pour que le battement suivant puisse réessayer —
+  // sans lui, l'affichage restait figé indéfiniment.
+  setTimeout(function(){
+    if(tvRefreshBusy && seq===tvFetchSeq){
+      tvRefreshBusy=false; tvFailStreak++; tvUpdateStamp();
+    }
+  },TV_FETCH_TIMEOUT_MS);
   google.script.run
     .withSuccessHandler(function(data){
-      tvRefreshBusy=false;
+      if(seq!==tvFetchSeq) return;                        // réponse tardive : ignorée
+      tvRefreshBusy=false; tvFailStreak=0;
       if(data){ try{ render(data); }catch(e){} }
       tvUpdateStamp();
     })
     .withFailureHandler(function(){
-      tvRefreshBusy=false; tvUpdateStamp();               // réessai au prochain battement
+      if(seq!==tvFetchSeq) return;
+      tvRefreshBusy=false; tvFailStreak++; tvUpdateStamp();   // réessai au prochain battement
     })
     .getDataForClient();
 }
@@ -17138,15 +17163,27 @@ function refreshData(){
 // ne sont pas reconstruits, et les dropdowns gardent leur valeur).
 var _silentBusy=false;
 var AUTO_REFRESH_MS=5*60*1000;   // 5 minutes
+var _silentSeq=0;
 function silentRefresh(){
   if(_silentBusy) return;
   _silentBusy=true;
+  var seq=++_silentSeq;
+  // Même chien de garde que le Mode TV : google.script.run peut ne
+  // jamais rappeler (session Web App expirée) et laisserait alors le
+  // verrou fermé définitivement, bloquant toute actualisation.
+  setTimeout(function(){
+    if(_silentBusy && seq===_silentSeq) _silentBusy=false;
+  },75*1000);
   google.script.run
     .withSuccessHandler(function(data){
+      if(seq!==_silentSeq) return;
       _silentBusy=false;
       if(data){ try{ render(data); }catch(e){} }
     })
-    .withFailureHandler(function(){ _silentBusy=false; })   // silencieux : nouvel essai au prochain cycle
+    .withFailureHandler(function(){
+      if(seq!==_silentSeq) return;
+      _silentBusy=false;                                   // nouvel essai au prochain cycle
+    })
     .getDataForClient();
 }
 setInterval(function(){
