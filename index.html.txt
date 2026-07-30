@@ -9934,8 +9934,11 @@ function sapPayload(section){
     var tags = (D && D.tags) || [];
     var nOpen = tags.filter(function(t){ return tagIsOpen(t); }).length;
     return {
-      title: "Plan d'action HSE (TAGs)",
-      ref:   'ENR-HSE 30',
+      title:    "Plan d'action HSE (TAGs)",
+      subtitle: 'Suivi des situations dangereuses signalées — SOBCO 3',
+      ref:      'ENR-HSE 30',
+      rev:      '01',
+      created:  '04/01/2026',      // date de création du document
       meta:  tags.length + ' TAG(s) · ' + nOpen + ' ouvert(s) · '
            + (tags.length - nOpen) + ' fermé(s)',
       cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
@@ -9964,6 +9967,8 @@ function openSectionActionPlan(section){
   sapRun(p, kind);
 }
 function sapRun(p, kind){
+  // Logo officiel (data-URL) pour l'en-tête ENR, comme les autres fiches
+  if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if (!p || !p.rows.length) {
     showToast('Aucune donnée dans cette section pour générer le plan d\'action.','error');
     return;
@@ -10023,6 +10028,7 @@ function sapRun(p, kind){
 function downloadSectionActionPlan(section){
   var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs'};
   var p=sapPayload(section);
+  if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if(!p || !p.rows.length){ showToast('Aucune donnée dans cette section.','error'); return; }
   if(sapLoading) return; sapLoading=true;
   showToast('Génération du plan d\'action PDF ('+p.rows.length+' lignes)…','success');

@@ -6201,6 +6201,48 @@ function getActionPlanForClient() { return getActionPlan(); }
 var ACTION_PLAN_FOLDER_NAME = "Plans d'action - Dashboard HSE";
 var ACTION_PLAN_MAX_ROWS    = 800;
 
+// ── En-tête officiel des documents ENR ────────────────────────
+// Reproduit le cartouche des autres enregistrements HSE :
+//   logo | titre + sous-titre + date | Réf. / Rév. / Créé le / Éd.
+function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
+  var esc = function(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+  var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
+  var logoHtml = logo
+    ? '<img src="' + esc(logo) + '" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">'
+    : '<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var tdB = 'padding:6px 10px;border:1px solid #d0d0d0;font-size:10.5px';
+  // Ligne du cartouche (libellé / valeur)
+  function line(lbl, val, last, strong) {
+    var bb = last ? '' : 'border-bottom:1px solid #d0d0d0;';
+    return '<tr><td style="padding:4px 8px;' + bb + 'color:#555;white-space:nowrap">' + lbl + '</td>'
+         + '<td style="padding:4px 8px;' + bb + (strong || 'font-weight:600') + '">' + val + '</td></tr>';
+  }
+  var h = '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
+    + '<td style="' + tdB + ';width:130px;text-align:center;vertical-align:middle;'
+    +   'border-right:1.5px solid #b0b0b0;padding:10px 12px">' + logoHtml + '</td>'
+    + '<td style="' + tdB + ';text-align:center;vertical-align:middle;'
+    +   'border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +   '<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">'
+    +     esc(title) + '</div>'
+    +   (sub ? '<div style="font-size:11px;color:#444;margin-top:3px">' + esc(sub) + '</div>' : '')
+    +   '<div style="font-size:11px;font-weight:600;margin-top:4px">Date : '
+    +     '<span style="color:#09637e">' + today + '</span></div>'
+    + '</td>'
+    + '<td style="' + tdB + ';width:190px;padding:0;vertical-align:top">'
+    +   '<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +     (ref ? line('Réf :', esc(ref),
+              false, 'font-weight:700;font-family:monospace;color:#09637e;letter-spacing:.05em') : '')
+    +     line('Rév :', esc(rev), false)
+    +     (created ? line('Créé le :', esc(created), false) : '')
+    +     line('Éd. :', today, true)
+    +   '</table>'
+    + '</td></tr></table>';
+  return h;
+}
+
 function generateSectionActionPlanForClient(payload) {
   try {
     if (!payload || !payload.cols || !payload.cols.length ||
@@ -6208,7 +6250,11 @@ function generateSectionActionPlanForClient(payload) {
       return { ok: false, error: 'Aucune action à inclure dans le plan.' };
     }
     var title = safeText(payload.title) || "Plan d'action";
-    var ref   = safeText(payload.ref) || '';   // codification documentaire (ex. ENR-HSE 30)
+    var ref   = safeText(payload.ref) || '';       // codification (ex. ENR-HSE 30)
+    var sub   = safeText(payload.subtitle) || '';  // sous-titre du cartouche
+    var rev   = safeText(payload.rev) || '01';     // indice de révision
+    var creat = safeText(payload.created) || '';   // date de création du document
+    var logo  = String(payload.logo || '');        // data-URL du logo officiel
     var rows  = payload.rows.slice(0, ACTION_PLAN_MAX_ROWS);
     var esc   = function(s) {
       return String(s == null ? '' : s)
@@ -6229,12 +6275,8 @@ function generateSectionActionPlanForClient(payload) {
       + 'td{border:1px solid #c6d9e2;padding:4px 5px;font-size:8.5px;vertical-align:top}'
       + 'tr:nth-child(even) td{background:#f3f8fa}'
       + '.foot{margin-top:8px;font-size:8px;color:#5a7684}'
-      + '.ref{display:inline-block;font-family:monospace;font-weight:bold;font-size:9px;'
-      +   'color:#09637e;background:#eaf2f6;border:1px solid #c6d9e2;border-radius:3px;'
-      +   'padding:2px 6px;letter-spacing:.05em;margin:0 0 6px}'
       + '</style></head><body>'
-      + (ref ? '<div class="ref">Réf. ' + esc(ref) + '</div>' : '')
-      + '<h1>' + esc(title) + '</h1>'
+      + enrHeaderHtml_(title, sub, ref, rev, creat, logo)
       + '<p class="sub">SOBCO 3 — HSE Master Dashboard · Généré le ' + now
       + ' · ' + rows.length + ' ligne(s)</p>';
     if (payload.meta) html += '<div class="meta">' + esc(payload.meta) + '</div>';
