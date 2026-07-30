@@ -4013,9 +4013,6 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="openFichesTechniques()">
       📄 Fiches techniques
     </button>
-    <!-- Boutons générés depuis la feuille « plan d'intervention 3d » :
-         une ligne = un bouton (voir renderPlan3DButtons) -->
-    <span id="plan3dBtns" style="display:contents"></span>
     <button class="btn" style="background:var(--p2);color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
@@ -10493,7 +10490,6 @@ function render(data){
 
   // ── NUISIBLES ───────────────────────────────────────────
   renderPests();
-  try{ renderPlan3DButtons(); }catch(e){ console.error('[plan3d]',e); }
 
   // ══ SENSIBILISATION HSE ═══════════════════════════
   if(data.sensibilisation)initSensib(data);
@@ -14980,20 +14976,46 @@ function renderPestsDocs(r){
   var delHead = document.getElementById('pestsDocsDelHead');
   if (delHead) delHead.style.display = canDel ? '' : 'none';
   var files = (r && r.files) || [];
+  // Documents liés dans la feuille « plan d'intervention 3d » (plan des
+  // opérations 3D, attestations…) : affichés en tête de liste, avec
+  // ouverture et téléchargement. Non supprimables ici — ce sont des liens
+  // Drive gérés depuis le Sheet, pas des fichiers téléversés.
+  var linked = plan3dRows();
+  var linkedHtml = linked.map(function(d, i){
+    var L = plan3dLook(d.nom);
+    var fname = String(d.nom||'Document').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+    return '<tr>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">' + (i+1) + '</td>'
+      + '<td><span class="mono" style="font-size:9px;color:' + L.bg + '">' + (L.tag || 'DRIVE') + '</span></td>'
+      + '<td><a href="#" onclick="openPlan3DDoc(' + jsq(d.url) + ',' + jsq(d.nom) + ');return false;" '
+      + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer;font-size:11px">'
+      + L.ico + ' ' + esc(d.nom) + '</a></td>'
+      + '<td><span class="mono" style="font-size:10px;color:var(--text3)">lien Drive</span></td>'
+      + '<td style="text-align:center;white-space:nowrap">'
+      + '<a href="#" class="tag-btn has-photo" title="Ouvrir dans le dashboard" '
+      + 'onclick="openPlan3DDoc(' + jsq(d.url) + ',' + jsq(d.nom) + ');return false;" style="text-decoration:none">📄</a> '
+      + '<a href="#" class="tag-btn has-photo" title="Télécharger" '
+      + 'onclick="downloadDriveDoc(' + jsq(d.url) + ',' + jsq(fname) + ');return false;" style="text-decoration:none">⬇️</a>'
+      + '</td>'
+      + (canDel ? '<td style="text-align:center;color:var(--text3);font-size:10px">—</td>' : '<td style="display:none"></td>')
+      + '</tr>';
+  }).join('');
+
   if (!files.length) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">'
+    body.innerHTML = linkedHtml
+      + '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">'
       + 'Aucun document téléversé pour la lutte contre les nuisibles.<br>'
       + 'Utilisez le bouton 📤 ci-dessus pour ajouter le premier.</td></tr>';
     return;
   }
-  body.innerHTML = files.map(function(f, i){
+  body.innerHTML = linkedHtml + files.map(function(f, i){
     var d  = f.date ? new Date(f.date) : null;
     var ds = d && !isNaN(d.getTime())
       ? (d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}))
       : '—';
     var fId = escAttr(f.id || '');
     return '<tr>'
-      + '<td class="mono" style="font-size:10px;color:var(--text3)">' + (i+1) + '</td>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">' + (linked.length + i + 1) + '</td>'
       + '<td><span class="mono" style="font-size:9px;color:var(--p4)">' + esc(f.code || '—') + '</span></td>'
       + '<td><a href="#" data-doc-id="' + fId + '" '
       + 'onclick="openPestsDocView(this.getAttribute(\'data-doc-id\'));return false;" '
@@ -16023,22 +16045,17 @@ function plan3dLook(nom){
   if(n.indexOf('contrat')>-1) return {ico:'📑', bg:'#4338ca', tag:''};
   return {ico:'📄', bg:'#475569', tag:''};
 }
-function renderPlan3DButtons(){
-  var box=document.getElementById('plan3dBtns'); if(!box) return;
-  var rows=((D||{}).plan3d)||[];
-  box.innerHTML=rows.map(function(r){
+// Documents liés du Sheet, prêts à être listés (nom + lien valides).
+// Le libellé dédié (« Plan des opérations 3D ») remplace le nom brut de
+// la feuille quand la ligne correspond au plan 3D.
+function plan3dRows(){
+  return (((D||{}).plan3d)||[]).filter(function(r){
+    return r && r.url && /^https?:\/\//i.test(r.url);
+  }).map(function(r){
     var nom=String(r.nom||'Document').trim();
-    if(!r.url||!/^https?:\/\//i.test(r.url)) return '';
     var L=plan3dLook(nom);
-    // Libellé : capitale initiale, ou libellé dédié pour le plan 3D
-    var label=L.label||(nom.charAt(0).toUpperCase()+nom.slice(1));
-    return '<button class="btn" style="background:'+L.bg+';color:#fff;border:none;font-size:11px;'
-      +'padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;'
-      +'align-items:center;gap:5px" onclick="openPlan3DDoc('+jsq(r.url)+','+jsq(label)+')" '
-      +'title="'+escAttr(nom)+'">'+L.ico+' '+esc(label)
-      +(L.tag?' <span style="font-size:9px;opacity:.75;font-family:\'JetBrains Mono\',monospace">'+L.tag+'</span>':'')
-      +'</button>';
-  }).join('');
+    return { nom:(L.label||(nom.charAt(0).toUpperCase()+nom.slice(1))), url:r.url };
+  });
 }
 function openPlan3DDoc(url,nom){
   if(!url) return;
