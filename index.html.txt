@@ -9934,7 +9934,8 @@ function sapPayload(section){
     var tags = (D && D.tags) || [];
     var nOpen = tags.filter(function(t){ return tagIsOpen(t); }).length;
     return {
-      title: "Plan d'action — TAGs",
+      title: "Plan d'action HSE (TAGs)",
+      ref:   'ENR-HSE 30',
       meta:  tags.length + ' TAG(s) · ' + nOpen + ' ouvert(s) · '
            + (tags.length - nOpen) + ' fermé(s)',
       cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
@@ -9955,8 +9956,12 @@ function sapPayload(section){
 var sapLoading = false;
 function openSectionActionPlan(section){
   var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
-  var kind = 'PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase());
-  sapRun(sapPayload(section), kind);
+  var p    = sapPayload(section);
+  // Badge de la visionneuse : affiche la codification quand elle existe
+  var kind = (p && p.ref)
+    ? (p.ref + ' · PLAN D\'ACTION HSE')
+    : ('PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase()));
+  sapRun(p, kind);
 }
 function sapRun(p, kind){
   if (!p || !p.rows.length) {
@@ -10030,7 +10035,8 @@ function downloadSectionActionPlan(section){
   google.script.run
     .withSuccessHandler(function(r){
       sapLoading=false;
-      var name=(r&&r.name)||('Plan d\'action — '+(LBL[section]||section)+'.pdf');
+      // Repli : reprend le titre et la codification du payload
+      var name=(r&&r.name)||(((p.ref?p.ref+' - ':'')+(p.title||('Plan d\'action — '+(LBL[section]||section))))+'.pdf');
       if(!/\.pdf$/i.test(name)) name+='.pdf';
       if(r&&r.ok&&r.b64){
         try{ var bin=atob(r.b64),arr=new Uint8Array(bin.length);

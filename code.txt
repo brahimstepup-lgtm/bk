@@ -6126,6 +6126,7 @@ function generateSectionActionPlanForClient(payload) {
       return { ok: false, error: 'Aucune action à inclure dans le plan.' };
     }
     var title = safeText(payload.title) || "Plan d'action";
+    var ref   = safeText(payload.ref) || '';   // codification documentaire (ex. ENR-HSE 30)
     var rows  = payload.rows.slice(0, ACTION_PLAN_MAX_ROWS);
     var esc   = function(s) {
       return String(s == null ? '' : s)
@@ -6146,7 +6147,11 @@ function generateSectionActionPlanForClient(payload) {
       + 'td{border:1px solid #c6d9e2;padding:4px 5px;font-size:8.5px;vertical-align:top}'
       + 'tr:nth-child(even) td{background:#f3f8fa}'
       + '.foot{margin-top:8px;font-size:8px;color:#5a7684}'
+      + '.ref{display:inline-block;font-family:monospace;font-weight:bold;font-size:9px;'
+      +   'color:#09637e;background:#eaf2f6;border:1px solid #c6d9e2;border-radius:3px;'
+      +   'padding:2px 6px;letter-spacing:.05em;margin:0 0 6px}'
       + '</style></head><body>'
+      + (ref ? '<div class="ref">Réf. ' + esc(ref) + '</div>' : '')
       + '<h1>' + esc(title) + '</h1>'
       + '<p class="sub">SOBCO 3 — HSE Master Dashboard · Généré le ' + now
       + ' · ' + rows.length + ' ligne(s)</p>';
@@ -6169,8 +6174,11 @@ function generateSectionActionPlanForClient(payload) {
     html += '<p class="foot">Document généré automatiquement à partir des données'
       + ' de la section — Dashboard HSE SOBCO 3.</p></body></html>';
 
-    var pdfName = title + '.pdf';
-    var pdf = Utilities.newBlob(html, 'text/html', title + '.html')
+    // Nom de fichier préfixé par la codification quand elle existe :
+    // « ENR-HSE 30 - Plan d'action HSE (TAGs).pdf »
+    var baseName = (ref ? ref + ' - ' : '') + title;
+    var pdfName = baseName + '.pdf';
+    var pdf = Utilities.newBlob(html, 'text/html', baseName + '.html')
       .getAs('application/pdf').setName(pdfName);
 
     // 1) Archivage Drive (si autorisé) : dossier créé au besoin,
