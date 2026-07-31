@@ -4017,6 +4017,14 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
     </button>
+    <button class="btn" style="background:#b45309;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openSectionActionPlan('nuisibles')"
+            title="Plan d'action des TAGs « nuisibles » (ENR-HSE 35)">
+      📋 Plan d'action <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 35</span>
+    </button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="downloadSectionActionPlan('nuisibles')"
+            title="Télécharger le plan d'action (PDF)">⬇️ Télécharger</button>
     <button class="btn" style="background:#7c3aed;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openPestsDocs()"
             title="Enregistrements remplis (scans, PDF, photos) de la lutte contre les nuisibles — stockés dans le classeur, sans Drive">
@@ -9929,6 +9937,16 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
 // envoie au serveur qui génère le PDF « Plan d'action — <Section> »
 // dans Drive, puis affiche le PDF dans le viewer intégré du
 // dashboard (aucune redirection externe).
+// Un TAG relève-t-il du danger « nuisibles » ? On n'examine que les
+// champs de DANGER (type / risque), jamais la description libre : un
+// mot comme « rat » ou « mouche » y apparaîtrait par hasard et
+// gonflerait le plan d'action de lignes hors sujet.
+function isNuisibleTag(t){
+  if(!t || !t.id || t._err) return false;
+  var s = veilleNorm((t.type||'') + ' ' + (t.risque||''));
+  if(!s) return false;
+  return /nuisible|rongeur|\brat\b|\brats\b|souris|insecte|mouche|moustique|cafard|blatte|termite|derat|desinsect|desinfect|raticide|appat|fly ?killer|\bfk\b|vermine|parasite/.test(s);
+}
 function sapPayload(section){
   var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
   if (section === 'incidents') {
@@ -9969,6 +9987,33 @@ function sapPayload(section){
         action:(a.action&&String(a.action).trim())?String(a.action).trim():'À définir' }; })
     };
   }
+  if (section === 'nuisibles') {
+    // TAGs dont le danger relève de la lutte contre les nuisibles.
+    var ntags = ((D && D.tags) || []).filter(isNuisibleTag);
+    var nOpenN = ntags.filter(function(t){ return tagIsOpen(t); }).length;
+    return {
+      title:    "Plan d'action HSE — Nuisibles",
+      subtitle: 'TAGs « nuisibles » — dératisation · désinsectisation · désinfection',
+      ref:      'ENR-HSE 35',
+      rev:      '01',
+      created:  '04/01/2026',
+      meta:  ntags.length + ' TAG(s) « nuisibles » · ' + nOpenN + ' ouvert(s) · '
+           + (ntags.length - nOpenN) + ' fermé(s) — extraits automatiquement de la section TAGs',
+      cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
+              {k:'zone',l:'Zone',w:7},{k:'empl',l:'Emplacement',w:9},
+              {k:'type',l:'Danger',w:9},
+              {k:'desc',l:'Description',w:15},{k:'action',l:'Action urgente',w:14},
+              {k:'prop',l:'Propositions',w:14},{k:'resp',l:'Responsable',w:8},
+              {k:'statut',l:'Statut',w:6} ],
+      rows: ntags.map(function(t){ return {
+        id:v(t.id), date:v(t.dateCreate), cible:v(t.dateCible),
+        zone:v(t.zone), empl:v(t.emplacement), type:v(t.type||t.risque),
+        desc:v(t.description),
+        action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
+        prop:v(t.propositions), resp:v(t.responsable),
+        statut:t.statut?String(t.statut).trim():(tagIsOpen(t)?'Ouvert':'Fermé') }; })
+    };
+  }
   if (section === 'tags') {
     var tags = (D && D.tags) || [];
     var nOpen = tags.filter(function(t){ return tagIsOpen(t); }).length;
@@ -9997,7 +10042,7 @@ function sapPayload(section){
 }
 var sapLoading = false;
 function openSectionActionPlan(section){
-  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
+  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS', nuisibles:'NUISIBLES' };
   var p    = sapPayload(section);
   // Badge de la visionneuse : affiche la codification quand elle existe
   var kind = (p && p.ref)
@@ -10065,7 +10110,7 @@ function sapRun(p, kind){
 // Génère le plan d'action d'une section et le TÉLÉCHARGE directement
 // (sans passer par la visionneuse).
 function downloadSectionActionPlan(section){
-  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs'};
+  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs',nuisibles:'Nuisibles'};
   var p=sapPayload(section);
   if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if(!p || !p.rows.length){ showToast('Aucune donnée dans cette section.','error'); return; }
