@@ -4049,7 +4049,7 @@ html.light .pests-search-input{background:#edf2f7}
     <button class="btn" style="background:#7c3aed;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openPestsDocs()"
             title="Enregistrements remplis (scans, PDF, photos) de la lutte contre les nuisibles — stockés dans le classeur, sans Drive">
-      🗂️ Documents ENR <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">sans Drive</span>
+      🗂️ Autres
     </button>
   </div>
 
