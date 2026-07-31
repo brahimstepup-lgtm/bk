@@ -3374,6 +3374,56 @@ function pestNumsFromRead(r) {
 }
 
 // ════════════════════════════════════════════════════════════
+// STATUT COURANT PAR DISPOSITIF (annotation de la cartographie)
+// ────────────────────────────────────────────────────────────
+// À partir d'une feuille pest DÉJÀ lue par readPestSheet (aucune
+// lecture supplémentaire), renvoie pour chaque numéro de piège le
+// dernier contrôle enregistré :
+//   { "42": { statut:'NT', date:'14/06/2026', iso:'2026-06-14',
+//             action:'remplacée par une nouvelle boite' }, … }
+// Le client s'en sert pour poser une note « NT », « CAS »… devant
+// les repères dont l'état n'est pas RAS (conforme).
+// ════════════════════════════════════════════════════════════
+function pestStatusFromRead(r) {
+  var out = {};
+  if (!r || !r.entries || !r.entries.length) return out;
+  var hd = r.headers || [], ncol = -1, consoIdx = -1;
+  for (var c = 0; c < hd.length; c++) {
+    var hh = normalize(hd[c]).replace(/[^a-z0-9]/g, '');
+    if (hh === 'n' || hh === 'no' || hh === 'num' || hh.indexOf('numero') > -1) { ncol = c; break; }
+  }
+  for (var c2 = 0; c2 < hd.length; c2++) {
+    var h2 = normalize(hd[c2]);
+    if (h2 && (h2.indexOf('consom') > -1 || h2.indexOf('niveau') > -1)) { consoIdx = c2; break; }
+  }
+  r.entries.forEach(function(e, idx){
+    var k = '';
+    if (ncol >= 0 && e.raw && e.raw.length > ncol) k = trapKey(e.raw[ncol]);
+    else if (e.zone) k = trapKey(e.zone);
+    if (!k) return;
+    var st  = e.statut || (consoIdx >= 0 && e.raw ? safeText(e.raw[consoIdx]) : '');
+    var cur = out[k];
+    if (cur) {
+      // On conserve le contrôle le plus récent ; à dates égales ou
+      // absentes, la dernière ligne du Sheet fait foi.
+      var a = e.isoDate || '', b = cur.iso || '';
+      if (a && b) { if (a < b) return; }
+      else if (!a && b) return;
+      else if (!a && !b && idx < cur.idx) return;
+    }
+    out[k] = {
+      statut: String(st || '').trim(),
+      date:   e.date    || '',
+      iso:    e.isoDate || '',
+      action: e.action  || '',
+      idx:    idx
+    };
+  });
+  Object.keys(out).forEach(function(k){ delete out[k].idx; });
+  return out;
+}
+
+// ════════════════════════════════════════════════════════════
 // ── CARTOGRAPHIE (onglets « cartographie … ») ────────────────
 // Lit la liste des plans (étages) à superposer dans une carte :
 //   colonne « zone »  + colonne « lien drive de cartographie ».
@@ -4167,6 +4217,13 @@ function getData() {
   // Numéros par feuille intérieure → coloration des repères (colle = rose)
   out.pestMechNums = pestNumsFromRead(pests.mech);   // pièges mécanique
   out.pestGlueNums = pestNumsFromRead(pests.glue);   // boîtes à colles
+  // Dernier état connu de chaque dispositif → note « NT », « CAS »…
+  // posée devant les repères non conformes de la cartographie.
+  out.pestStatus = {
+    rat:  pestStatusFromRead(pests.rat),
+    mech: pestStatusFromRead(pests.mech),
+    glue: pestStatusFromRead(pests.glue)
+  };
 
   // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
   var sensib = readSensibilisation();

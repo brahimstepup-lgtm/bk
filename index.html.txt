@@ -1029,6 +1029,18 @@ html.light .pests-mini-tab.on{background:#edf2f7}
 .pestmap-pt.pink{background:#ec4899}
 .pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);
   z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+/* Note « commentaire » posée devant un repère dont le dernier état
+   n'est pas RAS (ex. « NT » = boîte non trouvée). Bulle + pointe. */
+.pestmap-note{position:absolute;transform:translate(-50%,-168%);
+  padding:1px 4px;border-radius:5px;white-space:nowrap;pointer-events:none;z-index:3;
+  font:700 8.5px/1.3 'JetBrains Mono',monospace;letter-spacing:.02em;
+  border:1px solid rgba(0,0,0,.4);box-shadow:0 1px 3px rgba(0,0,0,.45)}
+.pestmap-note::after{content:'';position:absolute;left:50%;bottom:-3px;width:6px;height:6px;
+  margin-left:-3px;background:inherit;border-right:1px solid rgba(0,0,0,.4);
+  border-bottom:1px solid rgba(0,0,0,.4);transform:rotate(45deg);border-radius:0 0 1px 0}
+.pestmap-note.warn{background:#f4a11a;color:#231a00}
+.pestmap-note.alert{background:#e8445a;color:#fff}
+.pestmap-leg.note i{background:#f4a11a;border-radius:2px}
 /* Sélecteur d'étage (boutons) */
 .pestmap-floors{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);padding:4px;
   border-radius:9px;border:1px solid var(--border);margin:2px 0 10px}
@@ -4205,11 +4217,13 @@ html.light .pests-search-input{background:#edf2f7}
           <span class="pestmap-leg ext"><i></i> Boîtes d'appât raticide (extérieur)</span>
           <span class="pestmap-leg int"><i></i> Pièges mécaniques (intérieur)</span>
           <span class="pestmap-leg glue"><i></i> Boîtes à colles (intérieur)</span>
+          <span class="pestmap-leg note"><i></i> Note d'état (dernier contrôle ≠ RAS)</span>
         </div>
       </div>
       <!-- Sélecteur d'étage (alimenté par l'onglet « cartographie nuisibles ») -->
       <div class="pestmap-floors" id="pestMapFloors"></div>
-      <div class="pestmap-hint">🖱️ Cliquez un repère numéroté pour afficher le détail et l'historique du dispositif.</div>
+      <div class="pestmap-hint">🖱️ Cliquez un repère numéroté pour afficher le détail et l'historique du dispositif.
+        Les dispositifs dont le dernier contrôle n'est pas <b>RAS</b> portent une note (ex. <b>NT</b> = boîte non trouvée).</div>
       <div class="pestmap-wrap" id="pestMapWrap">
         <img class="pestmap-img" id="pestMapImg" alt="" style="display:none"
              onerror="this.style.display='none';var p=document.getElementById('pestMapPh');if(p)p.style.display='flex';">
@@ -17066,6 +17080,69 @@ var PEST_MAP_POINTS_BY_FLOOR = {
 // ── État du sélecteur d'étage ──
 var pestMapFloors  = [];   // alimenté depuis D.cartoNuisibles
 var pestMapFloorIdx = -1;  // -1 → choisit l'étage par défaut au 1er rendu
+var pestMapNotesOn  = true; // notes d'état devant les repères non conformes
+
+/* ── Notes d'état sur la cartographie ─────────────────────────
+   Chaque repère dont le DERNIER contrôle n'est pas « RAS » reçoit
+   une petite note façon commentaire (« NT », « CAS », « SOU »…)
+   avec, au survol, la signification, la date et l'observation.
+   Source : D.pestStatus[source][n°] — dernier contrôle par
+   dispositif, calculé côté serveur depuis les feuilles nuisibles.
+   ───────────────────────────────────────────────────────────── */
+// Signification des codes — même source que la légende imprimée
+// dans l'ENR-HSE 07 (PEST_RAT_LEGEND), pour éviter toute divergence.
+var PEST_STATUS_LABELS = (function(){
+  var m = {};
+  (PEST_RAT_LEGEND||[]).forEach(function(c){ m[String(c[0]).toUpperCase()] = c[1]; });
+  return m;
+})();
+// Code normalisé (majuscules, sans accents ni ponctuation)
+function pestStatusCode(s){
+  return String(s||'').toUpperCase()
+    .replace(/[ÀÁÂÃÄÅ]/g,'A').replace(/[ÈÉÊË]/g,'E').replace(/[ÎÏ]/g,'I')
+    .replace(/[ÔÖ]/g,'O').replace(/[ÙÚÛÜ]/g,'U').replace(/Ç/g,'C')
+    .replace(/[^A-Z0-9]/g,'');
+}
+// Vrai si l'état relevé vaut « conforme » (rien à signaler)
+function pestStatusIsOk(s){
+  var c = pestStatusCode(s);
+  return !c || c.indexOf('RAS')===0 || c.indexOf('RIENASIGNALER')>-1 || c.indexOf('CONFORME')>-1;
+}
+// Dernier état connu d'un dispositif ; repli mécanique → colles,
+// comme le fait la fenêtre de détail (openDispo).
+function pestStatusFor(num, type){
+  var PS = (D && D.pestStatus) || {};
+  var src = (PEST_MAP_TYPES[type] || {}).source || 'rat';
+  var st  = (PS[src] || {})[String(num)];
+  if(!st && (type==='int' || type==='glue')){
+    var alt = (type==='int') ? 'glue' : 'mech';
+    st = (PS[alt] || {})[String(num)];
+  }
+  return st || null;
+}
+// Bulle de note (HTML) pour un repère, ou '' si conforme / inconnu
+function pestMapNoteHtml(p, type){
+  if(!pestMapNotesOn) return '';
+  var st = pestStatusFor(p.num, type);
+  if(!st || pestStatusIsOk(st.statut)) return '';
+  var raw   = String(st.statut||'').trim();
+  var code  = pestStatusCode(raw);
+  var known = PEST_STATUS_LABELS[code] ? code : '';
+  // Texte court dans la bulle : le code s'il est connu, sinon le
+  // libellé tronqué (les états saisis en clair restent lisibles).
+  var short = known || (raw.length>12 ? raw.substring(0,11)+'…' : raw);
+  var lvl   = (code.indexOf('SOU')>-1) ? 'alert' : 'warn';
+  var tip   = 'N° '+p.num+' — '+raw
+            + (PEST_STATUS_LABELS[code] ? ' ('+PEST_STATUS_LABELS[code]+')' : '')
+            + (st.date ? ' · '+st.date : '')
+            + (st.action ? ' · '+st.action : '');
+  return '<span class="pestmap-note '+lvl+'" style="left:'+p.x+'%;top:'+p.y+'%"'
+       + ' title="'+escAttr(tip)+'">'+esc(short)+'</span>';
+}
+function pestMapToggleNotes(){
+  pestMapNotesOn = !pestMapNotesOn;
+  renderPestMap();
+}
 
 // Normalisation d'un libellé d'étage (pour faire correspondre la "zone"
 // du Sheet aux clés de PEST_MAP_POINTS_BY_FLOOR).
@@ -17152,11 +17229,18 @@ function renderPestMap(){
     var et = p.type;
     if(et==='int' && glueSet[String(p.num)] && !mechSet[String(p.num)]) et='glue';
     var t = PEST_MAP_TYPES[et] || {color:'blue',label:''};
+    var st = pestStatusFor(p.num, et);
+    // Le titre du repère rappelle l'état courant (hors « RAS »)
+    var tip = (t.label||'') + ' — N° ' + p.num
+            + ((st && !pestStatusIsOk(st.statut))
+                ? ' · ' + st.statut + (st.date ? ' (' + st.date + ')' : '')
+                : '');
     return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
       + ' style="left:'+p.x+'%;top:'+p.y+'%"'
-      + ' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
+      + ' title="'+escAttr(tip)+'"'
       + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(et)+'\')">'
-      + esc(String(p.num)) + '</button>';
+      + esc(String(p.num)) + '</button>'
+      + pestMapNoteHtml(p, et);
   }).join('');
 }
 
@@ -17167,8 +17251,11 @@ function pestMapRenderFloors(){
     return '<button type="button" class="pestmap-floor-btn'+(i===pestMapFloorIdx?' on':'')+'"'
       + ' onclick="pestMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
   }).join('')
+  + '<button type="button" class="pestmap-floor-btn'+(pestMapNotesOn?' on':'')+'" onclick="pestMapToggleNotes()"'
+  + ' title="Afficher / masquer les notes d\'état (NT, CAS, SOU…) devant les repères non conformes"'
+  + ' style="margin-left:auto">🗒️ Notes d\'état</button>'
   + '<button type="button" class="pestmap-floor-btn" onclick="downloadPestMapPlan()"'
-  + ' title="Télécharger le plan de l\'étage affiché" style="margin-left:auto;background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
+  + ' title="Télécharger le plan de l\'étage affiché" style="background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
 }
 // Télécharge le plan de l'étage affiché AVEC les repères (composite),
 // exactement comme à l'écran : l'image est récupérée côté serveur en
@@ -17188,7 +17275,17 @@ function downloadPestMapPlan(){
   var pts=(pestMapPointsForFloor(floor.zone)||[]).map(function(p){
     var et=p.type;
     if(et==='int'&&glueSet[String(p.num)]&&!mechSet[String(p.num)]) et='glue';
-    return {num:p.num,x:p.x,y:p.y,type:et};
+    // Note d'état reportée à l'identique sur le plan téléchargé
+    var note='', nlvl='';
+    if(pestMapNotesOn){
+      var st=pestStatusFor(p.num,et);
+      if(st&&!pestStatusIsOk(st.statut)){
+        var raw=String(st.statut||'').trim(), code=pestStatusCode(raw);
+        note=PEST_STATUS_LABELS[code]?code:(raw.length>12?raw.substring(0,11)+'…':raw);
+        nlvl=(code.indexOf('SOU')>-1)?'alert':'warn';
+      }
+    }
+    return {num:p.num,x:p.x,y:p.y,type:et,note:note,nlvl:nlvl};
   });
   function fallback(){ downloadDriveDoc(srcUrl,fname); }
   google.script.run
@@ -17214,6 +17311,29 @@ function downloadPestMapPlan(){
             ctx.fillStyle=c.bg; ctx.fill();
             ctx.shadowColor='transparent'; ctx.lineWidth=Math.max(1.4,mh*0.09); ctx.strokeStyle=c.bd; ctx.stroke();
             ctx.fillStyle=c.fg; ctx.fillText(label,cx,cy);
+          });
+          // Notes d'état (NT, CAS, SOU…) dessinées AU-DESSUS des repères,
+          // dans une 2ᵉ passe pour qu'elles ne soient pas recouvertes.
+          var nfs=Math.round(mh*0.44);
+          ctx.font='700 '+nfs+'px "JetBrains Mono", monospace';
+          pts.forEach(function(p){
+            if(!p.note) return;
+            var nc=(p.nlvl==='alert')?{bg:'#e8445a',fg:'#fff'}:{bg:'#f4a11a',fg:'#231a00'};
+            var nw=ctx.measureText(p.note).width+nfs*0.8, nh=nfs*1.7, nr=Math.max(2,nfs*0.28);
+            var cx=p.x/100*W, cy=p.y/100*H;
+            var nx=cx-nw/2, ny=cy-mh*0.62-nh;   // juste au-dessus du repère
+            ctx.beginPath();
+            ctx.moveTo(nx+nr,ny); ctx.arcTo(nx+nw,ny,nx+nw,ny+nh,nr); ctx.arcTo(nx+nw,ny+nh,nx,ny+nh,nr);
+            ctx.arcTo(nx,ny+nh,nx,ny,nr); ctx.arcTo(nx,ny,nx+nw,ny,nr); ctx.closePath();
+            ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=nfs*0.3; ctx.shadowOffsetY=nfs*0.1;
+            ctx.fillStyle=nc.bg; ctx.fill();
+            ctx.shadowColor='transparent';
+            ctx.lineWidth=Math.max(1,nfs*0.1); ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.stroke();
+            // Pointe de la bulle, vers le repère
+            ctx.beginPath();
+            ctx.moveTo(cx-nfs*0.28,ny+nh); ctx.lineTo(cx+nfs*0.28,ny+nh); ctx.lineTo(cx,ny+nh+nfs*0.45);
+            ctx.closePath(); ctx.fillStyle=nc.bg; ctx.fill();
+            ctx.fillStyle=nc.fg; ctx.fillText(p.note,cx,ny+nh/2);
           });
           cv.toBlob(function(blob){
             if(!blob){ fallback(); return; }
