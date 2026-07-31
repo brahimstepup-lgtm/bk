@@ -6684,14 +6684,22 @@ function printDechets(){
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'+miniImgs.join('')+'</div>';
   }
 
-  // Tableau des données
+  // Tableau des données — les colonnes de lien (URL Drive) sont exclues :
+  // une URL complète n'a pas de sens sur un document imprimé et déformait
+  // la mise en page en débordant sur plusieurs lignes.
+  var printCols=[];
+  headers.forEach(function(h,ci){
+    var hn=veilleNorm(dechetsCleanCell(h));
+    if(/lien|drive|url/.test(hn)) return;
+    printCols.push(ci);
+  });
   var dataTable='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:2px 0 6px">Détail mensuel</div>'
     +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
-    +headers.map(function(h){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(dechetsCleanCell(h))+'</th>';}).join('')
+    +printCols.map(function(ci){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(dechetsCleanCell(headers[ci]))+'</th>';}).join('')
     +'</tr></thead><tbody>'
     +mRows.map(function(r,i){
       return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
-        +headers.map(function(h,ci){ var v=dechetsCleanCell((r.cells||[])[ci]);
+        +printCols.map(function(ci){ var v=dechetsCleanCell((r.cells||[])[ci]);
           var isMonth=(ci===moCol);
           return '<td style="'+tdc+(isMonth?';font-weight:700':'')+'">'+esc(v||'—')+'</td>'; }).join('')
         +'</tr>';
