@@ -4029,6 +4029,11 @@ html.light .pests-search-input{background:#edf2f7}
     <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="downloadSectionActionPlan('nuisibles')"
             title="Télécharger le plan d'action (PDF)">⬇️ Télécharger</button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="printPestEnr('all')"
+            title="Suivi et vérification des pièges — fly-killers, raticide, mécaniques et colles (PDF)">
+      ⬇️ Suivi des pièges <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 07</span>
+    </button>
     <button class="btn" style="background:#7c3aed;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openPestsDocs()"
             title="Enregistrements remplis (scans, PDF, photos) de la lutte contre les nuisibles — stockés dans le classeur, sans Drive">
@@ -4101,7 +4106,6 @@ html.light .pests-search-input{background:#edf2f7}
                placeholder="Rechercher dans les visites avec capture…" oninput="renderPestFlyingTypeDetail()">
         <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                 onclick="document.getElementById('pestsFlyingTypeSearch').value='';renderPestFlyingTypeDetail()">↺ Reset</button>
-        <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('fk')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsFlyingTypeStat">— visites</span>
       </div>
       <div class="pests-table-wrap">
@@ -4345,7 +4349,6 @@ html.light .pests-search-input{background:#edf2f7}
                placeholder="Rechercher (boîtes à raticide)…" oninput="renderPestRat()">
         <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                 onclick="document.getElementById('pestsRatSearch').value='';renderPestRat()">↺ Reset</button>
-        <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('rat')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsRatStat">— lignes</span>
       </div>
 
@@ -4457,7 +4460,6 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (pièges mécanique)…" oninput="renderPestMech()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsMechSearch').value='';renderPestMech()">↺ Reset</button>
-          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsMechStat">— lignes</span>
         </div>
 
@@ -4497,7 +4499,6 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (boîtes à colles)…" oninput="renderPestGlue()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsGlueSearch').value='';renderPestGlue()">↺ Reset</button>
-          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsGlueStat">— lignes</span>
         </div>
 
@@ -13893,6 +13894,16 @@ var PEST_ENR = {
     sub:'Lutte contre les rongeurs — intérieur usine',
     parts:[{src:'mech', label:'Pièges mécaniques'},
            {src:'glue', label:'Boîtes à colles'}]
+  },
+  // Document unique regroupant les trois suivis (bouton en tête de section)
+  all: {
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    title:'Suivi et vérification des pièges',
+    sub:'Fly-killers · boîtes à raticide (extérieur) · pièges mécaniques et boîtes à colles (intérieur usine)',
+    parts:[{src:'fk',   label:'Fly-killers — insectes volants'},
+           {src:'rat',  label:'Boîtes à raticide — extérieur'},
+           {src:'mech', label:'Pièges mécaniques — intérieur usine'},
+           {src:'glue', label:'Boîtes à colles — intérieur usine'}]
   }
 };
 function printPestEnr(kind){
