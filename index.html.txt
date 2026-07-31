@@ -7609,7 +7609,7 @@ function buildActionsFromDashboard(){
       action:hasAction?String(t.action||t.propositions).trim():'À définir',
       resp:t.responsable||'—',
       prioRaw:tagIsOpen(t)?'Moyenne':'Faible',
-      dCrea:t.dateCreate||'—', dEch:t.dateCible||'—', dClot:'—',
+      dCrea:t.date||'—', dEch:t.dateCible||'—', dClot:'—',
       statut:actResolveStatut(t.statut, null, hasAction, t.dateCible)
     });
   });
@@ -10021,7 +10021,7 @@ function sapPayload(section){
               {k:'prop',l:'Propositions',w:14},{k:'resp',l:'Responsable',w:8},
               {k:'statut',l:'Statut',w:6} ],
       rows: ntags.map(function(t){ return {
-        id:v(t.id), date:v(t.dateCreate), cible:v(t.dateCible),
+        id:v(t.id), date:v(t.date), cible:v(t.dateCible),
         zone:v(t.zone), empl:v(t.emplacement), type:v(t.type||t.risque),
         desc:v(t.description),
         action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
@@ -10046,7 +10046,7 @@ function sapPayload(section){
               {k:'prop',l:'Propositions',w:16},{k:'resp',l:'Responsable',w:8},
               {k:'statut',l:'Statut',w:6} ],
       rows: tags.map(function(t){ return {
-        id:v(t.id), date:v(t.dateCreate), cible:v(t.dateCible),
+        id:v(t.id), date:v(t.date), cible:v(t.dateCible),
         zone:v(t.zone), empl:v(t.emplacement), desc:v(t.description),
         action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
         prop:v(t.propositions), resp:v(t.responsable),
