@@ -1961,6 +1961,7 @@ html.light .pests-search-input{background:#edf2f7}
   <button class="tab"    onclick="goTab('env',this)">🌿 Énergie</button>
   <button class="tab"    onclick="goTab('veille',this)">📜 Veille Réglementaire</button>
   <button class="tab"    onclick="goTab('cphs',this);renderCphs()">🏛️ CPHS</button>
+  <button class="tab"    onclick="goTab('simulation',this);renderSimulations()">🚨 Simulation évacuation</button>
   <button class="tab"    onclick="goTab('proc',this)">📋 Procédures</button>
   <button class="tab"    onclick="goTab('enr',this)">🗂️ Enregistrements</button>
   <button class="tab"    onclick="goTab('cln',this)">🧹 Nettoyage</button>
@@ -2170,6 +2171,10 @@ html.light .pests-search-input{background:#edf2f7}
       <select class="tag-dropdown" id="tagFilterResp" onchange="applyTagF()"><option value="all">Tous</option></select>
     </div>
     <div class="tag-filter-group">
+      <span class="tag-filter-lbl">⚠️ Type de danger :</span>
+      <select class="tag-dropdown" id="tagFilterDanger" onchange="applyTagF()"><option value="all">Tous</option></select>
+    </div>
+    <div class="tag-filter-group">
       <span class="tag-filter-lbl">📍 Zone :</span>
       <select class="tag-dropdown" id="tagFilterZone" onchange="applyTagF()"><option value="all">Toutes</option></select>
     </div>
@@ -2344,6 +2349,37 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
+<!-- ═══ SIMULATION ÉVACUATION & EXERCICES D'URGENCE ═══ -->
+<div id="simulation" class="page">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:8px">
+    <div style="font-size:11px;color:var(--text3)">
+      <span id="simTitle" style="color:var(--text2);font-weight:600">Planning annuel de simulation d'évacuation &amp; exercices d'urgence</span>
+      <span id="simMeta" style="font-family:'JetBrains Mono',monospace;margin-left:6px"></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a id="simSrc" href="#" target="_blank" rel="noopener noreferrer" class="btn" style="font-size:11px;padding:6px 12px;text-decoration:none;display:none">↗ Ouvrir dans Sheets</a>
+      <button class="btn" onclick="printSimulations()" style="font-size:11px;padding:6px 12px" title="Télécharger le planning au format PDF">🖨️ Télécharger PDF</button>
+    </div>
+  </div>
+  <div class="kpi-grid" id="simKpi"></div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="ct"><span class="ct-dot" style="background:var(--red)"></span>🚨 Exercices de simulation
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">Trimestre · Mois · Type · Zone · Statut · Délai cible · Responsable</span>
+    </div>
+    <div id="simExBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:var(--amber)"></span>🛠️ Suivi des actions correctives
+      <span style="color:var(--text3);font-size:9px;margin-left:6px">Action · Exercice · Responsable · Date limite · Statut · Priorité</span>
+    </div>
+    <div id="simActBox" style="margin-top:10px">
+      <div style="text-align:center;padding:16px;color:var(--text3);font-size:11px">Chargement…</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ BILAN AT ═══ -->
 <div id="acc" class="page">
   <div class="pf-bar">
@@ -2354,7 +2390,11 @@ html.light .pests-search-input{background:#edf2f7}
     </select>
     <select class="pf-sel" id="accMo" style="display:none" onchange="applyAccF()">
       <option value="Janvier">Janvier</option><option value="Février">Février</option>
-      <option value="Mars">Mars</option><option value="Avril" selected>Avril</option>
+      <option value="Mars">Mars</option><option value="Avril">Avril</option>
+      <option value="Mai">Mai</option><option value="Juin">Juin</option>
+      <option value="Juillet">Juillet</option><option value="Août">Août</option>
+      <option value="Septembre">Septembre</option><option value="Octobre">Octobre</option>
+      <option value="Novembre">Novembre</option><option value="Décembre">Décembre</option>
     </select>
     <input type="date" class="pf-input" id="accD1" style="display:none" onchange="applyAccF()">
     <span id="accSep" style="display:none;color:var(--text3);font-size:10px">→</span>
@@ -2375,6 +2415,10 @@ html.light .pests-search-input{background:#edf2f7}
   <div class="row2">
     <div class="card"><div class="ct"><span class="ct-dot"></span>Causes</div><div class="cw" style="height:170px"><canvas id="accCC"></canvas></div></div>
     <div class="card"><div class="ct"><span class="ct-dot"></span>Par fonction</div><div class="cw" style="height:170px"><canvas id="accFC"></canvas></div></div>
+  </div>
+  <div class="card">
+    <div class="ct"><span class="ct-dot" style="background:#7c3aed"></span>Répartition par siège de lésion <span style="color:var(--text3);font-size:9px;margin-left:4px">Cartographie du corps · partie touchée</span></div>
+    <div id="accSiegeBody" style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center;padding:10px 4px 4px"></div>
   </div>
   <div class="card">
     <div class="ct"><span class="ct-dot"></span>Bilan AT — <span id="accCount">—</span>
@@ -3977,6 +4021,19 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="openRapportTendanceNuisibles()">
       📈 Rapport de tendance <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">Enr hse 23</span>
     </button>
+    <button class="btn" style="background:#b45309;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openSectionActionPlan('nuisibles')"
+            title="Plan d'action des TAGs « nuisibles » (ENR-HSE 35)">
+      📋 Plan d'action <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 35</span>
+    </button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="downloadSectionActionPlan('nuisibles')"
+            title="Télécharger le plan d'action (PDF)">⬇️ Télécharger</button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="printPestEnr('all')"
+            title="Suivi et vérification des pièges — fly-killers, raticide, mécaniques et colles (PDF)">
+      ⬇️ Suivi des pièges <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 07</span>
+    </button>
     <button class="btn" style="background:#7c3aed;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openPestsDocs()"
             title="Enregistrements remplis (scans, PDF, photos) de la lutte contre les nuisibles — stockés dans le classeur, sans Drive">
@@ -4403,7 +4460,7 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (pièges mécanique)…" oninput="renderPestMech()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsMechSearch').value='';renderPestMech()">↺ Reset</button>
-          <span class="pests-stat-pill" id="pestsMechStat">— lignes</span>
+        <span class="pests-stat-pill" id="pestsMechStat">— lignes</span>
         </div>
 
         <div class="pests-table-wrap">
@@ -4442,7 +4499,7 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (boîtes à colles)…" oninput="renderPestGlue()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsGlueSearch').value='';renderPestGlue()">↺ Reset</button>
-          <span class="pests-stat-pill" id="pestsGlueStat">— lignes</span>
+        <span class="pests-stat-pill" id="pestsGlueStat">— lignes</span>
         </div>
 
         <div class="pests-table-wrap">
@@ -4520,29 +4577,6 @@ html.light .pests-search-input{background:#edf2f7}
       <button class="crud-modal-close" onclick="closePestsDocs()">✕</button>
     </div>
     <div class="crud-modal-body">
-      <div style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-bottom:10px">
-        Enregistrements remplis (scans, PDF, photos) · stockés dans le classeur — sans Drive · 3 Mo max
-      </div>
-
-      <!-- Téléversement : code ENR + fichier -->
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
-        <select id="pestsDocCode" class="crud-input" style="padding:6px;flex-shrink:0;width:auto">
-          <option value="ENR-HSE-07">ENR-HSE-07 · Vérification des appâts</option>
-          <option value="ENR-HSE-13">ENR-HSE-13 · Fiche d'exécution</option>
-          <option value="ENR-HSE-15">ENR-HSE-15 · Vérification de la lutte</option>
-          <option value="ENR-HSE-20">ENR-HSE-20 · Recensement des nuisibles</option>
-          <option value="ENR-HSE-22">ENR-HSE-22 · Produits chimiques</option>
-          <option value="ENR-HSE-23">ENR-HSE-23 · Rapport de tendance</option>
-          <option value="ENR-HSE-24">ENR-HSE-24 · Rapport en cas de présence</option>
-          <option value="ENR-CQA-24">ENR-CQA-24 · Réception matière première</option>
-          <option value="">Autre document</option>
-        </select>
-        <input type="file" id="pestsDocFile" class="crud-input" style="padding:6px;flex:1;min-width:180px"
-               accept=".pdf,.png,.jpg,.jpeg,image/png,image/jpeg,application/pdf">
-        <button class="btn btn-ai" id="pestsDocUploadBtn" style="font-size:11px;padding:8px 14px;flex-shrink:0"
-                onclick="uploadPestsDoc()">📤 Téléverser</button>
-      </div>
-
       <!-- Liste des documents (plus récent en haut) -->
       <div class="tblw">
         <table>
@@ -6433,7 +6467,25 @@ function dechetsRender(){
       var v = (r.cells && r.cells[ci] != null) ? r.cells[ci] : '';
       var disp = dechetsCleanCell(v);
       var cu = (r.cellUrls && r.cellUrls[ci]) ? r.cellUrls[ci] : '';
-      if (cu){
+      // Une cellule dont la valeur EST une URL (colonne « Lien Drive ») :
+      // on n'affiche pas l'URL brute mais deux boutons Voir / Télécharger.
+      var rawUrl = cu || (/^https?:\/\//i.test(String(disp).trim()) ? String(disp).trim() : '');
+      var showAsBtns = rawUrl && (/^https?:\/\//i.test(String(disp).trim())
+                                  || /lien|drive|url|fichier|document/.test(veilleNorm(h)));
+      if (showAsBtns){
+        var vid  = sensibDriveFileId(rawUrl);
+        var mois = (r.cells && r.cells[0] != null) ? String(r.cells[0]).trim() : '';
+        var dlNm = ('Suivi déchets' + (mois ? ' - ' + mois : '')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+        var vOc  = vid ? "sensibViewPj('"+escH(vid)+"')" : "window.open('"+escH(rawUrl)+"','_blank')";
+        html += '<td style="text-align:center;white-space:nowrap">'
+          + '<button onclick="'+vOc+';return false;" title="Voir le document" '
+          + 'style="background:rgba(74,144,226,.15);color:var(--p4);border:1px solid rgba(74,144,226,.35);'
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">👁️</button> '
+          + '<button onclick="downloadDriveDoc('+jsq(rawUrl)+','+jsq(dlNm)+');return false;" title="Télécharger" '
+          + 'style="background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border:none;'
+          + 'border-radius:6px;padding:3px 9px;font-size:11px;cursor:pointer;font-weight:600">⬇️</button>'
+          + '</td>';
+      } else if (cu){
         // Chiffre / valeur portant un lien → rendu cliquable (visionneuse
         // intégrée pour un fichier Drive, sinon ouverture du lien).
         var fid = sensibDriveFileId(cu);
@@ -6604,7 +6656,18 @@ function printDechets(){
     +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Rapport de suivi des déchets</div>'
     +'<div style="font-size:11px;color:#444;margin-top:3px">Fiche de suivi des déchets — SOBCO 3</div>'
     +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
-    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">SUIVI-DÉCHETS<br>'+today.getFullYear()+'</td></tr></table>';
+    // Cartouche documentaire standard (comme les autres ENR)
+    +'<td style="'+td+';width:190px;padding:0;vertical-align:top">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 34</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
 
   // Synthèse : total par type
   var synth='';
@@ -6638,14 +6701,22 @@ function printDechets(){
       +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'+miniImgs.join('')+'</div>';
   }
 
-  // Tableau des données
+  // Tableau des données — les colonnes de lien (URL Drive) sont exclues :
+  // une URL complète n'a pas de sens sur un document imprimé et déformait
+  // la mise en page en débordant sur plusieurs lignes.
+  var printCols=[];
+  headers.forEach(function(h,ci){
+    var hn=veilleNorm(dechetsCleanCell(h));
+    if(/lien|drive|url/.test(hn)) return;
+    printCols.push(ci);
+  });
   var dataTable='<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:2px 0 6px">Détail mensuel</div>'
     +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
-    +headers.map(function(h){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(dechetsCleanCell(h))+'</th>';}).join('')
+    +printCols.map(function(ci){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(dechetsCleanCell(headers[ci]))+'</th>';}).join('')
     +'</tr></thead><tbody>'
     +mRows.map(function(r,i){
       return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
-        +headers.map(function(h,ci){ var v=dechetsCleanCell((r.cells||[])[ci]);
+        +printCols.map(function(ci){ var v=dechetsCleanCell((r.cells||[])[ci]);
           var isMonth=(ci===moCol);
           return '<td style="'+tdc+(isMonth?';font-weight:700':'')+'">'+esc(v||'—')+'</td>'; }).join('')
         +'</tr>';
@@ -6670,6 +6741,7 @@ function goTab(id,el){
   document.getElementById(id).classList.add('on'); el.classList.add('on');
   if(id==='veille'){ try{ renderVeilleScoring(); }catch(e){} }
   if(id==='cphs'){ try{ renderCphs(); }catch(e){} }
+  if(id==='simulation'){ try{ renderSimulations(); }catch(e){} }
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -6794,7 +6866,18 @@ function printCphsPlan(){
     +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'action CPHS</div>'
     +'<div style="font-size:11px;color:#444;margin-top:3px">Commission Paritaire d\'Hygiène et de Sécurité — SOBCO 3</div>'
     +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
-    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">CPHS '+today.getFullYear()+'</td></tr></table>';
+    // Cartouche documentaire standard (comme les autres ENR)
+    +'<td style="'+td+';width:190px;padding:0;vertical-align:top">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 33</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
   var table;
   if(rows.length){
     table='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0"><thead><tr style="background:#0c4a6e;color:#fff">'
@@ -6875,6 +6958,136 @@ function printCphs(){
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Dossier CPHS</title>'+styles+'</head><body>');
   w.document.write(head+docTable+actTable);
   w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Dossier CPHS · édité le '+todayStr+'</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
+}
+/* ══════════════════════════════════════════════════════════════
+   SIMULATION ÉVACUATION & EXERCICES D'URGENCE — rendu dynamique
+   (feuille « Planning Annuel de Simulation… »)
+   ══════════════════════════════════════════════════════════════ */
+function simPrioBadge(v){
+  var s=veilleNorm(v); if(!s) return '<span style="color:var(--text3);font-size:10px">—</span>';
+  var c;
+  if(s.indexOf('haute')>-1||s.indexOf('elev')>-1||s.indexOf('urgent')>-1||s.indexOf('critique')>-1) c={bg:'rgba(232,68,90,.14)',bd:'rgba(232,68,90,.45)',t:'var(--red)'};
+  else if(s.indexOf('moyen')>-1) c={bg:'rgba(245,166,35,.14)',bd:'rgba(245,166,35,.45)',t:'var(--amber)'};
+  else if(s.indexOf('faible')>-1||s.indexOf('bas')>-1) c={bg:'rgba(16,201,133,.14)',bd:'rgba(16,201,133,.45)',t:'var(--green)'};
+  else c={bg:'rgba(13,168,210,.14)',bd:'rgba(13,168,210,.4)',t:'var(--p4)'};
+  return '<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:'+c.bg+';border:1px solid '+c.bd+';color:'+c.t+';font-weight:700;font-size:9px">'+esc(v)+'</span>';
+}
+function renderSimulations(){
+  var S=(D&&D.simulations)||{};
+  var ex=S.exercices||[], act=S.actions||[];
+  var titleEl=document.getElementById('simTitle'); if(titleEl&&S.title) titleEl.textContent=S.title;
+  var metaEl=document.getElementById('simMeta');
+  if(metaEl){ var parts=[]; if(S.site)parts.push(S.site); if(S.service)parts.push(S.service); if(S.annee)parts.push(String(S.annee)); metaEl.textContent=parts.length?('· '+parts.join(' · ')):''; }
+  var srcEl=document.getElementById('simSrc'); if(srcEl){ if(S.sourceUrl){srcEl.href=S.sourceUrl;srcEl.style.display='';}else srcEl.style.display='none'; }
+  function isDone(s){ s=veilleNorm(s); return s.indexOf('realis')>-1||s.indexOf('termine')>-1||s.indexOf('clotur')>-1||s.indexOf('fait')>-1; }
+  function isPlan(s){ s=veilleNorm(s); return s.indexOf('planif')>-1||s.indexOf('prevu')>-1||s.indexOf('a faire')>-1||s.indexOf('a venir')>-1; }
+  var nDone=ex.filter(function(e){return isDone(e.statut);}).length;
+  var nPlan=ex.filter(function(e){return isPlan(e.statut);}).length;
+  var actOpen=act.filter(function(a){return !isDone(a.statut);}).length;
+  var pctDone=ex.length?Math.round(nDone/ex.length*100):0;
+  var kp=document.getElementById('simKpi');
+  if(kp) kp.innerHTML=[
+    kpiCard('Exercices', ex.length, 'b', 'Planifiés '+(S.annee||''), 'k-b', null,null),
+    kpiCard('Réalisés', nDone, 'g', fmtNum(pctDone)+'%', 'k-g', pctDone, C.green),
+    kpiCard('Planifiés', nPlan, 'a', 'À venir', 'k-a', null,null),
+    kpiCard('Actions correct.', act.length, 'r', actOpen+' en cours', 'k-r', null,null)
+  ].join('');
+  var exBox=document.getElementById('simExBox');
+  if(exBox){
+    if(!ex.length){ exBox.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucun exercice de simulation renseigné dans le fichier source.</div>'; }
+    else{
+      var rows=ex.map(function(e){
+        var numCell='<div style="font-family:\'JetBrains Mono\',monospace;font-weight:700;color:var(--text2)">'+esc(e.num||'—')+'</div>';
+        if(e.reportUrl && /^https?:\/\//i.test(e.reportUrl)){
+          var rt='Rapport simulation N° '+(e.num||'')+(e.type?' · '+e.type:'');
+          var rfn=('Rapport simulation - '+(e.num||'')+(e.type?' - '+e.type:'')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+          numCell+='<div style="display:flex;gap:4px;justify-content:center;margin-top:5px">'
+            +'<button type="button" class="acc-pj-btn" style="padding:3px 7px;font-size:9px" onclick="viewSimReport('+jsq(e.reportUrl)+','+jsq(rt)+')" title="Voir le rapport de simulation">👁️</button>'
+            +'<button type="button" class="acc-pj-btn" style="padding:3px 7px;font-size:9px;background:linear-gradient(135deg,#0a7a9a,#0da8d2)" onclick="downloadDriveDoc('+jsq(e.reportUrl)+','+jsq(rfn)+')" title="Télécharger le rapport">⬇️</button>'
+            +'</div>';
+        }
+        return '<tr>'
+          +'<td style="text-align:center;vertical-align:middle">'+numCell+'</td>'
+          +'<td style="text-align:center"><span class="rbadge">'+esc(e.trimestre||'—')+'</span></td>'
+          +'<td style="font-size:10px">'+esc(e.mois||'—')+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(e.date||'—')+'</td>'
+          +'<td style="min-width:150px">'+esc(e.type||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(e.zone||'—')+'</td>'
+          +'<td style="text-align:center">'+cphsEtatBadge(e.statut)+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(e.delai||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(e.responsable||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(e.remarques||'—')+'</td>'
+          +'</tr>';
+      }).join('');
+      exBox.innerHTML='<div class="tblw"><table><thead><tr><th>N°</th><th>Trim.</th><th>Mois</th><th>Date prévue</th><th>Type de simulation</th><th>Zone</th><th>Statut</th><th>Délai cible</th><th>Responsable</th><th>Anomalies &amp; remarques</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+    }
+  }
+  var actBox=document.getElementById('simActBox');
+  if(actBox){
+    if(!act.length){ actBox.innerHTML='<div style="color:var(--text3);font-size:11px;padding:8px">Aucune action corrective renseignée.</div>'; }
+    else{
+      var arows=act.map(function(a){
+        return '<tr>'
+          +'<td class="mono" style="text-align:center;color:var(--p4)">'+esc(a.num||'—')+'</td>'
+          +'<td style="text-align:center"><span class="rbadge">'+esc(a.rattache||'—')+'</span></td>'
+          +'<td style="min-width:200px">'+esc(a.description||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(a.departement||'—')+'</td>'
+          +'<td style="font-size:10px">'+esc(a.responsable||'—')+'</td>'
+          +'<td class="mono" style="font-size:10px;white-space:nowrap">'+esc(a.dateLimite||'—')+'</td>'
+          +'<td style="text-align:center">'+cphsEtatBadge(a.statut)+'</td>'
+          +'<td style="text-align:center">'+simPrioBadge(a.priorite)+'</td>'
+          +'</tr>';
+      }).join('');
+      actBox.innerHTML='<div class="tblw"><table><thead><tr><th>Action</th><th>Exercice</th><th>Description</th><th>Département</th><th>Responsable</th><th>Date limite</th><th>Statut</th><th>Priorité</th></tr></thead><tbody>'+arows+'</tbody></table></div>';
+    }
+  }
+}
+function viewSimReport(url,title){
+  if(!url) return;
+  openCleaningEmbed(url, title||'Rapport de simulation', 'RAPPORT DE SIMULATION', '🚨');
+}
+function printSimulations(){
+  var S=(D&&D.simulations)||{};
+  var ex=S.exercices||[], act=S.actions||[];
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'+String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  var logoHtml=logoSrc?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">':'<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+  var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:14px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">'+esc(S.title||'Planning de simulation d\'évacuation')+'</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">'+esc([S.site,S.service].filter(Boolean).join(' — '))+'</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Édité le : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:120px;text-align:center;vertical-align:middle;font-family:monospace;font-weight:700;color:#0369a1">'+esc(String(S.annee||today.getFullYear()))+'</td></tr></table>';
+  function tbl(title,cols,rows){
+    return '<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:4px 0 6px">'+title+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:16px"><thead><tr style="background:#0c4a6e;color:#fff">'
+      +cols.map(function(c){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+c+'</th>';}).join('')
+      +'</tr></thead><tbody>'+rows+'</tbody></table>';
+  }
+  var body='';
+  if(ex.length){
+    body+=tbl('Exercices de simulation',['N°','Trim.','Mois','Date','Type','Zone','Statut','Délai cible','Responsable','Remarques'],
+      ex.map(function(e,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+        +['num','trimestre','mois','date','type','zone','statut','delai','responsable','remarques'].map(function(k){return '<td style="'+tdc+'">'+esc(e[k]||'')+'</td>';}).join('')+'</tr>';}).join(''));
+  }
+  if(act.length){
+    body+=tbl('Suivi des actions correctives',['Action','Exercice','Description','Département','Responsable','Date limite','Statut','Priorité'],
+      act.map(function(a,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+        +['num','rattache','description','departement','responsable','dateLimite','statut','priorite'].map(function(k){return '<td style="'+tdc+'">'+esc(a[k]||'')+'</td>';}).join('')+'</tr>';}).join(''));
+  }
+  if(!ex.length&&!act.length){ body='<div style="text-align:center;color:#94a3b8;padding:30px;font-style:italic">Aucune donnée de simulation dans le fichier source.</div>'; }
+  var w=window.open('','_blank','width=1050,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}table{border-collapse:collapse;width:100%}@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>Planning de simulation d\'évacuation</title>'+styles+'</head><body>');
+  w.document.write(head+body);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:12px">SOBCO 3 — HSE · Planning de simulation d\'évacuation · édité le '+todayStr+'</div>');
   w.document.write('</body></html>');
   w.document.close(); w.focus();
   setTimeout(function(){ w.print(); },500);
@@ -7058,6 +7271,8 @@ function printVeille(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
       +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
     +'</table></td></tr></table>';
@@ -7399,7 +7614,7 @@ function buildActionsFromDashboard(){
       action:hasAction?String(t.action||t.propositions).trim():'À définir',
       resp:t.responsable||'—',
       prioRaw:tagIsOpen(t)?'Moyenne':'Faible',
-      dCrea:t.dateCreate||'—', dEch:t.dateCible||'—', dClot:'—',
+      dCrea:t.date||'—', dEch:t.dateCible||'—', dClot:'—',
       statut:actResolveStatut(t.statut, null, hasAction, t.dateCible)
     });
   });
@@ -7540,10 +7755,21 @@ function printActionsPlan(){
   var head='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
     +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
     +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
-    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'actions globale</div>'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">Plan d\'actions HSE globale</div>'
     +'<div style="font-size:11px;color:#444;margin-top:3px">Actions HSE — accidents · incidents · TAGs</div>'
     +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
-    +'<td style="'+td+';width:150px;text-align:center;vertical-align:middle;font-size:9.5px;color:#334155">'+rows.length+' action(s)<br>clôturées '+(k.tauxClot||0)+'%</td></tr></table>';
+    // Cartouche documentaire standard (comme les autres ENR)
+    +'<td style="'+td+';width:190px;padding:0;vertical-align:top">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 31</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
 
   var synth='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">'
     +[['Total',d.total,'#0369a1'],['Clôturées',k.clot,'#166534'],['En cours',k.enCours,'#0369a1'],['En retard',k.enRetard,'#991b1b'],['Non démarrées',k.nonDemarre,'#854d0e']]
@@ -8773,8 +8999,12 @@ function populateTagDropdowns(){
   // responsable / zone, alignée avec le filtrage normalisé.
   var resps=tally(D.tags.map(function(t){return t.responsable;}));
   var zones=tally(D.tags.map(function(t){return t.zone||t.emplacement;}));
+  // Dangers : regroupés par famille canonique (canonHazard), exactement
+  // comme le graphique « Types de dangers » — les deux restent cohérents.
+  var dangers=tallyHazard(D.tags.map(function(t){return t.type;}));
   resps.sort(function(a,b){return a.name.localeCompare(b.name);});
   zones.sort(function(a,b){return a.name.localeCompare(b.name);});
+  dangers.sort(function(a,b){return b.count-a.count;});
   // Construction via l'API DOM (et non innerHTML) : la valeur d'option est
   // posée en propriété .value, insensible à l'échappement HTML. Une valeur
   // contenant un guillemet (") ne peut donc plus casser l'attribut et
@@ -8796,6 +9026,7 @@ function populateTagDropdowns(){
     sel.value=cur; if(sel.value!==cur) sel.value='all';
   }
   fillSel(document.getElementById('tagFilterResp'),resps,'Tous');
+  fillSel(document.getElementById('tagFilterDanger'),dangers,'Tous');
   fillSel(document.getElementById('tagFilterZone'),zones,'Toutes');
 }
 function setTagStat(val,el){
@@ -8820,6 +9051,7 @@ function clearTagFilters(){
   ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
   document.getElementById('tagFilterResp').value='all';
   document.getElementById('tagFilterZone').value='all';
+  var _fd=document.getElementById('tagFilterDanger'); if(_fd) _fd.value='all';
   tagStatFilter='all';
   document.querySelectorAll('#tagStatChips .tag-filter-chip').forEach(function(c,i){c.classList.toggle('on',i===0);});
   applyTagF();
@@ -8834,6 +9066,7 @@ function applyTagF(){
   var sortVal=document.getElementById('tagSort').value;
   var filterResp=document.getElementById('tagFilterResp').value;
   var filterZone=document.getElementById('tagFilterZone').value;
+  var filterDanger=(document.getElementById('tagFilterDanger')||{}).value||'all';
 
   var filtered=(D.tags||[]).filter(function(t){
     if(!t.id||t._err) return false;
@@ -8846,6 +9079,9 @@ function applyTagF(){
     // capture toutes les variantes de saisie d'une même zone/responsable.
     if(filterResp!=='all' && normKey(t.responsable)!==normKey(filterResp)) return false;
     if(filterZone!=='all' && normKey(t.zone||t.emplacement)!==normKey(filterZone)) return false;
+    // Comparaison par famille canonique : « Danger mécanique », « Méca »
+    // et « Risque mécanique » sont traités comme un seul et même danger.
+    if(filterDanger!=='all' && canonHazard(t.type).key!==canonHazard(filterDanger).key) return false;
     if(p!=='all'){
       if(!t.isoDate) return p==='ytd';
       var pts=t.isoDate.split('-');
@@ -8924,6 +9160,7 @@ function applyTagF(){
       :searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
+      :filterDanger!=='all'?'Aucun TAG pour le danger "'+esc(filterDanger)+'"'
       :'Aucun TAG pour ce filtre';
     tb.innerHTML='<tr><td colspan="'+nCols+'" style="text-align:center;color:'
       +(D.tagsSheetError?'var(--amber)':'var(--text3)')+';padding:20px">'+msg+'</td></tr>';
@@ -9060,22 +9297,119 @@ function applyAccF(){
   });
   renderAccidents(filtered);
 }
+// ── Cartographie du corps : siège de lésion → région anatomique ──
+// Mappe le libellé libre du « siège de lésion » vers une région du
+// schéma corporel, par mots-clés (insensible casse/accents).
+function accSiegeRegion(s){
+  var n=veilleNorm(s).replace(/œ/g,'oe').replace(/æ/g,'ae'); if(!n) return null;
+  if(/main|doigt|pouce|index|majeur|annulaire|auriculaire|paume|phalange|poignet|metacarp/.test(n)) return 'main';
+  if(/pied|orteil|talon|cheville|plante|malleole|metatars/.test(n)) return 'pied';
+  if(/tete|crane|visage|face|oeil|yeux|nez|oreille|front|machoire|dent|cuir chevelu|tempe|joue|levre|menton/.test(n)) return 'tete';
+  if(/cou|nuque|cervical|gorge|larynx/.test(n)) return 'cou';
+  if(/epaule|clavicule|omoplate|scapula|deltoide/.test(n)) return 'epaule';
+  if(/bras|coude|humerus|avant-bras|avant bras|cubitus|radius|membre superieur/.test(n)) return 'bras';
+  if(/jambe|cuisse|genou|tibia|mollet|rotule|femur|patella|perone|membre inferieur/.test(n)) return 'jambe';
+  if(/bassin|hanche|pelvis|fessier|fesse|sacrum|coccyx|pubis|aine/.test(n)) return 'bassin';
+  if(/dos|colonne|lombaire|rachis|thorax|poitrine|torse|tronc|cote|cotes|abdomen|ventre|sternum|thoracique|dorsal|flanc|reins/.test(n)) return 'tronc';
+  return null;   // non localisé → listé dans « Autres »
+}
+function renderAccSiegeBody(accs){
+  var box=document.getElementById('accSiegeBody'); if(!box) return;
+  var counts={}, unmapped={}, totalMapped=0;
+  (accs||[]).forEach(function(a){
+    var r=accSiegeRegion(a&&a.siege);
+    if(r){ counts[r]=(counts[r]||0)+1; totalMapped++; }
+    else { var k=String((a&&a.siege)||'').trim(); if(k) unmapped[k]=(unmapped[k]||0)+1; }
+  });
+  var max=0; for(var mk in counts){ if(counts[mk]>max) max=counts[mk]; }
+  function col(region){
+    var c=counts[region]||0;
+    if(c<=0) return {f:'url(#bodyBase)',s:'rgba(120,150,175,.55)'};
+    var t=max>0?c/max:1;
+    return {f:'rgba(232,68,90,'+(0.34+0.60*t).toFixed(2)+')',s:'rgba(200,30,55,.9)'};
+  }
+  function shp(region,svg){ var c=col(region); return svg.replace('%F%',c.f).replace('%S%',c.s); }
+  var BADGE={tete:[110,40],cou:[131,70],epaule:[76,95],bras:[60,152],main:[62,218],tronc:[110,128],bassin:[110,196],jambe:[98,320],pied:[95,420]};
+  function badge(region){
+    var c=counts[region]||0; if(c<=0) return '';
+    var p=BADGE[region];
+    return '<g filter="url(#bdsh)"><circle cx="'+p[0]+'" cy="'+p[1]+'" r="12.5" fill="#fff"/>'
+      +'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="12.5" fill="none" stroke="#e8445a" stroke-width="2.2"/>'
+      +'<text x="'+p[0]+'" y="'+(p[1]+4.5)+'" text-anchor="middle" font-size="12" font-weight="800" fill="#c81e37" font-family="Inter,sans-serif">'+c+'</text></g>';
+  }
+  var body=''
+   +shp('bassin','<path d="M84 176 L136 176 L143 206 Q110 222 77 206 Z" fill="%F%" stroke="%S%"/>')
+   +shp('tronc','<path d="M80 86 Q77 82 92 82 L128 82 Q143 82 140 86 L134 152 Q134 168 137 180 L83 180 Q86 168 86 152 Z" fill="%F%" stroke="%S%"/>')
+   +shp('epaule','<ellipse cx="76" cy="94" rx="17" ry="14" fill="%F%" stroke="%S%"/>')
+   +shp('epaule','<ellipse cx="144" cy="94" rx="17" ry="14" fill="%F%" stroke="%S%"/>')
+   +shp('bras','<path d="M62 92 Q52 94 53 108 L59 196 Q59 208 68 208 Q77 208 77 196 L78 106 Q79 96 70 92 Z" fill="%F%" stroke="%S%"/>')
+   +shp('bras','<path d="M158 92 Q168 94 167 108 L161 196 Q161 208 152 208 Q143 208 143 196 L142 106 Q141 96 150 92 Z" fill="%F%" stroke="%S%"/>')
+   +shp('main','<path d="M55 201 Q49 203 49 216 Q49 231 65 231 Q78 231 78 217 L78 200 Q68 210 55 201 Z" fill="%F%" stroke="%S%"/>')
+   +shp('main','<path d="M165 201 Q171 203 171 216 Q171 231 155 231 Q142 231 142 217 L142 200 Q152 210 165 201 Z" fill="%F%" stroke="%S%"/>')
+   +shp('jambe','<path d="M84 202 Q79 208 82 226 L90 404 Q90 414 99 414 Q107 414 107 404 L106 226 Q109 210 104 202 Z" fill="%F%" stroke="%S%"/>')
+   +shp('jambe','<path d="M136 202 Q141 208 138 226 L130 404 Q130 414 121 414 Q113 414 113 404 L114 226 Q111 210 116 202 Z" fill="%F%" stroke="%S%"/>')
+   +shp('pied','<path d="M89 410 Q82 410 81 421 Q81 431 98 431 L107 431 Q108 419 104 408 Z" fill="%F%" stroke="%S%"/>')
+   +shp('pied','<path d="M131 410 Q138 410 139 421 Q139 431 122 431 L113 431 Q112 419 116 408 Z" fill="%F%" stroke="%S%"/>')
+   +shp('cou','<path d="M100 62 L120 62 L123 82 L97 82 Z" fill="%F%" stroke="%S%"/>')
+   +shp('tete','<ellipse cx="110" cy="40" rx="25" ry="29" fill="%F%" stroke="%S%"/>');
+  var svg='<svg viewBox="0 0 220 448" width="205" style="max-width:46%;min-width:158px;height:auto;flex-shrink:0" xmlns="http://www.w3.org/2000/svg">'
+   +'<defs><linearGradient id="bodyBase" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dcecf7"/><stop offset="1" stop-color="#c4dcec"/></linearGradient>'
+   +'<filter id="bsh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(40,78,100,.22)"/></filter>'
+   +'<filter id="bdsh"><feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="rgba(0,0,0,.22)"/></filter></defs>'
+   +'<g filter="url(#bsh)" stroke-width="1.4" stroke-linejoin="round">'+body+'</g><g>';
+  ['tete','cou','epaule','bras','main','tronc','bassin','jambe','pied'].forEach(function(r){ svg+=badge(r); });
+  svg+='</g></svg>';
+
+  var RLBL={tete:'Tête',cou:'Cou',epaule:'Épaules',bras:'Bras / coude',main:'Mains / doigts',tronc:'Tronc / dos',bassin:'Bassin / hanche',jambe:'Jambes / genou',pied:'Pieds / chevilles'};
+  var rows=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
+  var lst='<div style="min-width:190px;flex:1;max-width:320px">';
+  lst+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:10px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
+  if(rows.length===0){
+    lst+='<div style="font-size:11px;color:var(--text3)">Aucun siège de lésion renseigné pour ce filtre.</div>';
+  }else{
+    rows.forEach(function(r){
+      var c=col(r), pct=max>0?Math.round(counts[r]/max*100):0;
+      lst+='<div style="margin-bottom:9px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+        +'<span style="width:11px;height:11px;border-radius:3px;background:'+(c.f.indexOf('url')>-1?'#cfe2f0':c.f)+';border:1px solid '+c.s+';flex-shrink:0"></span>'
+        +'<span style="flex:1;font-size:11.5px;color:var(--text2);font-weight:500">'+esc(RLBL[r]||r)+'</span>'
+        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:800;color:var(--red)">'+counts[r]+'</span></div>'
+        +'<div style="height:5px;border-radius:3px;background:rgba(120,150,175,.15);overflow:hidden"><div style="height:100%;width:'+pct+'%;border-radius:3px;background:linear-gradient(90deg,rgba(232,68,90,.55),#e8445a)"></div></div></div>';
+    });
+  }
+  var uKeys=Object.keys(unmapped).sort(function(a,b){return unmapped[b]-unmapped[a];});
+  if(uKeys.length){
+    lst+='<div style="font-size:9px;color:var(--text3);margin-top:10px;line-height:1.5;padding-top:8px;border-top:1px dashed var(--border)"><b>Non localisés :</b> '
+      +uKeys.slice(0,6).map(function(k){return esc(k)+' ('+unmapped[k]+')';}).join(' · ')
+      +(uKeys.length>6?' …':'')+'</div>';
+  }
+  lst+='</div>';
+  box.innerHTML=svg+lst;
+}
 function renderAccidents(accs){
   window._accFiltered=accs;   // conservé pour le Bilan AT (ENR HSE 25) et le plan d'action
   document.getElementById('accStat').textContent=accs.length+' accidents';
   var totalNJP=0; accs.forEach(function(a){totalNJP+=a.njp;});
-  var njpM={Janvier:0,Février:0,Mars:0,Avril:0};
-  accs.forEach(function(a){if(njpM[a.mois]!==undefined)njpM[a.mois]+=a.njp;});
-  var maxMois=Object.keys(njpM).reduce(function(a,b){return njpM[a]>njpM[b]?a:b;},'Janvier');
+  // NJP et nombre d'accidents par mois — dynamique sur les 12 mois, on
+  // n'affiche que les mois réellement présents dans les données (ordre
+  // chronologique), pour que le graphe reste toujours à jour.
+  var MOIS_ORDRE=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var njpM={}, moisCount={};
+  MOIS_ORDRE.forEach(function(m){ njpM[m]=0; moisCount[m]=0; });
+  accs.forEach(function(a){ if(njpM[a.mois]!==undefined){ njpM[a.mois]+=a.njp; moisCount[a.mois]++; } });
+  var moisAff=MOIS_ORDRE.filter(function(m){ return moisCount[m]>0; });
+  var maxNJP=0; moisAff.forEach(function(m){ if(njpM[m]>maxNJP) maxNJP=njpM[m]; });
+  var moisMaxAccid=moisAff.length?moisAff.reduce(function(a,b){return moisCount[a]>=moisCount[b]?a:b;}):'—';
   document.getElementById('accCount').textContent=accs.length+' accidents';
   document.getElementById('accSum').innerHTML=
     '<div class="acc-card"><div class="acc-val" style="color:var(--red)">'+fmtNum(accs.length)+'</div><div class="acc-lbl">AT filtrés</div></div>'+
     '<div class="acc-card"><div class="acc-val" style="color:var(--amber)">'+fmtNum(totalNJP)+'</div><div class="acc-lbl">NJP total</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+fmtNum(njpM[maxMois])+'</div><div class="acc-lbl">NJP max</div></div>'+
-    '<div class="acc-card"><div class="acc-val" style="color:var(--green)">'+maxMois+'</div><div class="acc-lbl">Mois +accid.</div></div>';
-  var njpL=[],njpD=[];
-  ['Janvier','Février','Mars','Avril'].forEach(function(mo){if(njpM[mo]>=0){njpL.push(mo.substring(0,3));njpD.push(njpM[mo]);}});
-  if(njpL.length>0) mkChart('njpC','bar',njpL,[{data:njpD,backgroundColor:[C.red,'rgba(232,68,90,.7)','rgba(232,68,90,.5)','rgba(232,68,90,.4)'],borderRadius:5}],BASE);
+    '<div class="acc-card"><div class="acc-val" style="color:var(--p4)">'+fmtNum(maxNJP)+'</div><div class="acc-lbl">NJP max / mois</div></div>'+
+    '<div class="acc-card"><div class="acc-val" style="color:var(--green)">'+moisMaxAccid+'</div><div class="acc-lbl">Mois +accid.</div></div>';
+  var njpL=moisAff.map(function(m){return m.substring(0,3);});
+  var njpD=moisAff.map(function(m){return njpM[m];});
+  var maxBar=Math.max.apply(null,njpD.concat([1]));
+  var njpColors=njpD.map(function(v){ return 'rgba(232,68,90,'+(0.35+0.60*(v/maxBar)).toFixed(2)+')'; });
+  mkChart('njpC','bar',njpL,[{data:njpD,backgroundColor:njpColors,borderRadius:5}],BASE);
   var zt=tally(accs.map(function(a){return a.lieu;}),5);
   if(zt.length>0) mkChart('accZC','bar',zt.map(function(x){return String(x.name).substring(0,25);}),[{data:zt.map(function(x){return x.count;}),backgroundColor:'rgba(9,99,126,.75)',borderRadius:4}],
     Object.assign({},BASE,{indexAxis:'y',scales:{x:{grid:{color:C.grid},ticks:{color:C.txt}},y:{grid:{display:false},ticks:{color:C.txt,font:{size:9}}}}}));
@@ -9086,6 +9420,8 @@ function renderAccidents(accs){
   if(ft.length>0){if(charts['accFC'])charts['accFC'].destroy();charts['accFC']=new Chart(document.getElementById('accFC'),{type:'doughnut',
     data:{labels:ft.map(function(x){return String(x.name).substring(0,25);}),datasets:[{data:ft.map(function(x){return x.count;}),backgroundColor:[C.amber,C.red,C.p2,C.teal,C.green],borderWidth:0,hoverOffset:4}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});}
+  // Répartition par siège de lésion — cartographie du corps humain (SVG).
+  renderAccSiegeBody(accs);
   var ab=document.getElementById('accBody'); ab.innerHTML='';
   if(accs.length===0){ab.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:16px">Aucun accident</td></tr>';return;}
   accs.forEach(function(a){
@@ -9183,8 +9519,9 @@ function printEnergyReport(){
     +'<div style="font-size:11px;color:#444;margin-top:3px">Électricité · Gaz · Eau — consommations &amp; ratios par unité produite</div>'
     +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
     +'<td style="'+td+';width:170px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1">SUIVI-ÉNERGIE</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 32</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td><td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
     +'</table></td></tr></table>';
 
@@ -9620,6 +9957,16 @@ function openCleaningEmbed(rawUrl, title, kind, icon){
 // envoie au serveur qui génère le PDF « Plan d'action — <Section> »
 // dans Drive, puis affiche le PDF dans le viewer intégré du
 // dashboard (aucune redirection externe).
+// Un TAG relève-t-il du danger « nuisibles » ? On n'examine que les
+// champs de DANGER (type / risque), jamais la description libre : un
+// mot comme « rat » ou « mouche » y apparaîtrait par hasard et
+// gonflerait le plan d'action de lignes hors sujet.
+function isNuisibleTag(t){
+  if(!t || !t.id || t._err) return false;
+  var s = veilleNorm((t.type||'') + ' ' + (t.risque||''));
+  if(!s) return false;
+  return /nuisible|rongeur|\brat\b|\brats\b|souris|insecte|mouche|moustique|cafard|blatte|termite|derat|desinsect|desinfect|raticide|appat|fly ?killer|\bfk\b|vermine|parasite/.test(s);
+}
 function sapPayload(section){
   var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
   if (section === 'incidents') {
@@ -9660,11 +10007,42 @@ function sapPayload(section){
         action:(a.action&&String(a.action).trim())?String(a.action).trim():'À définir' }; })
     };
   }
+  if (section === 'nuisibles') {
+    // TAGs dont le danger relève de la lutte contre les nuisibles.
+    var ntags = ((D && D.tags) || []).filter(isNuisibleTag);
+    var nOpenN = ntags.filter(function(t){ return tagIsOpen(t); }).length;
+    return {
+      title:    "Plan d'action HSE — Nuisibles",
+      subtitle: 'TAGs « nuisibles » — dératisation · désinsectisation · désinfection',
+      ref:      'ENR-HSE 35',
+      rev:      '01',
+      created:  '04/01/2026',
+      meta:  ntags.length + ' TAG(s) « nuisibles » · ' + nOpenN + ' ouvert(s) · '
+           + (ntags.length - nOpenN) + ' fermé(s) — extraits automatiquement de la section TAGs',
+      cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
+              {k:'zone',l:'Zone',w:7},{k:'empl',l:'Emplacement',w:9},
+              {k:'type',l:'Danger',w:9},
+              {k:'desc',l:'Description',w:15},{k:'action',l:'Action urgente',w:14},
+              {k:'prop',l:'Propositions',w:14},{k:'resp',l:'Responsable',w:8},
+              {k:'statut',l:'Statut',w:6} ],
+      rows: ntags.map(function(t){ return {
+        id:v(t.id), date:v(t.date), cible:v(t.dateCible),
+        zone:v(t.zone), empl:v(t.emplacement), type:v(t.type||t.risque),
+        desc:v(t.description),
+        action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
+        prop:v(t.propositions), resp:v(t.responsable),
+        statut:t.statut?String(t.statut).trim():(tagIsOpen(t)?'Ouvert':'Fermé') }; })
+    };
+  }
   if (section === 'tags') {
     var tags = (D && D.tags) || [];
     var nOpen = tags.filter(function(t){ return tagIsOpen(t); }).length;
     return {
-      title: "Plan d'action — TAGs",
+      title:    "Plan d'action HSE (TAGs)",
+      subtitle: 'Suivi des situations dangereuses signalées — SOBCO 3',
+      ref:      'ENR-HSE 30',
+      rev:      '01',
+      created:  '04/01/2026',      // date de création du document
       meta:  tags.length + ' TAG(s) · ' + nOpen + ' ouvert(s) · '
            + (tags.length - nOpen) + ' fermé(s)',
       cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
@@ -9673,7 +10051,7 @@ function sapPayload(section){
               {k:'prop',l:'Propositions',w:16},{k:'resp',l:'Responsable',w:8},
               {k:'statut',l:'Statut',w:6} ],
       rows: tags.map(function(t){ return {
-        id:v(t.id), date:v(t.dateCreate), cible:v(t.dateCible),
+        id:v(t.id), date:v(t.date), cible:v(t.dateCible),
         zone:v(t.zone), empl:v(t.emplacement), desc:v(t.description),
         action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
         prop:v(t.propositions), resp:v(t.responsable),
@@ -9684,11 +10062,17 @@ function sapPayload(section){
 }
 var sapLoading = false;
 function openSectionActionPlan(section){
-  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS' };
-  var kind = 'PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase());
-  sapRun(sapPayload(section), kind);
+  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS', nuisibles:'NUISIBLES' };
+  var p    = sapPayload(section);
+  // Badge de la visionneuse : affiche la codification quand elle existe
+  var kind = (p && p.ref)
+    ? (p.ref + ' · PLAN D\'ACTION HSE')
+    : ('PLAN D\'ACTION · ' + (LBL[section] || String(section).toUpperCase()));
+  sapRun(p, kind);
 }
 function sapRun(p, kind){
+  // Logo officiel (data-URL) pour l'en-tête ENR, comme les autres fiches
+  if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if (!p || !p.rows.length) {
     showToast('Aucune donnée dans cette section pour générer le plan d\'action.','error');
     return;
@@ -9746,8 +10130,9 @@ function sapRun(p, kind){
 // Génère le plan d'action d'une section et le TÉLÉCHARGE directement
 // (sans passer par la visionneuse).
 function downloadSectionActionPlan(section){
-  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs'};
+  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs',nuisibles:'Nuisibles'};
   var p=sapPayload(section);
+  if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if(!p || !p.rows.length){ showToast('Aucune donnée dans cette section.','error'); return; }
   if(sapLoading) return; sapLoading=true;
   showToast('Génération du plan d\'action PDF ('+p.rows.length+' lignes)…','success');
@@ -9760,7 +10145,8 @@ function downloadSectionActionPlan(section){
   google.script.run
     .withSuccessHandler(function(r){
       sapLoading=false;
-      var name=(r&&r.name)||('Plan d\'action — '+(LBL[section]||section)+'.pdf');
+      // Repli : reprend le titre et la codification du payload
+      var name=(r&&r.name)||(((p.ref?p.ref+' - ':'')+(p.title||('Plan d\'action — '+(LBL[section]||section))))+'.pdf');
       if(!/\.pdf$/i.test(name)) name+='.pdf';
       if(r&&r.ok&&r.b64){
         try{ var bin=atob(r.b64),arr=new Uint8Array(bin.length);
@@ -10070,6 +10456,19 @@ function render(data){
     m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
   })();
 
+  // ── MODE TV : re-rendu AU PLUS TÔT ───────────────────────────
+  // L'écran usine est mis à jour ici, avant le rendu du tableau de
+  // bord. Raison : une exception dans n'importe quelle section du
+  // rendu (graphique, tableau…) empêchait d'atteindre le
+  // renderTvDash() de fin de fonction. L'affichage TV restait alors
+  // figé sur d'anciennes valeurs alors que l'horodatage, lui, était
+  // bien actualisé (D est posé dès la 1re ligne) — d'où des chiffres
+  // périmés affichés comme « à jour ». Isolé dans son propre
+  // try/catch pour ne jamais bloquer le reste du rendu.
+  if(typeof tvOpen!=='undefined'&&tvOpen){
+    try{ renderTvDash(); }catch(eTv){ console.error('[TV] renderTvDash:',eTv); }
+  }
+
   // En-tête : conserver le badge « BK » (blanc sur fond rouge) comme
   // logo d'origine — on n'injecte pas de logo Drive dans l'en-tête.
   // (Le logo Palmary/ENR ne concerne que les fiches & PDF.)
@@ -10079,6 +10478,7 @@ function render(data){
   document.getElementById('main').style.display='block';
   try{ renderVeilleScoring(); }catch(e){}
   try{ renderCphs(); }catch(e){}
+  try{ renderSimulations(); }catch(e){}
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
   document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
   document.getElementById('h-tf').textContent='TF: '+fmtNum(m.tf1_ytd);
@@ -10214,7 +10614,7 @@ function render(data){
 // jours sans AT (héros), AT, TF, TG, jours perdus, presqu'accidents,
 // TVM, TAGs ouverts, résolution TAGs. Horloge en direct +
 // rafraîchissement automatique des données toutes les 10 minutes.
-var tvOpen=false, tvClockTimer=null, tvRefreshTimer=null, tvRefreshBusy=false;
+var tvOpen=false, tvClockTimer=null, tvRefreshTimer=null, tvVersionTimer=null, tvRefreshBusy=false;
 
 // Statut sémaphore : 'g' conforme, 'a' vigilance, 'r' alerte, 'n' info
 function tvStatus(v,obj,lower){
@@ -10283,7 +10683,7 @@ function renderTvDash(){
     tvKpi('⛑️','Taux de gravité — TG', fmtNum(m.tg_ytd), 'Objectif ≤ 0.8',
           tvStatus(m.tg_ytd,0.8,true)),
     tvKpi('🩹','Jours perdus', fmtNum(m.jp_ytd||0), 'Cumul '+year, 'n'),
-    tvKpi('⚠️','Presqu\'accidents', fmtNum(m.inc_ytd||0), 'Incidents sans arrêt · '+year, 'n'),
+    tvKpi('⚠️','Presqu\'accidents', fmtNum(m.nb_incidents!=null?m.nb_incidents:((D&&D.incidents)?D.incidents.length:(m.inc_ytd||0))), 'Incidents sans arrêt · '+year, 'n'),
     tvKpi('🩺','Taux de visite médicale — TVM', fmtNum(m.tvm)+'%', 'Objectif ≥ 95%',
           tvStatus(m.tvm,95,false)),
     tvKpi('🏷️','Résolution TAGs', fmtNum(m.taux_res_tags)+'%',
@@ -10291,25 +10691,86 @@ function renderTvDash(){
           tvStatus(m.taux_res_tags,95,false))
   ].join('');
 
-  document.getElementById('tvUpd').textContent=
-    '↻ Données : '+new Date(D.ts||Date.now()).toLocaleString('fr-FR')+' · actualisation auto 10 min';
+  tvUpdateStamp();
+}
+// Pied de page : heure des données + ÂGE réel, pour que toute panne de
+// synchronisation soit visible immédiatement (au lieu d'afficher
+// « actualisation auto 10 min » alors que les données sont figées).
+function tvUpdateStamp(){
+  var el=document.getElementById('tvUpd'); if(!el||!D) return;
+  var ts=window._lastDataTs||Date.parse(D.ts||'')||Date.now();
+  var ageMin=Math.max(0,Math.round((Date.now()-ts)/60000));
+  var when=new Date(D.ts||ts).toLocaleString('fr-FR');
+  var age;
+  if(tvRefreshBusy)        age='actualisation en cours…';
+  else if(tvFailStreak>0)  age='⚠ synchro en échec ('+tvFailStreak+') · il y a '+ageMin+' min';
+  else                     age=(ageMin<1?'à l\'instant':('il y a '+ageMin+' min'));
+  el.textContent='↻ Données : '+when+' · '+age;
+  // Signal visuel si la synchro décroche (échec ou données trop vieilles).
+  el.style.color=(tvFailStreak>0||(!tvRefreshBusy&&ageMin>=TV_STALE_WARN_MIN))?'#f5a623':'';
 }
 function tvTick(){
   var now=new Date();
   document.getElementById('tvClock').textContent=now.toLocaleTimeString('fr-FR');
   document.getElementById('tvDate').textContent=
     now.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  tvUpdateStamp();
 }
 // Rafraîchissement silencieux (sans loader) pour la diffusion continue
-function tvSilentRefresh(){
-  if(!tvOpen||tvRefreshBusy) return;
-  tvRefreshBusy=true;
+// Actualisation du Mode TV — pilotée par l'ÂGE des données, pas par un
+// unique setInterval de 10 min. Un battement de cœur court (1 min)
+// déclenche la lecture dès que les données dépassent TV_REFRESH_MS.
+// Avantages : si un tick est bridé par le navigateur (onglet masqué,
+// mise en veille) ou si une lecture échoue, le cycle suivant rattrape
+// automatiquement — l'affichage ne peut plus rester figé des heures.
+var TV_REFRESH_MS=10*60*1000;      // fraîcheur cible des données
+var TV_HEARTBEAT_MS=60*1000;       // fréquence de vérification
+var TV_RETRY_MS=90*1000;           // nouvelle tentative après un échec
+var TV_STALE_WARN_MIN=20;          // au-delà : pied de page en orange
+var TV_FETCH_TIMEOUT_MS=75*1000;   // chien de garde : appel resté sans réponse
+var TV_HARD_RELOAD_MIN=30;         // au-delà : rechargement complet de la page
+var tvLastTryTs=0, tvFetchSeq=0, tvFailStreak=0;
+function tvSilentRefresh(force){
+  if(!tvOpen) return;
+  var now=Date.now();
+  var dataTs=window._lastDataTs||Date.parse((D&&D.ts)||'')||0;
+  // ── Dernier recours ─────────────────────────────────────────
+  // Sur une page ouverte en continu, la session de la Web App Apps
+  // Script finit par mourir : google.script.run ne rappelle alors NI le
+  // succès NI l'échec, et aucun réessai ne peut aboutir. Seul un
+  // rechargement complet rétablit la session.
+  if(dataTs && now-dataTs > TV_HARD_RELOAD_MIN*60000){
+    try{ location.reload(); }catch(e){}
+    return;
+  }
+  if(tvRefreshBusy) return;
+  if(!force){
+    if(dataTs&&now-dataTs<TV_REFRESH_MS) return;          // encore frais
+    if(tvLastTryTs&&now-tvLastTryTs<TV_RETRY_MS) return;  // évite le matraquage
+  }
+  var seq=++tvFetchSeq;
+  tvRefreshBusy=true; tvLastTryTs=now; tvUpdateStamp();
+  // Chien de garde : si l'appel ne revient jamais (cas observé), on
+  // libère le verrou pour que le battement suivant puisse réessayer —
+  // sans lui, l'affichage restait figé indéfiniment.
+  setTimeout(function(){
+    if(tvRefreshBusy && seq===tvFetchSeq){
+      tvRefreshBusy=false; tvFailStreak++; tvUpdateStamp();
+    }
+  },TV_FETCH_TIMEOUT_MS);
   google.script.run
     .withSuccessHandler(function(data){
-      tvRefreshBusy=false;
-      if(data){ try{ render(data); }catch(e){} }
+      if(seq!==tvFetchSeq) return;                        // réponse tardive : ignorée
+      tvRefreshBusy=false; tvFailStreak=0;
+      // Ne pas avaler l'erreur en silence : c'est ce qui masquait un
+      // rendu partiel (données fraîches mais tuiles TV non redessinées).
+      if(data){ try{ render(data); }catch(e){ console.error('[TV] render:',e); } }
+      tvUpdateStamp();
     })
-    .withFailureHandler(function(){ tvRefreshBusy=false; })  // silencieux : nouvel essai au prochain cycle
+    .withFailureHandler(function(){
+      if(seq!==tvFetchSeq) return;
+      tvRefreshBusy=false; tvFailStreak++; tvUpdateStamp();   // réessai au prochain battement
+    })
     .getDataForClient();
 }
 function openTvDash(){
@@ -10321,8 +10782,18 @@ function openTvDash(){
   renderTvDash(); tvTick();
   document.getElementById('tvDash').classList.add('show');
   document.body.style.overflow='hidden';
+  // Purge d'éventuelles minuteries d'une session précédente (pas de cumul)
+  if(tvClockTimer){ clearInterval(tvClockTimer); }
+  if(tvRefreshTimer){ clearInterval(tvRefreshTimer); }
   tvClockTimer=setInterval(tvTick,1000);
-  tvRefreshTimer=setInterval(tvSilentRefresh,10*60*1000);
+  tvRefreshTimer=setInterval(function(){ tvSilentRefresh(false); },TV_HEARTBEAT_MS);
+  // Sonde de version : toute modification du classeur déclenche une
+  // actualisation immédiate, sans attendre le cycle de 10 minutes.
+  if(tvVersionTimer) clearInterval(tvVersionTimer);
+  tvVersionTimer=setInterval(function(){
+    if(!tvOpen) return;
+    pollDataVersion(function(){ tvSilentRefresh(true); });
+  },VERSION_POLL_TV_MS);
   // Plein écran navigateur (facultatif : ignoré si refusé)
   try{
     var el=document.documentElement;
@@ -10335,6 +10806,7 @@ function closeTvDash(){
   document.body.style.overflow='';
   if(tvClockTimer){ clearInterval(tvClockTimer); tvClockTimer=null; }
   if(tvRefreshTimer){ clearInterval(tvRefreshTimer); tvRefreshTimer=null; }
+  if(tvVersionTimer){ clearInterval(tvVersionTimer); tvVersionTimer=null; }
   try{ if(document.fullscreenElement&&document.exitFullscreen) document.exitFullscreen().catch(function(){}); }catch(e){}
 }
 document.addEventListener('keydown',function(e){
@@ -13397,6 +13869,154 @@ function goPestFlyType(key, el){
 }
 
 // Rendu du panneau de détail pour le type courant
+/* ══════════════════════════════════════════════════════════════
+   ENR DE SUIVI NUISIBLES — documents téléchargeables
+   ──────────────────────────────────────────────────────────────
+   Restitue fidèlement la feuille source (en-têtes + lignes), sous
+   le cartouche documentaire commun aux autres enregistrements.
+   ══════════════════════════════════════════════════════════════ */
+// Codes de statut relevés sur les boîtes à raticide (feuille source)
+var PEST_RAT_LEGEND = [
+  ['EBR','ebréché'], ['CON','consommé'], ['NT','boîte non trouvée'],
+  ['CAS','boîte cassée'], ['RT','boîte retirée'], ['INAC','boîte inaccessible'],
+  ['RAS','rien à signaler'], ['SOU','souris']
+];
+var PEST_ENR = {
+  fk: {
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    title:'Suivi des fly-killers',
+    sub:'Insectes volants — relevés de captures par piège',
+    parts:[{src:'fk', label:''}]
+  },
+  rat: {
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    title:'Suivi des boîtes à raticide (extérieur)',
+    sub:'Lutte contre les rongeurs — périmètre extérieur',
+    parts:[{src:'rat', label:'', legend:PEST_RAT_LEGEND}]
+  },
+  indoor: {
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    title:'Suivi des pièges mécaniques et boîtes à colles (intérieur usine)',
+    sub:'Lutte contre les rongeurs — intérieur usine',
+    parts:[{src:'mech', label:'Pièges mécaniques'},
+           {src:'glue', label:'Boîtes à colles'}]
+  },
+  // Document unique regroupant les trois suivis (bouton en tête de section)
+  all: {
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    title:'Suivi et vérification des pièges',
+    sub:'Fly-killers · boîtes à raticide (extérieur) · pièges mécaniques et boîtes à colles (intérieur usine)',
+    parts:[{src:'fk',   label:'Fly-killers — insectes volants'},
+           {src:'rat',  label:'Boîtes à raticide — extérieur', legend:PEST_RAT_LEGEND},
+           {src:'mech', label:'Pièges mécaniques — intérieur usine'},
+           {src:'glue', label:'Boîtes à colles — intérieur usine'}]
+  }
+};
+function printPestEnr(kind){
+  var cfg = PEST_ENR[kind];
+  if(!cfg){ showToast('Document inconnu.','error'); return; }
+  var P = (D && D.pests) || {};
+  var parts = cfg.parts.filter(function(p){
+    var s = P[p.src];
+    return s && (s.headers||[]).length;
+  });
+  if(!parts.length){ showToast('Aucune donnée disponible pour ce suivi.','error'); return; }
+
+  var today = new Date();
+  var todayStr = String(today.getDate()).padStart(2,'0')+'/'
+               + String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc = ficheLogoSrc();
+  var logoHtml = logoSrc
+    ? '<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">'
+    : '<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td  = 'padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc = 'padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+
+  var head = '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">'+esc(cfg.title)+'</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">'+esc(cfg.sub)+'</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:190px;padding:0;vertical-align:top">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">'+esc(cfg.ref)+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.rev)+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.created)+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
+
+  var body = '', totalRows = 0;
+  parts.forEach(function(p){
+    var s = P[p.src];
+    var headers = s.headers || [];
+    // Plus récent en haut, comme à l'écran
+    var rows = (s.entries||[]).slice();
+    if(rows.some(function(e){return !!e.isoDate;})){
+      rows.sort(function(a,b){
+        if(!a.isoDate&&!b.isoDate) return 0;
+        if(!a.isoDate) return 1;
+        if(!b.isoDate) return -1;
+        return b.isoDate.localeCompare(a.isoDate);
+      });
+    }
+    totalRows += rows.length;
+    if(p.label){
+      body += '<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:8px 0 6px">'
+           +  esc(p.label)+' <span style="font-weight:600;color:#5a7684">· '+rows.length+' ligne(s)</span></div>';
+    }
+    body += '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">'
+      +'<thead><tr style="background:#0c4a6e;color:#fff">'
+      + headers.map(function(h){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(h||'—')+'</th>';}).join('')
+      +'</tr></thead><tbody>'
+      + (rows.length
+          ? rows.map(function(e,i){
+              var cells = e.raw || [];
+              return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+                + headers.map(function(h,ci){
+                    var v = cells[ci];
+                    return '<td style="'+tdc+'">'+esc((v==null||String(v).trim()==='')?'—':String(v))+'</td>';
+                  }).join('')
+                +'</tr>';
+            }).join('')
+          : '<tr><td colspan="'+Math.max(1,headers.length)+'" style="'+tdc+';text-align:center;font-style:italic;color:#94a3b8">Aucune ligne enregistrée</td></tr>')
+      +'</tbody></table>';
+    // Légende des codes de statut, sous le tableau qu'elle documente
+    if(p.legend && p.legend.length){
+      body += '<div style="margin:-8px 0 14px;border:1px solid #cbd5e1;border-radius:5px;'
+           +  'padding:7px 10px;background:#f8fafc">'
+           +  '<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;'
+           +  'color:#0c4a6e;margin-bottom:5px">Légende des codes</div>'
+           +  '<div style="display:flex;flex-wrap:wrap;gap:6px 18px">'
+           +  p.legend.map(function(c){
+                return '<span style="font-size:9px;color:#334155;white-space:nowrap">'
+                     + '<b style="font-family:monospace;color:#0369a1">'+esc(c[0])+'</b> = '+esc(c[1])+'</span>';
+              }).join('')
+           +  '</div></div>';
+    }
+  });
+
+  var w = window.open('','_blank','width=1100,height=800'); if(!w) return;
+  var styles = '<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;'
+    +'background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'
+    + esc(cfg.ref+' - '+cfg.title)+'</title>'+styles+'</head><body>');
+  w.document.write(head
+    + '<p style="font-size:9px;color:#5a7684;margin:0 0 10px">SOBCO 3 — HSE Master Dashboard · Généré le '
+    + todayStr + ' · ' + totalRows + ' ligne(s)</p>'
+    + body);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:10px">SOBCO 3 — HSE · '
+    + esc(cfg.title) + ' (' + esc(cfg.ref) + ') · édité le ' + todayStr + '</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
+}
 function renderPestFlyingTypeDetail(){
   if(!D||!D.pests||!D.pests.fk) return;
   var s = D.pests.fk;
@@ -14588,8 +15208,6 @@ function renderPests(){
    L'ouverture passe par un blob URL local dans le viewer intégré.
    ══════════════════════════════════════════════════════════════ */
 function openPestsDocs(){
-  var fi = document.getElementById('pestsDocFile');
-  if (fi) fi.value = '';
   document.getElementById('pestsDocsModal').classList.add('open');
   loadPestsDocs();
 }
@@ -14614,20 +15232,45 @@ function renderPestsDocs(r){
   var delHead = document.getElementById('pestsDocsDelHead');
   if (delHead) delHead.style.display = canDel ? '' : 'none';
   var files = (r && r.files) || [];
+  // Documents liés dans la feuille « plan d'intervention 3d » (plan des
+  // opérations 3D, attestations…) : affichés en tête de liste, avec
+  // ouverture et téléchargement. Non supprimables ici — ce sont des liens
+  // Drive gérés depuis le Sheet, pas des fichiers téléversés.
+  var linked = plan3dRows();
+  var linkedHtml = linked.map(function(d, i){
+    var L = plan3dLook(d.nom);
+    var fname = String(d.nom||'Document').replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+    return '<tr>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">' + (i+1) + '</td>'
+      + '<td><span class="mono" style="font-size:9px;color:' + L.bg + '">' + (L.tag || 'DRIVE') + '</span></td>'
+      + '<td><a href="#" onclick="openPlan3DDoc(' + jsq(d.url) + ',' + jsq(d.nom) + ');return false;" '
+      + 'style="color:var(--p4);text-decoration:underline;font-weight:600;cursor:pointer;font-size:11px">'
+      + L.ico + ' ' + esc(d.nom) + '</a></td>'
+      + '<td><span class="mono" style="font-size:10px;color:var(--text3)">lien Drive</span></td>'
+      + '<td style="text-align:center;white-space:nowrap">'
+      + '<a href="#" class="tag-btn has-photo" title="Ouvrir dans le dashboard" '
+      + 'onclick="openPlan3DDoc(' + jsq(d.url) + ',' + jsq(d.nom) + ');return false;" style="text-decoration:none">📄</a> '
+      + '<a href="#" class="tag-btn has-photo" title="Télécharger" '
+      + 'onclick="downloadDriveDoc(' + jsq(d.url) + ',' + jsq(fname) + ');return false;" style="text-decoration:none">⬇️</a>'
+      + '</td>'
+      + (canDel ? '<td style="text-align:center;color:var(--text3);font-size:10px">—</td>' : '<td style="display:none"></td>')
+      + '</tr>';
+  }).join('');
+
   if (!files.length) {
-    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">'
-      + 'Aucun document téléversé pour la lutte contre les nuisibles.<br>'
-      + 'Utilisez le bouton 📤 ci-dessus pour ajouter le premier.</td></tr>';
+    body.innerHTML = linkedHtml
+      + '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3);font-size:11px">'
+      + 'Aucun document enregistré pour la lutte contre les nuisibles.</td></tr>';
     return;
   }
-  body.innerHTML = files.map(function(f, i){
+  body.innerHTML = linkedHtml + files.map(function(f, i){
     var d  = f.date ? new Date(f.date) : null;
     var ds = d && !isNaN(d.getTime())
       ? (d.toLocaleDateString('fr-FR') + ' ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit',minute:'2-digit'}))
       : '—';
     var fId = escAttr(f.id || '');
     return '<tr>'
-      + '<td class="mono" style="font-size:10px;color:var(--text3)">' + (i+1) + '</td>'
+      + '<td class="mono" style="font-size:10px;color:var(--text3)">' + (linked.length + i + 1) + '</td>'
       + '<td><span class="mono" style="font-size:9px;color:var(--p4)">' + esc(f.code || '—') + '</span></td>'
       + '<td><a href="#" data-doc-id="' + fId + '" '
       + 'onclick="openPestsDocView(this.getAttribute(\'data-doc-id\'));return false;" '
@@ -14644,35 +15287,6 @@ function renderPestsDocs(r){
         : '<td style="display:none"></td>')
       + '</tr>';
   }).join('');
-}
-function uploadPestsDoc(){
-  if (typeof currentUser !== 'undefined' && currentUser && !userCanEdit('nuisibles')) {
-    alert("Vous n'avez pas les droits pour téléverser un document nuisibles.");
-    return;
-  }
-  var fi = document.getElementById('pestsDocFile');
-  if (!fi || !fi.files.length) { alert("Sélectionnez d'abord un fichier."); return; }
-  var file = fi.files[0];
-  if (file.size > 3*1024*1024) { alert('Fichier trop volumineux (maximum 3 Mo pour le stockage sans Drive).'); return; }
-  var code = (document.getElementById('pestsDocCode') || {}).value || '';
-  var btn  = document.getElementById('pestsDocUploadBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⬆️ Upload en cours…'; }
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    var b64 = ev.target.result.split(',')[1];
-    google.script.run
-      .withSuccessHandler(function(r){
-        if (btn) { btn.disabled = false; btn.textContent = '📤 Téléverser'; }
-        if (r && r.success) { fi.value = ''; loadPestsDocs(); }
-        else alert('Échec du téléversement : ' + ((r && r.error) || 'réponse vide'));
-      })
-      .withFailureHandler(function(err){
-        if (btn) { btn.disabled = false; btn.textContent = '📤 Téléverser'; }
-        alert('Erreur : ' + (err && err.message ? err.message : err));
-      })
-      .uploadPestsDocument(code, file.name, b64, file.type || 'application/octet-stream');
-  };
-  reader.readAsDataURL(file);
 }
 function openPestsDocView(docId){
   if (!docId) return;
@@ -15639,6 +16253,40 @@ function openFicheViewer(nom, badge, url){
   setTimeout(_applyFicheRotation, 50);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   PLAN DES OPÉRATIONS 3D — Dératisation · Désinsectisation ·
+   Désinfection (feuille « plan d'intervention 3d »)
+   ══════════════════════════════════════════════════════════════ */
+// Un bouton par ligne de la feuille : tout document ajouté au Sheet
+// apparaît automatiquement dans la barre d'actions, sans toucher au code.
+// L'ouverture se fait dans la visionneuse intégrée, qui fournit déjà
+// « Télécharger » et « Nouvel onglet ».
+function plan3dLook(nom){
+  var n=veilleNorm(nom);
+  if(n.indexOf('attestation')>-1||n.indexOf('formation')>-1||n.indexOf('certificat')>-1||n.indexOf('habilitation')>-1)
+    return {ico:'🎓', bg:'#0f766e', tag:''};
+  if(n.indexOf('plan')>-1&&n.indexOf('3d')>-1)
+    return {ico:'🗺️', bg:'#b45309', tag:'D·D·D', label:'Plan des opérations 3D'};
+  if(n.indexOf('plan')>-1) return {ico:'🗺️', bg:'#b45309', tag:''};
+  if(n.indexOf('contrat')>-1) return {ico:'📑', bg:'#4338ca', tag:''};
+  return {ico:'📄', bg:'#475569', tag:''};
+}
+// Documents liés du Sheet, prêts à être listés (nom + lien valides).
+// Le libellé dédié (« Plan des opérations 3D ») remplace le nom brut de
+// la feuille quand la ligne correspond au plan 3D.
+function plan3dRows(){
+  return (((D||{}).plan3d)||[]).filter(function(r){
+    return r && r.url && /^https?:\/\//i.test(r.url);
+  }).map(function(r){
+    var nom=String(r.nom||'Document').trim();
+    var L=plan3dLook(nom);
+    return { nom:(L.label||(nom.charAt(0).toUpperCase()+nom.slice(1))), url:r.url };
+  });
+}
+function openPlan3DDoc(url,nom){
+  if(!url) return;
+  openCleaningEmbed(url, nom||'Document', 'NUISIBLES · DOCUMENT', '🗺️');
+}
 function renderFichesTechniques(){
   var el=document.getElementById('fichesTechniquesBody');
   if(!el) return;
@@ -16352,7 +17000,69 @@ function pestMapRenderFloors(){
   el.innerHTML = pestMapFloors.map(function(f,i){
     return '<button type="button" class="pestmap-floor-btn'+(i===pestMapFloorIdx?' on':'')+'"'
       + ' onclick="pestMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
-  }).join('');
+  }).join('')
+  + '<button type="button" class="pestmap-floor-btn" onclick="downloadPestMapPlan()"'
+  + ' title="Télécharger le plan de l\'étage affiché" style="margin-left:auto;background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
+}
+// Télécharge le plan de l'étage affiché AVEC les repères (composite),
+// exactement comme à l'écran : l'image est récupérée côté serveur en
+// data-URL (sans souci CORS), puis les repères numérotés/colorés sont
+// dessinés dessus sur un canvas avant export PNG. Repli sur le fichier
+// Drive source si l'image ne peut pas être composée (ex. PDF).
+function downloadPestMapPlan(){
+  var floor=(pestMapFloors&&pestMapFloors[pestMapFloorIdx])||{};
+  var fid=floor.fileId||extractDriveIdFront(floor.rawUrl||floor.url||'');
+  var fname=('Cartographie dispositifs - '+(floor.zone||'plan')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  var srcUrl=floor.rawUrl||floor.url||(fid?('https://drive.google.com/file/d/'+fid+'/view'):'');
+  if(!fid){ if(srcUrl) downloadDriveDoc(srcUrl,fname); else showToast('Aucun plan à télécharger pour cet étage.','error'); return; }
+  showToast('Préparation du plan (avec repères)…','success');
+  var glueSet={}, mechSet={};
+  ((D&&D.pestGlueNums)||[]).forEach(function(n){glueSet[String(n)]=1;});
+  ((D&&D.pestMechNums)||[]).forEach(function(n){mechSet[String(n)]=1;});
+  var pts=(pestMapPointsForFloor(floor.zone)||[]).map(function(p){
+    var et=p.type;
+    if(et==='int'&&glueSet[String(p.num)]&&!mechSet[String(p.num)]) et='glue';
+    return {num:p.num,x:p.x,y:p.y,type:et};
+  });
+  function fallback(){ downloadDriveDoc(srcUrl,fname); }
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(!res||!res.dataUrl){ fallback(); return; }
+      var img=new Image();
+      img.onload=function(){
+        try{
+          var W=img.naturalWidth||img.width, H=img.naturalHeight||img.height;
+          var cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+          var ctx=cv.getContext('2d'); ctx.drawImage(img,0,0,W,H);
+          var mh=Math.max(18,Math.min(46,W*0.02)), fs=Math.round(mh*0.56);
+          ctx.font='700 '+fs+'px "JetBrains Mono", monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          var COL={blue:{bg:'#2f7ed8',fg:'#fff',bd:'rgba(255,255,255,.9)'},yellow:{bg:'#f4d11a',fg:'#1a1a1a',bd:'rgba(0,0,0,.55)'},pink:{bg:'#ec4899',fg:'#fff',bd:'rgba(255,255,255,.9)'}};
+          var TC={ext:'blue',int:'yellow',glue:'pink'};
+          pts.forEach(function(p){
+            var c=COL[TC[p.type]||'blue']||COL.blue, label=String(p.num);
+            var tw=ctx.measureText(label).width, w=Math.max(mh,tw+mh*0.6), h=mh, r=Math.max(3,mh*0.2);
+            var cx=p.x/100*W, cy=p.y/100*H, x=cx-w/2, y=cy-h/2;
+            ctx.beginPath();
+            ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+            ctx.shadowColor='rgba(0,0,0,.45)'; ctx.shadowBlur=mh*0.2; ctx.shadowOffsetY=mh*0.06;
+            ctx.fillStyle=c.bg; ctx.fill();
+            ctx.shadowColor='transparent'; ctx.lineWidth=Math.max(1.4,mh*0.09); ctx.strokeStyle=c.bd; ctx.stroke();
+            ctx.fillStyle=c.fg; ctx.fillText(label,cx,cy);
+          });
+          cv.toBlob(function(blob){
+            if(!blob){ fallback(); return; }
+            var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname+'.png';
+            document.body.appendChild(a); a.click();
+            setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
+            showToast('Téléchargement lancé.','success');
+          },'image/png');
+        }catch(e){ fallback(); }
+      };
+      img.onerror=fallback;
+      img.src=res.dataUrl;
+    })
+    .withFailureHandler(fallback)
+    .getAccidentAttachment(fid);
 }
 function pestMapSetFloor(i){
   if(i===pestMapFloorIdx) return;
@@ -16534,7 +17244,16 @@ function flyMapRenderFloors(){
   el.innerHTML=flyMapFloors.map(function(f,i){
     return '<button type="button" class="pestmap-floor-btn'+(i===flyMapFloorIdx?' on':'')+'"'
       + ' onclick="flyMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
-  }).join('');
+  }).join('')
+  + '<button type="button" class="pestmap-floor-btn" onclick="downloadFlyMapPlan()"'
+  + ' title="Télécharger le plan de l\'étage affiché" style="margin-left:auto;background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
+}
+function downloadFlyMapPlan(){
+  var floor=(flyMapFloors&&flyMapFloors[flyMapFloorIdx])||{};
+  var url=floor.rawUrl||floor.url||(floor.fileId?('https://drive.google.com/file/d/'+floor.fileId+'/view'):'');
+  if(!url){ showToast('Aucun plan à télécharger pour cet étage.','error'); return; }
+  var name=('Cartographie fly-killers - '+(floor.zone||'plan')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  downloadDriveDoc(url,name);
 }
 function flyMapSetFloor(i){ if(i===flyMapFloorIdx) return; flyMapFloorIdx=i; renderFlyMap(); }
 function flyShowPlaceholder(html){
@@ -16759,15 +17478,57 @@ function refreshData(){
 // ne sont pas reconstruits, et les dropdowns gardent leur valeur).
 var _silentBusy=false;
 var AUTO_REFRESH_MS=5*60*1000;   // 5 minutes
+// ══ SONDE DE VERSION — détection immédiate des changements ════
+// Une lecture complète (getDataForClient) parcourt une vingtaine de
+// feuilles : impossible à interroger en continu. On interroge donc la
+// date de dernière modification du classeur, quasi instantanée, et on
+// ne déclenche une lecture complète QUE si elle a changé. Résultat :
+// toute modification (dashboard ou saisie directe dans le Sheet) est
+// répercutée en quelques secondes au lieu d'attendre le cycle long.
+var VERSION_POLL_TV_MS=15*1000;    // écran usine : réactivité maximale
+var VERSION_POLL_DASH_MS=30*1000;  // tableau de bord
+var _dataVersion=0, _versionBusy=false, _versionSeq=0;
+function pollDataVersion(onChanged){
+  if(_versionBusy) return;
+  _versionBusy=true;
+  var seq=++_versionSeq;
+  // Chien de garde : google.script.run peut ne jamais rappeler.
+  setTimeout(function(){ if(_versionBusy&&seq===_versionSeq) _versionBusy=false; },30*1000);
+  google.script.run
+    .withSuccessHandler(function(res){
+      if(seq!==_versionSeq) return;
+      _versionBusy=false;
+      if(!res||!res.ok||!res.v) return;
+      if(!_dataVersion){ _dataVersion=res.v; return; }      // 1er appel : référence
+      if(res.v>_dataVersion){                                // le classeur a changé
+        _dataVersion=res.v;
+        if(onChanged) onChanged();
+      }
+    })
+    .withFailureHandler(function(){ if(seq===_versionSeq) _versionBusy=false; })
+    .getDataVersionForClient();
+}
+var _silentSeq=0;
 function silentRefresh(){
   if(_silentBusy) return;
   _silentBusy=true;
+  var seq=++_silentSeq;
+  // Même chien de garde que le Mode TV : google.script.run peut ne
+  // jamais rappeler (session Web App expirée) et laisserait alors le
+  // verrou fermé définitivement, bloquant toute actualisation.
+  setTimeout(function(){
+    if(_silentBusy && seq===_silentSeq) _silentBusy=false;
+  },75*1000);
   google.script.run
     .withSuccessHandler(function(data){
+      if(seq!==_silentSeq) return;
       _silentBusy=false;
-      if(data){ try{ render(data); }catch(e){} }
+      if(data){ try{ render(data); }catch(e){ console.error('[refresh] render:',e); } }
     })
-    .withFailureHandler(function(){ _silentBusy=false; })   // silencieux : nouvel essai au prochain cycle
+    .withFailureHandler(function(){
+      if(seq!==_silentSeq) return;
+      _silentBusy=false;                                   // nouvel essai au prochain cycle
+    })
     .getDataForClient();
 }
 setInterval(function(){
@@ -16777,10 +17538,20 @@ setInterval(function(){
   if(document.querySelector('.crud-modal-bg.open')) return;    // saisie en cours — ne pas perturber
   silentRefresh();
 },AUTO_REFRESH_MS);
+// Sonde de version (tableau de bord) : répercute une modification du
+// classeur en quelques secondes, sans attendre le cycle de 5 minutes.
+setInterval(function(){
+  if(document.hidden||!D) return;
+  if(typeof tvOpen!=='undefined'&&tvOpen) return;              // le Mode TV a sa propre sonde
+  if(document.querySelector('.crud-modal-bg.open')) return;    // saisie en cours
+  pollDataVersion(function(){ silentRefresh(); });
+},VERSION_POLL_DASH_MS);
 // Retour sur l'onglet après une absence : rafraîchir si les données datent.
 document.addEventListener('visibilitychange',function(){
   if(document.hidden||!D) return;
   if(document.querySelector('.crud-modal-bg.open')) return;
+  // Mode TV : son propre cycle (piloté par l'âge des données)
+  if(typeof tvOpen!=='undefined'&&tvOpen){ tvSilentRefresh(false); return; }
   if(!window._lastDataTs||Date.now()-window._lastDataTs>AUTO_REFRESH_MS) silentRefresh();
 });
 </script>

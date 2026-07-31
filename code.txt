@@ -1366,6 +1366,152 @@ function readCphsPlan(ss) {
   return res;
 }
 
+// ════════════════════════════════════════════════════════════
+// SIMULATIONS D'ÉVACUATION & EXERCICES D'URGENCE
+// ────────────────────────────────────────────────────────────
+// Feuille « Planning Annuel de Simulation d'Évacuation… ». Contient
+// l'en-tête (titre/site/service/année), un tableau des exercices, puis
+// un tableau « Suivi des Actions Correctives ».
+// Renvoie { sheetName, title, site, service, annee, sourceUrl,
+//           exercices:[…], actions:[…] }.
+// ════════════════════════════════════════════════════════════
+function readSimulations(ss) {
+  var res = { sheetName:'', title:'', site:'', service:'', annee:'', sourceUrl:'', exercices:[], actions:[] };
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var nm = normalize(sheets[i].getName());
+      if (nm.indexOf('simulation') > -1 &&
+          (nm.indexOf('evacuation') > -1 || nm.indexOf('urgence') > -1 || nm.indexOf('planning') > -1)) { sh = sheets[i]; break; }
+    }
+    if (!sh) { for (var i2 = 0; i2 < sheets.length; i2++) { if (normalize(sheets[i2].getName()).indexOf('simulation') > -1) { sh = sheets[i2]; break; } } }
+    if (!sh) { Logger.log('Simulation sheet NOT found'); return res; }
+    res.sheetName = sh.getName();
+    res.sourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit?gid=' + sh.getSheetId() + '#gid=' + sh.getSheetId();
+
+    var range = sh.getDataRange();
+    var data = range.getValues();
+    var rich = null, formulas = null;
+    try { rich = range.getRichTextValues(); } catch (e0) {}
+    try { formulas = range.getFormulas();   } catch (eF) {}
+    if (!data || !data.length) return res;
+    function txt(r, c) { return (r >= 0 && c >= 0 && data[r] && !isNull(data[r][c])) ? String(data[r][c]).trim() : ''; }
+    function dtxt(r, c) {
+      if (c < 0 || !data[r] || isNull(data[r][c])) return '';
+      var v = data[r][c];
+      if (v instanceof Date && !isNaN(v.getTime())) return Utilities.formatDate(v, 'GMT+1', 'dd/MM/yyyy');
+      return String(v).trim();
+    }
+    // Récupère l'URL du rapport lié à une cellule (formule HYPERLINK,
+    // lien rich-text, ou URL brute collée).
+    function cellUrl(r, c) {
+      if (c < 0) return '';
+      if (formulas && formulas[r] && formulas[r][c]) {
+        var f = String(formulas[r][c] || '');
+        var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i); if (mH) return mH[1].trim();
+        var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);              if (mU) return mU[1].trim();
+      }
+      if (rich && rich[r] && rich[r][c]) {
+        var rt = rich[r][c];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl(); if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) for (var k = 0; k < runs.length; k++) {
+            var ru = runs[k].getLinkUrl && runs[k].getLinkUrl(); if (ru) return String(ru).trim();
+          }
+        } catch (eR) {}
+      }
+      var v = (data[r] || [])[c];
+      if (isNull(v)) return '';
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var m = s.match(/(https?:\/\/[^\s,;]+)/i);
+      return m ? m[1].trim() : '';
+    }
+
+    // ── Métadonnées (libellé en A, valeur en B) ──
+    for (var r = 0; r < Math.min(data.length, 6); r++) {
+      var a = normalize(txt(r, 0));
+      if (a.indexOf('title') > -1 || a.indexOf('titre') > -1) res.title = txt(r, 1);
+      else if (a === 'site') res.site = txt(r, 1);
+      else if (a.indexOf('service') > -1) res.service = txt(r, 1);
+      else if (a.indexOf('annee') > -1) res.annee = txt(r, 1);
+    }
+
+    // ── Tableau EXERCICES ──
+    var exHdr = -1;
+    for (var r2 = 0; r2 < data.length; r2++) {
+      var j = normalize((data[r2] || []).join(' '));
+      if (j.indexOf('exercice') > -1 && (j.indexOf('trimestre') > -1 || j.indexOf('mois') > -1) && j.indexOf('statut') > -1) { exHdr = r2; break; }
+    }
+    if (exHdr > -1) {
+      var eh = data[exHdr], E = {};
+      for (var c = 0; c < eh.length; c++) {
+        var h = normalize(String(eh[c] || '').trim()); if (!h) continue;
+        if (E.num === undefined && h.indexOf('exercice') > -1) E.num = c;
+        else if (E.trim === undefined && h.indexOf('trimestre') > -1) E.trim = c;
+        else if (E.mois === undefined && h.indexOf('mois') > -1) E.mois = c;
+        else if (E.date === undefined && h.indexOf('date') > -1) E.date = c;
+        else if (E.type === undefined && h.indexOf('type') > -1) E.type = c;
+        else if (E.zone === undefined && (h.indexOf('zone') > -1 || h.indexOf('localis') > -1)) E.zone = c;
+        else if (E.statut === undefined && h.indexOf('statut') > -1) E.statut = c;
+        else if (E.delai === undefined && (h.indexOf('delai') > -1 || h.indexOf('cible') > -1 || h.indexOf('evacuation') > -1)) E.delai = c;
+        else if (E.resp === undefined && h.indexOf('respons') > -1) E.resp = c;
+        else if (E.rem === undefined && (h.indexOf('anomal') > -1 || h.indexOf('remarq') > -1 || h.indexOf('observ') > -1)) E.rem = c;
+      }
+      for (var r3 = exHdr + 1; r3 < data.length; r3++) {
+        var jr = normalize((data[r3] || []).join(''));
+        if (jr.indexOf('suivi') > -1 && jr.indexOf('action') > -1) break;   // début du 2e tableau
+        var num = txt(r3, E.num != null ? E.num : 0), typ = txt(r3, E.type != null ? E.type : -1);
+        var st = txt(r3, E.statut != null ? E.statut : -1);
+        if (!num && !typ && !st) continue;
+        if (normalize(num).indexOf('exercice') > -1) continue;
+        // Lien du rapport de simulation : porté par la cellule « N° »
+        // (repli : 1er lien trouvé sur la ligne).
+        var rurl = cellUrl(r3, E.num != null ? E.num : 0);
+        if (!rurl) { var rr = data[r3] || []; for (var cc = 0; cc < rr.length; cc++) { var u2 = cellUrl(r3, cc); if (u2) { rurl = u2; break; } } }
+        res.exercices.push({
+          num:num, trimestre:txt(r3, E.trim), mois:txt(r3, E.mois), date:dtxt(r3, E.date != null ? E.date : -1),
+          type:typ, zone:txt(r3, E.zone), statut:st, delai:txt(r3, E.delai), responsable:txt(r3, E.resp), remarques:txt(r3, E.rem),
+          reportUrl:rurl
+        });
+      }
+    }
+
+    // ── Tableau ACTIONS CORRECTIVES ──
+    var acHdr = -1;
+    for (var r4 = 0; r4 < data.length; r4++) {
+      var j2 = normalize((data[r4] || []).join(' '));
+      if (j2.indexOf('action') > -1 && j2.indexOf('description') > -1 && (j2.indexOf('priorite') > -1 || j2.indexOf('limite') > -1)) { acHdr = r4; break; }
+    }
+    if (acHdr > -1) {
+      var ah = data[acHdr], A = {};
+      for (var c2 = 0; c2 < ah.length; c2++) {
+        var h2 = normalize(String(ah[c2] || '').trim()); if (!h2) continue;
+        if (A.desc === undefined && h2.indexOf('description') > -1) A.desc = c2;
+        else if (A.num === undefined && h2.indexOf('action') > -1) A.num = c2;
+        else if (A.rattache === undefined && (h2.indexOf('rattach') > -1 || h2.indexOf('exercice') > -1)) A.rattache = c2;
+        else if (A.dept === undefined && (h2.indexOf('departement') > -1 || h2.indexOf('service') > -1)) A.dept = c2;
+        else if (A.resp === undefined && h2.indexOf('respons') > -1) A.resp = c2;
+        else if (A.date === undefined && (h2.indexOf('limite') > -1 || h2.indexOf('echeance') > -1 || h2.indexOf('date') > -1)) A.date = c2;
+        else if (A.statut === undefined && h2.indexOf('statut') > -1) A.statut = c2;
+        else if (A.prio === undefined && h2.indexOf('priorit') > -1) A.prio = c2;
+      }
+      for (var r5 = acHdr + 1; r5 < data.length; r5++) {
+        var an = txt(r5, A.num != null ? A.num : 0), ad = txt(r5, A.desc != null ? A.desc : -1);
+        if (!an && !ad) continue;
+        if (normalize(an).indexOf('action') > -1 && normalize(ad).indexOf('description') > -1) continue;
+        res.actions.push({
+          num:an, rattache:txt(r5, A.rattache), description:ad, departement:txt(r5, A.dept),
+          responsable:txt(r5, A.resp), dateLimite:dtxt(r5, A.date != null ? A.date : -1), statut:txt(r5, A.statut), priorite:txt(r5, A.prio)
+        });
+      }
+    }
+    Logger.log('Simulations: ' + res.exercices.length + ' exercice(s), ' + res.actions.length + ' action(s)');
+  } catch (e) { Logger.log('readSimulations error: ' + e.message); }
+  return res;
+}
+
 function readProcedures(ss) {
   var entries = [];
   var extras  = [];
@@ -3292,6 +3438,81 @@ function readCartoSheet(ss, kw) {
   }
   return out;
 }
+// ════════════════════════════════════════════════════════════
+// PLAN DES OPÉRATIONS 3D (Dératisation · Désinsectisation ·
+// Désinfection) — feuille « plan d'intervention 3d »
+// ────────────────────────────────────────────────────────────
+// Deux colonnes : « nom de fichier » + « lien drive ». Le lien peut
+// être une formule HYPERLINK, un lien rich-text ou une URL brute.
+// Renvoie { sheetName, sourceUrl, entries:[{nom, url}] }.
+// ════════════════════════════════════════════════════════════
+function readPlan3D(ss) {
+  var res = { sheetName:'', sourceUrl:'', entries:[] };
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('3d') > -1 &&
+          (n.indexOf('plan') > -1 || n.indexOf('intervention') > -1 || n.indexOf('operation') > -1)) { sh = sheets[i]; break; }
+    }
+    if (!sh) { Logger.log('Plan 3D sheet NOT found'); return res; }
+    res.sheetName = sh.getName();
+    res.sourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                    '/edit?gid=' + sh.getSheetId() + '#gid=' + sh.getSheetId();
+
+    var range = sh.getDataRange();
+    var data  = range.getValues();
+    var rich = null, formulas = null;
+    try { rich     = range.getRichTextValues(); } catch (e0) {}
+    try { formulas = range.getFormulas();       } catch (eF) {}
+    if (!data || data.length < 2) return res;
+
+    function cellUrl(r, c) {
+      if (c < 0) return '';
+      if (formulas && formulas[r] && formulas[r][c]) {
+        var f = String(formulas[r][c] || '');
+        var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i); if (mH) return mH[1].trim();
+        var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);              if (mU) return mU[1].trim();
+      }
+      if (rich && rich[r] && rich[r][c]) {
+        var rt = rich[r][c];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl(); if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) for (var k = 0; k < runs.length; k++) {
+            var ru = runs[k].getLinkUrl && runs[k].getLinkUrl(); if (ru) return String(ru).trim();
+          }
+        } catch (eR) {}
+      }
+      var v = (data[r] || [])[c];
+      if (isNull(v)) return '';
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var m = s.match(/(https?:\/\/[^\s,;]+)/i);
+      return m ? m[1].trim() : '';
+    }
+
+    // Détection des colonnes (repli : A = nom, B = lien)
+    var hdr = data[0] || [], cNom = -1, cUrl = -1;
+    for (var c2 = 0; c2 < hdr.length; c2++) {
+      var h = normalize(String(hdr[c2] || '').trim()); if (!h) continue;
+      if (cNom < 0 && (h.indexOf('nom') > -1 || h.indexOf('fichier') > -1 || h.indexOf('libell') > -1)) cNom = c2;
+      else if (cUrl < 0 && (h.indexOf('lien') > -1 || h.indexOf('drive') > -1 || h.indexOf('url') > -1)) cUrl = c2;
+    }
+    if (cNom < 0) cNom = 0;
+    if (cUrl < 0) cUrl = 1;
+
+    for (var r2 = 1; r2 < data.length; r2++) {
+      var nom = isNull(data[r2][cNom]) ? '' : String(data[r2][cNom]).trim();
+      var url = cellUrl(r2, cUrl);
+      if (!nom && !url) continue;
+      res.entries.push({ nom: nom || 'Plan des opérations 3D', url: url });
+    }
+    Logger.log('Plan 3D: ' + res.entries.length + ' document(s) — ' + res.sheetName);
+  } catch (e) { Logger.log('readPlan3D error: ' + e.message); }
+  return res;
+}
+
 function readCartoNuisibles(ss) { return readCartoSheet(ss, 'nuisible'); }
 function readCartoFlyKiller(ss) { return readCartoSheet(ss, 'fly'); }
 
@@ -3769,6 +3990,8 @@ function getData() {
   out.cphs = readCphs(ss);
   // Plan d'action CPHS (feuille dédiée « plan d'action cphs »)
   out.cphs.plan = readCphsPlan(ss);
+  // Simulations d'évacuation & exercices d'urgence (feuille dédiée)
+  out.simulations = readSimulations(ss);
 
   // ── Enregistrements HSE (feuille "enregistrements") ──────
   var en = readEnregistrements(ss);
@@ -3815,6 +4038,13 @@ function getData() {
   out.fichesTechniquesSheetName = ft.sheetName || FICHES_TECH_SHEET_NAME;
   out.fichesTechniquesSourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
                                   '/edit?gid=' + FICHES_TECH_SHEET_GID + '#gid=' + FICHES_TECH_SHEET_GID;
+
+  // ── PLAN DES OPÉRATIONS 3D (Dératisation · Désinsectisation ·
+  //    Désinfection) — feuille « plan d'intervention 3d »
+  var p3d = readPlan3D(ss);
+  out.plan3d = p3d.entries || [];
+  out.plan3dSheetName = p3d.sheetName || '';
+  out.plan3dSourceUrl = p3d.sourceUrl || '';
 
   // ── CARTOGRAPHIE NUISIBLES (3 plans : étage -1 / étage 0 / étage 1) ──
   out.cartoNuisibles = readCartoNuisibles(ss);   // [{ zone, url, fileId, rawUrl }, …]
@@ -4353,6 +4583,18 @@ function callGemini(prompt) {
 
 // ── Exposées au client ────────────────────────────────────────
 function getDataForClient()           { return getData(); }
+// ── Sonde de version (détection immédiate des changements) ─────
+// Renvoie la date de dernière modification du classeur. Appel très
+// léger (une simple métadonnée Drive) : le client peut l'interroger
+// fréquemment, puis ne déclencher une lecture complète (getData, qui
+// parcourt une vingtaine de feuilles) que lorsque la valeur change.
+function getDataVersionForClient() {
+  try {
+    return { ok:true, v:DriveApp.getFileById(SHEET_ID).getLastUpdated().getTime() };
+  } catch (e) {
+    return { ok:false, v:0, error:String(e && e.message || e) };
+  }
+}
 function askGeminiForClient(p)        { return callGemini(p); }
 // PHOTO PROXY — retourne base64 de l'image Drive
 // Logo (Drive) encodé en data-URL, mis en cache par identifiant de
@@ -5959,6 +6201,48 @@ function getActionPlanForClient() { return getActionPlan(); }
 var ACTION_PLAN_FOLDER_NAME = "Plans d'action - Dashboard HSE";
 var ACTION_PLAN_MAX_ROWS    = 800;
 
+// ── En-tête officiel des documents ENR ────────────────────────
+// Reproduit le cartouche des autres enregistrements HSE :
+//   logo | titre + sous-titre + date | Réf. / Rév. / Créé le / Éd.
+function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
+  var esc = function(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+  var today = Utilities.formatDate(new Date(), 'GMT+1', 'dd/MM/yyyy');
+  var logoHtml = logo
+    ? '<img src="' + esc(logo) + '" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">'
+    : '<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var tdB = 'padding:6px 10px;border:1px solid #d0d0d0;font-size:10.5px';
+  // Ligne du cartouche (libellé / valeur)
+  function line(lbl, val, last, strong) {
+    var bb = last ? '' : 'border-bottom:1px solid #d0d0d0;';
+    return '<tr><td style="padding:4px 8px;' + bb + 'color:#555;white-space:nowrap">' + lbl + '</td>'
+         + '<td style="padding:4px 8px;' + bb + (strong || 'font-weight:600') + '">' + val + '</td></tr>';
+  }
+  var h = '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
+    + '<td style="' + tdB + ';width:130px;text-align:center;vertical-align:middle;'
+    +   'border-right:1.5px solid #b0b0b0;padding:10px 12px">' + logoHtml + '</td>'
+    + '<td style="' + tdB + ';text-align:center;vertical-align:middle;'
+    +   'border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +   '<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">'
+    +     esc(title) + '</div>'
+    +   (sub ? '<div style="font-size:11px;color:#444;margin-top:3px">' + esc(sub) + '</div>' : '')
+    +   '<div style="font-size:11px;font-weight:600;margin-top:4px">Date : '
+    +     '<span style="color:#09637e">' + today + '</span></div>'
+    + '</td>'
+    + '<td style="' + tdB + ';width:190px;padding:0;vertical-align:top">'
+    +   '<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +     (ref ? line('Réf :', esc(ref),
+              false, 'font-weight:700;font-family:monospace;color:#09637e;letter-spacing:.05em') : '')
+    +     line('Rév :', esc(rev), false)
+    +     (created ? line('Créé le :', esc(created), false) : '')
+    +     line('Éd. :', today, true)
+    +   '</table>'
+    + '</td></tr></table>';
+  return h;
+}
+
 function generateSectionActionPlanForClient(payload) {
   try {
     if (!payload || !payload.cols || !payload.cols.length ||
@@ -5966,6 +6250,11 @@ function generateSectionActionPlanForClient(payload) {
       return { ok: false, error: 'Aucune action à inclure dans le plan.' };
     }
     var title = safeText(payload.title) || "Plan d'action";
+    var ref   = safeText(payload.ref) || '';       // codification (ex. ENR-HSE 30)
+    var sub   = safeText(payload.subtitle) || '';  // sous-titre du cartouche
+    var rev   = safeText(payload.rev) || '01';     // indice de révision
+    var creat = safeText(payload.created) || '';   // date de création du document
+    var logo  = String(payload.logo || '');        // data-URL du logo officiel
     var rows  = payload.rows.slice(0, ACTION_PLAN_MAX_ROWS);
     var esc   = function(s) {
       return String(s == null ? '' : s)
@@ -5987,7 +6276,7 @@ function generateSectionActionPlanForClient(payload) {
       + 'tr:nth-child(even) td{background:#f3f8fa}'
       + '.foot{margin-top:8px;font-size:8px;color:#5a7684}'
       + '</style></head><body>'
-      + '<h1>' + esc(title) + '</h1>'
+      + enrHeaderHtml_(title, sub, ref, rev, creat, logo)
       + '<p class="sub">SOBCO 3 — HSE Master Dashboard · Généré le ' + now
       + ' · ' + rows.length + ' ligne(s)</p>';
     if (payload.meta) html += '<div class="meta">' + esc(payload.meta) + '</div>';
@@ -6009,8 +6298,11 @@ function generateSectionActionPlanForClient(payload) {
     html += '<p class="foot">Document généré automatiquement à partir des données'
       + ' de la section — Dashboard HSE SOBCO 3.</p></body></html>';
 
-    var pdfName = title + '.pdf';
-    var pdf = Utilities.newBlob(html, 'text/html', title + '.html')
+    // Nom de fichier préfixé par la codification quand elle existe :
+    // « ENR-HSE 30 - Plan d'action HSE (TAGs).pdf »
+    var baseName = (ref ? ref + ' - ' : '') + title;
+    var pdfName = baseName + '.pdf';
+    var pdf = Utilities.newBlob(html, 'text/html', baseName + '.html')
       .getAs('application/pdf').setName(pdfName);
 
     // 1) Archivage Drive (si autorisé) : dossier créé au besoin,
