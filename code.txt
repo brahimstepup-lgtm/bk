@@ -3374,6 +3374,56 @@ function pestNumsFromRead(r) {
 }
 
 // ════════════════════════════════════════════════════════════
+// STATUT COURANT PAR DISPOSITIF (annotation de la cartographie)
+// ────────────────────────────────────────────────────────────
+// À partir d'une feuille pest DÉJÀ lue par readPestSheet (aucune
+// lecture supplémentaire), renvoie pour chaque numéro de piège le
+// dernier contrôle enregistré :
+//   { "42": { statut:'NT', date:'14/06/2026', iso:'2026-06-14',
+//             action:'remplacée par une nouvelle boite' }, … }
+// Le client s'en sert pour poser une note « NT », « CAS »… devant
+// les repères dont l'état n'est pas RAS (conforme).
+// ════════════════════════════════════════════════════════════
+function pestStatusFromRead(r) {
+  var out = {};
+  if (!r || !r.entries || !r.entries.length) return out;
+  var hd = r.headers || [], ncol = -1, consoIdx = -1;
+  for (var c = 0; c < hd.length; c++) {
+    var hh = normalize(hd[c]).replace(/[^a-z0-9]/g, '');
+    if (hh === 'n' || hh === 'no' || hh === 'num' || hh.indexOf('numero') > -1) { ncol = c; break; }
+  }
+  for (var c2 = 0; c2 < hd.length; c2++) {
+    var h2 = normalize(hd[c2]);
+    if (h2 && (h2.indexOf('consom') > -1 || h2.indexOf('niveau') > -1)) { consoIdx = c2; break; }
+  }
+  r.entries.forEach(function(e, idx){
+    var k = '';
+    if (ncol >= 0 && e.raw && e.raw.length > ncol) k = trapKey(e.raw[ncol]);
+    else if (e.zone) k = trapKey(e.zone);
+    if (!k) return;
+    var st  = e.statut || (consoIdx >= 0 && e.raw ? safeText(e.raw[consoIdx]) : '');
+    var cur = out[k];
+    if (cur) {
+      // On conserve le contrôle le plus récent ; à dates égales ou
+      // absentes, la dernière ligne du Sheet fait foi.
+      var a = e.isoDate || '', b = cur.iso || '';
+      if (a && b) { if (a < b) return; }
+      else if (!a && b) return;
+      else if (!a && !b && idx < cur.idx) return;
+    }
+    out[k] = {
+      statut: String(st || '').trim(),
+      date:   e.date    || '',
+      iso:    e.isoDate || '',
+      action: e.action  || '',
+      idx:    idx
+    };
+  });
+  Object.keys(out).forEach(function(k){ delete out[k].idx; });
+  return out;
+}
+
+// ════════════════════════════════════════════════════════════
 // ── CARTOGRAPHIE (onglets « cartographie … ») ────────────────
 // Lit la liste des plans (étages) à superposer dans une carte :
 //   colonne « zone »  + colonne « lien drive de cartographie ».
@@ -3510,6 +3560,114 @@ function readPlan3D(ss) {
     }
     Logger.log('Plan 3D: ' + res.entries.length + ' document(s) — ' + res.sheetName);
   } catch (e) { Logger.log('readPlan3D error: ' + e.message); }
+  return res;
+}
+
+// ════════════════════════════════════════════════════════════
+// ENR-HSE 07 — ENREGISTREMENTS MENSUELS (feuille « ENR HSE 7 »)
+// ────────────────────────────────────────────────────────────
+// Deux colonnes : « MOIS » + « LIEN ». Une ligne par mois de
+// l'année, le lien pointant vers l'enregistrement rempli et signé
+// (Drive). Le lien peut être une formule HYPERLINK, un lien
+// rich-text ou une URL brute ; les mois sans lien sont conservés
+// (affichés « non disponible » dans le tableau de bord).
+// Renvoie { sheetName, sourceUrl, entries:[{mois, num, url}] }.
+// ════════════════════════════════════════════════════════════
+var ENR07_SHEET_NAME = 'ENR HSE 7';
+// Préfixes sans accent, assez longs pour lever l'ambiguïté juin / juillet
+var ENR07_MONTH_KEYS = ['janv','fevr','mars','avri','mai','juin',
+                        'juil','aout','sept','octo','nove','dece'];
+
+// Numéro du mois (1-12) d'après son libellé ; 0 si non reconnu.
+// Tolère « FÉVRIER », « fév. », « Septembre 2026 »…
+function enr07MonthNum(label) {
+  var n = normalize(String(label || ''));
+  if (!n) return 0;
+  for (var i = 0; i < ENR07_MONTH_KEYS.length; i++) {
+    if (n.indexOf(ENR07_MONTH_KEYS[i]) === 0) return i + 1;
+  }
+  return 0;
+}
+
+function readEnrHse07(ss) {
+  var res = { sheetName:'', sourceUrl:'', entries:[] };
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    // 1. Nom exact « ENR HSE 7 »
+    var target = normalize(ENR07_SHEET_NAME);
+    for (var i = 0; i < sheets.length; i++) {
+      if (normalize(sheets[i].getName()) === target) { sh = sheets[i]; break; }
+    }
+    // 2. Sinon toute variante « ENR HSE 07 » / « ENR-HSE 7 » / « ENR_HSE07 »
+    if (!sh) {
+      for (var i2 = 0; i2 < sheets.length; i2++) {
+        var n2 = normalize(sheets[i2].getName());
+        if (/\benr\b|enr[-_ ]?hse/.test(n2) && n2.indexOf('hse') > -1 &&
+            /(^|[^0-9])0?7([^0-9]|$)/.test(n2)) { sh = sheets[i2]; break; }
+      }
+    }
+    if (!sh) { Logger.log('ENR HSE 07 sheet NOT found'); return res; }
+    res.sheetName = sh.getName();
+    res.sourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                    '/edit?gid=' + sh.getSheetId() + '#gid=' + sh.getSheetId();
+
+    var range = sh.getDataRange();
+    var data  = range.getValues();
+    var rich = null, formulas = null;
+    try { rich     = range.getRichTextValues(); } catch (e0) {}
+    try { formulas = range.getFormulas();       } catch (eF) {}
+    if (!data || data.length < 2) return res;
+
+    function cellUrl(r, c) {
+      if (c < 0) return '';
+      if (formulas && formulas[r] && formulas[r][c]) {
+        var f = String(formulas[r][c] || '');
+        var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i); if (mH) return mH[1].trim();
+        var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);              if (mU) return mU[1].trim();
+      }
+      if (rich && rich[r] && rich[r][c]) {
+        var rt = rich[r][c];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl(); if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) for (var k = 0; k < runs.length; k++) {
+            var ru = runs[k].getLinkUrl && runs[k].getLinkUrl(); if (ru) return String(ru).trim();
+          }
+        } catch (eR) {}
+      }
+      var v = (data[r] || [])[c];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch (eU) {}
+      }
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var m = s.match(/(https?:\/\/[^\s,;]+)/i);
+      return m ? m[1].trim() : '';
+    }
+
+    // Détection des colonnes (repli : A = mois, B = lien)
+    var hdr = data[0] || [], cMois = -1, cUrl = -1;
+    for (var c2 = 0; c2 < hdr.length; c2++) {
+      var h = normalize(String(hdr[c2] || '').trim()); if (!h) continue;
+      if (cUrl < 0 && (h.indexOf('lien') > -1 || h.indexOf('link') > -1 ||
+                       h.indexOf('url') > -1  || h.indexOf('drive') > -1 ||
+                       h.indexOf('document') > -1 || h.indexOf('fichier') > -1)) { cUrl = c2; continue; }
+      if (cMois < 0 && (h.indexOf('mois') > -1 || h.indexOf('month') > -1 ||
+                        h.indexOf('periode') > -1)) cMois = c2;
+    }
+    var hasHdr = (cMois > -1 || cUrl > -1);
+    if (cMois < 0) cMois = 0;
+    if (cUrl  < 0) cUrl  = 1;
+
+    for (var r2 = (hasHdr ? 1 : 0); r2 < data.length; r2++) {
+      var mois = isNull(data[r2][cMois]) ? '' : safeText(data[r2][cMois]).trim();
+      var url  = cellUrl(r2, cUrl);
+      if (!mois && !url) continue;
+      res.entries.push({ mois: mois, num: enr07MonthNum(mois), url: url });
+    }
+    Logger.log('ENR HSE 07 : ' + res.entries.length + ' mois — ' + res.sheetName);
+  } catch (e) { Logger.log('readEnrHse07 error: ' + e.message); }
   return res;
 }
 
@@ -4046,12 +4204,26 @@ function getData() {
   out.plan3dSheetName = p3d.sheetName || '';
   out.plan3dSourceUrl = p3d.sourceUrl || '';
 
+  // ── ENR-HSE 07 — enregistrements mensuels du suivi des pièges
+  //    (feuille « ENR HSE 7 » : MOIS + LIEN)
+  var enr07 = readEnrHse07(ss);
+  out.pestEnr07Months    = enr07.entries   || [];
+  out.pestEnr07SheetName = enr07.sheetName || '';
+  out.pestEnr07SourceUrl = enr07.sourceUrl || '';
+
   // ── CARTOGRAPHIE NUISIBLES (3 plans : étage -1 / étage 0 / étage 1) ──
   out.cartoNuisibles = readCartoNuisibles(ss);   // [{ zone, url, fileId, rawUrl }, …]
   out.cartoFlyKiller = readCartoFlyKiller(ss);   // plans fly-killer (insectes volants)
   // Numéros par feuille intérieure → coloration des repères (colle = rose)
   out.pestMechNums = pestNumsFromRead(pests.mech);   // pièges mécanique
   out.pestGlueNums = pestNumsFromRead(pests.glue);   // boîtes à colles
+  // Dernier état connu de chaque dispositif → note « NT », « CAS »…
+  // posée devant les repères non conformes de la cartographie.
+  out.pestStatus = {
+    rat:  pestStatusFromRead(pests.rat),
+    mech: pestStatusFromRead(pests.mech),
+    glue: pestStatusFromRead(pests.glue)
+  };
 
   // ── SENSIBILISATION HSE (feuille dédiée) ────────────────────
   var sensib = readSensibilisation();
@@ -6203,7 +6375,7 @@ var ACTION_PLAN_MAX_ROWS    = 800;
 
 // ── En-tête officiel des documents ENR ────────────────────────
 // Reproduit le cartouche des autres enregistrements HSE :
-//   logo | titre + sous-titre + date | Réf. / Rév. / Créé le / Éd.
+//   logo | titre + sous-titre + date | Réf. / Rév. / Créé le
 function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
   var esc = function(s) {
     return String(s == null ? '' : s)
@@ -6220,6 +6392,17 @@ function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
     return '<tr><td style="padding:4px 8px;' + bb + 'color:#555;white-space:nowrap">' + lbl + '</td>'
          + '<td style="padding:4px 8px;' + bb + (strong || 'font-weight:600') + '">' + val + '</td></tr>';
   }
+  // Lignes du cartouche — la dernière présente ne porte pas de filet
+  // inférieur (quelles que soient les lignes réellement renseignées).
+  var rows = [];
+  if (ref) rows.push(['Réf :', esc(ref),
+                      'font-weight:700;font-family:monospace;color:#09637e;letter-spacing:.05em']);
+  rows.push(['Rév :', esc(rev), '']);
+  if (created) rows.push(['Créé le :', esc(created), '']);
+  var rowsHtml = rows.map(function(r, i) {
+    return line(r[0], r[1], i === rows.length - 1, r[2]);
+  }).join('');
+
   var h = '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
     + '<td style="' + tdB + ';width:130px;text-align:center;vertical-align:middle;'
     +   'border-right:1.5px solid #b0b0b0;padding:10px 12px">' + logoHtml + '</td>'
@@ -6233,11 +6416,7 @@ function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
     + '</td>'
     + '<td style="' + tdB + ';width:190px;padding:0;vertical-align:top">'
     +   '<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
-    +     (ref ? line('Réf :', esc(ref),
-              false, 'font-weight:700;font-family:monospace;color:#09637e;letter-spacing:.05em') : '')
-    +     line('Rév :', esc(rev), false)
-    +     (created ? line('Créé le :', esc(created), false) : '')
-    +     line('Éd. :', today, true)
+    +     rowsHtml
     +   '</table>'
     + '</td></tr></table>';
   return h;

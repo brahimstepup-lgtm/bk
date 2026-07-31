@@ -1029,6 +1029,18 @@ html.light .pests-mini-tab.on{background:#edf2f7}
 .pestmap-pt.pink{background:#ec4899}
 .pestmap-pt:hover,.pestmap-pt:focus{outline:none;transform:translate(-50%,-50%) scale(1.4);
   z-index:5;box-shadow:0 2px 10px rgba(0,0,0,.6)}
+/* Note « commentaire » posée devant un repère dont le dernier état
+   n'est pas RAS (ex. « NT » = boîte non trouvée). Bulle + pointe. */
+.pestmap-note{position:absolute;transform:translate(-50%,-168%);
+  padding:1px 4px;border-radius:5px;white-space:nowrap;pointer-events:none;z-index:3;
+  font:700 8.5px/1.3 'JetBrains Mono',monospace;letter-spacing:.02em;
+  border:1px solid rgba(0,0,0,.4);box-shadow:0 1px 3px rgba(0,0,0,.45)}
+.pestmap-note::after{content:'';position:absolute;left:50%;bottom:-3px;width:6px;height:6px;
+  margin-left:-3px;background:inherit;border-right:1px solid rgba(0,0,0,.4);
+  border-bottom:1px solid rgba(0,0,0,.4);transform:rotate(45deg);border-radius:0 0 1px 0}
+.pestmap-note.warn{background:#f4a11a;color:#231a00}
+.pestmap-note.alert{background:#e8445a;color:#fff}
+.pestmap-leg.note i{background:#f4a11a;border-radius:2px}
 /* Sélecteur d'étage (boutons) */
 .pestmap-floors{display:flex;gap:4px;flex-wrap:wrap;background:var(--bg3);padding:4px;
   border-radius:9px;border:1px solid var(--border);margin:2px 0 10px}
@@ -4030,14 +4042,14 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="downloadSectionActionPlan('nuisibles')"
             title="Télécharger le plan d'action (PDF)">⬇️ Télécharger</button>
     <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
-            onclick="printPestEnr('all')"
-            title="Suivi et vérification des pièges — fly-killers, raticide, mécaniques et colles (PDF)">
+            onclick="openPestEnr07()"
+            title="Suivi et vérification des pièges — enregistrements mensuels à télécharger (fly-killers, raticide, mécaniques et colles)">
       ⬇️ Suivi des pièges <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 07</span>
     </button>
     <button class="btn" style="background:#7c3aed;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openPestsDocs()"
             title="Enregistrements remplis (scans, PDF, photos) de la lutte contre les nuisibles — stockés dans le classeur, sans Drive">
-      🗂️ Documents ENR <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">sans Drive</span>
+      🗂️ Autres
     </button>
   </div>
 
@@ -4205,11 +4217,13 @@ html.light .pests-search-input{background:#edf2f7}
           <span class="pestmap-leg ext"><i></i> Boîtes d'appât raticide (extérieur)</span>
           <span class="pestmap-leg int"><i></i> Pièges mécaniques (intérieur)</span>
           <span class="pestmap-leg glue"><i></i> Boîtes à colles (intérieur)</span>
+          <span class="pestmap-leg note"><i></i> Note d'état (dernier contrôle ≠ RAS)</span>
         </div>
       </div>
       <!-- Sélecteur d'étage (alimenté par l'onglet « cartographie nuisibles ») -->
       <div class="pestmap-floors" id="pestMapFloors"></div>
-      <div class="pestmap-hint">🖱️ Cliquez un repère numéroté pour afficher le détail et l'historique du dispositif.</div>
+      <div class="pestmap-hint">🖱️ Cliquez un repère numéroté pour afficher le détail et l'historique du dispositif.
+        Les dispositifs dont le dernier contrôle n'est pas <b>RAS</b> portent une note (ex. <b>NT</b> = boîte non trouvée).</div>
       <div class="pestmap-wrap" id="pestMapWrap">
         <img class="pestmap-img" id="pestMapImg" alt="" style="display:none"
              onerror="this.style.display='none';var p=document.getElementById('pestMapPh');if(p)p.style.display='flex';">
@@ -4595,6 +4609,28 @@ html.light .pests-search-input{background:#edf2f7}
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ENR-HSE 07 — ENREGISTREMENTS MENSUELS (SUIVI DES PIÈGES) ═══ -->
+<div class="modal-bg" id="pestEnr07Modal" style="display:none" onclick="if(event.target===this)closeModal('pestEnr07Modal')">
+  <div class="modal-panel" style="max-width:820px;width:95vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(10,122,154,.18);border-color:rgba(10,122,154,.5);color:#0a7a9a">🪤</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name">Suivi des pièges — enregistrements mensuels</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <span class="mono" style="font-size:10px;color:#0a7a9a;font-weight:700">ENR-HSE 07</span>
+          · Fly-killers · boîtes à raticide · pièges mécaniques et boîtes à colles
+        </div>
+      </div>
+      <button class="btn" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="printPestEnr('all')"
+              title="Générer le document à partir des données en cours dans le tableau de bord">🖨️ Générer (données en cours)</button>
+      <button class="modal-close" onclick="closeModal('pestEnr07Modal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="pestEnr07Body">
+      <div style="text-align:center;padding:32px;color:var(--text3)">Chargement…</div>
     </div>
   </div>
 </div>
@@ -5276,8 +5312,7 @@ function printSensibPlanning(){
     +'<td style="'+td+';width:190px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 27</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td><td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Page :</td><td style="padding:4px 8px">1 / 1</td></tr>'
     +'</table></td></tr></table>';
 
   var body;
@@ -6663,10 +6698,8 @@ function printDechets(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 34</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse : total par type
@@ -6873,10 +6906,8 @@ function printCphsPlan(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 33</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
   var table;
   if(rows.length){
@@ -7271,10 +7302,8 @@ function printVeille(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   var scoreHtml=scoreEl
@@ -7315,7 +7344,7 @@ function printVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal','pestEnr07Modal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -7765,10 +7794,8 @@ function printActionsPlan(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 31</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   var synth='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">'
@@ -8457,10 +8484,8 @@ function renderAccBilan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR HSE 25</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   if(!accs.length){
@@ -8657,10 +8682,8 @@ function renderAccActionPlan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MAQ-09</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Informations générales (statiques) ────────────────────────
@@ -9521,8 +9544,7 @@ function printEnergyReport(){
     +'<td style="'+td+';width:170px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 32</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td><td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse YTD
@@ -13944,10 +13966,8 @@ function printPestEnr(kind){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">'+esc(cfg.ref)+'</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.rev)+'</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.created)+'</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+esc(cfg.created)+'</td></tr>'
     +'</table></td></tr></table>';
 
   var body = '', totalRows = 0;
@@ -14016,6 +14036,150 @@ function printPestEnr(kind){
   w.document.write('</body></html>');
   w.document.close(); w.focus();
   setTimeout(function(){ w.print(); },500);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ENR-HSE 07 — FENÊTRE DES MOIS
+   ──────────────────────────────────────────────────────────────
+   Le bouton « Suivi des pièges » de la section Nuisibles ouvre la
+   liste des douze mois de l'année. Chaque mois disposant d'un
+   enregistrement dans la feuille « ENR HSE 7 » (colonnes MOIS +
+   LIEN) offre deux actions : consulter dans la visionneuse
+   intégrée, ou télécharger le fichier. Les mois sans lien restent
+   affichés, grisés, pour visualiser d'un coup d'œil ce qui manque.
+   Le document généré à partir des données en cours reste
+   accessible depuis l'en-tête du modal (printPestEnr).
+   ══════════════════════════════════════════════════════════════ */
+var PEST_ENR07_LABELS = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                         'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+// Préfixes sans accent, assez longs pour distinguer juin de juillet
+var PEST_ENR07_KEYS = ['janv','fevr','mars','avri','mai','juin',
+                       'juil','aout','sept','octo','nove','dece'];
+
+function pestEnr07Norm(s){
+  return String(s||'').toLowerCase()
+    .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e').replace(/[ìíîï]/g,'i')
+    .replace(/[òóôõö]/g,'o').replace(/[ùúûü]/g,'u').replace(/ç/g,'c')
+    .replace(/\s+/g,' ').trim();
+}
+// Numéro du mois (1-12) d'après son libellé ; 0 si non reconnu.
+function pestEnr07MonthNum(label){
+  var n = pestEnr07Norm(label);
+  if(!n) return 0;
+  for(var i=0;i<PEST_ENR07_KEYS.length;i++){
+    if(n.indexOf(PEST_ENR07_KEYS[i])===0) return i+1;
+  }
+  return 0;
+}
+function openPestEnr07(){
+  if(!document.getElementById('pestEnr07Modal')) return;
+  openModal('pestEnr07Modal');
+  renderPestEnr07();
+}
+function openPestEnr07Doc(url,label){
+  if(!url) return;
+  openCleaningEmbed(url, 'ENR-HSE 07 — '+(label||'Suivi des pièges'),
+                    'NUISIBLES · SUIVI DES PIÈGES', '🪤');
+}
+function downloadPestEnr07(url,label){
+  if(!url) return;
+  var fname = ('ENR-HSE 07 - Suivi des pieges - '+(label||''))
+    .replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+  downloadDriveDoc(url, fname);
+}
+function renderPestEnr07(){
+  var el = document.getElementById('pestEnr07Body');
+  if(!el) return;
+  var rows    = ((D||{}).pestEnr07Months)||[];
+  var srcUrl  = ((D||{}).pestEnr07SourceUrl)||'';
+  var byMonth = {}, extras = [];
+  rows.forEach(function(r){
+    if(!r) return;
+    var url = String(r.url||'').trim();
+    var num = r.num || pestEnr07MonthNum(r.mois);
+    if(!num){ if(url) extras.push({ mois:String(r.mois||'Autre'), url:url }); return; }
+    // Une ligne renseignée l'emporte sur une ligne vide du même mois
+    if(!byMonth[num] || (!byMonth[num].url && url)) byMonth[num] = { mois:String(r.mois||''), url:url };
+  });
+
+  var nbDispo = 0;
+  for(var k in byMonth){ if(byMonth[k].url) nbDispo++; }
+  nbDispo += extras.length;
+
+  var curMonth = (new Date()).getMonth()+1;
+  var h = '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px">';
+  h += '<span style="font-size:12px;color:var(--text3)">'
+     + (rows.length
+         ? nbDispo+' enregistrement(s) disponible(s) sur 12 mois'
+         : 'Aucun enregistrement mensuel référencé — feuille « ENR HSE 7 » vide ou introuvable.')
+     + '</span>';
+  if(srcUrl) h += '<a href="'+escAttr(srcUrl)+'" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:var(--p4);text-decoration:none">↗ Ouvrir dans Sheets</a>';
+  h += '</div>';
+
+  h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px">';
+  PEST_ENR07_LABELS.forEach(function(lbl,i){
+    var num   = i+1;
+    var e     = byMonth[num];
+    var label = (e && e.mois) ? e.mois : lbl;
+    var url   = e ? e.url : '';
+    var isCur = (num===curMonth);
+    var card  = 'border-radius:12px;border:1.5px solid '+(isCur?'#0a7a9a':'var(--border)')
+              + ';background:var(--bg2);overflow:hidden;display:flex;flex-direction:column'
+              + (isCur?';box-shadow:0 0 0 3px rgba(10,122,154,.12)':'');
+    h += '<div style="'+card+'">';
+    h += '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px">';
+    h += '<div style="width:38px;height:38px;min-width:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;'
+       + 'font-size:12px;font-weight:800;font-family:\'JetBrains Mono\',monospace;'
+       + (url ? 'background:#e0f2fe;border:1.5px solid #7dd3fc;color:#0a7a9a'
+              : 'background:var(--bg2);border:1.5px solid var(--border);color:var(--text3)')
+       + '">'+(num<10?'0':'')+num+'</div>';
+    h += '<div style="flex:1;min-width:0">';
+    h += '<div style="font-weight:700;font-size:13px;line-height:1.3;text-transform:capitalize;word-break:break-word;'
+       + (url?'color:var(--text)':'color:var(--text3)')+'">'+esc(label)+'</div>';
+    h += '<div style="font-size:10px;color:var(--text3);margin-top:2px">'
+       + (url ? 'Enregistrement disponible' : 'Non disponible')
+       + (isCur ? ' · <span style="color:#0a7a9a;font-weight:700">mois en cours</span>' : '')
+       + '</div>';
+    h += '</div></div>';
+    if(url){
+      h += '<div style="display:flex;border-top:1.5px solid var(--border)">';
+      h += '<button type="button" onclick="openPestEnr07Doc('+jsq(url)+','+jsq(label)+')" title="Consulter l\'enregistrement" '
+         + 'style="flex:1;border:none;background:transparent;color:var(--text2);cursor:pointer;padding:9px 6px;font-size:11px;font-weight:600">👁️ Consulter</button>';
+      h += '<button type="button" onclick="downloadPestEnr07('+jsq(url)+','+jsq(label)+')" title="Télécharger l\'enregistrement" '
+         + 'style="flex:1;border:none;border-left:1.5px solid var(--border);background:linear-gradient(135deg,#0a7a9a,#0da8d2);'
+         + 'color:#fff;cursor:pointer;padding:9px 6px;font-size:11px;font-weight:700">⬇️ Télécharger</button>';
+      h += '</div>';
+    } else {
+      h += '<div style="border-top:1.5px solid var(--border);padding:9px 6px;text-align:center;font-size:11px;color:var(--text3)">— Aucun lien —</div>';
+    }
+    h += '</div>';
+  });
+  h += '</div>';
+
+  // Lignes de la feuille hors calendrier (bilan annuel, trimestre…)
+  if(extras.length){
+    h += '<div style="margin-top:16px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text3)">Autres enregistrements</div>';
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:8px">';
+    extras.forEach(function(e){
+      h += '<div style="border-radius:12px;border:1.5px solid var(--border);background:var(--bg2);overflow:hidden">';
+      h += '<div style="padding:12px 14px;font-weight:700;font-size:13px;word-break:break-word">'+esc(e.mois)+'</div>';
+      h += '<div style="display:flex;border-top:1.5px solid var(--border)">';
+      h += '<button type="button" onclick="openPestEnr07Doc('+jsq(e.url)+','+jsq(e.mois)+')" '
+         + 'style="flex:1;border:none;background:transparent;color:var(--text2);cursor:pointer;padding:9px 6px;font-size:11px;font-weight:600">👁️ Consulter</button>';
+      h += '<button type="button" onclick="downloadPestEnr07('+jsq(e.url)+','+jsq(e.mois)+')" '
+         + 'style="flex:1;border:none;border-left:1.5px solid var(--border);background:linear-gradient(135deg,#0a7a9a,#0da8d2);'
+         + 'color:#fff;cursor:pointer;padding:9px 6px;font-size:11px;font-weight:700">⬇️ Télécharger</button>';
+      h += '</div></div>';
+    });
+    h += '</div>';
+  }
+
+  h += '<div style="margin-top:16px;padding-top:12px;border-top:1px dashed var(--border);font-size:10px;color:var(--text3);line-height:1.6">'
+     + 'Les liens proviennent de la feuille « ENR HSE 7 » (colonnes <b>MOIS</b> et <b>LIEN</b>) : tout mois ajouté au classeur apparaît ici automatiquement. '
+     + 'Pour un document construit à partir des relevés en cours dans le tableau de bord, utilisez « 🖨️ Générer (données en cours) ».'
+     + '</div>';
+
+  el.innerHTML = h;
 }
 function renderPestFlyingTypeDetail(){
   if(!D||!D.pests||!D.pests.fk) return;
@@ -15655,10 +15819,8 @@ function renderRapportTendanceNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0a7a9a;letter-spacing:.05em">ENR-HSE 23</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16022,10 +16184,8 @@ function renderRecensementNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#16a34a;letter-spacing:.05em">ENR-HSE-20</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16417,10 +16577,8 @@ function renderListeProduitsChimiques(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE-22</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Légende types de documents ─────────────────────────────────
@@ -16569,10 +16727,8 @@ function renderKpiFiche(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MQA-05</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Synthèse des indicateurs (YTD) ────────────────────────────
@@ -16900,6 +17056,69 @@ var PEST_MAP_POINTS_BY_FLOOR = {
 // ── État du sélecteur d'étage ──
 var pestMapFloors  = [];   // alimenté depuis D.cartoNuisibles
 var pestMapFloorIdx = -1;  // -1 → choisit l'étage par défaut au 1er rendu
+var pestMapNotesOn  = true; // notes d'état devant les repères non conformes
+
+/* ── Notes d'état sur la cartographie ─────────────────────────
+   Chaque repère dont le DERNIER contrôle n'est pas « RAS » reçoit
+   une petite note façon commentaire (« NT », « CAS », « SOU »…)
+   avec, au survol, la signification, la date et l'observation.
+   Source : D.pestStatus[source][n°] — dernier contrôle par
+   dispositif, calculé côté serveur depuis les feuilles nuisibles.
+   ───────────────────────────────────────────────────────────── */
+// Signification des codes — même source que la légende imprimée
+// dans l'ENR-HSE 07 (PEST_RAT_LEGEND), pour éviter toute divergence.
+var PEST_STATUS_LABELS = (function(){
+  var m = {};
+  (PEST_RAT_LEGEND||[]).forEach(function(c){ m[String(c[0]).toUpperCase()] = c[1]; });
+  return m;
+})();
+// Code normalisé (majuscules, sans accents ni ponctuation)
+function pestStatusCode(s){
+  return String(s||'').toUpperCase()
+    .replace(/[ÀÁÂÃÄÅ]/g,'A').replace(/[ÈÉÊË]/g,'E').replace(/[ÎÏ]/g,'I')
+    .replace(/[ÔÖ]/g,'O').replace(/[ÙÚÛÜ]/g,'U').replace(/Ç/g,'C')
+    .replace(/[^A-Z0-9]/g,'');
+}
+// Vrai si l'état relevé vaut « conforme » (rien à signaler)
+function pestStatusIsOk(s){
+  var c = pestStatusCode(s);
+  return !c || c.indexOf('RAS')===0 || c.indexOf('RIENASIGNALER')>-1 || c.indexOf('CONFORME')>-1;
+}
+// Dernier état connu d'un dispositif ; repli mécanique → colles,
+// comme le fait la fenêtre de détail (openDispo).
+function pestStatusFor(num, type){
+  var PS = (D && D.pestStatus) || {};
+  var src = (PEST_MAP_TYPES[type] || {}).source || 'rat';
+  var st  = (PS[src] || {})[String(num)];
+  if(!st && (type==='int' || type==='glue')){
+    var alt = (type==='int') ? 'glue' : 'mech';
+    st = (PS[alt] || {})[String(num)];
+  }
+  return st || null;
+}
+// Bulle de note (HTML) pour un repère, ou '' si conforme / inconnu
+function pestMapNoteHtml(p, type){
+  if(!pestMapNotesOn) return '';
+  var st = pestStatusFor(p.num, type);
+  if(!st || pestStatusIsOk(st.statut)) return '';
+  var raw   = String(st.statut||'').trim();
+  var code  = pestStatusCode(raw);
+  var known = PEST_STATUS_LABELS[code] ? code : '';
+  // Texte court dans la bulle : le code s'il est connu, sinon le
+  // libellé tronqué (les états saisis en clair restent lisibles).
+  var short = known || (raw.length>12 ? raw.substring(0,11)+'…' : raw);
+  var lvl   = (code.indexOf('SOU')>-1) ? 'alert' : 'warn';
+  var tip   = 'N° '+p.num+' — '+raw
+            + (PEST_STATUS_LABELS[code] ? ' ('+PEST_STATUS_LABELS[code]+')' : '')
+            + (st.date ? ' · '+st.date : '')
+            + (st.action ? ' · '+st.action : '');
+  return '<span class="pestmap-note '+lvl+'" style="left:'+p.x+'%;top:'+p.y+'%"'
+       + ' title="'+escAttr(tip)+'">'+esc(short)+'</span>';
+}
+function pestMapToggleNotes(){
+  pestMapNotesOn = !pestMapNotesOn;
+  renderPestMap();
+}
 
 // Normalisation d'un libellé d'étage (pour faire correspondre la "zone"
 // du Sheet aux clés de PEST_MAP_POINTS_BY_FLOOR).
@@ -16986,11 +17205,18 @@ function renderPestMap(){
     var et = p.type;
     if(et==='int' && glueSet[String(p.num)] && !mechSet[String(p.num)]) et='glue';
     var t = PEST_MAP_TYPES[et] || {color:'blue',label:''};
+    var st = pestStatusFor(p.num, et);
+    // Le titre du repère rappelle l'état courant (hors « RAS »)
+    var tip = (t.label||'') + ' — N° ' + p.num
+            + ((st && !pestStatusIsOk(st.statut))
+                ? ' · ' + st.statut + (st.date ? ' (' + st.date + ')' : '')
+                : '');
     return '<button type="button" id="pestpt-'+idx+'" class="pestmap-pt '+(t.color||'blue')+'"'
       + ' style="left:'+p.x+'%;top:'+p.y+'%"'
-      + ' title="'+esc((t.label||'')+' — N° '+p.num)+'"'
+      + ' title="'+escAttr(tip)+'"'
       + ' onclick="openDispo(\''+esc(String(p.num))+'\',\''+esc(et)+'\')">'
-      + esc(String(p.num)) + '</button>';
+      + esc(String(p.num)) + '</button>'
+      + pestMapNoteHtml(p, et);
   }).join('');
 }
 
@@ -17001,8 +17227,11 @@ function pestMapRenderFloors(){
     return '<button type="button" class="pestmap-floor-btn'+(i===pestMapFloorIdx?' on':'')+'"'
       + ' onclick="pestMapSetFloor('+i+')">'+esc(f.zone||('Plan '+(i+1)))+'</button>';
   }).join('')
+  + '<button type="button" class="pestmap-floor-btn'+(pestMapNotesOn?' on':'')+'" onclick="pestMapToggleNotes()"'
+  + ' title="Afficher / masquer les notes d\'état (NT, CAS, SOU…) devant les repères non conformes"'
+  + ' style="margin-left:auto">🗒️ Notes d\'état</button>'
   + '<button type="button" class="pestmap-floor-btn" onclick="downloadPestMapPlan()"'
-  + ' title="Télécharger le plan de l\'étage affiché" style="margin-left:auto;background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
+  + ' title="Télécharger le plan de l\'étage affiché" style="background:linear-gradient(135deg,#0a7a9a,#0da8d2);color:#fff;border-color:#0a7a9a">⬇️ Télécharger le plan</button>';
 }
 // Télécharge le plan de l'étage affiché AVEC les repères (composite),
 // exactement comme à l'écran : l'image est récupérée côté serveur en
@@ -17022,7 +17251,17 @@ function downloadPestMapPlan(){
   var pts=(pestMapPointsForFloor(floor.zone)||[]).map(function(p){
     var et=p.type;
     if(et==='int'&&glueSet[String(p.num)]&&!mechSet[String(p.num)]) et='glue';
-    return {num:p.num,x:p.x,y:p.y,type:et};
+    // Note d'état reportée à l'identique sur le plan téléchargé
+    var note='', nlvl='';
+    if(pestMapNotesOn){
+      var st=pestStatusFor(p.num,et);
+      if(st&&!pestStatusIsOk(st.statut)){
+        var raw=String(st.statut||'').trim(), code=pestStatusCode(raw);
+        note=PEST_STATUS_LABELS[code]?code:(raw.length>12?raw.substring(0,11)+'…':raw);
+        nlvl=(code.indexOf('SOU')>-1)?'alert':'warn';
+      }
+    }
+    return {num:p.num,x:p.x,y:p.y,type:et,note:note,nlvl:nlvl};
   });
   function fallback(){ downloadDriveDoc(srcUrl,fname); }
   google.script.run
@@ -17048,6 +17287,29 @@ function downloadPestMapPlan(){
             ctx.fillStyle=c.bg; ctx.fill();
             ctx.shadowColor='transparent'; ctx.lineWidth=Math.max(1.4,mh*0.09); ctx.strokeStyle=c.bd; ctx.stroke();
             ctx.fillStyle=c.fg; ctx.fillText(label,cx,cy);
+          });
+          // Notes d'état (NT, CAS, SOU…) dessinées AU-DESSUS des repères,
+          // dans une 2ᵉ passe pour qu'elles ne soient pas recouvertes.
+          var nfs=Math.round(mh*0.44);
+          ctx.font='700 '+nfs+'px "JetBrains Mono", monospace';
+          pts.forEach(function(p){
+            if(!p.note) return;
+            var nc=(p.nlvl==='alert')?{bg:'#e8445a',fg:'#fff'}:{bg:'#f4a11a',fg:'#231a00'};
+            var nw=ctx.measureText(p.note).width+nfs*0.8, nh=nfs*1.7, nr=Math.max(2,nfs*0.28);
+            var cx=p.x/100*W, cy=p.y/100*H;
+            var nx=cx-nw/2, ny=cy-mh*0.62-nh;   // juste au-dessus du repère
+            ctx.beginPath();
+            ctx.moveTo(nx+nr,ny); ctx.arcTo(nx+nw,ny,nx+nw,ny+nh,nr); ctx.arcTo(nx+nw,ny+nh,nx,ny+nh,nr);
+            ctx.arcTo(nx,ny+nh,nx,ny,nr); ctx.arcTo(nx,ny,nx+nw,ny,nr); ctx.closePath();
+            ctx.shadowColor='rgba(0,0,0,.4)'; ctx.shadowBlur=nfs*0.3; ctx.shadowOffsetY=nfs*0.1;
+            ctx.fillStyle=nc.bg; ctx.fill();
+            ctx.shadowColor='transparent';
+            ctx.lineWidth=Math.max(1,nfs*0.1); ctx.strokeStyle='rgba(0,0,0,.45)'; ctx.stroke();
+            // Pointe de la bulle, vers le repère
+            ctx.beginPath();
+            ctx.moveTo(cx-nfs*0.28,ny+nh); ctx.lineTo(cx+nfs*0.28,ny+nh); ctx.lineTo(cx,ny+nh+nfs*0.45);
+            ctx.closePath(); ctx.fillStyle=nc.bg; ctx.fill();
+            ctx.fillStyle=nc.fg; ctx.fillText(p.note,cx,ny+nh/2);
           });
           cv.toBlob(function(blob){
             if(!blob){ fallback(); return; }
