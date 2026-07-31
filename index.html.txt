@@ -5312,8 +5312,7 @@ function printSensibPlanning(){
     +'<td style="'+td+';width:190px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 27</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td><td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Page :</td><td style="padding:4px 8px">1 / 1</td></tr>'
     +'</table></td></tr></table>';
 
   var body;
@@ -6699,10 +6698,8 @@ function printDechets(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 34</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse : total par type
@@ -6909,10 +6906,8 @@ function printCphsPlan(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 33</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
   var table;
   if(rows.length){
@@ -7307,10 +7302,8 @@ function printVeille(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   var scoreHtml=scoreEl
@@ -7801,10 +7794,8 @@ function printActionsPlan(){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 31</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   var synth='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">'
@@ -8493,10 +8484,8 @@ function renderAccBilan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR HSE 25</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   if(!accs.length){
@@ -8693,10 +8682,8 @@ function renderAccActionPlan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MAQ-09</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Informations générales (statiques) ────────────────────────
@@ -9557,8 +9544,7 @@ function printEnergyReport(){
     +'<td style="'+td+';width:170px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 32</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">04/01/2026</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td><td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse YTD
@@ -13980,10 +13966,8 @@ function printPestEnr(kind){
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">'+esc(cfg.ref)+'</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.rev)+'</td></tr>'
-    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.created)+'</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+esc(cfg.created)+'</td></tr>'
     +'</table></td></tr></table>';
 
   var body = '', totalRows = 0;
@@ -15835,10 +15819,8 @@ function renderRapportTendanceNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0a7a9a;letter-spacing:.05em">ENR-HSE 23</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16202,10 +16184,8 @@ function renderRecensementNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#16a34a;letter-spacing:.05em">ENR-HSE-20</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16597,10 +16577,8 @@ function renderListeProduitsChimiques(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE-22</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Légende types de documents ─────────────────────────────────
@@ -16749,10 +16727,8 @@ function renderKpiFiche(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MQA-05</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px">1 / 1</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Synthèse des indicateurs (YTD) ────────────────────────────

@@ -6375,7 +6375,7 @@ var ACTION_PLAN_MAX_ROWS    = 800;
 
 // ── En-tête officiel des documents ENR ────────────────────────
 // Reproduit le cartouche des autres enregistrements HSE :
-//   logo | titre + sous-titre + date | Réf. / Rév. / Créé le / Éd.
+//   logo | titre + sous-titre + date | Réf. / Rév. / Créé le
 function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
   var esc = function(s) {
     return String(s == null ? '' : s)
@@ -6392,6 +6392,17 @@ function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
     return '<tr><td style="padding:4px 8px;' + bb + 'color:#555;white-space:nowrap">' + lbl + '</td>'
          + '<td style="padding:4px 8px;' + bb + (strong || 'font-weight:600') + '">' + val + '</td></tr>';
   }
+  // Lignes du cartouche — la dernière présente ne porte pas de filet
+  // inférieur (quelles que soient les lignes réellement renseignées).
+  var rows = [];
+  if (ref) rows.push(['Réf :', esc(ref),
+                      'font-weight:700;font-family:monospace;color:#09637e;letter-spacing:.05em']);
+  rows.push(['Rév :', esc(rev), '']);
+  if (created) rows.push(['Créé le :', esc(created), '']);
+  var rowsHtml = rows.map(function(r, i) {
+    return line(r[0], r[1], i === rows.length - 1, r[2]);
+  }).join('');
+
   var h = '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
     + '<td style="' + tdB + ';width:130px;text-align:center;vertical-align:middle;'
     +   'border-right:1.5px solid #b0b0b0;padding:10px 12px">' + logoHtml + '</td>'
@@ -6405,11 +6416,7 @@ function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
     + '</td>'
     + '<td style="' + tdB + ';width:190px;padding:0;vertical-align:top">'
     +   '<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
-    +     (ref ? line('Réf :', esc(ref),
-              false, 'font-weight:700;font-family:monospace;color:#09637e;letter-spacing:.05em') : '')
-    +     line('Rév :', esc(rev), false)
-    +     (created ? line('Créé le :', esc(created), false) : '')
-    +     line('Éd. :', today, true)
+    +     rowsHtml
     +   '</table>'
     + '</td></tr></table>';
   return h;
