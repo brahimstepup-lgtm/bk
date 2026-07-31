@@ -4345,7 +4345,7 @@ html.light .pests-search-input{background:#edf2f7}
                placeholder="Rechercher (boîtes à raticide)…" oninput="renderPestRat()">
         <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                 onclick="document.getElementById('pestsRatSearch').value='';renderPestRat()">↺ Reset</button>
-        <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('rat')" title="Télécharger l'enregistrement ENR-HSE 36 (PDF)">⬇️ ENR-HSE 36</button>
+        <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('rat')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsRatStat">— lignes</span>
       </div>
 
@@ -4457,7 +4457,7 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (pièges mécanique)…" oninput="renderPestMech()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsMechSearch').value='';renderPestMech()">↺ Reset</button>
-          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 37 (PDF)">⬇️ ENR-HSE 37</button>
+          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsMechStat">— lignes</span>
         </div>
 
@@ -4497,7 +4497,7 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (boîtes à colles)…" oninput="renderPestGlue()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsGlueSearch').value='';renderPestGlue()">↺ Reset</button>
-          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 37 (PDF)">⬇️ ENR-HSE 37</button>
+          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsGlueStat">— lignes</span>
         </div>
 
@@ -13882,13 +13882,13 @@ var PEST_ENR = {
     parts:[{src:'fk', label:''}]
   },
   rat: {
-    ref:'ENR-HSE 36', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
     title:'Suivi des boîtes à raticide (extérieur)',
     sub:'Lutte contre les rongeurs — périmètre extérieur',
     parts:[{src:'rat', label:''}]
   },
   indoor: {
-    ref:'ENR-HSE 37', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
     title:'Suivi des pièges mécaniques et boîtes à colles (intérieur usine)',
     sub:'Lutte contre les rongeurs — intérieur usine',
     parts:[{src:'mech', label:'Pièges mécaniques'},
