@@ -4101,6 +4101,7 @@ html.light .pests-search-input{background:#edf2f7}
                placeholder="Rechercher dans les visites avec capture…" oninput="renderPestFlyingTypeDetail()">
         <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                 onclick="document.getElementById('pestsFlyingTypeSearch').value='';renderPestFlyingTypeDetail()">↺ Reset</button>
+        <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('fk')" title="Télécharger l'enregistrement ENR-HSE 07 (PDF)">⬇️ ENR-HSE 07</button>
         <span class="pests-stat-pill" id="pestsFlyingTypeStat">— visites</span>
       </div>
       <div class="pests-table-wrap">
@@ -4344,6 +4345,7 @@ html.light .pests-search-input{background:#edf2f7}
                placeholder="Rechercher (boîtes à raticide)…" oninput="renderPestRat()">
         <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                 onclick="document.getElementById('pestsRatSearch').value='';renderPestRat()">↺ Reset</button>
+        <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('rat')" title="Télécharger l'enregistrement ENR-HSE 36 (PDF)">⬇️ ENR-HSE 36</button>
         <span class="pests-stat-pill" id="pestsRatStat">— lignes</span>
       </div>
 
@@ -4455,7 +4457,8 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (pièges mécanique)…" oninput="renderPestMech()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsMechSearch').value='';renderPestMech()">↺ Reset</button>
-          <span class="pests-stat-pill" id="pestsMechStat">— lignes</span>
+          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 37 (PDF)">⬇️ ENR-HSE 37</button>
+        <span class="pests-stat-pill" id="pestsMechStat">— lignes</span>
         </div>
 
         <div class="pests-table-wrap">
@@ -4494,7 +4497,8 @@ html.light .pests-search-input{background:#edf2f7}
                  placeholder="Rechercher (boîtes à colles)…" oninput="renderPestGlue()">
           <button class="btn" style="font-size:10px;padding:4px 9px;flex-shrink:0"
                   onclick="document.getElementById('pestsGlueSearch').value='';renderPestGlue()">↺ Reset</button>
-          <span class="pests-stat-pill" id="pestsGlueStat">— lignes</span>
+          <button class="btn" style="font-size:10px;padding:4px 10px;flex-shrink:0;background:#0a7a9a;color:#fff;border:none;font-weight:600" onclick="printPestEnr('indoor')" title="Télécharger l'enregistrement ENR-HSE 37 (PDF)">⬇️ ENR-HSE 37</button>
+        <span class="pests-stat-pill" id="pestsGlueStat">— lignes</span>
         </div>
 
         <div class="pests-table-wrap">
@@ -13864,6 +13868,125 @@ function goPestFlyType(key, el){
 }
 
 // Rendu du panneau de détail pour le type courant
+/* ══════════════════════════════════════════════════════════════
+   ENR DE SUIVI NUISIBLES — documents téléchargeables
+   ──────────────────────────────────────────────────────────────
+   Restitue fidèlement la feuille source (en-têtes + lignes), sous
+   le cartouche documentaire commun aux autres enregistrements.
+   ══════════════════════════════════════════════════════════════ */
+var PEST_ENR = {
+  fk: {
+    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    title:'Suivi des fly-killers',
+    sub:'Insectes volants — relevés de captures par piège',
+    parts:[{src:'fk', label:''}]
+  },
+  rat: {
+    ref:'ENR-HSE 36', rev:'01', created:'04/01/2026',
+    title:'Suivi des boîtes à raticide (extérieur)',
+    sub:'Lutte contre les rongeurs — périmètre extérieur',
+    parts:[{src:'rat', label:''}]
+  },
+  indoor: {
+    ref:'ENR-HSE 37', rev:'01', created:'04/01/2026',
+    title:'Suivi des pièges mécaniques et boîtes à colles (intérieur usine)',
+    sub:'Lutte contre les rongeurs — intérieur usine',
+    parts:[{src:'mech', label:'Pièges mécaniques'},
+           {src:'glue', label:'Boîtes à colles'}]
+  }
+};
+function printPestEnr(kind){
+  var cfg = PEST_ENR[kind];
+  if(!cfg){ showToast('Document inconnu.','error'); return; }
+  var P = (D && D.pests) || {};
+  var parts = cfg.parts.filter(function(p){
+    var s = P[p.src];
+    return s && (s.headers||[]).length;
+  });
+  if(!parts.length){ showToast('Aucune donnée disponible pour ce suivi.','error'); return; }
+
+  var today = new Date();
+  var todayStr = String(today.getDate()).padStart(2,'0')+'/'
+               + String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc = ficheLogoSrc();
+  var logoHtml = logoSrc
+    ? '<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" alt="Logo">'
+    : '<div style="font-size:18px;font-weight:800;color:#c00018">SOBCO&nbsp;3</div>';
+  var td  = 'padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc = 'padding:5px 7px;border:1px solid #d0d0d0;font-size:9px;vertical-align:top;color:#334155';
+
+  var head = '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>'
+    +'<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>'
+    +'<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">'
+    +'<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">'+esc(cfg.title)+'</div>'
+    +'<div style="font-size:11px;color:#444;margin-top:3px">'+esc(cfg.sub)+'</div>'
+    +'<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div></td>'
+    +'<td style="'+td+';width:190px;padding:0;vertical-align:top">'
+    +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Réf :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">'+esc(cfg.ref)+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.rev)+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.created)+'</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555">Éd. :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+todayStr+'</td></tr>'
+    +'</table></td></tr></table>';
+
+  var body = '', totalRows = 0;
+  parts.forEach(function(p){
+    var s = P[p.src];
+    var headers = s.headers || [];
+    // Plus récent en haut, comme à l'écran
+    var rows = (s.entries||[]).slice();
+    if(rows.some(function(e){return !!e.isoDate;})){
+      rows.sort(function(a,b){
+        if(!a.isoDate&&!b.isoDate) return 0;
+        if(!a.isoDate) return 1;
+        if(!b.isoDate) return -1;
+        return b.isoDate.localeCompare(a.isoDate);
+      });
+    }
+    totalRows += rows.length;
+    if(p.label){
+      body += '<div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#0c4a6e;margin:8px 0 6px">'
+           +  esc(p.label)+' <span style="font-weight:600;color:#5a7684">· '+rows.length+' ligne(s)</span></div>';
+    }
+    body += '<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">'
+      +'<thead><tr style="background:#0c4a6e;color:#fff">'
+      + headers.map(function(h){return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px">'+esc(h||'—')+'</th>';}).join('')
+      +'</tr></thead><tbody>'
+      + (rows.length
+          ? rows.map(function(e,i){
+              var cells = e.raw || [];
+              return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">'
+                + headers.map(function(h,ci){
+                    var v = cells[ci];
+                    return '<td style="'+tdc+'">'+esc((v==null||String(v).trim()==='')?'—':String(v))+'</td>';
+                  }).join('')
+                +'</tr>';
+            }).join('')
+          : '<tr><td colspan="'+Math.max(1,headers.length)+'" style="'+tdc+';text-align:center;font-style:italic;color:#94a3b8">Aucune ligne enregistrée</td></tr>')
+      +'</tbody></table>';
+  });
+
+  var w = window.open('','_blank','width=1100,height=800'); if(!w) return;
+  var styles = '<style>*{box-sizing:border-box}body{font-family:system-ui,-apple-system,sans-serif;'
+    +'background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'
+    + esc(cfg.ref+' - '+cfg.title)+'</title>'+styles+'</head><body>');
+  w.document.write(head
+    + '<p style="font-size:9px;color:#5a7684;margin:0 0 10px">SOBCO 3 — HSE Master Dashboard · Généré le '
+    + todayStr + ' · ' + totalRows + ' ligne(s)</p>'
+    + body);
+  w.document.write('<div style="font-size:8px;color:#94a3b8;margin-top:10px">SOBCO 3 — HSE · '
+    + esc(cfg.title) + ' (' + esc(cfg.ref) + ') · édité le ' + todayStr + '</div>');
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },500);
+}
 function renderPestFlyingTypeDetail(){
   if(!D||!D.pests||!D.pests.fk) return;
   var s = D.pests.fk;
