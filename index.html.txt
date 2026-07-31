@@ -2171,6 +2171,10 @@ html.light .pests-search-input{background:#edf2f7}
       <select class="tag-dropdown" id="tagFilterResp" onchange="applyTagF()"><option value="all">Tous</option></select>
     </div>
     <div class="tag-filter-group">
+      <span class="tag-filter-lbl">⚠️ Type de danger :</span>
+      <select class="tag-dropdown" id="tagFilterDanger" onchange="applyTagF()"><option value="all">Tous</option></select>
+    </div>
+    <div class="tag-filter-group">
       <span class="tag-filter-lbl">📍 Zone :</span>
       <select class="tag-dropdown" id="tagFilterZone" onchange="applyTagF()"><option value="all">Toutes</option></select>
     </div>
@@ -8990,8 +8994,12 @@ function populateTagDropdowns(){
   // responsable / zone, alignée avec le filtrage normalisé.
   var resps=tally(D.tags.map(function(t){return t.responsable;}));
   var zones=tally(D.tags.map(function(t){return t.zone||t.emplacement;}));
+  // Dangers : regroupés par famille canonique (canonHazard), exactement
+  // comme le graphique « Types de dangers » — les deux restent cohérents.
+  var dangers=tallyHazard(D.tags.map(function(t){return t.type;}));
   resps.sort(function(a,b){return a.name.localeCompare(b.name);});
   zones.sort(function(a,b){return a.name.localeCompare(b.name);});
+  dangers.sort(function(a,b){return b.count-a.count;});
   // Construction via l'API DOM (et non innerHTML) : la valeur d'option est
   // posée en propriété .value, insensible à l'échappement HTML. Une valeur
   // contenant un guillemet (") ne peut donc plus casser l'attribut et
@@ -9013,6 +9021,7 @@ function populateTagDropdowns(){
     sel.value=cur; if(sel.value!==cur) sel.value='all';
   }
   fillSel(document.getElementById('tagFilterResp'),resps,'Tous');
+  fillSel(document.getElementById('tagFilterDanger'),dangers,'Tous');
   fillSel(document.getElementById('tagFilterZone'),zones,'Toutes');
 }
 function setTagStat(val,el){
@@ -9037,6 +9046,7 @@ function clearTagFilters(){
   ['tagYr','tagMo','tagD1','tagSep','tagD2'].forEach(function(id){document.getElementById(id).style.display='none';});
   document.getElementById('tagFilterResp').value='all';
   document.getElementById('tagFilterZone').value='all';
+  var _fd=document.getElementById('tagFilterDanger'); if(_fd) _fd.value='all';
   tagStatFilter='all';
   document.querySelectorAll('#tagStatChips .tag-filter-chip').forEach(function(c,i){c.classList.toggle('on',i===0);});
   applyTagF();
@@ -9051,6 +9061,7 @@ function applyTagF(){
   var sortVal=document.getElementById('tagSort').value;
   var filterResp=document.getElementById('tagFilterResp').value;
   var filterZone=document.getElementById('tagFilterZone').value;
+  var filterDanger=(document.getElementById('tagFilterDanger')||{}).value||'all';
 
   var filtered=(D.tags||[]).filter(function(t){
     if(!t.id||t._err) return false;
@@ -9063,6 +9074,9 @@ function applyTagF(){
     // capture toutes les variantes de saisie d'une même zone/responsable.
     if(filterResp!=='all' && normKey(t.responsable)!==normKey(filterResp)) return false;
     if(filterZone!=='all' && normKey(t.zone||t.emplacement)!==normKey(filterZone)) return false;
+    // Comparaison par famille canonique : « Danger mécanique », « Méca »
+    // et « Risque mécanique » sont traités comme un seul et même danger.
+    if(filterDanger!=='all' && canonHazard(t.type).key!==canonHazard(filterDanger).key) return false;
     if(p!=='all'){
       if(!t.isoDate) return p==='ytd';
       var pts=t.isoDate.split('-');
@@ -9141,6 +9155,7 @@ function applyTagF(){
       :searchVal?'Aucun TAG pour "'+esc(searchVal)+'"'
       :filterResp!=='all'?'Aucun TAG pour "'+esc(filterResp)+'"'
       :filterZone!=='all'?'Aucun TAG zone "'+esc(filterZone)+'"'
+      :filterDanger!=='all'?'Aucun TAG pour le danger "'+esc(filterDanger)+'"'
       :'Aucun TAG pour ce filtre';
     tb.innerHTML='<tr><td colspan="'+nCols+'" style="text-align:center;color:'
       +(D.tagsSheetError?'var(--amber)':'var(--text3)')+';padding:20px">'+msg+'</td></tr>';
