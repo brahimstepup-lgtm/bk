@@ -10125,35 +10125,33 @@ function isNuisibleTag(t){
   if(!s) return false;
   return /nuisible|rongeur|\brat\b|\brats\b|souris|insecte|mouche|moustique|cafard|blatte|termite|derat|desinsect|desinfect|raticide|appat|fly ?killer|\bfk\b|vermine|parasite/.test(s);
 }
-// Texte examiné pour les thèmes « énergie » et « nettoyage / hygiène ».
-// Contrairement aux nuisibles (danger seul), on lit aussi la
-// description, l'action et les propositions : ces sujets sont rarement
-// codifiés dans la colonne « type de danger » et s'expriment surtout en
-// texte libre (« fuite d'air comprimé », « sol souillé »…).
-function tagThemeText(t){
-  return veilleNorm([t.type, t.risque, t.description, t.action,
-                     t.propositions, t.zone, t.emplacement]
-                    .filter(Boolean).join(' '));
+// Thème d'un TAG : on n'examine que le TYPE DE DANGER (type / risque),
+// exactement comme le filtre « Type de danger » de la section TAGs et
+// comme le plan d'action nuisibles. Le libellé du danger fait foi : la
+// description libre n'est jamais scannée, ce qui évite les lignes hors
+// sujet et rend le tri lisible depuis la section TAGs.
+function tagHazardText(t){
+  return veilleNorm((t.type||'') + ' ' + (t.risque||''));
 }
-// Déchets et environnement : hors périmètre des deux plans d'action —
-// un TAG qui en relève est écarté, même s'il emploie par ailleurs un
-// mot du vocabulaire énergie (« gaspillage ») ou nettoyage (« sale »).
-var TAG_ENV_DECHETS = /environnement|environnemental|pollution|\brejet|effluent|dechet|ordure|poubelle|corbeille|\bbenne|recyclage|recycl|tri selectif|\btri\b|emission|carbone|\bco2\b|compost|ferraille|rebut|debris|residu/;
-// Énergie : consommations et gaspillages d'énergie et de fluides
-// (électricité, gaz, eau, air comprimé, vapeur) — hors environnement.
+// Déchets et environnement : hors périmètre des deux plans d'action.
+var TAG_ENV_DECHETS = /environnement|pollution|\brejet|effluent|dechet|ordure|poubelle|recyclage|tri selectif|emission|carbone|\bco2\b/;
+// Énergie : énergie et fluides (gaz, eau, air comprimé, vapeur,
+// éclairage, chauffage / climatisation) — hors environnement. Le danger
+// « Électrique » n'est PAS retenu : il désigne un risque de sécurité
+// (contact, coffret ouvert), pas une consommation ; « consommation
+// électrique » ou « énergie » sont eux bien reconnus.
 function isEnergieTag(t){
   if(!t || !t.id || t._err) return false;
-  var s = tagThemeText(t); if(!s) return false;
+  var s = tagHazardText(t); if(!s) return false;
   if(TAG_ENV_DECHETS.test(s)) return false;
-  return /energie|energetique|electricite|surconsommation|consommation|compteur|kwh|eclairage|lumiere|lampe|neon|ampoule|\bled\b|gaspill|fuite|air comprime|vapeur|calorifug|isolation|chauffage|climatis|\bclim\b|groupe froid|chaudiere|marche a vide|reste allume|restee allumee|\beau\b|\bgaz\b|carburant|gasoil|fioul|mazout|solaire|photovolt/.test(s);
+  return /energ|eclairage|gaspill|consommation|fluide|air comprime|vapeur|calorifug|chauffage|climatis|\bclim\b|\bgaz\b|\beau\b|carburant|compteur/.test(s);
 }
-// Nettoyage : propreté des locaux, hygiène, ordre et rangement —
-// hors environnement et gestion des déchets.
+// Nettoyage : propreté des locaux, hygiène, ordre et rangement.
 function isNettoyageTag(t){
   if(!t || !t.id || t._err) return false;
-  var s = tagThemeText(t); if(!s) return false;
+  var s = tagHazardText(t); if(!s) return false;
   if(TAG_ENV_DECHETS.test(s)) return false;
-  return /nettoy|proprete|salete|\bsale\b|\bsales\b|souill|encrass|poussiere|hygiene|sanitaire|vestiaire|toilette|\bwc\b|lavabo|douche|savon|desinfect|lavage|\blaver\b|balai|serpill|karcher|detergent|entretien des locaux|\b5s\b|ordre|rangement|encombr|moisissure|odeur|stagnant|graisse/.test(s);
+  return /nettoy|proprete|salubr|salete|souill|hygiene|sanitaire|desinfect|entretien|poussiere|\b5s\b|ordre|rangement|encombr/.test(s);
 }
 function sapPayload(section){
   var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
