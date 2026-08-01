@@ -2447,10 +2447,18 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ ÉNERGIE ═══ -->
 <div id="env" class="page">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:11px">
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap">
     <button class="crud-btn add" style="font-size:11px;padding:6px 14px"
             onclick="printEnergyReport()"
             title="Générer le rapport de suivi énergétique (PDF)">📊 Rapport de suivi énergétique</button>
+    <button class="btn" style="background:#15803d;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openSectionActionPlan('energie')"
+            title="Plan d'action des TAGs « énergie » — économie d'énergie, gaspillage et environnement (ENR-HSE 36)">
+      📋 Plan d'action <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 36</span>
+    </button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="downloadSectionActionPlan('energie')"
+            title="Télécharger le plan d'action énergie &amp; environnement (PDF)">⬇️ Télécharger</button>
   </div>
   <div class="egrid" id="egrids"></div>
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px">
@@ -3012,6 +3020,18 @@ html.light .pests-search-input{background:#edf2f7}
       <em style="color:var(--text3)">Suivi de Nettoyage - Sobco 3_Images</em>.
       Photo « Avant » seule → <strong style="color:var(--red)">En cours</strong> · « Avant » + « Après » → <strong style="color:var(--green)">Terminé</strong>.
     </p>
+  </div>
+
+  <!-- ─── Plan d'action « nettoyage & hygiène » (source : section TAGs) ─── -->
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap">
+    <button class="btn" style="background:#15803d;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openSectionActionPlan('nettoyage')"
+            title="Plan d'action des TAGs « nettoyage » — propreté des locaux, hygiène, ordre et rangement (ENR-HSE 37)">
+      📋 Plan d'action <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 37</span>
+    </button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="downloadSectionActionPlan('nettoyage')"
+            title="Télécharger le plan d'action nettoyage &amp; hygiène (PDF)">⬇️ Télécharger</button>
   </div>
 
   <!-- ═══ Boutons principaux Nettoyage ═══ -->
@@ -10045,8 +10065,78 @@ function isNuisibleTag(t){
   if(!s) return false;
   return /nuisible|rongeur|\brat\b|\brats\b|souris|insecte|mouche|moustique|cafard|blatte|termite|derat|desinsect|desinfect|raticide|appat|fly ?killer|\bfk\b|vermine|parasite/.test(s);
 }
+// Texte examiné pour les thèmes « énergie / environnement » et
+// « nettoyage / hygiène ». Contrairement aux nuisibles (danger seul),
+// on lit aussi la description, l'action et les propositions : ces
+// sujets sont rarement codifiés dans la colonne « type de danger » et
+// s'expriment surtout en texte libre (« fuite d'air comprimé », « sol
+// souillé »…). Le vocabulaire ciblé est assez spécifique pour que le
+// risque de faux positif reste faible.
+function tagThemeText(t){
+  return veilleNorm([t.type, t.risque, t.description, t.action,
+                     t.propositions, t.zone, t.emplacement]
+                    .filter(Boolean).join(' '));
+}
+// Économie d'énergie · gaspillage · environnement
+function isEnergieTag(t){
+  if(!t || !t.id || t._err) return false;
+  var s = tagThemeText(t); if(!s) return false;
+  return /energie|energetique|electricite|surconsommation|consommation|compteur|kwh|eclairage|lumiere|lampe|neon|ampoule|\bled\b|gaspill|fuite|air comprime|vapeur|calorifug|isolation|chauffage|climatis|\bclim\b|groupe froid|chaudiere|environnement|pollution|rejet|effluent|dechet|recyclage|\btri\b|emission|carbone|co2|\beau\b|\bgaz\b|carburant|gasoil|fioul|mazout|solaire|photovolt/.test(s);
+}
+// Nettoyage · hygiène · propreté des locaux
+function isNettoyageTag(t){
+  if(!t || !t.id || t._err) return false;
+  var s = tagThemeText(t); if(!s) return false;
+  return /nettoy|proprete|salete|\bsale\b|\bsales\b|souill|encrass|poussiere|hygiene|sanitaire|vestiaire|toilette|\bwc\b|lavabo|douche|savon|desinfect|lavage|\blaver\b|balai|serpill|karcher|detergent|entretien des locaux|\b5s\b|ordre|rangement|encombr|moisissure|odeur|stagnant|graisse|residu|debris|poubelle|corbeille/.test(s);
+}
 function sapPayload(section){
   var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
+  // Plans d'action thématiques extraits de la section TAGs : même
+  // structure de tableau, seuls le filtre, le titre et la codification
+  // changent d'un thème à l'autre.
+  var THEMES = {
+    energie: {
+      filter: isEnergieTag,
+      title:  "Plan d'action HSE — Énergie & Environnement",
+      sub:    "TAGs « énergie » — économie d'énergie · gaspillage · environnement",
+      ref:    'ENR-HSE 36',
+      lbl:    'énergie / environnement'
+    },
+    nettoyage: {
+      filter: isNettoyageTag,
+      title:  "Plan d'action HSE — Nettoyage & Hygiène",
+      sub:    'TAGs « nettoyage » — propreté des locaux · hygiène · ordre et rangement',
+      ref:    'ENR-HSE 37',
+      lbl:    'nettoyage / hygiène'
+    }
+  };
+  if (THEMES[section]) {
+    var TH    = THEMES[section];
+    var ttags = ((D && D.tags) || []).filter(TH.filter);
+    var nOpenT = ttags.filter(function(t){ return tagIsOpen(t); }).length;
+    return {
+      title:    TH.title,
+      subtitle: TH.sub,
+      ref:      TH.ref,
+      rev:      '01',
+      created:  enrCreatedFor(TH.ref),
+      meta:  ttags.length + ' TAG(s) « ' + TH.lbl + ' » · ' + nOpenT + ' ouvert(s) · '
+           + (ttags.length - nOpenT) + ' fermé(s) — extraits automatiquement de la section TAGs',
+      cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
+              {k:'zone',l:'Zone',w:7},{k:'empl',l:'Emplacement',w:9},
+              {k:'type',l:'Danger',w:9},
+              {k:'desc',l:'Description',w:15},{k:'action',l:'Action urgente',w:14},
+              {k:'prop',l:'Propositions',w:14},{k:'resp',l:'Responsable',w:8},
+              {k:'statut',l:'Statut',w:6} ],
+      rows: ttags.map(function(t){ return {
+        id:v(t.id), date:v(t.date), cible:v(t.dateCible),
+        zone:v(t.zone), empl:v(t.emplacement), type:v(t.type||t.risque),
+        desc:v(t.description),
+        action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
+        prop:v(t.propositions), resp:v(t.responsable),
+        statut:t.statut?String(t.statut).trim():(tagIsOpen(t)?'Ouvert':'Fermé') }; })
+    };
+  }
   if (section === 'incidents') {
     var incs = (D && D.incidents) || [];
     var nAct = incs.filter(function(x){ return x.actions && String(x.actions).trim(); }).length;
@@ -10140,7 +10230,8 @@ function sapPayload(section){
 }
 var sapLoading = false;
 function openSectionActionPlan(section){
-  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS', nuisibles:'NUISIBLES' };
+  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS', nuisibles:'NUISIBLES',
+               energie:'ÉNERGIE & ENVIRONNEMENT', nettoyage:'NETTOYAGE & HYGIÈNE' };
   var p    = sapPayload(section);
   // Badge de la visionneuse : affiche la codification quand elle existe
   var kind = (p && p.ref)
@@ -10208,7 +10299,8 @@ function sapRun(p, kind){
 // Génère le plan d'action d'une section et le TÉLÉCHARGE directement
 // (sans passer par la visionneuse).
 function downloadSectionActionPlan(section){
-  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs',nuisibles:'Nuisibles'};
+  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs',nuisibles:'Nuisibles',
+           energie:'Énergie & Environnement',nettoyage:'Nettoyage & Hygiène'};
   var p=sapPayload(section);
   if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if(!p || !p.rows.length){ showToast('Aucune donnée dans cette section.','error'); return; }
