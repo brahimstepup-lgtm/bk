@@ -3791,6 +3791,55 @@ function readPesticides(ss) {
   return res;
 }
 
+// ════════════════════════════════════════════════════════════
+// BANDEAU D'INFORMATION (feuille « news »)
+// ────────────────────────────────────────────────────────────
+// Une colonne « text » : chaque ligne non vide devient un message
+// défilant en bas du Mode TV. Feuille absente ou colonne vide →
+// tableau vide, et le bandeau n'est tout simplement pas affiché.
+// Le texte est restitué tel quel (arabe, français…) ; le sens de
+// défilement est déduit de la langue côté client.
+// ════════════════════════════════════════════════════════════
+function readNews(ss) {
+  var out = [];
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n === 'news' || n.indexOf('news') > -1 ||
+          n.indexOf('bandeau') > -1 || n.indexOf('information') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) { Logger.log('News sheet NOT found'); return out; }
+
+    var data = sh.getDataRange().getValues();
+    if (!data || !data.length) return out;
+
+    // Colonne du texte : entête « text » / « texte » / « message »,
+    // à défaut la colonne A.
+    var col = -1, hdrRow = -1;
+    for (var r0 = 0; r0 < Math.min(data.length, 3) && col < 0; r0++) {
+      var row = data[r0] || [];
+      for (var c0 = 0; c0 < row.length; c0++) {
+        var h = normalize(String(row[c0] || ''));
+        if (h === 'text' || h === 'texte' || h.indexOf('message') > -1 ||
+            h.indexOf('info') > -1 || h.indexOf('annonce') > -1) { col = c0; hdrRow = r0; break; }
+      }
+    }
+    if (col < 0) { col = 0; hdrRow = -1; }
+
+    for (var r = hdrRow + 1; r < data.length; r++) {
+      var v = (data[r] || [])[col];
+      if (isNull(v)) continue;
+      var t = safeText(v).trim();
+      if (!t) continue;
+      if (normalize(t) === 'text' || normalize(t) === 'texte') continue;   // entête recopiée
+      out.push(t);
+    }
+    Logger.log('News : ' + out.length + ' message(s) — ' + sh.getName());
+  } catch (e) { Logger.log('readNews error: ' + e.message); }
+  return out;
+}
+
 function readCartoNuisibles(ss) { return readCartoSheet(ss, 'nuisible'); }
 function readCartoFlyKiller(ss) { return readCartoSheet(ss, 'fly'); }
 
@@ -4323,6 +4372,9 @@ function getData() {
   out.plan3d = p3d.entries || [];
   out.plan3dSheetName = p3d.sheetName || '';
   out.plan3dSourceUrl = p3d.sourceUrl || '';
+
+  // ── Bandeau d'information du Mode TV (feuille « news ») ─────
+  out.news = readNews(ss);
 
   // ── ENR-HSE 38 — suivi de l'application des pesticides ──────
   var pest13 = readPesticides(ss);

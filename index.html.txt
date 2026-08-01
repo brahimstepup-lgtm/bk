@@ -1478,6 +1478,27 @@ html.light .pests-search-input{background:#edf2f7}
 .tv-footer b{color:var(--tv-lbl);font-weight:700}
 .tv-footer .tv-upd{margin-left:auto;font-family:'JetBrains Mono',monospace}
 
+/* ── Bandeau d'information défilant (feuille « news ») ──────────
+   Masqué tant qu'aucun message n'est renseigné. Le sens de
+   défilement suit la langue : de droite à gauche en arabe, de
+   gauche à droite en français (animation jouée à l'envers). */
+.tv-news{flex-shrink:0;display:none;align-items:center;gap:clamp(8px,.9vw,16px);
+  margin-top:clamp(6px,1vh,12px);border-top:1px solid var(--tv-border);
+  padding-top:clamp(5px,.8vh,10px);overflow:hidden}
+.tv-news.on{display:flex}
+.tv-news-tag{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;
+  padding:clamp(3px,.4vh,7px) clamp(8px,.9vw,15px);border-radius:20px;
+  font-size:clamp(9px,.9vw,14px);font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  background:color-mix(in srgb,var(--tv-r) 16%,transparent);color:var(--tv-r);
+  border:1px solid color-mix(in srgb,var(--tv-r) 45%,transparent)}
+.tv-news-view{flex:1;min-width:0;overflow:hidden}
+.tv-news-track{display:inline-block;white-space:nowrap;padding-left:100%;
+  font-size:clamp(13px,1.6vw,30px);font-weight:700;color:var(--tv-lbl);
+  animation-name:tvNewsScroll;animation-timing-function:linear;animation-iteration-count:infinite}
+.tv-news-track.ltr{animation-direction:reverse}
+@keyframes tvNewsScroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media(prefers-reduced-motion:reduce){.tv-news-track{animation:none;padding-left:0}}
+
 /* ── Menu « Choisir un thème » (toujours sombre : lisible partout) ── */
 .tv-theme-box{position:relative;margin-left:14px;flex-shrink:0}
 .tv-theme-btn{height:clamp(30px,2.6vw,42px);padding:0 clamp(9px,.9vw,16px);
@@ -5166,6 +5187,11 @@ html.light .pests-search-input{background:#edf2f7}
   <div class="tv-footer">
     <span>🎯 <b>Objectifs 2026 :</b> 0 accident · TF ≤ 30 · TG ≤ 0.8 · TVM ≥ 95% · Résolution TAGs ≥ 95%</span>
     <span class="tv-upd" id="tvUpd">—</span>
+  </div>
+  <!-- Bandeau d'information défilant — feuille « news » (masqué si vide) -->
+  <div class="tv-news" id="tvNews">
+    <span class="tv-news-tag">📢 Info</span>
+    <div class="tv-news-view"><div class="tv-news-track" id="tvNewsTrack"></div></div>
   </div>
 </div>
 
@@ -10951,7 +10977,32 @@ function renderTvDash(){
           tvStatus(m.taux_res_tags,95,false))
   ].join('');
 
+  renderTvNews();
   tvUpdateStamp();
+}
+/* ══ Bandeau d'information défilant (feuille « news ») ══════════
+   • Cellule de texte vide → bandeau masqué, aucune place perdue.
+   • Sens de défilement selon la langue du message : de droite à
+     gauche en arabe (écriture RTL), de gauche à droite sinon —
+     l'animation est la même, jouée à l'envers.
+   • Vitesse proportionnelle à la longueur, pour rester lisible. */
+function tvNewsIsArabic(s){ return /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/.test(String(s||'')); }
+function renderTvNews(){
+  var box=document.getElementById('tvNews'), track=document.getElementById('tvNewsTrack');
+  if(!box||!track) return;
+  var msgs=((D&&D.news)||[]).map(function(x){ return String(x==null?'':x).trim(); })
+                            .filter(function(x){ return x.length>0; });
+  if(!msgs.length){ box.classList.remove('on'); track.textContent=''; return; }
+
+  var txt=msgs.join('    ✦    ');
+  var rtl=tvNewsIsArabic(txt);
+  track.textContent=txt;
+  track.dir = rtl ? 'rtl' : 'ltr';
+  track.classList.toggle('ltr', !rtl);          // sens inverse hors arabe
+  // ~11 caractères par seconde, borné pour rester confortable
+  var dur=Math.min(90,Math.max(16,Math.round(txt.length/11*2)));
+  track.style.animationDuration=dur+'s';
+  box.classList.add('on');
 }
 // Pied de page : heure des données + ÂGE réel, pour que toute panne de
 // synchronisation soit visible immédiatement (au lieu d'afficher
