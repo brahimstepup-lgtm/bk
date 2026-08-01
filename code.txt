@@ -4724,6 +4724,32 @@ function calcMetrics(d) {
   function mon(key,m){ return (k[key]!==undefined&&k[key][m]!==null)?k[key][m]:null; }
   function mths(key){ return k[key]?k[key].months:[]; }
   var total=d.tags.length, open=d.tagsOpen.length;
+
+  // ── TAGs : le registre fait référence ─────────────────────
+  // La ligne « Situations dangereuses (TAGs) » de la feuille KPI est
+  // souvent laissée à 0 alors que des TAGs sont bien enregistrés. La
+  // vue globale doit afficher la même chose que la section TAGs : dès
+  // que le registre contient des lignes, c'est lui qui alimente le
+  // cumul annuel ET la répartition mensuelle ; la feuille KPI ne sert
+  // plus que de repli (registre vide ou non chargé).
+  var _tagsKpiYtd = ytd('Situations dangereuses (TAGs)');
+  var _tagsKpiM   = mths('Situations dangereuses (TAGs)');
+  var _tagsYtd    = total || _tagsKpiYtd;
+  var _tagsM      = _tagsKpiM;
+  if (total) {
+    var byMonth = [null,null,null,null,null,null,null,null,null,null,null,null];
+    var dated = 0;
+    (d.tags || []).forEach(function(t){
+      var iso = t && t.isoDate;
+      if (!iso) return;
+      var mi = parseInt(String(iso).substring(5,7), 10) - 1;
+      if (mi < 0 || mi > 11) return;
+      byMonth[mi] = (byMonth[mi] || 0) + 1;
+      dated++;
+    });
+    // Sans date exploitable, on garde la série de la feuille KPI.
+    if (dated) _tagsM = byMonth;
+  }
   var totalNJP=0; (d.accidents||[]).forEach(function(a){totalNJP+=(a.njp||0);});
 
   // ── NETTOYAGE ─────────────────────────────────────────────
@@ -4825,7 +4851,7 @@ function calcMetrics(d) {
     at_fatal:ytd('Accident Travail (FATAL)'),at_majeur:ytd('Accident Travail (MAJEUR)'),
     at_mineur:ytd('Accident Travail (MINEUR)'),at_total:ytd('Accident Travail (AT) (Total)'),
     jp_ytd:ytd('Jours Perdus'),inc_ytd:ytd('Accident Travail (SANS AT) - INCIDENT'),
-    tags_ytd:ytd('Situations dangereuses (TAGs)'),taux_tags:ytd('Taux de remontées TAGs'),
+    tags_ytd:_tagsYtd,taux_tags:ytd('Taux de remontées TAGs'),
     tvm:ytd('TVM - Taux de visite médicale'),prestataires:ytd('% prestataires conformes HSE'),
     taux_res_tags:ytd('Taux de résolution Tags'),
     ratio_elt_ytd:ytd('Ratio ELT (kWh/unité prod)'),ratio_gaz_ytd:ytd('Ratio GAZ (m3/unité prod)'),
@@ -4849,7 +4875,7 @@ function calcMetrics(d) {
     tf1_months:mths('Taux de Fréquence (TF1)'),tg_months:mths('Taux de Gravité (TG)'),
     at_months:mths('Accident Travail (AT) (Total)'),atM_months:mths('Accident Travail (MAJEUR)'),
     atm_months:mths('Accident Travail (MINEUR)'),inc_months:mths('Accident Travail (SANS AT) - INCIDENT'),
-    tags_months:mths('Situations dangereuses (TAGs)'),tvm_months:mths('TVM - Taux de visite médicale'),
+    tags_months:_tagsM,tvm_months:mths('TVM - Taux de visite médicale'),
     pres_months:mths('% prestataires conformes HSE'),
     relt_months:mths('Ratio ELT (kWh/unité prod)'),rgaz_months:mths('Ratio GAZ (m3/unité prod)'),reau_months:mths('Ratio EAU (m3/unité prod)'),
     elt_months:mths('Consommation ELT (kWh)'),gaz_months:mths('Consommation GAZ (m3)'),eau_months:mths('Consommation EAU (m3)'),

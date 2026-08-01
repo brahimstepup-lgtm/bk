@@ -7997,6 +7997,17 @@ function setPyrMode(m){
   renderPyramid();
 }
 
+// Cumul TAGs affiché hors de la section TAGs (vue globale, en-tête,
+// pyramide, bilan) : le REGISTRE de la section fait référence, comme
+// la pastille « Total » de cette section. La ligne « Situations
+// dangereuses (TAGs) » de la feuille KPI, souvent laissée à 0, n'est
+// plus qu'un repli quand le registre est vide ou pas encore chargé.
+function tagsGlobalCount(){
+  var n = (D && D.tags) ? D.tags.length : 0;
+  if(n) return n;
+  var m = (D && D.metrics) || {};
+  return m.tags_ytd != null ? m.tags_ytd : 0;
+}
 // ══ PYRAMIDE ══════════════════════════════════════════════════
 function getCSSVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function populatePyrMonths(){
@@ -8027,12 +8038,12 @@ function renderPyramid(){
   populatePyrMonths();
   var sel=document.getElementById('pyrSel');
   var fatal,majeur,mineur,incident,tags;
-  if(pyrMode==='ytd'){ fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=m.tags_ytd; }
+  if(pyrMode==='ytd'){ fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=tagsGlobalCount(); }
   else{
     var idx=parseInt(sel&&sel.value,10);
     if(isNaN(idx)){
       // Aucun mois disponible : on bascule sur YTD
-      fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=m.tags_ytd;
+      fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=tagsGlobalCount();
     } else {
       var aMj=m.atM_months||[], aMn=m.atm_months||[], aI=m.inc_months||[], aT=m.tags_months||[];
       fatal=0;
@@ -8527,7 +8538,7 @@ function accBilanPyramidHtml(){
     {l:'MAJEUR',   i:'🔴', v:m.at_majeur, a:'#ffe4cc', b:'#ffaa66', t:'#7a3000', bd:'rgba(249,115,22,.4)'},
     {l:'MINEUR',   i:'🟠', v:m.at_mineur, a:'#fff5cc', b:'#ffd966', t:'#5a3a00', bd:'rgba(245,166,35,.4)'},
     {l:'INCIDENTS',i:'🔵', v:m.inc_ytd,   a:'#d6eef7', b:'#7abfdb', t:'#003a55', bd:'rgba(9,99,126,.4)'},
-    {l:'TAGs',     i:'🟢', v:m.tags_ytd,  a:'#ccf0e0', b:'#66c99a', t:'#00432a', bd:'rgba(16,201,133,.4)'}
+    {l:'TAGs',     i:'🟢', v:tagsGlobalCount(), a:'#ccf0e0', b:'#66c99a', t:'#00432a', bd:'rgba(16,201,133,.4)'}
   ];
   var W=[44,82,126,172,216], CONN=['#ff8599','#ffaa66','#ffd966','#7abfdb'];
   var h='<div style="display:flex;flex-direction:column;align-items:center;padding:2px 0 4px">';
@@ -10716,7 +10727,7 @@ function render(data){
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
   document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
   document.getElementById('h-tf').textContent='TF: '+fmtNum(m.tf1_ytd);
-  document.getElementById('h-tags').textContent='TAGs: '+fmtNum(m.tags_ytd);
+  document.getElementById('h-tags').textContent='TAGs: '+fmtNum(tagsGlobalCount());
   document.getElementById('footer').textContent='SOBCO 3 – HSE Dashboard v9.2 · BK Design · '+new Date().toLocaleDateString('fr-FR')+' · BRAHIM KAOUACHI';
   document.getElementById('alertTxt').innerHTML=
     '<strong>SOBCO 3 HSE 2026 :</strong> TF=<strong>'+fmtNum(m.tf1_ytd)+'</strong>(obj≤30) · '
@@ -10740,7 +10751,7 @@ function render(data){
             'k-g',null,null),
     kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
     kpiCard('Incidents',   (m.nb_incidents!=null?m.nb_incidents:((D&&D.incidents)?D.incidents.length:m.inc_ytd)), 'b','Sans AT · enregistrés', 'k-b',null,null),
-    kpiCard('TAGs',        m.tags_ytd,       'g','YTD cumulé',   'k-g',null,null),
+    kpiCard('TAGs',        tagsGlobalCount(),'g','Registre section TAGs','k-g',null,null),
     kpiCard('TVM',         fmtNum(m.tvm)+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
     kpiCard('Résol.TAGs',  fmtNum(m.taux_res_tags)+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
   ].join('');
