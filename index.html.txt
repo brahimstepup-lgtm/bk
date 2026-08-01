@@ -4025,6 +4025,11 @@ html.light .pests-search-input{background:#edf2f7}
             onclick="openListeProduitsChimiques()">
       🧪 Liste des produits chimiques <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE-22</span>
     </button>
+    <button class="btn" style="background:#0f766e;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openPesticides()"
+            title="Suivi de l'application des pesticides — traitements réalisés (date, produit, localisation, cible, dosage, méthode)">
+      🧴 Application des pesticides <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 13</span>
+    </button>
     <button class="btn" style="background:#475569;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openFichesTechniques()">
       📄 Fiches techniques
@@ -4609,6 +4614,27 @@ html.light .pests-search-input{background:#edf2f7}
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ENR-HSE 13 — APPLICATION DES PESTICIDES ═══ -->
+<div class="modal-bg" id="pesticidesModal" style="display:none" onclick="if(event.target===this)closeModal('pesticidesModal')">
+  <div class="modal-panel" style="max-width:1080px;width:96vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(15,118,110,.18);border-color:rgba(15,118,110,.5);color:#0f766e">🧴</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name">Suivi de l'application des pesticides</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <span class="mono" style="font-size:10px;color:#0f766e;font-weight:700">ENR-HSE 13</span>
+          · <span id="pesticidesMeta">—</span>
+        </div>
+      </div>
+      <button class="btn" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="printPesticides()">🖨️ Imprimer / PDF</button>
+      <button class="modal-close" onclick="closeModal('pesticidesModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:80vh;overflow-y:auto" id="pesticidesBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)">Chargement…</div>
     </div>
   </div>
 </div>
@@ -5312,7 +5338,9 @@ function printSensibPlanning(){
     +'<td style="'+td+';width:190px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 27</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Page :</td><td style="padding:4px 8px">1 / 1</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 27')+'</td></tr>'
     +'</table></td></tr></table>';
 
   var body;
@@ -6699,7 +6727,7 @@ function printDechets(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 34')+'</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse : total par type
@@ -6907,7 +6935,7 @@ function printCphsPlan(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 33')+'</td></tr>'
     +'</table></td></tr></table>';
   var table;
   if(rows.length){
@@ -7303,7 +7331,7 @@ function printVeille(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 26')+'</td></tr>'
     +'</table></td></tr></table>';
 
   var scoreHtml=scoreEl
@@ -7344,7 +7372,7 @@ function printVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal','pestEnr07Modal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal','pestEnr07Modal','pesticidesModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -7795,7 +7823,7 @@ function printActionsPlan(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 31')+'</td></tr>'
     +'</table></td></tr></table>';
 
   var synth='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">'
@@ -7860,6 +7888,30 @@ function cleanMonths(arr,hdrs){
 function infoItem(lbl,val){ return val&&String(val).trim()&&val!=='—'?'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+esc(String(val))+'</div></div>':''; }
 function infoItemF(lbl,val){ return'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+(val?esc(String(val)):'—')+'</div></div>'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ══════════════════════════════════════════════════════════════
+   DATE DE CRÉATION DES ENREGISTREMENTS (cartouche des PDF)
+   ──────────────────────────────────────────────────────────────
+   Référence : la section « Enregistrements » (feuille du même nom).
+   Si cette feuille porte une date pour le code de l'ENR, c'est elle
+   qui fait foi ; sinon on retient la date d'entrée en vigueur du
+   système documentaire : 04/01/2026.
+   Tous les documents générés en PDF passent par cette fonction, afin
+   que la ligne « Créé le » soit présente et cohérente partout.
+   ══════════════════════════════════════════════════════════════ */
+var ENR_CREATED_DEFAULT = '04/01/2026';
+function enrRefKey(ref){ return String(ref||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function enrCreatedFor(ref){
+  var k = enrRefKey(ref);
+  if(k){
+    var rows = ((D||{}).enregistrements)||[];
+    for(var i=0;i<rows.length;i++){
+      if(rows[i] && rows[i].created && enrRefKey(rows[i].code)===k)
+        return String(rows[i].created).trim();
+    }
+  }
+  return ENR_CREATED_DEFAULT;
+}
 function escAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtNum(v){
   if(v===null||v===undefined||v==='') return v;
@@ -8484,8 +8536,10 @@ function renderAccBilan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR HSE 25</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR HSE 25')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   if(!accs.length){
@@ -8682,8 +8736,10 @@ function renderAccActionPlan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MAQ-09</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('PLA-MAQ-09')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Informations générales (statiques) ────────────────────────
@@ -9544,7 +9600,7 @@ function printEnergyReport(){
     +'<td style="'+td+';width:170px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 32</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 32')+'</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse YTD
@@ -10038,7 +10094,7 @@ function sapPayload(section){
       subtitle: 'TAGs « nuisibles » — dératisation · désinsectisation · désinfection',
       ref:      'ENR-HSE 35',
       rev:      '01',
-      created:  '04/01/2026',
+      created:  enrCreatedFor('ENR-HSE 35'),
       meta:  ntags.length + ' TAG(s) « nuisibles » · ' + nOpenN + ' ouvert(s) · '
            + (ntags.length - nOpenN) + ' fermé(s) — extraits automatiquement de la section TAGs',
       cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
@@ -10064,7 +10120,7 @@ function sapPayload(section){
       subtitle: 'Suivi des situations dangereuses signalées — SOBCO 3',
       ref:      'ENR-HSE 30',
       rev:      '01',
-      created:  '04/01/2026',      // date de création du document
+      created:  enrCreatedFor('ENR-HSE 30'),   // date de création du document
       meta:  tags.length + ' TAG(s) · ' + nOpen + ' ouvert(s) · '
            + (tags.length - nOpen) + ' fermé(s)',
       cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
@@ -13905,19 +13961,19 @@ var PEST_RAT_LEGEND = [
 ];
 var PEST_ENR = {
   fk: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi des fly-killers',
     sub:'Insectes volants — relevés de captures par piège',
     parts:[{src:'fk', label:''}]
   },
   rat: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi des boîtes à raticide (extérieur)',
     sub:'Lutte contre les rongeurs — périmètre extérieur',
     parts:[{src:'rat', label:'', legend:PEST_RAT_LEGEND}]
   },
   indoor: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi des pièges mécaniques et boîtes à colles (intérieur usine)',
     sub:'Lutte contre les rongeurs — intérieur usine',
     parts:[{src:'mech', label:'Pièges mécaniques'},
@@ -13925,7 +13981,7 @@ var PEST_ENR = {
   },
   // Document unique regroupant les trois suivis (bouton en tête de section)
   all: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi et vérification des pièges',
     sub:'Fly-killers · boîtes à raticide (extérieur) · pièges mécaniques et boîtes à colles (intérieur usine)',
     parts:[{src:'fk',   label:'Fly-killers — insectes volants'},
@@ -13967,7 +14023,7 @@ function printPestEnr(kind){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.rev)+'</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+esc(cfg.created)+'</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+esc(cfg.created||enrCreatedFor(cfg.ref))+'</td></tr>'
     +'</table></td></tr></table>';
 
   var body = '', totalRows = 0;
@@ -15819,8 +15875,10 @@ function renderRapportTendanceNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0a7a9a;letter-spacing:.05em">ENR-HSE 23</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 23')+'</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16184,8 +16242,10 @@ function renderRecensementNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#16a34a;letter-spacing:.05em">ENR-HSE-20</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE-20')+'</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16538,6 +16598,172 @@ function printFichesTechniques(){
   setTimeout(function(){w.print();},400);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   ENR-HSE 13 — SUIVI DE L'APPLICATION DES PESTICIDES
+   ──────────────────────────────────────────────────────────────
+   Restitue la feuille « Suivi de l'application des pesticides
+   (ENR HSE 13) » sous le cartouche documentaire commun : toutes les
+   colonnes du Sheet sont reprises telles quelles (donc une colonne
+   ajoutée au classeur apparaît ici sans toucher au code), les
+   traitements les plus récents en tête, et la colonne « Lien drive »
+   devient un bouton d'ouverture / téléchargement.
+   ══════════════════════════════════════════════════════════════ */
+function openPesticides(){
+  if(!document.getElementById('pesticidesModal')) return;
+  openModal('pesticidesModal');
+  renderPesticides();
+}
+function renderPesticides(){
+  var body=document.getElementById('pesticidesBody');
+  if(!body) return;
+  var headers=((D||{}).pesticidesHeaders)||[];
+  var rows=(((D||{}).pesticides)||[]).slice();
+  var linkCol=((D||{}).pesticidesLinkCol);
+  if(linkCol===undefined||linkCol===null) linkCol=-1;
+  var srcUrl=((D||{}).pesticidesSourceUrl)||'';
+
+  var metaEl=document.getElementById('pesticidesMeta');
+  if(metaEl) metaEl.textContent=rows.length
+    ? rows.length+' application(s) enregistrée(s)'
+    : 'aucune application enregistrée';
+
+  if(!headers.length){
+    body.innerHTML='<div style="text-align:center;padding:32px;color:var(--text3)">'
+      +'<div style="font-size:30px">🧴</div><b>Feuille introuvable.</b><br>'
+      +'Vérifiez l\'onglet <code>Suivi de l\'application des pesticides (ENR HSE 13)</code> du classeur, puis redéployez.</div>';
+    return;
+  }
+
+  // Plus récent en tête (quand une colonne date est exploitable)
+  if(rows.some(function(e){return !!e.isoDate;})){
+    rows.sort(function(a,b){
+      if(!a.isoDate&&!b.isoDate) return 0;
+      if(!a.isoDate) return 1;
+      if(!b.isoDate) return -1;
+      return b.isoDate.localeCompare(a.isoDate);
+    });
+  }
+
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'
+              +String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9.5px;vertical-align:top;color:#334155';
+
+  var h='<div id="pesticidesPrint">';
+  // ── Cartouche documentaire ────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>';
+  h+='<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Suivi de l\'application des pesticides</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Traitements réalisés — produit, localisation, cible, dosage et méthode</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+td+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0f766e;letter-spacing:.05em">ENR-HSE 13</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 13')+'</td></tr>';
+  h+='</table></td></tr></table>';
+
+  h+='<p style="font-size:9px;color:#5a7684;margin:0 0 10px">SOBCO 3 — HSE Master Dashboard · '
+    +rows.length+' application(s) · édité le '+todayStr+'</p>';
+
+  // ── Tableau des applications ──────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<thead><tr style="background:#0f766e;color:#fff">';
+  h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;width:26px;text-align:center">#</th>';
+  headers.forEach(function(hd,ci){
+    if(ci===linkCol) return;   // la colonne lien devient un bouton
+    h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase">'+esc(hd||'—')+'</th>';
+  });
+  h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;width:70px;text-align:center">Document</th>';
+  h+='</tr></thead><tbody>';
+  if(rows.length){
+    rows.forEach(function(e,i){
+      var cells=e.raw||[];
+      h+='<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">';
+      h+='<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>';
+      headers.forEach(function(hd,ci){
+        if(ci===linkCol) return;
+        var v=cells[ci];
+        v=(v==null||String(v).trim()==='')?'—':String(v);
+        h+='<td style="'+tdc+'">'+esc(v)+'</td>';
+      });
+      if(e.url){
+        var lbl='ENR-HSE 13 - '+((e.date||'')+' '+(cells[1]||'')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+        h+='<td style="'+tdc+';text-align:center;white-space:nowrap">'
+          +'<a href="#" onclick="openPesticideDoc('+jsq(e.url)+','+jsq(e.date||'Traitement')+');return false;" '
+          +'style="text-decoration:none;font-size:12px" title="Consulter le document">📄</a> '
+          +'<a href="#" onclick="downloadDriveDoc('+jsq(e.url)+','+jsq(lbl)+');return false;" '
+          +'style="text-decoration:none;font-size:12px" title="Télécharger le document">⬇️</a></td>';
+      } else {
+        h+='<td style="'+tdc+';text-align:center;color:#cbd5e1">—</td>';
+      }
+      h+='</tr>';
+    });
+  } else {
+    h+='<tr><td colspan="'+Math.max(2,headers.length+1)+'" style="'+tdc+';text-align:center;font-style:italic;color:#94a3b8">Aucune application enregistrée</td></tr>';
+  }
+  h+='</tbody></table>';
+
+  // ── Note réglementaire ────────────────────────────────────────
+  h+='<div style="background:#fefce8;border:1px solid #fde047;border-radius:4px;padding:8px 12px;font-size:9.5px;color:#78350f;margin-bottom:14px">';
+  h+='⚠️ <strong>Note :</strong> toute application de pesticide doit être réalisée par un applicateur habilité, avec les EPI adaptés, '
+    +'hors présence de denrées non protégées, et consignée le jour même. La fiche de données de sécurité (FDS) du produit doit être disponible sur site.';
+  h+='</div>';
+
+  // ── Signatures ────────────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+  h+='<tr>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="'+td+';width:33%;text-align:center;padding:18px 8px">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+    h+='</td>';
+  });
+  h+='</tr></table>';
+  h+='</div>';
+
+  if(srcUrl){
+    h+='<div style="margin-top:12px;text-align:right">'
+      +'<a href="'+escAttr(srcUrl)+'" target="_blank" rel="noopener noreferrer" '
+      +'style="font-size:11px;color:var(--p4);text-decoration:none">↗ Ouvrir la feuille dans Sheets</a></div>';
+  }
+  body.innerHTML=h;
+}
+function openPesticideDoc(url,label){
+  if(!url) return;
+  openCleaningEmbed(url,'Application de pesticide — '+(label||''),'NUISIBLES · ENR-HSE 13','🧴');
+}
+function printPesticides(){
+  var el=document.getElementById('pesticidesPrint');
+  if(!el){ window.print(); return; }
+  var w=window.open('','_blank','width=1100,height=800');
+  if(!w) return;
+  var styles='<style>*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'a{color:#111;text-decoration:none}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8">'
+    +'<title>ENR-HSE 13 - Suivi de l\'application des pesticides</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },400);
+}
+
 function openListeProduitsChimiques(){
   var modal=document.getElementById('listeProduitsChimiquesModal');
   if(!modal) return;
@@ -16577,8 +16803,10 @@ function renderListeProduitsChimiques(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE-22</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE-22')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Légende types de documents ─────────────────────────────────
@@ -16727,8 +16955,10 @@ function renderKpiFiche(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MQA-05</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('PLA-MQA-05')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Synthèse des indicateurs (YTD) ────────────────────────────

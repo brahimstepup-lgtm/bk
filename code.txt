@@ -1802,13 +1802,20 @@ function readEnregistrements(ss) {
     //                  C=intitulé (entête vide) | D=« Lien drive »
     // → l'entête « enregistrement » désigne la colonne CODE ; si aucune
     //   colonne intitulé n'est nommée, on prend la colonne à droite du code.
-    var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1, linkCol = -1;
+    // Une colonne « date de création » (facultative) fait référence pour
+    // le cartouche « Créé le » des PDF ; à défaut, le client retient
+    // la date d'entrée en vigueur du système documentaire.
+    var hdrRow = -1, codeCol = -1, titCol = -1, procCol = -1, consCol = -1, statCol = -1, linkCol = -1, dateCol = -1;
     for (var i = 0; i < Math.min(data.length, 6); i++) {
       var row = data[i];
-      var cc = -1, tc = -1, pc = -1, kc = -1, sc = -1, lc = -1;
+      var cc = -1, tc = -1, pc = -1, kc = -1, sc = -1, lc = -1, dc = -1;
       for (var c = 0; c < row.length; c++) {
         var h = normalize(String(row[c]||''));
         if (!h) continue;
+        // Date de création (testée en premier : « date de création » ne
+        // doit pas être happée par un autre mot-clé)
+        if (dc < 0 && (h.indexOf('creation') > -1 || h.indexOf('cree le') > -1 ||
+                       h.indexOf('cree') === 0   || h.indexOf('date') > -1)) { dc = c; continue; }
         if (cc < 0 && (h.indexOf('code') > -1 || h === 'enr' || h.indexOf('ref') === 0 ||
                        h.indexOf('enregistrement') > -1)) { cc = c; continue; }
         if (tc < 0 && (h.indexOf('intitul') > -1 || h.indexOf('titre') > -1 ||
@@ -1822,7 +1829,7 @@ function readEnregistrements(ss) {
                        h.indexOf('drive') > -1 || h.indexOf('document') > -1)) { lc = c; continue; }
       }
       if (cc >= 0 && (tc >= 0 || lc >= 0 || pc >= 0)) {
-        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; linkCol = lc;
+        hdrRow = i; codeCol = cc; titCol = tc; procCol = pc; consCol = kc; statCol = sc; linkCol = lc; dateCol = dc;
         // Pas de colonne intitulé nommée → colonne à droite du code,
         // si elle n'est pas déjà affectée à un autre rôle.
         if (titCol < 0) {
@@ -1871,6 +1878,7 @@ function readEnregistrements(ss) {
         procedure:    proc,
         conservation: cons,
         statut:       stat,
+        created:      (dateCol >= 0) ? cellText(i, dateCol) : '',
         url:          url
       });
     }
@@ -3671,6 +3679,116 @@ function readEnrHse07(ss) {
   return res;
 }
 
+// ════════════════════════════════════════════════════════════
+// ENR-HSE 13 — SUIVI DE L'APPLICATION DES PESTICIDES
+// ────────────────────────────────────────────────────────────
+// Feuille « Suivi de l'application des pesticides (ENR HSE 13) » :
+// titre fusionné en ligne 1, entêtes plus bas (Date · Désignation
+// pesticide · Localisation · Target pest · Concentration · Quantité ·
+// Méthode · Lien drive). La lecture est tolérante : la ligne d'entête
+// est détectée, toutes les colonnes sont restituées telles quelles et
+// le lien Drive est extrait (HYPERLINK / rich-text / URL brute).
+// Renvoie { sheetName, sourceUrl, headers, linkCol, entries:[…] }.
+// ════════════════════════════════════════════════════════════
+function readPesticides(ss) {
+  var res = { sheetName:'', sourceUrl:'', headers:[], linkCol:-1, entries:[] };
+  try {
+    var sheets = ss.getSheets(), sh = null;
+    for (var i = 0; i < sheets.length; i++) {
+      var n = normalize(sheets[i].getName());
+      if (n.indexOf('pesticide') > -1) { sh = sheets[i]; break; }
+    }
+    if (!sh) {
+      for (var i2 = 0; i2 < sheets.length; i2++) {
+        var n2 = normalize(sheets[i2].getName());
+        if (n2.indexOf('hse 13') > -1 || n2.indexOf('hse13') > -1) { sh = sheets[i2]; break; }
+      }
+    }
+    if (!sh) { Logger.log('Pesticides sheet NOT found'); return res; }
+    res.sheetName = sh.getName();
+    res.sourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                    '/edit?gid=' + sh.getSheetId() + '#gid=' + sh.getSheetId();
+
+    var range = sh.getDataRange();
+    var data  = range.getValues();
+    var rich = null, formulas = null;
+    try { rich     = range.getRichTextValues(); } catch (e0) {}
+    try { formulas = range.getFormulas();       } catch (eF) {}
+    if (!data || data.length < 2) return res;
+
+    function cellUrl(r, c) {
+      if (c < 0) return '';
+      if (formulas && formulas[r] && formulas[r][c]) {
+        var f = String(formulas[r][c] || '');
+        var mH = f.match(/=\s*HYPERLINK\s*\(\s*["']([^"']+)["']/i); if (mH) return mH[1].trim();
+        var mU = f.match(/(https?:\/\/[^\s"'),]+)/i);              if (mU) return mU[1].trim();
+      }
+      if (rich && rich[r] && rich[r][c]) {
+        var rt = rich[r][c];
+        try {
+          var u = rt.getLinkUrl && rt.getLinkUrl(); if (u) return String(u).trim();
+          var runs = rt.getRuns && rt.getRuns();
+          if (runs && runs.length) for (var k = 0; k < runs.length; k++) {
+            var ru = runs[k].getLinkUrl && runs[k].getLinkUrl(); if (ru) return String(ru).trim();
+          }
+        } catch (eR) {}
+      }
+      var v = (data[r] || [])[c];
+      if (isNull(v)) return '';
+      if (typeof v === 'object' && v && typeof v.getUrl === 'function') {
+        try { return String(v.getUrl() || '').trim(); } catch (eU) {}
+      }
+      var s = String(v).trim();
+      if (/^https?:\/\//i.test(s)) return s;
+      var m = s.match(/(https?:\/\/[^\s,;]+)/i);
+      return m ? m[1].trim() : '';
+    }
+
+    // ── Ligne d'entête : ≥ 3 cellules remplies dont une « date » ──
+    var hdrRow = -1;
+    for (var r0 = 0; r0 < Math.min(data.length, 10); r0++) {
+      var row = data[r0] || [], filled = 0, hasDate = false;
+      for (var c0 = 0; c0 < row.length; c0++) {
+        if (isNull(row[c0])) continue;
+        filled++;
+        if (normalize(String(row[c0])).indexOf('date') > -1) hasDate = true;
+      }
+      if (filled >= 3 && hasDate) { hdrRow = r0; break; }
+    }
+    if (hdrRow < 0) hdrRow = 0;
+
+    var hdrVals = data[hdrRow] || [];
+    for (var c1 = 0; c1 < hdrVals.length; c1++) res.headers.push(String(hdrVals[c1] || '').trim());
+    // Colonnes utiles : lien Drive + date (tri du plus récent au plus ancien)
+    var dateCol = -1;
+    for (var c2 = 0; c2 < res.headers.length; c2++) {
+      var h = normalize(res.headers[c2]);
+      if (!h) continue;
+      if (res.linkCol < 0 && (h.indexOf('lien') > -1 || h.indexOf('drive') > -1 ||
+                              h.indexOf('url') > -1  || h.indexOf('document') > -1)) res.linkCol = c2;
+      if (dateCol < 0 && h.indexOf('date') > -1) dateCol = c2;
+    }
+
+    for (var r = hdrRow + 1; r < data.length; r++) {
+      var row2 = data[r] || [], any = false;
+      for (var c3 = 0; c3 < row2.length; c3++) { if (!isNull(row2[c3])) { any = true; break; } }
+      if (!any) continue;
+      // Ignorer une ré-impression de l'entête
+      if (dateCol >= 0 && normalize(String(row2[dateCol] || '')) === 'date') continue;
+      var cells = [];
+      for (var c4 = 0; c4 < res.headers.length; c4++) cells.push(safeText(row2[c4]));
+      res.entries.push({
+        raw:     cells,
+        date:    (dateCol >= 0) ? fmtDate(row2[dateCol]) : '',
+        isoDate: (dateCol >= 0) ? getIso(row2[dateCol])  : '',
+        url:     cellUrl(r, res.linkCol)
+      });
+    }
+    Logger.log('Pesticides (ENR-HSE 13) : ' + res.entries.length + ' application(s) — ' + res.sheetName);
+  } catch (e) { Logger.log('readPesticides error: ' + e.message); }
+  return res;
+}
+
 function readCartoNuisibles(ss) { return readCartoSheet(ss, 'nuisible'); }
 function readCartoFlyKiller(ss) { return readCartoSheet(ss, 'fly'); }
 
@@ -4203,6 +4321,14 @@ function getData() {
   out.plan3d = p3d.entries || [];
   out.plan3dSheetName = p3d.sheetName || '';
   out.plan3dSourceUrl = p3d.sourceUrl || '';
+
+  // ── ENR-HSE 13 — suivi de l'application des pesticides ──────
+  var pest13 = readPesticides(ss);
+  out.pesticides          = pest13.entries   || [];
+  out.pesticidesHeaders   = pest13.headers   || [];
+  out.pesticidesLinkCol   = (pest13.linkCol == null) ? -1 : pest13.linkCol;
+  out.pesticidesSheetName = pest13.sheetName || '';
+  out.pesticidesSourceUrl = pest13.sourceUrl || '';
 
   // ── ENR-HSE 07 — enregistrements mensuels du suivi des pièges
   //    (feuille « ENR HSE 7 » : MOIS + LIEN)
@@ -6372,6 +6498,9 @@ function getActionPlanForClient() { return getActionPlan(); }
 // ══════════════════════════════════════════════════════════════
 var ACTION_PLAN_FOLDER_NAME = "Plans d'action - Dashboard HSE";
 var ACTION_PLAN_MAX_ROWS    = 800;
+// Date d'entrée en vigueur du système documentaire — utilisée quand la
+// section « Enregistrements » ne porte pas de date pour l'ENR concerné.
+var ENR_CREATED_DEFAULT     = '04/01/2026';
 
 // ── En-tête officiel des documents ENR ────────────────────────
 // Reproduit le cartouche des autres enregistrements HSE :
@@ -6398,7 +6527,9 @@ function enrHeaderHtml_(title, sub, ref, rev, created, logo) {
   if (ref) rows.push(['Réf :', esc(ref),
                       'font-weight:700;font-family:monospace;color:#09637e;letter-spacing:.05em']);
   rows.push(['Rév :', esc(rev), '']);
-  if (created) rows.push(['Créé le :', esc(created), '']);
+  // « Créé le » figure sur TOUS les enregistrements ; à défaut de date
+  // transmise, la date d'entrée en vigueur du système documentaire.
+  rows.push(['Créé le :', esc(created || ENR_CREATED_DEFAULT), '']);
   var rowsHtml = rows.map(function(r, i) {
     return line(r[0], r[1], i === rows.length - 1, r[2]);
   }).join('');
