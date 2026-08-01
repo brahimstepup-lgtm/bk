@@ -3680,9 +3680,11 @@ function readEnrHse07(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
-// ENR-HSE 13 — SUIVI DE L'APPLICATION DES PESTICIDES
+// ENR-HSE 38 — SUIVI DE L'APPLICATION DES PESTICIDES
 // ────────────────────────────────────────────────────────────
-// Feuille « Suivi de l'application des pesticides (ENR HSE 13) » :
+// Feuille « Suivi de l'application des pesticides » (onglet nommé
+// « … (ENR HSE 13) » dans le classeur — le nom d'onglet est libre, la
+// détection se fait sur le mot « pesticide ») :
 // titre fusionné en ligne 1, entêtes plus bas (Date · Désignation
 // pesticide · Localisation · Target pest · Concentration · Quantité ·
 // Méthode · Lien drive). La lecture est tolérante : la ligne d'entête
@@ -3784,7 +3786,7 @@ function readPesticides(ss) {
         url:     cellUrl(r, res.linkCol)
       });
     }
-    Logger.log('Pesticides (ENR-HSE 13) : ' + res.entries.length + ' application(s) — ' + res.sheetName);
+    Logger.log('Pesticides (ENR-HSE 38) : ' + res.entries.length + ' application(s) — ' + res.sheetName);
   } catch (e) { Logger.log('readPesticides error: ' + e.message); }
   return res;
 }
@@ -4322,7 +4324,7 @@ function getData() {
   out.plan3dSheetName = p3d.sheetName || '';
   out.plan3dSourceUrl = p3d.sourceUrl || '';
 
-  // ── ENR-HSE 13 — suivi de l'application des pesticides ──────
+  // ── ENR-HSE 38 — suivi de l'application des pesticides ──────
   var pest13 = readPesticides(ss);
   out.pesticides          = pest13.entries   || [];
   out.pesticidesHeaders   = pest13.headers   || [];

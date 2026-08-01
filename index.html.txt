@@ -4047,8 +4047,8 @@ html.light .pests-search-input{background:#edf2f7}
     </button>
     <button class="btn" style="background:#0f766e;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openPesticides()"
-            title="Suivi de l'application des pesticides — traitements réalisés (date, produit, localisation, cible, dosage, méthode)">
-      🧴 Application des pesticides <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 13</span>
+            title="Suivi de l'application des pesticides — traitements réalisés (date, produit, localisation, cible, dosage, méthode) — ENR-HSE 38">
+      🧴 Suivi de l'application des pesticides <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 38</span>
     </button>
     <button class="btn" style="background:#475569;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openFichesTechniques()">
@@ -4638,7 +4638,7 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
-<!-- ═══ MODAL ENR-HSE 13 — APPLICATION DES PESTICIDES ═══ -->
+<!-- ═══ MODAL ENR-HSE 38 — SUIVI DE L'APPLICATION DES PESTICIDES ═══ -->
 <div class="modal-bg" id="pesticidesModal" style="display:none" onclick="if(event.target===this)closeModal('pesticidesModal')">
   <div class="modal-panel" style="max-width:1080px;width:96vw" onclick="event.stopPropagation()">
     <div class="modal-top">
@@ -4646,7 +4646,7 @@ html.light .pests-search-input{background:#edf2f7}
       <div class="modal-hdr-info">
         <div class="modal-hdr-name">Suivi de l'application des pesticides</div>
         <div style="font-size:10px;color:var(--text3);margin-top:2px">
-          <span class="mono" style="font-size:10px;color:#0f766e;font-weight:700">ENR-HSE 13</span>
+          <span class="mono" style="font-size:10px;color:#0f766e;font-weight:700">ENR-HSE 38</span>
           · <span id="pesticidesMeta">—</span>
         </div>
       </div>
@@ -16781,7 +16781,7 @@ function printFichesTechniques(){
 }
 
 /* ══════════════════════════════════════════════════════════════
-   ENR-HSE 13 — SUIVI DE L'APPLICATION DES PESTICIDES
+   ENR-HSE 38 — SUIVI DE L'APPLICATION DES PESTICIDES
    ──────────────────────────────────────────────────────────────
    Restitue la feuille « Suivi de l'application des pesticides
    (ENR HSE 13) » sous le cartouche documentaire commun : toutes les
@@ -16849,13 +16849,13 @@ function renderPesticides(){
   h+='<td style="'+td+';width:190px;padding:0;vertical-align:top">';
   h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
-    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0f766e;letter-spacing:.05em">ENR-HSE 13</td></tr>';
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0f766e;letter-spacing:.05em">ENR-HSE 38</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
   h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 13')+'</td></tr>';
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 38')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   h+='<p style="font-size:9px;color:#5a7684;margin:0 0 10px">SOBCO 3 — HSE Master Dashboard · '
@@ -16883,7 +16883,7 @@ function renderPesticides(){
         h+='<td style="'+tdc+'">'+esc(v)+'</td>';
       });
       if(e.url){
-        var lbl='ENR-HSE 13 - '+((e.date||'')+' '+(cells[1]||'')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+        var lbl='ENR-HSE 38 - '+((e.date||'')+' '+(cells[1]||'')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
         h+='<td style="'+tdc+';text-align:center;white-space:nowrap">'
           +'<a href="#" onclick="openPesticideDoc('+jsq(e.url)+','+jsq(e.date||'Traitement')+');return false;" '
           +'style="text-decoration:none;font-size:12px" title="Consulter le document">📄</a> '
@@ -16926,7 +16926,7 @@ function renderPesticides(){
 }
 function openPesticideDoc(url,label){
   if(!url) return;
-  openCleaningEmbed(url,'Application de pesticide — '+(label||''),'NUISIBLES · ENR-HSE 13','🧴');
+  openCleaningEmbed(url,'Application de pesticide — '+(label||''),'NUISIBLES · ENR-HSE 38','🧴');
 }
 function printPesticides(){
   var el=document.getElementById('pesticidesPrint');
@@ -16939,7 +16939,7 @@ function printPesticides(){
     +'a{color:#111;text-decoration:none}'
     +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8">'
-    +'<title>ENR-HSE 13 - Suivi de l\'application des pesticides</title>'+styles+'</head><body>');
+    +'<title>ENR-HSE 38 - Suivi de l\'application des pesticides</title>'+styles+'</head><body>');
   w.document.write(el.innerHTML);
   w.document.write('</body></html>');
   w.document.close(); w.focus();
