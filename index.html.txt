@@ -1480,8 +1480,8 @@ html.light .pests-search-input{background:#edf2f7}
 
 /* ── Bandeau d'information défilant (feuille « news ») ──────────
    Masqué tant qu'aucun message n'est renseigné. Le sens de
-   défilement suit la langue : de droite à gauche en arabe, de
-   gauche à droite en français (animation jouée à l'envers). */
+   défilement suit la langue : de gauche à droite en arabe (animation
+   jouée à l'envers), de droite à gauche en français. */
 .tv-news{flex-shrink:0;display:none;align-items:center;gap:clamp(8px,.9vw,16px);
   margin-top:clamp(6px,1vh,12px);border-top:1px solid var(--tv-border);
   padding-top:clamp(5px,.8vh,10px);overflow:hidden}
@@ -1495,7 +1495,7 @@ html.light .pests-search-input{background:#edf2f7}
 .tv-news-track{display:inline-block;white-space:nowrap;padding-left:100%;
   font-size:clamp(13px,1.6vw,30px);font-weight:700;color:var(--tv-lbl);
   animation-name:tvNewsScroll;animation-timing-function:linear;animation-iteration-count:infinite}
-.tv-news-track.ltr{animation-direction:reverse}
+.tv-news-track.rev{animation-direction:reverse}   /* défile vers la droite */
 @keyframes tvNewsScroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 @media(prefers-reduced-motion:reduce){.tv-news-track{animation:none;padding-left:0}}
 
@@ -10982,9 +10982,10 @@ function renderTvDash(){
 }
 /* ══ Bandeau d'information défilant (feuille « news ») ══════════
    • Cellule de texte vide → bandeau masqué, aucune place perdue.
-   • Sens de défilement selon la langue du message : de droite à
-     gauche en arabe (écriture RTL), de gauche à droite sinon —
-     l'animation est la même, jouée à l'envers.
+   • Sens de défilement selon la langue du message : de gauche à
+     droite en arabe (le début de la phrase, à droite, entre en
+     premier), de droite à gauche sinon — même animation, jouée à
+     l'envers pour l'arabe.
    • Vitesse proportionnelle à la longueur, pour rester lisible. */
 function tvNewsIsArabic(s){ return /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/.test(String(s||'')); }
 function renderTvNews(){
@@ -10998,7 +10999,7 @@ function renderTvNews(){
   var rtl=tvNewsIsArabic(txt);
   track.textContent=txt;
   track.dir = rtl ? 'rtl' : 'ltr';
-  track.classList.toggle('ltr', !rtl);          // sens inverse hors arabe
+  track.classList.toggle('rev', rtl);           // arabe : défile vers la droite
   // ~11 caractères par seconde, borné pour rester confortable
   var dur=Math.min(90,Math.max(16,Math.round(txt.length/11*2)));
   track.style.animationDuration=dur+'s';
