@@ -2453,12 +2453,12 @@ html.light .pests-search-input{background:#edf2f7}
             title="Générer le rapport de suivi énergétique (PDF)">📊 Rapport de suivi énergétique</button>
     <button class="btn" style="background:#15803d;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openSectionActionPlan('energie')"
-            title="Plan d'action des TAGs « énergie » — économie d'énergie, gaspillage et environnement (ENR-HSE 36)">
+            title="Plan d'action des TAGs « énergie » — économie d'énergie, gaspillage et consommations électricité / gaz / eau (ENR-HSE 36)">
       📋 Plan d'action <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 36</span>
     </button>
     <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="downloadSectionActionPlan('energie')"
-            title="Télécharger le plan d'action énergie &amp; environnement (PDF)">⬇️ Télécharger</button>
+            title="Télécharger le plan d'action énergie (PDF)">⬇️ Télécharger</button>
   </div>
   <div class="egrid" id="egrids"></div>
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px">
@@ -10125,29 +10125,35 @@ function isNuisibleTag(t){
   if(!s) return false;
   return /nuisible|rongeur|\brat\b|\brats\b|souris|insecte|mouche|moustique|cafard|blatte|termite|derat|desinsect|desinfect|raticide|appat|fly ?killer|\bfk\b|vermine|parasite/.test(s);
 }
-// Texte examiné pour les thèmes « énergie / environnement » et
-// « nettoyage / hygiène ». Contrairement aux nuisibles (danger seul),
-// on lit aussi la description, l'action et les propositions : ces
-// sujets sont rarement codifiés dans la colonne « type de danger » et
-// s'expriment surtout en texte libre (« fuite d'air comprimé », « sol
-// souillé »…). Le vocabulaire ciblé est assez spécifique pour que le
-// risque de faux positif reste faible.
+// Texte examiné pour les thèmes « énergie » et « nettoyage / hygiène ».
+// Contrairement aux nuisibles (danger seul), on lit aussi la
+// description, l'action et les propositions : ces sujets sont rarement
+// codifiés dans la colonne « type de danger » et s'expriment surtout en
+// texte libre (« fuite d'air comprimé », « sol souillé »…).
 function tagThemeText(t){
   return veilleNorm([t.type, t.risque, t.description, t.action,
                      t.propositions, t.zone, t.emplacement]
                     .filter(Boolean).join(' '));
 }
-// Économie d'énergie · gaspillage · environnement
+// Déchets et environnement : hors périmètre des deux plans d'action —
+// un TAG qui en relève est écarté, même s'il emploie par ailleurs un
+// mot du vocabulaire énergie (« gaspillage ») ou nettoyage (« sale »).
+var TAG_ENV_DECHETS = /environnement|environnemental|pollution|\brejet|effluent|dechet|ordure|poubelle|corbeille|\bbenne|recyclage|recycl|tri selectif|\btri\b|emission|carbone|\bco2\b|compost|ferraille|rebut|debris|residu/;
+// Énergie : consommations et gaspillages d'énergie et de fluides
+// (électricité, gaz, eau, air comprimé, vapeur) — hors environnement.
 function isEnergieTag(t){
   if(!t || !t.id || t._err) return false;
   var s = tagThemeText(t); if(!s) return false;
-  return /energie|energetique|electricite|surconsommation|consommation|compteur|kwh|eclairage|lumiere|lampe|neon|ampoule|\bled\b|gaspill|fuite|air comprime|vapeur|calorifug|isolation|chauffage|climatis|\bclim\b|groupe froid|chaudiere|environnement|pollution|rejet|effluent|dechet|recyclage|\btri\b|emission|carbone|co2|\beau\b|\bgaz\b|carburant|gasoil|fioul|mazout|solaire|photovolt/.test(s);
+  if(TAG_ENV_DECHETS.test(s)) return false;
+  return /energie|energetique|electricite|surconsommation|consommation|compteur|kwh|eclairage|lumiere|lampe|neon|ampoule|\bled\b|gaspill|fuite|air comprime|vapeur|calorifug|isolation|chauffage|climatis|\bclim\b|groupe froid|chaudiere|marche a vide|reste allume|restee allumee|\beau\b|\bgaz\b|carburant|gasoil|fioul|mazout|solaire|photovolt/.test(s);
 }
-// Nettoyage · hygiène · propreté des locaux
+// Nettoyage : propreté des locaux, hygiène, ordre et rangement —
+// hors environnement et gestion des déchets.
 function isNettoyageTag(t){
   if(!t || !t.id || t._err) return false;
   var s = tagThemeText(t); if(!s) return false;
-  return /nettoy|proprete|salete|\bsale\b|\bsales\b|souill|encrass|poussiere|hygiene|sanitaire|vestiaire|toilette|\bwc\b|lavabo|douche|savon|desinfect|lavage|\blaver\b|balai|serpill|karcher|detergent|entretien des locaux|\b5s\b|ordre|rangement|encombr|moisissure|odeur|stagnant|graisse|residu|debris|poubelle|corbeille/.test(s);
+  if(TAG_ENV_DECHETS.test(s)) return false;
+  return /nettoy|proprete|salete|\bsale\b|\bsales\b|souill|encrass|poussiere|hygiene|sanitaire|vestiaire|toilette|\bwc\b|lavabo|douche|savon|desinfect|lavage|\blaver\b|balai|serpill|karcher|detergent|entretien des locaux|\b5s\b|ordre|rangement|encombr|moisissure|odeur|stagnant|graisse/.test(s);
 }
 function sapPayload(section){
   var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
@@ -10157,10 +10163,10 @@ function sapPayload(section){
   var THEMES = {
     energie: {
       filter: isEnergieTag,
-      title:  "Plan d'action HSE — Énergie & Environnement",
-      sub:    "TAGs « énergie » — économie d'énergie · gaspillage · environnement",
+      title:  "Plan d'action HSE — Énergie",
+      sub:    "TAGs « énergie » — économie d'énergie · gaspillage · consommations (électricité, gaz, eau)",
       ref:    'ENR-HSE 36',
-      lbl:    'énergie / environnement'
+      lbl:    'énergie'
     },
     nettoyage: {
       filter: isNettoyageTag,
@@ -10291,7 +10297,7 @@ function sapPayload(section){
 var sapLoading = false;
 function openSectionActionPlan(section){
   var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS', nuisibles:'NUISIBLES',
-               energie:'ÉNERGIE & ENVIRONNEMENT', nettoyage:'NETTOYAGE & HYGIÈNE' };
+               energie:'ÉNERGIE', nettoyage:'NETTOYAGE & HYGIÈNE' };
   var p    = sapPayload(section);
   // Badge de la visionneuse : affiche la codification quand elle existe
   var kind = (p && p.ref)
@@ -10360,7 +10366,7 @@ function sapRun(p, kind){
 // (sans passer par la visionneuse).
 function downloadSectionActionPlan(section){
   var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs',nuisibles:'Nuisibles',
-           energie:'Énergie & Environnement',nettoyage:'Nettoyage & Hygiène'};
+           energie:'Énergie',nettoyage:'Nettoyage & Hygiène'};
   var p=sapPayload(section);
   if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if(!p || !p.rows.length){ showToast('Aucune donnée dans cette section.','error'); return; }
