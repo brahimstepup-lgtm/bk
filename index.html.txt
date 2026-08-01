@@ -7997,14 +7997,25 @@ function setPyrMode(m){
   renderPyramid();
 }
 
-// Cumul TAGs affiché hors de la section TAGs (vue globale, en-tête,
-// pyramide, bilan) : le REGISTRE de la section fait référence, comme
-// la pastille « Total » de cette section. La ligne « Situations
-// dangereuses (TAGs) » de la feuille KPI, souvent laissée à 0, n'est
-// plus qu'un repli quand le registre est vide ou pas encore chargé.
+// TAGs affichés hors de la section TAGs (vue globale, en-tête, pyramide,
+// bilan) : le REGISTRE de la section fait référence. La ligne
+// « Situations dangereuses (TAGs) » de la feuille KPI, souvent laissée
+// à 0, n'est plus qu'un repli quand le registre est vide ou pas encore
+// chargé.
+// Lignes valides du registre (mêmes exclusions que la liste de la section)
+function tagsRegistreRows(){
+  return ((D && D.tags) || []).filter(function(t){ return t && t.id && !t._err; });
+}
+// Sous-ensemble ANNÉE EN COURS — même règle que le filtre « YTD » de la
+// section TAGs : année en cours, un TAG sans date restant comptabilisé.
+function tagsYtdRows(){
+  var y = String(new Date().getFullYear());
+  return tagsRegistreRows().filter(function(t){
+    return !t.isoDate || String(t.isoDate).substring(0,4) === y;
+  });
+}
 function tagsGlobalCount(){
-  var n = (D && D.tags) ? D.tags.length : 0;
-  if(n) return n;
+  if(tagsRegistreRows().length) return tagsYtdRows().length;
   var m = (D && D.metrics) || {};
   return m.tags_ytd != null ? m.tags_ytd : 0;
 }
@@ -10687,18 +10698,22 @@ function render(data){
   window._lastDataTs=Date.now();   // horodatage pour l'actualisation auto
 
   // ── Synchronisation « Résol. TAGs » (Vue Globale) avec
-  // « Clôture » (page TAGs, filtre YTD 2026) ──
-  // Même logique de filtre/calcul que applyTagF() pour p==='ytd' :
-  // on ne garde que les TAGs dont l'année isoDate vaut 2026, puis
-  // taux = fermés / total * 100.
-  (function syncResolTagsYTD2026(){
-    var tags=(D.tags||[]).filter(function(t){
-      if(!t.id||t._err||!t.isoDate) return false;
-      return parseInt(t.isoDate.split('-')[0])===2026;
-    });
+  // « Clôture » — aligné sur le REGISTRE de la section TAGs, année en
+  // cours (comme la carte TAGs de la vue globale) : taux = fermés /
+  // total × 100 sur les TAGs de l'année (un TAG sans date reste
+  // comptabilisé, comme dans le filtre YTD de la section).
+  // La ligne « Taux de résolution Tags » de la feuille KPI ne sert que
+  // de repli, quand le registre est vide ou pas encore chargé.
+  (function syncResolTagsRegistre(){
+    if(!tagsRegistreRows().length) return;    // registre vide → valeur KPI conservée
+    var tags=tagsYtdRows();
+    if(!tags.length){ m.total_tags=0; m.open_tags=0; m.closed_tags=0; m.taux_res_tags=0; return; }
     var open=tags.filter(tagIsOpen).length;
     var closed=tags.length-open;
-    m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
+    m.total_tags=tags.length;
+    m.open_tags=open;
+    m.closed_tags=closed;
+    m.taux_res_tags=Math.round(closed/tags.length*100);
   })();
 
   // ── MODE TV : re-rendu AU PLUS TÔT ───────────────────────────
@@ -10751,7 +10766,7 @@ function render(data){
             'k-g',null,null),
     kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
     kpiCard('Incidents',   (m.nb_incidents!=null?m.nb_incidents:((D&&D.incidents)?D.incidents.length:m.inc_ytd)), 'b','Sans AT · enregistrés', 'k-b',null,null),
-    kpiCard('TAGs',        tagsGlobalCount(),'g','Registre section TAGs','k-g',null,null),
+    kpiCard('TAGs',        tagsGlobalCount(),'g','YTD · registre TAGs','k-g',null,null),
     kpiCard('TVM',         fmtNum(m.tvm)+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
     kpiCard('Résol.TAGs',  fmtNum(m.taux_res_tags)+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
   ].join('');

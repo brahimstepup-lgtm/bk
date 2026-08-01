@@ -4732,21 +4732,35 @@ function calcMetrics(d) {
   // que le registre contient des lignes, c'est lui qui alimente le
   // cumul annuel ET la répartition mensuelle ; la feuille KPI ne sert
   // plus que de repli (registre vide ou non chargé).
+  // Le cumul affiché est celui de l'ANNÉE EN COURS, comme le filtre
+  // « YTD » de la section TAGs : un TAG daté d'une autre année est
+  // écarté, un TAG sans date reste comptabilisé.
   var _tagsKpiYtd = ytd('Situations dangereuses (TAGs)');
   var _tagsKpiM   = mths('Situations dangereuses (TAGs)');
-  var _tagsYtd    = total || _tagsKpiYtd;
+  var _tagsYtd    = _tagsKpiYtd;
   var _tagsM      = _tagsKpiM;
+  var _tagsYtdOpen = { total:0, open:0, closed:0 };
   if (total) {
+    var _year   = String(new Date().getFullYear());
     var byMonth = [null,null,null,null,null,null,null,null,null,null,null,null];
-    var dated = 0;
+    var ytdCnt = 0, dated = 0;
+    var _openKey = {};
+    (d.tagsOpen || []).forEach(function(t){ if (t && t.id) _openKey[String(t.id)] = 1; });
     (d.tags || []).forEach(function(t){
-      var iso = t && t.isoDate;
+      if (!t || !t.id) return;
+      var iso = String(t.isoDate || '');
+      if (iso && iso.substring(0, 4) !== _year) return;   // autre année
+      ytdCnt++;
+      if (_openKey[String(t.id)]) _tagsYtdOpen.open++;
       if (!iso) return;
-      var mi = parseInt(String(iso).substring(5,7), 10) - 1;
+      var mi = parseInt(iso.substring(5, 7), 10) - 1;
       if (mi < 0 || mi > 11) return;
       byMonth[mi] = (byMonth[mi] || 0) + 1;
       dated++;
     });
+    _tagsYtd = ytdCnt;
+    _tagsYtdOpen.total  = ytdCnt;
+    _tagsYtdOpen.closed = ytdCnt - _tagsYtdOpen.open;
     // Sans date exploitable, on garde la série de la feuille KPI.
     if (dated) _tagsM = byMonth;
   }
@@ -4853,7 +4867,12 @@ function calcMetrics(d) {
     jp_ytd:ytd('Jours Perdus'),inc_ytd:ytd('Accident Travail (SANS AT) - INCIDENT'),
     tags_ytd:_tagsYtd,taux_tags:ytd('Taux de remontées TAGs'),
     tvm:ytd('TVM - Taux de visite médicale'),prestataires:ytd('% prestataires conformes HSE'),
-    taux_res_tags:ytd('Taux de résolution Tags'),
+    // Taux de résolution : calculé sur le registre TAGs (fermés / total),
+    // comme la pastille « Clôture » de la section ; la ligne KPI ne sert
+    // que de repli quand le registre est vide.
+    taux_res_tags:(_tagsYtdOpen.total
+                   ? Math.round(_tagsYtdOpen.closed / _tagsYtdOpen.total * 100)
+                   : (total ? 0 : ytd('Taux de résolution Tags'))),
     ratio_elt_ytd:ytd('Ratio ELT (kWh/unité prod)'),ratio_gaz_ytd:ytd('Ratio GAZ (m3/unité prod)'),
     ratio_eau_ytd:ytd('Ratio EAU (m3/unité prod)'),
     elt_ytd:ytd('Consommation ELT (kWh)'),gaz_ytd:ytd('Consommation GAZ (m3)'),eau_ytd:ytd('Consommation EAU (m3)'),
