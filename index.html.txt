@@ -8515,6 +8515,44 @@ function downloadDriveDoc(rawUrl,filename){ downloadAccPj(rawUrl,filename); }
    Compose un bilan UNIQUEMENT de graphiques à partir des accidents
    filtrés, avec téléchargement PDF (conversion canvas → image).
    ══════════════════════════════════════════════════════════════ */
+/* Pyramide accidents en HTML « imprimable » — même géométrie et mêmes
+   couleurs que la carte du tableau de bord (thème clair), mais tout en
+   styles en ligne : la fenêtre d'impression ne reçoit ni les classes
+   .pyr-* ni les variables de thème. Source : D.metrics (YTD), comme la
+   pyramide affichée à l'écran. */
+function accBilanPyramidHtml(){
+  var m=(D&&D.metrics)||{};
+  var LV=[
+    {l:'FATAL',    i:'',   v:m.at_fatal,  a:'#ffd6db', b:'#ff8599', t:'#7a0015', bd:'rgba(232,68,90,.4)'},
+    {l:'MAJEUR',   i:'🔴', v:m.at_majeur, a:'#ffe4cc', b:'#ffaa66', t:'#7a3000', bd:'rgba(249,115,22,.4)'},
+    {l:'MINEUR',   i:'🟠', v:m.at_mineur, a:'#fff5cc', b:'#ffd966', t:'#5a3a00', bd:'rgba(245,166,35,.4)'},
+    {l:'INCIDENTS',i:'🔵', v:m.inc_ytd,   a:'#d6eef7', b:'#7abfdb', t:'#003a55', bd:'rgba(9,99,126,.4)'},
+    {l:'TAGs',     i:'🟢', v:m.tags_ytd,  a:'#ccf0e0', b:'#66c99a', t:'#00432a', bd:'rgba(16,201,133,.4)'}
+  ];
+  var W=[44,82,126,172,216], CONN=['#ff8599','#ffaa66','#ffd966','#7abfdb'];
+  var h='<div style="display:flex;flex-direction:column;align-items:center;padding:2px 0 4px">';
+  LV.forEach(function(l,i){
+    if(i>0){
+      var wc=W[i], df=Math.round((wc-W[i-1])/2);
+      h+='<div style="height:5px;overflow:hidden;margin:0 auto;width:'+wc+'px">'
+        +'<svg width="'+wc+'" height="5"><polygon points="'+df+',0 '+(wc-df)+',0 '+wc+',5 0,5" fill="'+CONN[i-1]+'"/></svg></div>';
+    }
+    h+='<div style="display:flex;justify-content:center;width:216px;margin:0 auto">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;'
+      +'width:'+W[i]+'px;height:28px;border-radius:6px;padding:6px 9px;'
+      +'background:linear-gradient(135deg,'+l.a+','+l.b+');border:1.5px solid '+l.bd+'">'
+      +(l.i?'<span style="font-size:11px;flex-shrink:0">'+l.i+'</span>':'')
+      +'<span style="font-size:8.5px;font-weight:700;flex:1;text-align:center;white-space:nowrap;letter-spacing:.3px;color:'+l.t+'">'+l.l+'</span>'
+      +'<span style="font-size:14px;font-weight:900;font-family:\'JetBrains Mono\',monospace;min-width:22px;text-align:right;color:'+l.t+'">'
+      + (l.v==null?'—':fmtNum(l.v)) + '</span>'
+      +'</div></div>';
+  });
+  h+='</div>';
+  h+='<div style="font-size:8.5px;color:#64748b;line-height:1.45;text-align:center;margin-top:2px">'
+    +'<b style="color:#334155">Accident mineur</b> : ≤ 3 jours d\'arrêt de travail · '
+    +'<b style="color:#334155">Accident majeur</b> : &gt; 3 jours d\'arrêt de travail</div>';
+  return h;
+}
 function accBilanSource(){
   var a=window._accFiltered;
   if(!a||!a.length) a=((D&&D.accidents)||[]).filter(function(x){return x.nom&&!x._err&&x.nom.length>=3;});
@@ -8573,8 +8611,7 @@ function renderAccBilan(){
     {id:'accBilanMonth', title:'Accidents par mois'},
     {id:'accBilanZone',  title:'Accidents par zone (top 6)'},
     {id:'accBilanCause', title:'Accidents par cause racine (top 6)'},
-    {id:'accBilanFonc',  title:'Répartition par fonction'},
-    {id:'accBilanNature',title:'Siège / nature de lésion (top 6)'}
+    {id:'accBilanFonc',  title:'Répartition par fonction'}
   ];
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px">';
   cards.forEach(function(cd){
@@ -8583,6 +8620,21 @@ function renderAccBilan(){
     h+='<div style="height:165px;position:relative"><canvas id="'+cd.id+'"></canvas></div>';
     h+='</div>';
   });
+  // Pyramide accidents (6ᵉ case de la grille) — mêmes données que la
+  // carte du tableau de bord : cumul YTD fatal / majeur / mineur,
+  // complété des incidents et des TAGs (pyramide de sécurité).
+  h+='<div style="border:1px solid #cbd5e1;border-radius:6px;padding:9px 11px;background:#fff">';
+  h+='<div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:5px">Pyramide accidents (YTD)</div>';
+  h+='<div style="min-height:165px">'+accBilanPyramidHtml()+'</div>';
+  h+='</div>';
+  h+='</div>';
+
+  // ── Cartographie du corps : siège de lésion (pleine largeur) ────
+  h+='<div style="border:1px solid #cbd5e1;border-radius:6px;padding:9px 11px;background:#fff;margin-bottom:6px">';
+  h+='<div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:5px">Répartition par siège de lésion '
+    +'<span style="font-weight:600;color:#64748b">· Cartographie du corps · partie touchée</span></div>';
+  h+='<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center;padding:6px 4px 2px">'
+    + accSiegeBodyHtml(accs,true) + '</div>';
   h+='</div>';
 
   // ── Détail de tous les accidents (sous les graphiques) ─────────
@@ -8648,7 +8700,6 @@ function renderAccBilan(){
       data:{labels:fz.labels,datasets:[{data:fz.data,backgroundColor:PAL,borderWidth:0,hoverOffset:4}]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});
   }
-  var nz=topCount('siege',6,22); if(nz.labels.length) mkChart('accBilanNature','bar',nz.labels,[{data:nz.data,backgroundColor:'rgba(124,58,237,.75)',borderRadius:4}],hbarOpts);
 }
 function printAccBilan(){
   var el=document.getElementById('accBilanPrint');
@@ -9412,8 +9463,13 @@ function accSiegeRegion(s){
   if(/dos|colonne|lombaire|rachis|thorax|poitrine|torse|tronc|cote|cotes|abdomen|ventre|sternum|thoracique|dorsal|flanc|reins/.test(n)) return 'tronc';
   return null;   // non localisé → listé dans « Autres »
 }
-function renderAccSiegeBody(accs){
-  var box=document.getElementById('accSiegeBody'); if(!box) return;
+// Construit la cartographie (SVG + liste). `print` = variante pour les
+// documents PDF : couleurs fixes au lieu des variables de thème, qui ne
+// sont pas transmises à la fenêtre d'impression.
+function accSiegeBodyHtml(accs, print){
+  var P = print
+    ? { t2:'#334155', t3:'#64748b', red:'#e8445a', bd:'#cbd5e1' }
+    : { t2:'var(--text2)', t3:'var(--text3)', red:'var(--red)', bd:'var(--border)' };
   var counts={}, unmapped={}, totalMapped=0;
   (accs||[]).forEach(function(a){
     var r=accSiegeRegion(a&&a.siege);
@@ -9462,27 +9518,31 @@ function renderAccSiegeBody(accs){
   var RLBL={tete:'Tête',cou:'Cou',epaule:'Épaules',bras:'Bras / coude',main:'Mains / doigts',tronc:'Tronc / dos',bassin:'Bassin / hanche',jambe:'Jambes / genou',pied:'Pieds / chevilles'};
   var rows=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
   var lst='<div style="min-width:190px;flex:1;max-width:320px">';
-  lst+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:10px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
+  lst+='<div style="font-size:10px;color:'+P.t3+';text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:10px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
   if(rows.length===0){
-    lst+='<div style="font-size:11px;color:var(--text3)">Aucun siège de lésion renseigné pour ce filtre.</div>';
+    lst+='<div style="font-size:11px;color:'+P.t3+'">Aucun siège de lésion renseigné pour ce filtre.</div>';
   }else{
     rows.forEach(function(r){
       var c=col(r), pct=max>0?Math.round(counts[r]/max*100):0;
       lst+='<div style="margin-bottom:9px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
         +'<span style="width:11px;height:11px;border-radius:3px;background:'+(c.f.indexOf('url')>-1?'#cfe2f0':c.f)+';border:1px solid '+c.s+';flex-shrink:0"></span>'
-        +'<span style="flex:1;font-size:11.5px;color:var(--text2);font-weight:500">'+esc(RLBL[r]||r)+'</span>'
-        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:800;color:var(--red)">'+counts[r]+'</span></div>'
+        +'<span style="flex:1;font-size:11.5px;color:'+P.t2+';font-weight:500">'+esc(RLBL[r]||r)+'</span>'
+        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:800;color:'+P.red+'">'+counts[r]+'</span></div>'
         +'<div style="height:5px;border-radius:3px;background:rgba(120,150,175,.15);overflow:hidden"><div style="height:100%;width:'+pct+'%;border-radius:3px;background:linear-gradient(90deg,rgba(232,68,90,.55),#e8445a)"></div></div></div>';
     });
   }
   var uKeys=Object.keys(unmapped).sort(function(a,b){return unmapped[b]-unmapped[a];});
   if(uKeys.length){
-    lst+='<div style="font-size:9px;color:var(--text3);margin-top:10px;line-height:1.5;padding-top:8px;border-top:1px dashed var(--border)"><b>Non localisés :</b> '
+    lst+='<div style="font-size:9px;color:'+P.t3+';margin-top:10px;line-height:1.5;padding-top:8px;border-top:1px dashed '+P.bd+'"><b>Non localisés :</b> '
       +uKeys.slice(0,6).map(function(k){return esc(k)+' ('+unmapped[k]+')';}).join(' · ')
       +(uKeys.length>6?' …':'')+'</div>';
   }
   lst+='</div>';
-  box.innerHTML=svg+lst;
+  return svg+lst;
+}
+function renderAccSiegeBody(accs){
+  var box=document.getElementById('accSiegeBody'); if(!box) return;
+  box.innerHTML=accSiegeBodyHtml(accs,false);
 }
 function renderAccidents(accs){
   window._accFiltered=accs;   // conservé pour le Bilan AT (ENR HSE 25) et le plan d'action
