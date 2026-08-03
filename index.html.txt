@@ -9667,13 +9667,116 @@ function updateEnvCharts(){
       borderColor:'rgba(120,139,153,.9)',borderDash:[6,4],borderWidth:1.6,pointRadius:0,fill:false,tension:0};
   }
   var envOpts=Object.assign({},BASE,{plugins:{legend:{display:isR,labels:{color:C.txt,font:{size:9},boxWidth:12}}}});
+  // Clic sur un point mensuel → détail du calcul (comme TF / TG)
+  envOpts.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':'default'; };
+  // Un jeu d'options par graphique : l'identifiant est capturé dans la
+  // fermeture, sans dépendre de la signature du callback de Chart.js.
+  function envOptsFor(cid){
+    var o=Object.assign({},envOpts);
+    o.onClick=function(evt,els){ if(els&&els.length) showEnvPointDetail(cid,els[0].index); };
+    return o;
+  }
+  _envMeta.eltC=buildEnvMeta('elt',m,hdrs,ce.labels);
+  _envMeta.gazC=buildEnvMeta('gaz',m,hdrs,cg.labels);
+  _envMeta.eauC=buildEnvMeta('eau',m,hdrs,cw.labels);
   var eltDs=[{data:ce.data,borderColor:C.amber,backgroundColor:'rgba(245,166,35,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.amber,label:'Ratio ELT'}];
   var gazDs=[{data:cg.data,borderColor:C.red,backgroundColor:'rgba(232,68,90,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.red,label:'Ratio GAZ'}];
   var eauDs=[{data:cw.data,backgroundColor:[C.p1,'rgba(9,99,126,.7)','rgba(9,99,126,.5)','rgba(9,99,126,.4)','rgba(9,99,126,.35)'],borderRadius:5,label:'Ratio EAU'}];
   if(isR){ eltDs.push(objDs(350,ce.labels)); gazDs.push(objDs(1200,cg.labels)); eauDs.push(objDs(5,cw.labels)); }
-  mkChart('eltC','line',ce.labels,eltDs,envOpts);
-  mkChart('gazC','line',cg.labels,gazDs,envOpts);
-  mkChart('eauC','bar',cw.labels,eauDs,envOpts);
+  mkChart('eltC','line',ce.labels,eltDs,envOptsFor('eltC'));
+  mkChart('gazC','line',cg.labels,gazDs,envOptsFor('gazC'));
+  mkChart('eauC','bar',cw.labels,eauDs,envOptsFor('eauC'));
+}
+
+/* ══ Détail du calcul au clic sur un point ÉNERGIE ══════════════
+   Même principe que les points TF / TG : la fenêtre rappelle la
+   formule du ratio et la substitue avec les valeurs du mois.
+   Les unités produites (UP) ne sont pas une ligne de la feuille KPI :
+   elles se déduisent de consommation ÷ ratio, en recoupant les trois
+   fluides du même mois (ELT, GAZ, EAU doivent donner la même UP). */
+var _envMeta={};
+var ENV_FLUIDS={
+  elt:{lbl:'Électricité',ratioLbl:'Ratio ELT',unit:'kWh',rUnit:'kWh/UP',obj:350, ico:'⚡',col:'var(--amber)',bg:'rgba(245,166,35,.18)'},
+  gaz:{lbl:'Gaz',        ratioLbl:'Ratio GAZ',unit:'m³', rUnit:'m³/UP', obj:1200,ico:'🔥',col:'var(--red)',  bg:'rgba(232,68,90,.18)'},
+  eau:{lbl:'Eau',        ratioLbl:'Ratio EAU',unit:'m³', rUnit:'m³/UP', obj:5,   ico:'💧',col:'var(--p4)',   bg:'rgba(13,168,210,.18)'}
+};
+// Unités produites du mois : consommation ÷ ratio, sur le premier
+// fluide exploitable (les trois donnent la même valeur).
+function envUpForMonth(m,i){
+  var pairs=[[m.elt_months,m.relt_months],[m.gaz_months,m.rgaz_months],[m.eau_months,m.reau_months]];
+  for(var p=0;p<pairs.length;p++){
+    var c=(pairs[p][0]||[])[i], r=(pairs[p][1]||[])[i];
+    if(c!=null&&r!=null&&parseFloat(r)>0) return parseFloat(c)/parseFloat(r);
+  }
+  return null;
+}
+function buildEnvMeta(fluid,m,hdrs,labels){
+  var consoA=(fluid==='elt')?m.elt_months:(fluid==='gaz')?m.gaz_months:m.eau_months;
+  var ratioA=(fluid==='elt')?m.relt_months:(fluid==='gaz')?m.rgaz_months:m.reau_months;
+  var shown=(envMode==='ratio')?ratioA:consoA;
+  var out=[];
+  for(var i=0;i<Math.min((shown||[]).length,12);i++){
+    if(shown[i]===null||shown[i]===undefined) continue;
+    out.push({fluid:fluid,mois:(hdrs&&hdrs[i]?String(hdrs[i]).replace(/-\d{2,4}$/,'').trim():ML[i]),
+              conso:(consoA||[])[i], ratio:(ratioA||[])[i], up:envUpForMonth(m,i)});
+  }
+  // Repli : si les libellés diffèrent (série incomplète), on s'aligne
+  // sur les libellés réellement tracés.
+  if(labels&&labels.length===out.length){
+    out.forEach(function(o,k){ o.mois=labels[k]; });
+  }
+  return out;
+}
+function showEnvPointDetail(cid,idx){
+  var meta=_envMeta[cid]; if(!meta||idx<0||!meta[idx]) return;
+  var d=meta[idx], F=ENV_FLUIDS[d.fluid]; if(!F) return;
+  var ratio=(d.ratio!=null)?parseFloat(d.ratio):null;
+  var conso=(d.conso!=null)?parseFloat(d.conso):null;
+  var up=(d.up!=null)?d.up:((conso!=null&&ratio)?conso/ratio:null);
+  var isR=(envMode==='ratio');
+
+  var badge=document.getElementById('kpiPtBadge');
+  badge.textContent=F.ico;
+  badge.style.background=F.bg;
+  badge.style.borderColor=F.col;
+  document.getElementById('kpiPtKind').textContent=(isR?'RATIO PAR UNITÉ PRODUITE · ':'CONSOMMATION MENSUELLE · ')+'DÉTAIL DU CALCUL';
+  document.getElementById('kpiPtTitle').textContent=F.ratioLbl+' — '+d.mois;
+
+  var row=function(lbl,v,c){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3);font-size:11px">'+lbl+'</span><span style="font-weight:700;font-size:12px;color:'+(c||'var(--text)')+'">'+v+'</span></div>'; };
+  var num=function(v,dec){ return (v==null)?'—':Number(v).toLocaleString('fr-FR',{maximumFractionDigits:(dec==null?2:dec)}); };
+
+  var h='';
+  h+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Portée : <b style="color:var(--text2)">mois de '+esc(d.mois)+'</b></div>';
+  h+=row('Consommation '+F.lbl+' du mois', num(conso,0)+' '+F.unit, F.col);
+  h+=row('Unités produites (UP)', up==null?'non disponible':num(up,0));
+  h+=row('Objectif', '≤ '+num(F.obj,0)+' '+F.rUnit);
+
+  h+='<div style="margin-top:12px;padding:11px 12px;background:var(--bg2,rgba(127,127,127,.08));border-radius:8px;border:1px solid var(--border)">';
+  h+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Formule</div>';
+  h+='<div style="font-size:11.5px;color:var(--text2);line-height:1.5">'+F.ratioLbl+' = consommation '+F.lbl.toLowerCase()+' du mois ('+F.unit+') ÷ unités produites du mois</div>';
+  if(conso!=null&&up){
+    h+='<div style="font-size:12px;color:var(--text);margin-top:8px;font-family:\'JetBrains Mono\',monospace">= '+num(conso,0)+' ÷ '+num(up,0)+'</div>';
+    h+='<div style="font-size:16px;font-weight:800;color:'+F.col+';margin-top:6px">= '+num(ratio!=null?ratio:conso/up,2)+' '+F.rUnit+'</div>';
+  }else if(ratio!=null){
+    h+='<div style="font-size:16px;font-weight:800;color:'+F.col+';margin-top:8px">= '+num(ratio,2)+' '+F.rUnit+'</div>';
+    h+='<div style="font-size:11px;color:var(--text3);margin-top:6px">Unités produites indisponibles pour ce mois : seul le ratio de la feuille KPI est affiché.</div>';
+  }else{
+    h+='<div style="font-size:11px;color:var(--red);margin-top:8px">Données du mois incomplètes → ratio non calculé.</div>';
+  }
+  // Écart à l'objectif
+  if(ratio!=null){
+    var ok=(ratio<=F.obj), ecart=ratio-F.obj;
+    var pct=F.obj?Math.round(Math.abs(ecart)/F.obj*100):null;
+    h+='<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border);font-size:11.5px;font-weight:700;color:'+(ok?'var(--green)':'var(--red)')+'">'
+      + (ok?'✔ Conforme':'✖ Écart')+' — '+(ok?'−':'+')+num(Math.abs(ecart),2)+' '+F.rUnit
+      + (pct!=null?' ('+(ok?'−':'+')+pct+'% vs objectif)':'')+'</div>';
+  }
+  h+='</div>';
+  h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">'
+    +'Valeur du mois isolé (non cumulée). Consommations et ratios issus de la feuille KPI ; '
+    +'les unités produites sont déduites du rapport consommation ÷ ratio.</div>';
+  document.getElementById('kpiPtBody').innerHTML=h;
+  openModal('kpiPointModal');
 }
 
 /* ══════════════════════════════════════════════════════════════
