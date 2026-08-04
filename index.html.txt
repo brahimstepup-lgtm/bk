@@ -6772,13 +6772,13 @@ function dechetsRenderCharts(headers, rows){
    3. Tri à la source et stockage temporaire              (ENR-HSE 41)
 
    Support de référence : la matrice « Zones de génération de déchets
-   × Type de déchets » du système documentaire, reprise telle quelle —
-   sites renommés SOBCO 3 et lignes « Laboratoire » retirées.
+   × Type de déchets » du système documentaire, adaptée au site :
+   zones de production repérées PAR ÉTAGE (-1, 0, 1), plus les
+   utilités, le magasin matières premières et la cantine.
    Le processus de production est la source principale, mais pas la
    seule : les déchets spéciaux (huiles usagées des moteurs, filtres,
-   chiffons souillés…) proviennent des ateliers de maintenance et des
-   utilités, les DASRI de l'infirmerie, les déchets de cantine des
-   locaux sociaux.
+   chiffons souillés…) proviennent des utilités, les emballages du
+   magasin matières premières, les déchets organiques de la cantine.
    ══════════════════════════════════════════════════════════════ */
 // Colonnes de la matrice — un type de déchet par entrée.
 var DECHETS_TYPES_REF = [
@@ -6806,10 +6806,6 @@ var DECHETS_TYPES_REF = [
     contenant:'Bac à couvercle, vidé à chaque shift',        couleur:'Vert — organique',
     lieu:'Local DMA fermé, à l\'écart des zones de production',
     filiere:'Collecte communale ou prestataire de ramassage' },
-  { k:'infirmerie', lbl:'Déchets infirmerie', grp:'',          danger:true,
-    contenant:'Conteneur DASRI normalisé, à fermeture définitive', couleur:'Jaune — risque infectieux',
-    lieu:'Local infirmerie fermé à clé',
-    filiere:'Filière DASRI agréée — bordereau de suivi' },
   { k:'speciaux',   lbl:'Déchets spéciaux',   grp:'',          danger:true,
     contenant:'Fûts étanches fermés, sur bac de rétention, étiquetés', couleur:'Rouge — pictogrammes de danger',
     lieu:'Local DSD fermé à clé, ventilé, sol étanche avec rétention',
@@ -6819,35 +6815,23 @@ var DECHETS_TYPES_REF = [
     lieu:'Aire déchets extérieure',
     filiere:'Récupérateur agréé ou décharge autorisée' }
 ];
-// Lignes de la matrice — zones de génération.
-// (SOBCO 1 et SOBCO 2 renommés SOBCO 3 ; lignes « Laboratoire » retirées ;
-//  les zones devenues identiques après renommage ont été fusionnées.)
+// Lignes de la matrice — zones de génération réelles du site.
+// Les zones de production sont repérées PAR ÉTAGE (et non par atelier),
+// comme la cartographie des dispositifs : étage -1, étage 0, étage 1.
 var DECHETS_ZONES_REF = [
-  { z:'Production SOBCO 3',               fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Ateliers maintenance SOBCO 3',     fam:'maint', t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',                resp:'Tech / HSE' },
-  { z:'Cantine SOBCO 3',                  fam:'cant',  t:['plastique','carton','verre','cantine','divers'], freq:'Chaque shift',             resp:'HSE' },
-  { z:'Préparation sous-sol SOBCO 3',     fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Atelier tartiner SOBCO 3',         fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Atelier chocolaterie SOBCO 3',     fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Préparation biscuiterie SOBCO 3',  fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Atelier biscuiterie SOBCO 3',      fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Préparation Ouled Moussa',         fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Production Ouled Moussa',          fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
-  { z:'Ateliers maintenance Ouled Moussa',fam:'maint', t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',                resp:'Tech / HSE' },
-  { z:'Cantine Ouled Moussa',             fam:'cant',  t:['plastique','verre','cantine','divers'],          freq:'Chaque shift',             resp:'HSE' },
-  { z:'Infirmerie',                       fam:'inf',   t:['plastique','verre','infirmerie','divers'],       freq:'Au besoin',                resp:'HSE' },
-  { z:'Les utilités',                     fam:'util',  t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',                resp:'Tech / HSE' },
-  { z:'Ensemble du site (nettoyage, travaux, nouveaux projets, objets détériorés…)',
-                                          fam:'site',  t:['plastique','carton','bois','speciaux','divers'], freq:'Après chaque intervention',resp:'Méthode / projet / HSE' }
+  { z:'Étage -1 — Production',   fam:'prod', t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift', resp:'Prod / HSE' },
+  { z:'Étage 0 — Production',    fam:'prod', t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift', resp:'Prod / HSE' },
+  { z:'Étage 1 — Production',    fam:'prod', t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift', resp:'Prod / HSE' },
+  { z:'Les utilités',            fam:'util', t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',        resp:'Tech / HSE' },
+  { z:'Magasin matières premières', fam:'mag', t:['plastique','carton','bois','divers'],          freq:'Au besoin',        resp:'Magasin / HSE' },
+  { z:'Cantine',                 fam:'cant', t:['plastique','carton','verre','cantine','divers'], freq:'Chaque shift',     resp:'HSE' }
 ];
 // Nature de l'activité, par famille de zone
 var DECHETS_FAM = {
   prod: 'Fabrication et conditionnement — fours, lignes, préparation',
-  maint:'Entretien des équipements — vidanges, filtres, pièces usagées',
-  cant: 'Restauration du personnel — préparation et service des repas',
-  inf:  'Soins au personnel — pansements et consommables médicaux',
-  util: 'Chaufferie, compresseurs, groupes électrogènes, traitement d\'eau',
-  site: 'Nettoyage général, travaux neufs, projets, mise au rebut'
+  util: 'Chaufferie, compresseurs, groupes électrogènes, entretien des moteurs et des équipements',
+  mag:  'Réception et stockage des matières premières — déballage, palettisation',
+  cant: 'Restauration du personnel — préparation et service des repas'
 };
 function dechetTypeRef(k){
   for(var i=0;i<DECHETS_TYPES_REF.length;i++){ if(DECHETS_TYPES_REF[i].k===k) return DECHETS_TYPES_REF[i]; }
@@ -6962,8 +6946,7 @@ function renderDechetFiche(kind){
     h+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:9px 12px;font-size:10px;color:#1e3a5f;margin-top:10px">'
       +'<b>Règle de rattachement :</b> le processus de production est la source principale des déchets, mais il n\'est pas la seule. '
       +'Les <b>déchets spéciaux</b> — huiles usagées des moteurs, filtres, chiffons souillés, batteries — proviennent des '
-      +'<b>ateliers de maintenance et des utilités</b> ; les déchets de soins de l\'<b>infirmerie</b> ; les déchets de cantine des <b>locaux sociaux</b> ; '
-      +'les déchets de travaux et de mise au rebut de l\'<b>ensemble du site</b>.</div>';
+      +'<b>utilités</b> (entretien des moteurs et des équipements) ; les emballages du <b>magasin matières premières</b> ; les déchets de cantine des <b>locaux sociaux</b>.</div>';
   } else if(kind==='types'){
     // ── 2. Matrice zones × types (support de référence) ───────
     h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;table-layout:fixed">';
@@ -6994,7 +6977,7 @@ function renderDechetFiche(kind){
     h+='</tbody></table>';
     h+='<div style="font-size:9.5px;color:#5a7684;margin-top:8px">'
       +'Lecture : une croix indique que la zone génère ce type de déchet. Les colonnes en rouge correspondent aux déchets dangereux '
-      +'(déchets spéciaux et déchets de soins), qui suivent une filière séparée avec bordereau de suivi.</div>';
+      +'(déchets spéciaux), qui suivent une filière séparée avec bordereau de suivi.</div>';
   } else {
     // ── 3. Tri à la source et stockage temporaire ────────────
     h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
@@ -7018,7 +7001,7 @@ function renderDechetFiche(kind){
     h+='</tbody></table>';
     h+='<div style="background:#fefce8;border:1px solid #fde047;border-radius:5px;padding:9px 12px;font-size:10px;color:#78350f;margin-top:10px">'
       +'<b>Consignes de tri :</b> le tri est réalisé <b>à la source</b>, au poste de travail, dans des contenants identifiés et jamais mélangés. '
-      +'Les déchets dangereux (spéciaux, déchets de soins) sont stockés à part, sur rétention, en local fermé et ventilé, à l\'écart des déchets banals et de toute denrée. '
+      +'Les déchets dangereux (déchets spéciaux) sont stockés à part, sur rétention, en local fermé et ventilé, à l\'écart des déchets banals et de toute denrée. '
       +'Les fréquences d\'évacuation de la fiche ENR-HSE 39 sont respectées ; chaque enlèvement est enregistré, avec bordereau de suivi pour les déchets dangereux.</div>';
   }
 
