@@ -3813,6 +3813,8 @@ html.light .pests-search-input{background:#edf2f7}
          style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--p4);font-size:11px;text-decoration:none">↗ Ouvrir la feuille</a>
       <button onclick="printDechets()" title="Générer le rapport de suivi des déchets (PDF)"
               style="padding:7px 14px;background:linear-gradient(135deg,var(--p1),var(--p2));border:1px solid var(--p3);border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">🖨️ Rapport de suivi (PDF)</button>
+      <button onclick="openDechetFiche('sources')" title="Les trois fiches du processus déchets : sources génératrices, types par source, tri et stockage temporaire"
+              style="padding:7px 14px;background:linear-gradient(135deg,#2f7d32,#3ca55c);border:1px solid #3ca55c;border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">♻️ Fiches déchets <span style="font-size:9px;opacity:.8;font-family:'JetBrains Mono',monospace">ENR-HSE 39-41</span></button>
     </div>
   </div>
   <!-- Graphiques : évolution mensuelle -->
@@ -4655,6 +4657,32 @@ html.light .pests-search-input{background:#edf2f7}
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL DÉCHETS — LES TROIS FICHES (ENR-HSE 39 · 40 · 41) ═══ -->
+<div class="modal-bg" id="dechetFicheModal" style="display:none" onclick="if(event.target===this)closeModal('dechetFicheModal')">
+  <div class="modal-panel" style="max-width:1180px;width:97vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="dechetFicheBadge" style="background:rgba(60,165,92,.18);border-color:rgba(60,165,92,.5);color:#3ca55c">♻️</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name" id="dechetFicheTitle">Fiches déchets</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <span class="mono" style="font-size:10px;color:#3ca55c;font-weight:700" id="dechetFicheRef">ENR-HSE 39</span>
+          · Processus de gestion des déchets — SOBCO 3
+        </div>
+      </div>
+      <button class="btn" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="printDechetFiche()">🖨️ Imprimer / PDF</button>
+      <button class="modal-close" onclick="closeModal('dechetFicheModal')">✕</button>
+    </div>
+    <div class="modal-tabs" id="dechetFicheTabs" style="display:flex;gap:6px;padding:8px 16px 0;flex-wrap:wrap">
+      <button class="modal-tab on" data-fiche="sources" onclick="openDechetFiche('sources')">1 · Sources génératrices</button>
+      <button class="modal-tab" data-fiche="types" onclick="openDechetFiche('types')">2 · Types par source</button>
+      <button class="modal-tab" data-fiche="tri" onclick="openDechetFiche('tri')">3 · Tri &amp; stockage</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="dechetFicheBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)">Chargement…</div>
     </div>
   </div>
 </div>
@@ -6737,6 +6765,302 @@ function dechetsRenderCharts(headers, rows){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   DÉCHETS — LES TROIS FICHES DU LOGIGRAMME
+   ──────────────────────────────────────────────────────────────
+   1. Identification des sources génératrice des déchets  (ENR-HSE 39)
+   2. Identification des types de déchets par source      (ENR-HSE 40)
+   3. Tri à la source et stockage temporaire              (ENR-HSE 41)
+
+   Support de référence : la matrice « Zones de génération de déchets
+   × Type de déchets » du système documentaire, reprise telle quelle —
+   sites renommés SOBCO 3 et lignes « Laboratoire » retirées.
+   Le processus de production est la source principale, mais pas la
+   seule : les déchets spéciaux (huiles usagées des moteurs, filtres,
+   chiffons souillés…) proviennent des ateliers de maintenance et des
+   utilités, les DASRI de l'infirmerie, les déchets de cantine des
+   locaux sociaux.
+   ══════════════════════════════════════════════════════════════ */
+// Colonnes de la matrice — un type de déchet par entrée.
+var DECHETS_TYPES_REF = [
+  { k:'produit',    lbl:'Produit',            grp:'',          danger:false,
+    contenant:'Bac dédié « produit » puis benne fermée',      couleur:'Gris — identifié « produit »',
+    lieu:'Zone déchets produits, à l\'écart des matières premières',
+    filiere:'Destruction contrôlée avec procès-verbal ou valorisation autorisée' },
+  { k:'plastique',  lbl:'Plastique',          grp:'Emballage', danger:false,
+    contenant:'Bac de tri / balles compactées',              couleur:'Jaune',
+    lieu:'Aire de tri des emballages',
+    filiere:'Recycleur agréé — valorisation matière' },
+  { k:'carton',     lbl:'Carton',             grp:'Emballage', danger:false,
+    contenant:'Bac de tri / compacteur',                     couleur:'Bleu',
+    lieu:'Aire de tri des emballages, à l\'abri de la pluie',
+    filiere:'Recycleur agréé — valorisation matière' },
+  { k:'bois',       lbl:'Bois',               grp:'',          danger:false,
+    contenant:'Zone de gerbage des palettes / benne bois',   couleur:'—',
+    lieu:'Aire déchets extérieure',
+    filiere:'Réemploi des palettes ou récupérateur agréé' },
+  { k:'verre',      lbl:'Verre',              grp:'',          danger:false,
+    contenant:'Bac dédié à parois rigides',                  couleur:'Vert',
+    lieu:'Aire de tri des emballages',
+    filiere:'Recycleur agréé — valorisation matière' },
+  { k:'cantine',    lbl:'Déchets cantine',    grp:'',          danger:false,
+    contenant:'Bac à couvercle, vidé à chaque shift',        couleur:'Vert — organique',
+    lieu:'Local DMA fermé, à l\'écart des zones de production',
+    filiere:'Collecte communale ou prestataire de ramassage' },
+  { k:'infirmerie', lbl:'Déchets infirmerie', grp:'',          danger:true,
+    contenant:'Conteneur DASRI normalisé, à fermeture définitive', couleur:'Jaune — risque infectieux',
+    lieu:'Local infirmerie fermé à clé',
+    filiere:'Filière DASRI agréée — bordereau de suivi' },
+  { k:'speciaux',   lbl:'Déchets spéciaux',   grp:'',          danger:true,
+    contenant:'Fûts étanches fermés, sur bac de rétention, étiquetés', couleur:'Rouge — pictogrammes de danger',
+    lieu:'Local DSD fermé à clé, ventilé, sol étanche avec rétention',
+    filiere:'Éliminateur agréé — bordereau de suivi des déchets (BSD)' },
+  { k:'divers',     lbl:'Déchets divers',     grp:'',          danger:false,
+    contenant:'Benne de collecte identifiée',                couleur:'Gris',
+    lieu:'Aire déchets extérieure',
+    filiere:'Récupérateur agréé ou décharge autorisée' }
+];
+// Lignes de la matrice — zones de génération.
+// (SOBCO 1 et SOBCO 2 renommés SOBCO 3 ; lignes « Laboratoire » retirées ;
+//  les zones devenues identiques après renommage ont été fusionnées.)
+var DECHETS_ZONES_REF = [
+  { z:'Production SOBCO 3',               fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Ateliers maintenance SOBCO 3',     fam:'maint', t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',                resp:'Tech / HSE' },
+  { z:'Cantine SOBCO 3',                  fam:'cant',  t:['plastique','carton','verre','cantine','divers'], freq:'Chaque shift',             resp:'HSE' },
+  { z:'Préparation sous-sol SOBCO 3',     fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Atelier tartiner SOBCO 3',         fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Atelier chocolaterie SOBCO 3',     fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Préparation biscuiterie SOBCO 3',  fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Atelier biscuiterie SOBCO 3',      fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Préparation Ouled Moussa',         fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Production Ouled Moussa',          fam:'prod',  t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift',         resp:'Prod / HSE' },
+  { z:'Ateliers maintenance Ouled Moussa',fam:'maint', t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',                resp:'Tech / HSE' },
+  { z:'Cantine Ouled Moussa',             fam:'cant',  t:['plastique','verre','cantine','divers'],          freq:'Chaque shift',             resp:'HSE' },
+  { z:'Infirmerie',                       fam:'inf',   t:['plastique','verre','infirmerie','divers'],       freq:'Au besoin',                resp:'HSE' },
+  { z:'Les utilités',                     fam:'util',  t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',                resp:'Tech / HSE' },
+  { z:'Ensemble du site (nettoyage, travaux, nouveaux projets, objets détériorés…)',
+                                          fam:'site',  t:['plastique','carton','bois','speciaux','divers'], freq:'Après chaque intervention',resp:'Méthode / projet / HSE' }
+];
+// Nature de l'activité, par famille de zone
+var DECHETS_FAM = {
+  prod: 'Fabrication et conditionnement — fours, lignes, préparation',
+  maint:'Entretien des équipements — vidanges, filtres, pièces usagées',
+  cant: 'Restauration du personnel — préparation et service des repas',
+  inf:  'Soins au personnel — pansements et consommables médicaux',
+  util: 'Chaufferie, compresseurs, groupes électrogènes, traitement d\'eau',
+  site: 'Nettoyage général, travaux neufs, projets, mise au rebut'
+};
+function dechetTypeRef(k){
+  for(var i=0;i<DECHETS_TYPES_REF.length;i++){ if(DECHETS_TYPES_REF[i].k===k) return DECHETS_TYPES_REF[i]; }
+  return null;
+}
+function dechetZonesForType(k){
+  return DECHETS_ZONES_REF.filter(function(z){ return z.t.indexOf(k)>-1; });
+}
+
+// ── Fiches : métadonnées documentaires ────────────────────────
+var DECHET_FICHES = {
+  sources: { ref:'ENR-HSE 39', ico:'🏭', etape:0,
+    titre:'Identification des sources génératrice des déchets',
+    sub:'Zones de génération, fréquence et responsable d\'évacuation — SOBCO 3' },
+  types:   { ref:'ENR-HSE 40', ico:'🗂️', etape:1,
+    titre:'Identification des types de déchets par source',
+    sub:'Matrice zones de génération × types de déchets' },
+  tri:     { ref:'ENR-HSE 41', ico:'♻️', etape:2,
+    titre:'Tri à la source et stockage temporaire',
+    sub:'Contenants, identification, stockage temporaire et filières d\'élimination' }
+};
+var DECHET_ETAPES = ['Identification des sources génératrice des déchets',
+                     'Identification des types de déchets par source',
+                     'Tri à la source et stockage temporaire'];
+var _dechetFicheCur = 'sources';
+
+// Logigramme du processus, l'étape courante mise en avant
+function dechetLogigramme(step){
+  var h='<div style="display:flex;flex-direction:column;align-items:center;margin:0 0 14px">';
+  DECHET_ETAPES.forEach(function(t,i){
+    var on=(i===step);
+    if(i>0) h+='<div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:11px solid #9bb4c9;margin:2px 0"></div>';
+    h+='<div style="width:420px;max-width:92%;text-align:center;padding:7px 12px;border:1.5px solid '
+      +(on?'#0c4a6e':'#7ba7c9')+';background:'+(on?'#e0f2fe':'#fff')+';color:'+(on?'#0c4a6e':'#334155')
+      +';font-size:10.5px;font-weight:'+(on?'800':'600')+'">'+esc(t)+'</div>';
+  });
+  h+='</div>';
+  return h;
+}
+function dechetFicheHeader(cfg,todayStr){
+  var logoSrc=ficheLogoSrc();
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var h='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>';
+  h+='<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">'+esc(cfg.titre)+'</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">'+esc(cfg.sub)+'</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+td+';width:190px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#3ca55c;letter-spacing:.05em">'+esc(cfg.ref)+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor(cfg.ref)+'</td></tr>';
+  h+='</table></td></tr></table>';
+  return h;
+}
+function dechetSignatures(td){
+  var h='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-top:12px"><tr>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="'+td+';width:33%;text-align:center;padding:16px 8px">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:26px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div></td>';
+  });
+  h+='</tr></table>';
+  return h;
+}
+
+/* ── Rendu des trois fiches ─────────────────────────────────── */
+function renderDechetFiche(kind){
+  var cfg=DECHET_FICHES[kind]||DECHET_FICHES.sources;
+  var body=document.getElementById('dechetFicheBody'); if(!body) return;
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'
+              +String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9.5px;vertical-align:top;color:#334155';
+  var TH=function(t,w){ return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase'+(w?';width:'+w:'')+'">'+esc(t)+'</th>'; };
+  var dngBadge='<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;font-weight:800;font-size:8.5px">DANGEREUX</span>';
+  var banBadge='<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:#dcfce7;border:1px solid #86efac;color:#166534;font-weight:700;font-size:8.5px">BANAL</span>';
+
+  var h='<div id="dechetFichePrint">';
+  h+=dechetFicheHeader(cfg,todayStr);
+  h+=dechetLogigramme(cfg.etape);
+
+  if(kind==='sources'){
+    // ── 1. Sources génératrices ──────────────────────────────
+    h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+    h+='<thead><tr style="background:#0c4a6e;color:#fff">'+TH('#','26px')+TH('Zone de génération','185px')
+      +TH('Activités à l\'origine des déchets')+TH('Déchets générés')
+      +TH('Fréquence d\'évacuation','104px')+TH('Responsable','92px')+'</tr></thead><tbody>';
+    DECHETS_ZONES_REF.forEach(function(z,i){
+      var dng=z.t.some(function(k){ var T=dechetTypeRef(k); return T&&T.danger; });
+      h+='<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">';
+      h+='<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>';
+      h+='<td style="'+tdc+';font-weight:700;color:#0f172a">'+esc(z.z)+(dng?' '+dngBadge:'')+'</td>';
+      h+='<td style="'+tdc+'">'+esc(DECHETS_FAM[z.fam]||'—')+'</td>';
+      h+='<td style="'+tdc+'">'+z.t.map(function(k){ var T=dechetTypeRef(k); return esc(T?T.lbl:k); }).join(' · ')+'</td>';
+      h+='<td style="'+tdc+';font-weight:600">'+esc(z.freq)+'</td>';
+      h+='<td style="'+tdc+';text-align:center;font-weight:600">'+esc(z.resp)+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:9px 12px;font-size:10px;color:#1e3a5f;margin-top:10px">'
+      +'<b>Règle de rattachement :</b> le processus de production est la source principale des déchets, mais il n\'est pas la seule. '
+      +'Les <b>déchets spéciaux</b> — huiles usagées des moteurs, filtres, chiffons souillés, batteries — proviennent des '
+      +'<b>ateliers de maintenance et des utilités</b> ; les déchets de soins de l\'<b>infirmerie</b> ; les déchets de cantine des <b>locaux sociaux</b> ; '
+      +'les déchets de travaux et de mise au rebut de l\'<b>ensemble du site</b>.</div>';
+  } else if(kind==='types'){
+    // ── 2. Matrice zones × types (support de référence) ───────
+    h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;table-layout:fixed">';
+    h+='<thead><tr style="background:#0c4a6e;color:#fff">';
+    h+='<th rowspan="2" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;width:168px;vertical-align:middle">Zones de génération de déchets</th>';
+    h+='<th colspan="'+DECHETS_TYPES_REF.length+'" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;text-align:center">Type de déchets</th>';
+    h+='<th rowspan="2" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;width:80px;vertical-align:middle">Fréquence d\'évacuation</th>';
+    h+='<th rowspan="2" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;width:70px;vertical-align:middle">Responsable d\'évacuation</th>';
+    h+='</tr><tr style="background:#155e83;color:#fff">';
+    DECHETS_TYPES_REF.forEach(function(T){
+      h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8px;text-align:center;width:50px">'
+        +(T.grp?'<span style="display:block;font-size:7px;opacity:.85">'+esc(T.grp)+'</span>':'')
+        +esc(T.lbl)+(T.danger?'<span style="display:block;font-size:7px;color:#ffd7dc">dangereux</span>':'')+'</th>';
+    });
+    h+='</tr></thead><tbody>';
+    DECHETS_ZONES_REF.forEach(function(z,i){
+      h+='<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">';
+      h+='<td style="'+tdc+';font-weight:700;color:#0f172a">'+esc(z.z)+'</td>';
+      DECHETS_TYPES_REF.forEach(function(T){
+        var on=z.t.indexOf(T.k)>-1;
+        h+='<td style="'+tdc+';text-align:center;font-weight:800;font-size:11px;color:'+(T.danger?'#991b1b':'#0f172a')
+          +(on?';background:'+(T.danger?'#fee2e2':'#eef6fb'):'')+'">'+(on?'X':'')+'</td>';
+      });
+      h+='<td style="'+tdc+';font-weight:600">'+esc(z.freq)+'</td>';
+      h+='<td style="'+tdc+';text-align:center;font-weight:600">'+esc(z.resp)+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="font-size:9.5px;color:#5a7684;margin-top:8px">'
+      +'Lecture : une croix indique que la zone génère ce type de déchet. Les colonnes en rouge correspondent aux déchets dangereux '
+      +'(déchets spéciaux et déchets de soins), qui suivent une filière séparée avec bordereau de suivi.</div>';
+  } else {
+    // ── 3. Tri à la source et stockage temporaire ────────────
+    h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+    h+='<thead><tr style="background:#0c4a6e;color:#fff">'+TH('#','26px')+TH('Type de déchet','116px')
+      +TH('Contenant de tri')+TH('Identification','116px')+TH('Stockage temporaire')
+      +TH('Filière d\'élimination')+TH('Zones','48px')+'</tr></thead><tbody>';
+    DECHETS_TYPES_REF.forEach(function(T,i){
+      var nz=dechetZonesForType(T.k).length;
+      h+='<tr style="background:'+(T.danger?'#fff5f5':(i%2?'#f8fafc':'#fff'))+'">';
+      h+='<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>';
+      h+='<td style="'+tdc+';font-weight:700;color:#0f172a">'
+        +(T.grp?'<span style="display:block;font-size:8px;color:#64748b;font-weight:600">'+esc(T.grp)+'</span>':'')
+        +esc(T.lbl)+'<div style="margin-top:3px">'+(T.danger?dngBadge:banBadge)+'</div></td>';
+      h+='<td style="'+tdc+'">'+esc(T.contenant)+'</td>';
+      h+='<td style="'+tdc+'">'+esc(T.couleur)+'</td>';
+      h+='<td style="'+tdc+'">'+esc(T.lieu)+'</td>';
+      h+='<td style="'+tdc+'">'+esc(T.filiere)+'</td>';
+      h+='<td style="'+tdc+';text-align:center;font-weight:700;font-family:monospace">'+nz+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="background:#fefce8;border:1px solid #fde047;border-radius:5px;padding:9px 12px;font-size:10px;color:#78350f;margin-top:10px">'
+      +'<b>Consignes de tri :</b> le tri est réalisé <b>à la source</b>, au poste de travail, dans des contenants identifiés et jamais mélangés. '
+      +'Les déchets dangereux (spéciaux, déchets de soins) sont stockés à part, sur rétention, en local fermé et ventilé, à l\'écart des déchets banals et de toute denrée. '
+      +'Les fréquences d\'évacuation de la fiche ENR-HSE 39 sont respectées ; chaque enlèvement est enregistré, avec bordereau de suivi pour les déchets dangereux.</div>';
+  }
+
+  h+=dechetSignatures(td);
+  h+='<div style="font-size:8.5px;color:#94a3b8;margin-top:8px">SOBCO 3 — HSE · '+esc(cfg.titre)
+    +' ('+esc(cfg.ref)+') · édité le '+todayStr+'</div>';
+  h+='</div>';
+  body.innerHTML=h;
+}
+function openDechetFiche(kind){
+  if(!DECHET_FICHES[kind]) kind='sources';
+  _dechetFicheCur=kind;
+  var cfg=DECHET_FICHES[kind];
+  if(!document.getElementById('dechetFicheModal')) return;
+  var b=document.getElementById('dechetFicheBadge'); if(b) b.textContent=cfg.ico;
+  var t=document.getElementById('dechetFicheTitle'); if(t) t.textContent=cfg.titre;
+  var r=document.getElementById('dechetFicheRef'); if(r) r.textContent=cfg.ref;
+  var tabs=document.getElementById('dechetFicheTabs');
+  if(tabs) tabs.querySelectorAll('button').forEach(function(el){
+    el.classList.toggle('on', el.getAttribute('data-fiche')===kind);
+  });
+  renderDechetFiche(kind);
+  openModal('dechetFicheModal');
+}
+function printDechetFiche(){
+  var el=document.getElementById('dechetFichePrint');
+  if(!el){ window.print(); return; }
+  var cfg=DECHET_FICHES[_dechetFicheCur]||DECHET_FICHES.sources;
+  var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'
+    +esc(cfg.ref+' - '+cfg.titre)+'</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },400);
+}
+
+/* ══════════════════════════════════════════════════════════════
    RAPPORT DE SUIVI DES DÉCHETS (PDF)
    ══════════════════════════════════════════════════════════════ */
 function printDechets(){
@@ -7418,7 +7742,7 @@ function printVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal','pestEnr07Modal','pesticidesModal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal','pestEnr07Modal','pesticidesModal','dechetFicheModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
