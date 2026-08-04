@@ -6783,7 +6783,7 @@ function dechetsRenderCharts(headers, rows){
 // Colonnes de la matrice — un type de déchet par entrée.
 var DECHETS_TYPES_REF = [
   { k:'produit',    lbl:'Produit',            grp:'',          danger:false,
-    contenant:'Bac dédié « produit » puis benne fermée',      couleur:'Gris — identifié « produit »',
+    contenant:'Sacs poubelle ROUGES, puis benne fermée',     couleur:'Rouge',
     lieu:'Zone déchets produits, à l\'écart des matières premières',
     filiere:'Destruction contrôlée avec procès-verbal ou valorisation autorisée' },
   { k:'plastique',  lbl:'Plastique',          grp:'Emballage', danger:false,
@@ -6791,7 +6791,7 @@ var DECHETS_TYPES_REF = [
     lieu:'Aire de tri des emballages',
     filiere:'Recycleur agréé — valorisation matière' },
   { k:'carton',     lbl:'Carton',             grp:'Emballage', danger:false,
-    contenant:'Bac de tri / compacteur',                     couleur:'Bleu',
+    contenant:'Palette dédiée — cartons pliés et gerbés',    couleur:'Palette identifiée « carton »',
     lieu:'Aire de tri des emballages, à l\'abri de la pluie',
     filiere:'Recycleur agréé — valorisation matière' },
   { k:'bois',       lbl:'Bois',               grp:'',          danger:false,
@@ -6803,11 +6803,11 @@ var DECHETS_TYPES_REF = [
     lieu:'Aire de tri des emballages',
     filiere:'Recycleur agréé — valorisation matière' },
   { k:'cantine',    lbl:'Déchets cantine',    grp:'',          danger:false,
-    contenant:'Bac à couvercle, vidé à chaque shift',        couleur:'Vert — organique',
+    contenant:'Sacs poubelle NOIRS, bac à couvercle vidé à chaque shift', couleur:'Noir',
     lieu:'Local DMA fermé, à l\'écart des zones de production',
     filiere:'Collecte communale ou prestataire de ramassage' },
   { k:'speciaux',   lbl:'Déchets spéciaux',   grp:'',          danger:true,
-    contenant:'Fûts étanches fermés, sur bac de rétention, étiquetés', couleur:'Rouge — pictogrammes de danger',
+    contenant:'Fûts étanches fermés, sur bac de rétention',  couleur:'Étiquetage réglementaire — pictogrammes de danger',
     lieu:'Local DSD fermé à clé, ventilé, sol étanche avec rétention',
     filiere:'Éliminateur agréé — bordereau de suivi des déchets (BSD)' },
   { k:'divers',     lbl:'Déchets divers',     grp:'',          danger:false,
@@ -7000,7 +7000,7 @@ function renderDechetFiche(kind){
     });
     h+='</tbody></table>';
     h+='<div style="background:#fefce8;border:1px solid #fde047;border-radius:5px;padding:9px 12px;font-size:10px;color:#78350f;margin-top:10px">'
-      +'<b>Consignes de tri :</b> le tri est réalisé <b>à la source</b>, au poste de travail, dans des contenants identifiés et jamais mélangés. '
+      +'<b>Consignes de tri :</b> le tri est réalisé <b>à la source</b>, au poste de travail, dans des contenants identifiés et jamais mélangés — <b>sacs rouges</b> pour les déchets de produit, <b>sacs noirs</b> pour les déchets de cantine, <b>palette dédiée</b> pour les cartons. '
       +'Les déchets dangereux (déchets spéciaux) sont stockés à part, sur rétention, en local fermé et ventilé, à l\'écart des déchets banals et de toute denrée. '
       +'Les fréquences d\'évacuation de la fiche ENR-HSE 39 sont respectées ; chaque enlèvement est enregistré, avec bordereau de suivi pour les déchets dangereux.</div>';
   }
