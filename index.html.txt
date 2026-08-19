@@ -5306,8 +5306,8 @@ html.light .pests-search-input{background:#edf2f7}
           <b>photo</b> ou <b>vidéo</b> à partir d'un <b>lien Google&nbsp;Drive</b>
           (le fichier doit être partagé « Tous les utilisateurs disposant du lien »).
           Une seule page active&nbsp;: pas de défilement. Le cadrage
-          <b>Plein écran</b> diffuse le média sans bordures ni entête, et les vidéos
-          démarrent toutes seules.
+          <b>Plein écran</b> diffuse le média sans bordures ni entête. Les vidéos
+          démarrent toutes seules, sans le moindre clic.
           <br>Sur l'écran&nbsp;: <b>←</b> / <b>→</b> pour changer de page, <b>Espace</b> pour
           mettre en pause. Réglages enregistrés sur ce poste.
         </div>
@@ -11844,6 +11844,7 @@ function tvStartShow(){
   tvPaused=false;
   tvSetPauseIcon(false);
   tvShowPage(0);
+  tvVideoPrefetch();                                     // vidéos prêtes d'avance
 }
 function tvStopShow(){
   if(tvPageTimer){ clearTimeout(tvPageTimer); tvPageTimer=null; }
@@ -11978,12 +11979,9 @@ function tvMediaSources(p){
   if(yt) return {kind:'frame',urls:['https://www.youtube.com/embed/'+yt[1]
         +'?autoplay=1&mute='+(p.snd?0:1)+'&loop=1&controls=0&rel=0&playsinline=1&playlist='+yt[1]]};
   if(/\.(mp4|webm|ogv|ogg|m4v)(\?|#|$)/i.test(url)) return {kind:'video',urls:[url],frame:''};
-  // Fichier Drive : flux direct d'abord (démarrage automatique possible),
-  // lecteur intégré /preview en repli — ce dernier exige un clic, mais
-  // reste lisible quel que soit le poids du fichier.
-  if(id) return {kind:'video',
-    urls:['https://drive.usercontent.google.com/download?id='+id+'&export=download',
-          'https://drive.google.com/uc?export=download&id='+id],
+  // Fichier Drive : la vidéo est rapatriée par le serveur puis lue par
+  // la balise <video> — c'est la seule façon de démarrer sans clic.
+  if(id) return {kind:'drive',id:id,urls:[],
     frame:'https://drive.google.com/file/d/'+id+'/preview'};
   return {kind:'frame',urls:[url]};
 }
@@ -12027,6 +12025,7 @@ function tvRenderMedia(p){
     img.src=src.urls[0];
     return;
   }
+  if(src.kind==='drive'){ tvPlayDriveVideo(p,src,seq); return; }
   if(src.kind==='video'){ tvPlayVideo(p,src,seq); return; }
   tvShowFrame(src.urls[0],seq);
 }
@@ -12051,6 +12050,116 @@ function tvVideoPlay(v){
   if(pr&&pr['catch']) pr['catch'](function(){
     if(!v.muted){ v.muted=true; try{ v.play(); }catch(e){} }
   });
+}
+// ── Vidéos Drive : rapatriement pour une lecture sans aucun clic ──
+// Le lecteur intégré Drive réclame un clic sur « ▶ » : inutilisable sur
+// un écran d'usine. La vidéo est donc téléchargée par blocs via le
+// serveur — le fichier peut rester privé — puis lue par <video>, en
+// boucle et sans intervention. Le téléchargement démarre dès l'ouverture
+// de l'écran : la vidéo est prête avant l'arrivée de sa page, et n'est
+// rapatriée qu'une fois pour toute la durée de la session.
+var tvVid={};                      // fileId → {state,pct,url,mime,size,err}
+var TV_VID_BUDGET=260*1024*1024;   // mémoire max cumulée des vidéos
+function tvVidState(id){ return tvVid[id]||(tvVid[id]={state:'idle',pct:0}); }
+function tvVidLoaded(){
+  var t=0;
+  for(var k in tvVid) if(tvVid[k].url) t+=(tvVid[k].size||0);
+  return t;
+}
+function tvB64ToBytes(b64){
+  var bin=atob(b64||''), n=bin.length, out=new Uint8Array(n);
+  for(var i=0;i<n;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+// Télécharge la vidéo si ce n'est pas déjà fait (ou en cours).
+function tvVideoPrepare(id){
+  var st=tvVidState(id);
+  if(st.state==='loading'||st.state==='ready') return st;
+  if(st.state==='error'&&(st.tries||0)>=2) return st;    // deux essais suffisent
+  if(tvVidLoaded()>TV_VID_BUDGET){ st.state='error'; st.err='Mémoire vidéo saturée'; return st; }
+  st.tries=(st.tries||0)+1;
+  st.state='loading'; st.pct=0; st.err='';
+  try{
+    google.script.run
+      .withSuccessHandler(function(info){
+        if(!info||!info.ok){
+          st.state='error'; st.err=(info&&info.error)||'Vidéo indisponible';
+          tvVidRefresh(id); return;
+        }
+        st.mime=info.mime||'video/mp4'; st.size=info.size||0;
+        var parts=[], total=info.chunks||1, i=0;
+        (function nextChunk(){
+          if(i>=total){
+            try{
+              st.url=URL.createObjectURL(new Blob(parts,{type:st.mime}));
+              st.state='ready'; st.pct=100;
+            }catch(e){ st.state='error'; st.err=e.message; }
+            parts=null;
+            tvVidRefresh(id); return;
+          }
+          google.script.run
+            .withSuccessHandler(function(ck){
+              if(!ck||!ck.ok){
+                st.state='error'; st.err=(ck&&ck.error)||'Bloc de vidéo illisible';
+                tvVidRefresh(id); return;
+              }
+              parts.push(tvB64ToBytes(ck.b64));
+              i++; st.pct=Math.round(i/total*100);
+              tvVidProgress(id);
+              nextChunk();
+            })
+            .withFailureHandler(function(e){
+              st.state='error'; st.err=String((e&&e.message)||e);
+              tvVidRefresh(id);
+            })
+            .getTvVideoChunk(id,i);
+        })();
+      })
+      .withFailureHandler(function(e){
+        st.state='error'; st.err=String((e&&e.message)||e);
+        tvVidRefresh(id);
+      })
+      .getTvVideoInfo(id);
+  }catch(e){ st.state='error'; st.err=String(e&&e.message||e); }
+  return st;
+}
+// Lance le rapatriement de toutes les vidéos du diaporama, à l'ouverture.
+function tvVideoPrefetch(){
+  for(var i=0;i<tvPlaylist.length;i++){
+    var p=tvPlaylist[i];
+    if(p.type!=='video') continue;
+    var id=extractDriveIdFront(p.url||'');
+    if(id) tvVideoPrepare(id);
+  }
+}
+// Vidéo prête (ou en échec) : si sa page est à l'écran, on la redessine
+// et on lui rend sa durée complète — la vidéo n'est pas amputée du temps
+// passé à charger.
+function tvVidRefresh(id){
+  if(!tvOpen||!tvPlaylist.length) return;
+  var p=tvPlaylist[tvPageIdx];
+  if(!p||p.type!=='video'||extractDriveIdFront(p.url||'')!==id) return;
+  tvRenderMedia(p);
+  tvArmPage(tvCfgClampDur(p.dur,p.type)*1000);
+}
+function tvVidProgress(id){
+  var el=document.getElementById('tvVidPct');
+  if(!el||!tvOpen||!tvPlaylist.length) return;
+  var p=tvPlaylist[tvPageIdx];
+  if(p&&extractDriveIdFront(p.url||'')===id) el.textContent=tvVidState(id).pct+' %';
+}
+// Page vidéo Drive : lecture immédiate si le fichier est déjà rapatrié,
+// avancement du téléchargement sinon, lecteur intégré en dernier recours.
+function tvPlayDriveVideo(p,src,seq){
+  var st=tvVideoPrepare(src.id);
+  if(st.state==='ready'){
+    tvPlayVideo(p,{kind:'video',urls:[st.url],frame:src.frame},seq);
+    return;
+  }
+  if(st.state==='error'){ tvShowFrame(src.frame,seq); return; }
+  tvMediaMsg('<span class="ico">🎬</span><b>Préparation de la vidéo…</b><br>'
+    +'<span id="tvVidPct">'+st.pct+' %</span><br>'
+    +'La lecture démarrera toute seule.');
 }
 // Lecture native d'une vidéo : démarrage automatique, en boucle.
 // Chaque source est essayée à son tour ; si aucune n'est lisible (gros
@@ -12258,7 +12367,7 @@ function tvCfgRender(){
             +'(<code>https://drive.google.com/file/d/…/view</code>). Le fichier doit être partagé '
             +'« Tous les utilisateurs disposant du lien ».<br>'
             +(p.type==='video'
-              ? 'Vidéo : lecture automatique en boucle, réglez une durée au moins égale à celle de la vidéo. Le son n\'est diffusé que si le navigateur l\'autorise, sinon la vidéo passe en muet. Les liens YouTube et les fichiers .mp4 directs sont également acceptés.'
+              ? 'Vidéo : lecture automatique en boucle, sans aucun clic — la vidéo est rapatriée à l\'ouverture de l\'écran (jusqu\'à 120 Mo ; le partage public n\'est pas nécessaire). Réglez une durée au moins égale à celle de la vidéo. Le son n\'est diffusé que si le navigateur l\'autorise, sinon la vidéo passe en muet. Les liens YouTube et les fichiers .mp4 directs sont également acceptés.'
               : 'Photo : formats JPG, PNG, WebP.')
           +'</div>'
         +'</div>';

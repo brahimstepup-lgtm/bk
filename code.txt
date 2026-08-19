@@ -6745,3 +6745,64 @@ function generateSectionActionPlanForClient(payload) {
     return { ok: false, error: e.toString() };
   }
 }
+
+// ══ ÉCRAN USINE — VIDÉO LUE SANS AUCUN CLIC ══════════════════
+// Le lecteur intégré Drive (/preview) réclame toujours un clic sur
+// « ▶ » : sur un écran d'usine, sans personne devant, la vidéo reste
+// figée. La vidéo est donc rapatriée dans le navigateur, bloc par bloc,
+// puis lue par la balise <video> — démarrage automatique, en boucle.
+// Le fichier n'a pas besoin d'être partagé publiquement : la lecture
+// passe par le compte de déploiement, comme le reste du tableau de bord.
+var TV_VIDEO_MAX_BYTES = 120 * 1024 * 1024;   // au-delà : lecteur intégré
+var TV_VIDEO_CHUNK     = 3 * 1024 * 1024;     // bloc brut (≈4 Mo en base64)
+
+// Métadonnées : type, taille et nombre de blocs à demander ensuite.
+function getTvVideoInfo(fileId) {
+  try {
+    var id = String(fileId || '').trim();
+    if (!id) return { ok: false, error: 'Identifiant de fichier manquant' };
+    var file = DriveApp.getFileById(id);
+    var size = file.getSize();
+    var mime = file.getMimeType() || '';
+    if (mime.indexOf('video/') !== 0)
+      return { ok: false, error: 'Ce fichier n\'est pas une vidéo (' + (mime || 'type inconnu') + ')' };
+    if (size > TV_VIDEO_MAX_BYTES)
+      return { ok: false, error: 'Vidéo trop volumineuse : ' + Math.round(size / 1048576) + ' Mo' };
+    return {
+      ok: true, id: id, name: file.getName(), mime: mime, size: size,
+      chunks: Math.max(1, Math.ceil(size / TV_VIDEO_CHUNK))
+    };
+  } catch (e) {
+    Logger.log('getTvVideoInfo: ' + e.message);
+    return { ok: false, error: e.toString() };
+  }
+}
+
+// Un bloc de la vidéo, en base64. La plage d'octets est demandée
+// directement à l'API Drive (en-tête Range) : le fichier n'est jamais
+// lu ni encodé en entier, quelle que soit sa taille.
+function getTvVideoChunk(fileId, index) {
+  try {
+    var id = String(fileId || '').trim();
+    if (!id) return { ok: false, error: 'Identifiant de fichier manquant' };
+    var i     = Math.max(0, parseInt(index, 10) || 0);
+    var start = i * TV_VIDEO_CHUNK;
+    var end   = start + TV_VIDEO_CHUNK - 1;
+    var res = UrlFetchApp.fetch(
+      'https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?alt=media',
+      {
+        headers: {
+          Authorization: 'Bearer ' + ScriptApp.getOAuthToken(),
+          Range: 'bytes=' + start + '-' + end
+        },
+        muteHttpExceptions: true
+      });
+    var code = res.getResponseCode();
+    if (code !== 200 && code !== 206)
+      return { ok: false, error: 'Drive a répondu HTTP ' + code };
+    return { ok: true, index: i, b64: Utilities.base64Encode(res.getContent()) };
+  } catch (e) {
+    Logger.log('getTvVideoChunk: ' + e.message);
+    return { ok: false, error: e.toString() };
+  }
+}
