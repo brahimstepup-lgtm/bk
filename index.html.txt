@@ -1612,6 +1612,9 @@ html.light .pests-search-input{background:#edf2f7}
 .tvcfg-help{font-size:10px;color:var(--text3);line-height:1.6;flex:1;min-width:0}
 .tvcfg-help code{font-family:'JetBrains Mono',monospace;color:var(--p4);font-size:9px;
   word-break:break-all}
+.tvcfg-chk{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text2);cursor:pointer}
+.tvcfg-chk input{accent-color:var(--p3);width:14px;height:14px;cursor:pointer}
 .tvcfg-add{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
 .tvcfg-total{margin-left:auto;font-size:11px;font-weight:600;color:var(--text2);
   font-family:'JetBrains Mono',monospace}
@@ -1704,6 +1707,32 @@ html.light .pests-search-input{background:#edf2f7}
 @keyframes tvPulse{0%,100%{text-shadow:0 0 22px rgba(34,224,161,.35)}50%{text-shadow:0 0 52px rgba(34,224,161,.75)}}
 @keyframes tvRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @keyframes tvBlinkSoft{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── PAGE MÉDIA EN PLEIN ÉCRAN, SANS BORDURES ──────────────────
+   Cadrage « Plein écran » : le média occupe la totalité de l'écran —
+   ni entête, ni pied de page, ni bandeau, ni cadre. Placé après les
+   thèmes pour neutraliser leurs marges (bandes jaunes du thème
+   industriel notamment). Les commandes réapparaissent au moindre
+   mouvement de souris, puis s'effacent au bout de 3 secondes. */
+.tv-overlay.tv-fs{padding:0;background:#000}
+.tv-overlay.tv-fs::before{display:none}
+.tv-overlay.tv-fs .tv-hdr,
+.tv-overlay.tv-fs .tv-footer,
+.tv-overlay.tv-fs .tv-news,
+.tv-overlay.tv-fs .tv-media-head{display:none}
+.tv-overlay.tv-fs .tv-body{position:absolute;inset:0;margin:0}
+.tv-overlay.tv-fs .tv-media-stage{border:0;border-radius:0;background:#000;box-shadow:none}
+.tv-overlay.tv-fs .tv-prog{opacity:.5}
+.tv-fs-ctrl{position:fixed;top:14px;right:16px;z-index:12;display:none;gap:8px;
+  padding:6px;border-radius:12px;background:rgba(8,12,16,.6);backdrop-filter:blur(6px);
+  transition:opacity .45s ease}
+.tv-overlay.tv-fs .tv-fs-ctrl{display:flex}
+.tv-fs-ctrl.idle{opacity:0;pointer-events:none}
+.tv-fs-ctrl button{width:34px;height:34px;border-radius:9px;cursor:pointer;padding:0;line-height:1;
+  border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.1);
+  color:#eef4f8;font-size:14px;font-weight:800;font-family:'Inter',sans-serif;transition:all .2s}
+.tv-fs-ctrl button:hover{background:rgba(255,255,255,.22)}
+.tv-fs-ctrl button.quit:hover{background:#e8445a;border-color:#e8445a}
 
 @media(max-width:900px){
   .tv-grid{grid-template-columns:repeat(2,1fr)}
@@ -5276,7 +5305,9 @@ html.light .pests-search-input{background:#edf2f7}
           ci-dessous. Réglez la <b>durée</b> de chaque page, ajoutez des pages
           <b>photo</b> ou <b>vidéo</b> à partir d'un <b>lien Google&nbsp;Drive</b>
           (le fichier doit être partagé « Tous les utilisateurs disposant du lien »).
-          Une seule page active&nbsp;: pas de défilement.
+          Une seule page active&nbsp;: pas de défilement. Le cadrage
+          <b>Plein écran</b> diffuse le média sans bordures ni entête, et les vidéos
+          démarrent toutes seules.
           <br>Sur l'écran&nbsp;: <b>←</b> / <b>→</b> pour changer de page, <b>Espace</b> pour
           mettre en pause. Réglages enregistrés sur ce poste.
         </div>
@@ -5344,6 +5375,13 @@ html.light .pests-search-input{background:#edf2f7}
       </div>
     </div>
     <button class="tv-close" onclick="closeTvDash()" title="Quitter l'affichage écran (Échap)">✕</button>
+  </div>
+  <!-- Commandes flottantes du mode plein écran (s'effacent au repos) -->
+  <div class="tv-fs-ctrl idle" id="tvFsCtrl">
+    <button onclick="tvPrevPage()" title="Page précédente (←)">‹</button>
+    <button id="tvFsPause" onclick="tvTogglePause()" title="Mettre en pause (Espace)">⏸</button>
+    <button onclick="tvNextPage()" title="Page suivante (→)">›</button>
+    <button class="quit" onclick="closeTvDash()" title="Quitter l'affichage écran (Échap)">✕</button>
   </div>
   <!-- Progression de la page en cours (masquée si une seule page) -->
   <div class="tv-prog" id="tvProg"><div class="tv-prog-bar" id="tvProgBar"></div></div>
@@ -11750,6 +11788,7 @@ function tvCfgNormalize(raw){
       url: String(p.url||'').trim().slice(0,600),
       dur: tvCfgClampDur(p.dur,type),
       fit: p.fit==='cover'?'cover':'contain',
+      snd: p.snd===true,
       on:  p.on!==false
     });
   }
@@ -11803,14 +11842,37 @@ function tvStartShow(){
   tvPlaylist=tvActivePages();
   if(!tvPlaylist.length) tvPlaylist=[tvCfgKpiPage()];   // filet de sécurité
   tvPaused=false;
-  var btn=document.getElementById('tvPauseBtn');
-  if(btn){ btn.textContent='⏸'; btn.title='Mettre en pause (Espace)'; }
+  tvSetPauseIcon(false);
   tvShowPage(0);
 }
 function tvStopShow(){
   if(tvPageTimer){ clearTimeout(tvPageTimer); tvPageTimer=null; }
   tvMediaClear();                                        // coupe une vidéo en cours
   tvProgShow(false);
+  tvSetFullscreen(false);
+}
+// Les deux boutons de pause (entête et plein écran) affichent le même état.
+function tvSetPauseIcon(paused){
+  ['tvPauseBtn','tvFsPause'].forEach(function(id){
+    var b=document.getElementById(id); if(!b) return;
+    b.textContent=paused?'▶':'⏸';
+    b.title=paused?'Reprendre le défilement (Espace)':'Mettre en pause (Espace)';
+  });
+}
+// Mode plein écran sans bordures : le média occupe tout l'écran, le
+// reste de l'habillage s'efface (voir le cadrage « Plein écran »).
+function tvSetFullscreen(on){
+  var ov=document.getElementById('tvDash'); if(!ov) return;
+  ov.classList.toggle('tv-fs',!!on);
+  if(on) tvFsWake();
+}
+// Commandes flottantes : visibles au mouvement, effacées après 3 s.
+var tvFsIdleTimer=null;
+function tvFsWake(){
+  var c=document.getElementById('tvFsCtrl'); if(!c) return;
+  c.classList.remove('idle');
+  if(tvFsIdleTimer) clearTimeout(tvFsIdleTimer);
+  tvFsIdleTimer=setTimeout(function(){ c.classList.add('idle'); },3000);
 }
 function tvShowPage(i){
   if(!tvPlaylist.length) return;
@@ -11822,6 +11884,7 @@ function tvShowPage(i){
   if(pm) pm.classList.toggle('on',!isKpi);
   var obj=document.getElementById('tvObjectives');
   if(obj) obj.style.display=isKpi?'':'none';             // objectifs : page KPI
+  tvSetFullscreen(!isKpi&&p.fit==='cover');
   if(isKpi){ tvMediaClear(); renderTvDash(); } else { tvRenderMedia(p); }
   tvRenderDots();
   tvArmPage(tvCfgClampDur(p.dur,p.type)*1000);
@@ -11844,18 +11907,17 @@ function tvArmPage(ms){
 function tvTogglePause(){
   if(tvPlaylist.length<2) return;
   tvPaused=!tvPaused;
-  var btn=document.getElementById('tvPauseBtn');
   if(tvPaused){
     if(tvPageTimer){ clearTimeout(tvPageTimer); tvPageTimer=null; }
     tvPageLeftMs=Math.max(0,tvPageEndTs-Date.now());
     tvProgFreeze();
-    if(btn){ btn.textContent='▶'; btn.title='Reprendre le défilement (Espace)'; }
+    tvSetPauseIcon(true);
   }else{
     var ms=tvPageLeftMs||(tvCfgClampDur(tvPlaylist[tvPageIdx].dur,tvPlaylist[tvPageIdx].type)*1000);
     tvPageEndTs=Date.now()+ms;
     tvProgRun(ms,false);
     tvPageTimer=setTimeout(function(){ tvNextPage(); },ms);
-    if(btn){ btn.textContent='⏸'; btn.title='Mettre en pause (Espace)'; }
+    tvSetPauseIcon(false);
   }
 }
 function tvProgShow(on){
@@ -11899,8 +11961,10 @@ function tvRenderDots(){
 // ── Rendu d'une page média (photo ou vidéo) ────────────────────
 // Le lien Drive est converti en source affichable :
 //   photo → image directe (lh3, repli miniature Drive)
-//   vidéo → lecteur intégré Drive /preview (ou balise <video> pour un
-//           fichier .mp4 direct, ou lecteur YouTube si le lien en est un).
+//   vidéo → lecture native <video> (seule voie permettant le démarrage
+//           automatique), avec repli sur le lecteur intégré Drive quand
+//           le fichier n'est pas lisible en direct ; lecteur YouTube si
+//           le lien en est un.
 function tvMediaSources(p){
   var url=String(p.url||'').trim();
   if(!url) return {kind:'',urls:[]};
@@ -11912,12 +11976,22 @@ function tvMediaSources(p){
   }
   var yt=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
   if(yt) return {kind:'frame',urls:['https://www.youtube.com/embed/'+yt[1]
-        +'?autoplay=1&mute=1&loop=1&controls=0&rel=0&playlist='+yt[1]]};
-  if(/\.(mp4|webm|ogv|ogg|m4v)(\?|#|$)/i.test(url)) return {kind:'video',urls:[url]};
-  if(id) return {kind:'frame',urls:['https://drive.google.com/file/d/'+id+'/preview']};
+        +'?autoplay=1&mute='+(p.snd?0:1)+'&loop=1&controls=0&rel=0&playsinline=1&playlist='+yt[1]]};
+  if(/\.(mp4|webm|ogv|ogg|m4v)(\?|#|$)/i.test(url)) return {kind:'video',urls:[url],frame:''};
+  // Fichier Drive : flux direct d'abord (démarrage automatique possible),
+  // lecteur intégré /preview en repli — ce dernier exige un clic, mais
+  // reste lisible quel que soit le poids du fichier.
+  if(id) return {kind:'video',
+    urls:['https://drive.usercontent.google.com/download?id='+id+'&export=download',
+          'https://drive.google.com/uc?export=download&id='+id],
+    frame:'https://drive.google.com/file/d/'+id+'/preview'};
   return {kind:'frame',urls:[url]};
 }
+// Jeton de page : une réponse tardive (chargement vidéo, repli) ne doit
+// jamais s'afficher par-dessus la page suivante.
+var tvMediaSeq=0;
 function tvMediaClear(){
+  tvMediaSeq++;
   var st=document.getElementById('tvMediaStage');
   if(st){ st.innerHTML=''; }                              // vide = lecture stoppée
 }
@@ -11929,6 +12003,7 @@ function tvRenderMedia(p){
   var st=document.getElementById('tvMediaStage');
   var tt=document.getElementById('tvMediaTitle'), kd=document.getElementById('tvMediaKind');
   if(!st) return;
+  var seq=++tvMediaSeq;
   if(tt) tt.textContent=p.title||tvCfgDefaultTitle(p.type);
   if(kd) kd.textContent=(p.type==='video'?'🎬 Vidéo':'🖼️ Photo');
   st.className='tv-media-stage'+(p.fit==='cover'?' fit-cover':'');
@@ -11952,24 +12027,67 @@ function tvRenderMedia(p){
     img.src=src.urls[0];
     return;
   }
-  if(src.kind==='video'){
-    var v=document.createElement('video');
-    v.src=src.urls[0]; v.autoplay=true; v.muted=true; v.loop=true;
-    v.setAttribute('playsinline','');                     // lecture sans plein écran forcé
-    v.onerror=function(){
-      tvMediaMsg('<span class="ico">🎬</span><b>Vidéo illisible.</b><br>'
-        +'Vérifiez le lien et le partage du fichier.');
-    };
-    st.appendChild(v);
-    try{ v.play(); }catch(e){}
-    return;
-  }
+  if(src.kind==='video'){ tvPlayVideo(p,src,seq); return; }
+  tvShowFrame(src.urls[0],seq);
+}
+// Lecteur intégré (Drive ou YouTube) : repli du lecteur natif.
+function tvShowFrame(url,seq){
+  if(seq!==tvMediaSeq) return;
+  var st=document.getElementById('tvMediaStage'); if(!st) return;
+  st.innerHTML='';
   var fr=document.createElement('iframe');
   fr.setAttribute('allow','autoplay; fullscreen; encrypted-media');
   fr.setAttribute('referrerpolicy','no-referrer');
   fr.setAttribute('allowfullscreen','');
-  fr.src=src.urls[0];
+  fr.src=url;
   st.appendChild(fr);
+}
+// Démarre la lecture. Le son n'est jamais garanti : si le navigateur
+// refuse une lecture automatique sonore, on rejoue aussitôt en muet
+// plutôt que de laisser la vidéo à l'arrêt.
+function tvVideoPlay(v){
+  var pr=null;
+  try{ pr=v.play(); }catch(e){}
+  if(pr&&pr['catch']) pr['catch'](function(){
+    if(!v.muted){ v.muted=true; try{ v.play(); }catch(e){} }
+  });
+}
+// Lecture native d'une vidéo : démarrage automatique, en boucle.
+// Chaque source est essayée à son tour ; si aucune n'est lisible (gros
+// fichier passant par la page d'avertissement Drive, partage
+// insuffisant…), on bascule sur le lecteur intégré Drive.
+function tvPlayVideo(p,src,seq){
+  var st=document.getElementById('tvMediaStage'); if(!st) return;
+  var ci=0, settled=false, watch=null;
+  var v=document.createElement('video');
+  v.autoplay=true; v.loop=true; v.controls=false;
+  v.muted=!p.snd;                                         // muet : auto-démarrage garanti
+  v.setAttribute('playsinline','');
+  v.setAttribute('preload','auto');
+  function fallback(){
+    if(settled||seq!==tvMediaSeq) return;
+    settled=true;
+    if(watch){ clearTimeout(watch); watch=null; }
+    if(src.frame){ tvShowFrame(src.frame,seq); return; }
+    tvMediaMsg('<span class="ico">🎬</span><b>Vidéo illisible.</b><br>'
+      +'Vérifiez le lien et le partage du fichier Drive.');
+  }
+  v.onerror=function(){
+    if(settled||seq!==tvMediaSeq) return;
+    ci++;
+    if(ci<src.urls.length){ v.src=src.urls[ci]; v.load(); tvVideoPlay(v); return; }
+    fallback();
+  };
+  v.onplaying=function(){
+    settled=true;
+    if(watch){ clearTimeout(watch); watch=null; }
+  };
+  st.appendChild(v);
+  v.src=src.urls[0];
+  tvVideoPlay(v);
+  // Chien de garde : sans image au bout de 8 s, on ne laisse pas
+  // l'écran noir — bascule sur le lecteur intégré.
+  watch=setTimeout(fallback,8000);
 }
 
 // ── Fenêtre de configuration ───────────────────────────────────
@@ -11994,7 +12112,7 @@ function tvCfgGet(id){ var i=tvCfgIdx(id); return i<0?null:tvCfgDraft.pages[i]; 
 function tvCfgAdd(type){
   if(!tvCfgDraft) return;
   tvCfgDraft.pages.push({id:tvCfgNewId(),type:type,title:'',url:'',
-    dur:TV_DEF_DUR[type]||30,fit:'contain',on:true});
+    dur:TV_DEF_DUR[type]||30,fit:'contain',snd:false,on:true});
   tvCfgRender();
   // Curseur prêt sur le titre de la page qui vient d'être ajoutée
   var last=tvCfgDraft.pages[tvCfgDraft.pages.length-1];
@@ -12026,6 +12144,7 @@ function tvCfgSet(id,field,val){
   if(field==='title') p.title=String(val||'').slice(0,90);
   else if(field==='url') p.url=String(val||'').trim().slice(0,600);
   else if(field==='fit') p.fit=(val==='cover')?'cover':'contain';
+  else if(field==='snd') p.snd=!!val;
   else if(field==='type') p.type=(val==='video')?'video':'photo';
   tvCfgTotalTxt();
 }
@@ -12121,10 +12240,17 @@ function tvCfgRender(){
         +'<div class="crud-field">'
           +'<label class="crud-label">Cadrage à l\'écran</label>'
           +'<select class="crud-select" onchange="tvCfgSet(\''+id+'\',\'fit\',this.value)">'
-            +'<option value="contain"'+(p.fit!=='cover'?' selected':'')+'>Entier (sans rognage)</option>'
-            +'<option value="cover"'+(p.fit==='cover'?' selected':'')+'>Plein écran (rogné)</option>'
+            +'<option value="contain"'+(p.fit!=='cover'?' selected':'')+'>Ajusté — média entier, avec l\'habillage</option>'
+            +'<option value="cover"'+(p.fit==='cover'?' selected':'')+'>Plein écran — sans bordures ni entête</option>'
           +'</select>'
         +'</div>'
+        +(p.type==='video'
+          ? '<div class="crud-field">'
+              +'<label class="crud-label">Son de la vidéo</label>'
+              +'<label class="tvcfg-chk"><input type="checkbox"'+(p.snd?' checked':'')
+                +' onchange="tvCfgSet(\''+id+'\',\'snd\',this.checked)"> Diffuser avec le son</label>'
+            +'</div>'
+          : '')
         +'<div class="tvcfg-media full">'
           +'<div class="tvcfg-thumb" id="tvcfgThumb-'+id+'">'+(p.type==='video'?'🎬':'🖼️')+'</div>'
           +'<div class="tvcfg-help">'
@@ -12132,7 +12258,7 @@ function tvCfgRender(){
             +'(<code>https://drive.google.com/file/d/…/view</code>). Le fichier doit être partagé '
             +'« Tous les utilisateurs disposant du lien ».<br>'
             +(p.type==='video'
-              ? 'Vidéo : réglez une durée au moins égale à celle de la vidéo, sinon la page change avant la fin. Les liens YouTube et les fichiers .mp4 directs sont également acceptés.'
+              ? 'Vidéo : lecture automatique en boucle, réglez une durée au moins égale à celle de la vidéo. Le son n\'est diffusé que si le navigateur l\'autorise, sinon la vidéo passe en muet. Les liens YouTube et les fichiers .mp4 directs sont également acceptés.'
               : 'Photo : formats JPG, PNG, WebP.')
           +'</div>'
         +'</div>';
@@ -12177,6 +12303,12 @@ document.addEventListener('keydown',function(e){
 });
 // Compteur du bouton dès le chargement de la page.
 try{ tvCfgLoad(); tvCfgUpdateBadge(); }catch(e){}
+// Plein écran : le moindre mouvement de souris rappelle les commandes.
+(function(){
+  var ov=document.getElementById('tvDash');
+  if(!ov) return;
+  ov.addEventListener('mousemove',function(){ if(tvOpen) tvFsWake(); });
+})();
 
 
 // ══ PROCÉDURES HSE ════════════════════════════════════════════
