@@ -1478,6 +1478,27 @@ html.light .pests-search-input{background:#edf2f7}
 .tv-footer b{color:var(--tv-lbl);font-weight:700}
 .tv-footer .tv-upd{margin-left:auto;font-family:'JetBrains Mono',monospace}
 
+/* ── Bandeau d'information défilant (feuille « news ») ──────────
+   Masqué tant qu'aucun message n'est renseigné. Le sens de
+   défilement suit la langue : de gauche à droite en arabe (animation
+   jouée à l'envers), de droite à gauche en français. */
+.tv-news{flex-shrink:0;display:none;align-items:center;gap:clamp(8px,.9vw,16px);
+  margin-top:clamp(6px,1vh,12px);border-top:1px solid var(--tv-border);
+  padding-top:clamp(5px,.8vh,10px);overflow:hidden}
+.tv-news.on{display:flex}
+.tv-news-tag{flex-shrink:0;display:inline-flex;align-items:center;gap:6px;
+  padding:clamp(3px,.4vh,7px) clamp(8px,.9vw,15px);border-radius:20px;
+  font-size:clamp(9px,.9vw,14px);font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  background:color-mix(in srgb,var(--tv-r) 16%,transparent);color:var(--tv-r);
+  border:1px solid color-mix(in srgb,var(--tv-r) 45%,transparent)}
+.tv-news-view{flex:1;min-width:0;overflow:hidden}
+.tv-news-track{display:inline-block;white-space:nowrap;padding-left:100%;
+  font-size:clamp(13px,1.6vw,30px);font-weight:700;color:var(--tv-lbl);
+  animation-name:tvNewsScroll;animation-timing-function:linear;animation-iteration-count:infinite}
+.tv-news-track.rev{animation-direction:reverse}   /* défile vers la droite */
+@keyframes tvNewsScroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media(prefers-reduced-motion:reduce){.tv-news-track{animation:none;padding-left:0}}
+
 /* ── Menu « Choisir un thème » (toujours sombre : lisible partout) ── */
 .tv-theme-box{position:relative;margin-left:14px;flex-shrink:0}
 .tv-theme-btn{height:clamp(30px,2.6vw,42px);padding:0 clamp(9px,.9vw,16px);
@@ -2447,10 +2468,18 @@ html.light .pests-search-input{background:#edf2f7}
 
 <!-- ═══ ÉNERGIE ═══ -->
 <div id="env" class="page">
-  <div style="display:flex;justify-content:flex-end;margin-bottom:11px">
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap">
     <button class="crud-btn add" style="font-size:11px;padding:6px 14px"
             onclick="printEnergyReport()"
             title="Générer le rapport de suivi énergétique (PDF)">📊 Rapport de suivi énergétique</button>
+    <button class="btn" style="background:#15803d;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openSectionActionPlan('energie')"
+            title="Plan d'action des TAGs « énergie » — économie d'énergie, gaspillage et consommations électricité / gaz / eau (ENR-HSE 36)">
+      📋 Plan d'action <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 36</span>
+    </button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="downloadSectionActionPlan('energie')"
+            title="Télécharger le plan d'action énergie (PDF)">⬇️ Télécharger</button>
   </div>
   <div class="egrid" id="egrids"></div>
   <div style="display:flex;align-items:center;gap:7px;margin-bottom:11px">
@@ -3012,6 +3041,18 @@ html.light .pests-search-input{background:#edf2f7}
       <em style="color:var(--text3)">Suivi de Nettoyage - Sobco 3_Images</em>.
       Photo « Avant » seule → <strong style="color:var(--red)">En cours</strong> · « Avant » + « Après » → <strong style="color:var(--green)">Terminé</strong>.
     </p>
+  </div>
+
+  <!-- ─── Plan d'action « nettoyage & hygiène » (source : section TAGs) ─── -->
+  <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:11px;flex-wrap:wrap">
+    <button class="btn" style="background:#15803d;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openSectionActionPlan('nettoyage')"
+            title="Plan d'action des TAGs « nettoyage » — propreté des locaux, hygiène, ordre et rangement (ENR-HSE 37)">
+      📋 Plan d'action <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 37</span>
+    </button>
+    <button class="btn" style="background:#0a7a9a;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="downloadSectionActionPlan('nettoyage')"
+            title="Télécharger le plan d'action nettoyage &amp; hygiène (PDF)">⬇️ Télécharger</button>
   </div>
 
   <!-- ═══ Boutons principaux Nettoyage ═══ -->
@@ -3772,6 +3813,8 @@ html.light .pests-search-input{background:#edf2f7}
          style="padding:7px 14px;background:var(--bg4);border:1px solid var(--border);border-radius:8px;color:var(--p4);font-size:11px;text-decoration:none">↗ Ouvrir la feuille</a>
       <button onclick="printDechets()" title="Générer le rapport de suivi des déchets (PDF)"
               style="padding:7px 14px;background:linear-gradient(135deg,var(--p1),var(--p2));border:1px solid var(--p3);border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">🖨️ Rapport de suivi (PDF)</button>
+      <button onclick="openDechetFiche('sources')" title="Les trois fiches du processus déchets : sources génératrices, types par source, tri et stockage temporaire"
+              style="padding:7px 14px;background:linear-gradient(135deg,#2f7d32,#3ca55c);border:1px solid #3ca55c;border-radius:8px;color:#fff;font-size:11px;font-weight:600;cursor:pointer">♻️ Fiches déchets <span style="font-size:9px;opacity:.8;font-family:'JetBrains Mono',monospace">ENR-HSE 39-41</span></button>
     </div>
   </div>
   <!-- Graphiques : évolution mensuelle -->
@@ -4024,6 +4067,11 @@ html.light .pests-search-input{background:#edf2f7}
     <button class="btn" style="background:#0369a1;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openListeProduitsChimiques()">
       🧪 Liste des produits chimiques <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE-22</span>
+    </button>
+    <button class="btn" style="background:#0f766e;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
+            onclick="openPesticides()"
+            title="Suivi de l'application des pesticides — traitements réalisés (date, produit, localisation, cible, dosage, méthode) — ENR-HSE 38">
+      🧴 Suivi de l'application des pesticides <span style="font-size:9px;opacity:.75;font-family:'JetBrains Mono',monospace">ENR-HSE 38</span>
     </button>
     <button class="btn" style="background:#475569;color:#fff;border:none;font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:5px"
             onclick="openFichesTechniques()">
@@ -4613,6 +4661,53 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
+<!-- ═══ MODAL DÉCHETS — LES TROIS FICHES (ENR-HSE 39 · 40 · 41) ═══ -->
+<div class="modal-bg" id="dechetFicheModal" style="display:none" onclick="if(event.target===this)closeModal('dechetFicheModal')">
+  <div class="modal-panel" style="max-width:1180px;width:97vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" id="dechetFicheBadge" style="background:rgba(60,165,92,.18);border-color:rgba(60,165,92,.5);color:#3ca55c">♻️</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name" id="dechetFicheTitle">Fiches déchets</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <span class="mono" style="font-size:10px;color:#3ca55c;font-weight:700" id="dechetFicheRef">ENR-HSE 39</span>
+          · Processus de gestion des déchets — SOBCO 3
+        </div>
+      </div>
+      <button class="btn" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="printDechetFiche()">🖨️ Imprimer / PDF</button>
+      <button class="modal-close" onclick="closeModal('dechetFicheModal')">✕</button>
+    </div>
+    <div class="modal-tabs" id="dechetFicheTabs" style="display:flex;gap:6px;padding:8px 16px 0;flex-wrap:wrap">
+      <button class="modal-tab on" data-fiche="sources" onclick="openDechetFiche('sources')">1 · Sources génératrices</button>
+      <button class="modal-tab" data-fiche="types" onclick="openDechetFiche('types')">2 · Types par source</button>
+      <button class="modal-tab" data-fiche="tri" onclick="openDechetFiche('tri')">3 · Tri &amp; stockage</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:78vh;overflow-y:auto" id="dechetFicheBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)">Chargement…</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ENR-HSE 38 — SUIVI DE L'APPLICATION DES PESTICIDES ═══ -->
+<div class="modal-bg" id="pesticidesModal" style="display:none" onclick="if(event.target===this)closeModal('pesticidesModal')">
+  <div class="modal-panel" style="max-width:1080px;width:96vw" onclick="event.stopPropagation()">
+    <div class="modal-top">
+      <div class="modal-badge" style="background:rgba(15,118,110,.18);border-color:rgba(15,118,110,.5);color:#0f766e">🧴</div>
+      <div class="modal-hdr-info">
+        <div class="modal-hdr-name">Suivi de l'application des pesticides</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px">
+          <span class="mono" style="font-size:10px;color:#0f766e;font-weight:700">ENR-HSE 38</span>
+          · <span id="pesticidesMeta">—</span>
+        </div>
+      </div>
+      <button class="btn" style="font-size:10px;padding:3px 10px;flex-shrink:0" onclick="printPesticides()">🖨️ Imprimer / PDF</button>
+      <button class="modal-close" onclick="closeModal('pesticidesModal')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;max-height:80vh;overflow-y:auto" id="pesticidesBody">
+      <div style="text-align:center;padding:32px;color:var(--text3)">Chargement…</div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL ENR-HSE 07 — ENREGISTREMENTS MENSUELS (SUIVI DES PIÈGES) ═══ -->
 <div class="modal-bg" id="pestEnr07Modal" style="display:none" onclick="if(event.target===this)closeModal('pestEnr07Modal')">
   <div class="modal-panel" style="max-width:820px;width:95vw" onclick="event.stopPropagation()">
@@ -5121,6 +5216,11 @@ html.light .pests-search-input{background:#edf2f7}
     <span>🎯 <b>Objectifs 2026 :</b> 0 accident · TF ≤ 30 · TG ≤ 0.8 · TVM ≥ 95% · Résolution TAGs ≥ 95%</span>
     <span class="tv-upd" id="tvUpd">—</span>
   </div>
+  <!-- Bandeau d'information défilant — feuille « news » (masqué si vide) -->
+  <div class="tv-news" id="tvNews">
+    <span class="tv-news-tag">📢 Info</span>
+    <div class="tv-news-view"><div class="tv-news-track" id="tvNewsTrack"></div></div>
+  </div>
 </div>
 
 <script>
@@ -5312,7 +5412,9 @@ function printSensibPlanning(){
     +'<td style="'+td+';width:190px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 27</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555">Page :</td><td style="padding:4px 8px">1 / 1</td></tr>'
+    +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 27')+'</td></tr>'
     +'</table></td></tr></table>';
 
   var body;
@@ -6663,6 +6765,285 @@ function dechetsRenderCharts(headers, rows){
 }
 
 /* ══════════════════════════════════════════════════════════════
+   DÉCHETS — LES TROIS FICHES DU LOGIGRAMME
+   ──────────────────────────────────────────────────────────────
+   1. Identification des sources génératrice des déchets  (ENR-HSE 39)
+   2. Identification des types de déchets par source      (ENR-HSE 40)
+   3. Tri à la source et stockage temporaire              (ENR-HSE 41)
+
+   Support de référence : la matrice « Zones de génération de déchets
+   × Type de déchets » du système documentaire, adaptée au site :
+   zones de production repérées PAR ÉTAGE (-1, 0, 1), plus les
+   utilités, le magasin matières premières et la cantine.
+   Le processus de production est la source principale, mais pas la
+   seule : les déchets spéciaux (huiles usagées des moteurs, filtres,
+   chiffons souillés…) proviennent des utilités, les emballages du
+   magasin matières premières, les déchets organiques de la cantine.
+   ══════════════════════════════════════════════════════════════ */
+// Colonnes de la matrice — un type de déchet par entrée.
+var DECHETS_TYPES_REF = [
+  { k:'produit',    lbl:'Produit',            grp:'',          danger:false,
+    contenant:'Sacs poubelle ROUGES, puis benne fermée',     couleur:'Rouge',
+    lieu:'Zone déchets produits, à l\'écart des matières premières',
+    filiere:'Destruction contrôlée avec procès-verbal ou valorisation autorisée' },
+  { k:'plastique',  lbl:'Plastique',          grp:'Emballage', danger:false,
+    contenant:'Bac de tri / balles compactées',              couleur:'Jaune',
+    lieu:'Aire de tri des emballages',
+    filiere:'Recycleur agréé — valorisation matière' },
+  { k:'carton',     lbl:'Carton',             grp:'Emballage', danger:false,
+    contenant:'Palette dédiée — cartons pliés et gerbés',    couleur:'Palette identifiée « carton »',
+    lieu:'Aire de tri des emballages, à l\'abri de la pluie',
+    filiere:'Recycleur agréé — valorisation matière' },
+  { k:'bois',       lbl:'Bois',               grp:'',          danger:false,
+    contenant:'Zone de gerbage des palettes / benne bois',   couleur:'—',
+    lieu:'Aire déchets extérieure',
+    filiere:'Réemploi des palettes ou récupérateur agréé' },
+  { k:'verre',      lbl:'Verre',              grp:'',          danger:false,
+    contenant:'Bac dédié à parois rigides',                  couleur:'Vert',
+    lieu:'Aire de tri des emballages',
+    filiere:'Recycleur agréé — valorisation matière' },
+  { k:'cantine',    lbl:'Déchets cantine',    grp:'',          danger:false,
+    contenant:'Sacs poubelle NOIRS, bac à couvercle vidé à chaque shift', couleur:'Noir',
+    lieu:'Local DMA fermé, à l\'écart des zones de production',
+    filiere:'Collecte communale ou prestataire de ramassage' },
+  { k:'speciaux',   lbl:'Déchets spéciaux',   grp:'',          danger:true,
+    contenant:'Fûts étanches fermés, sur bac de rétention',  couleur:'Étiquetage réglementaire — pictogrammes de danger',
+    lieu:'Local DSD fermé à clé, ventilé, sol étanche avec rétention',
+    filiere:'Éliminateur agréé — bordereau de suivi des déchets (BSD)' },
+  { k:'divers',     lbl:'Déchets divers',     grp:'',          danger:false,
+    contenant:'Benne de collecte identifiée',                couleur:'Gris',
+    lieu:'Aire déchets extérieure',
+    filiere:'Récupérateur agréé ou décharge autorisée' }
+];
+// Lignes de la matrice — zones de génération réelles du site.
+// Les zones de production sont repérées PAR ÉTAGE (et non par atelier),
+// comme la cartographie des dispositifs : étage -1, étage 0, étage 1.
+var DECHETS_ZONES_REF = [
+  { z:'Étage -1 — Production',   fam:'prod', t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift', resp:'Prod / HSE' },
+  { z:'Étage 0 — Production',    fam:'prod', t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift', resp:'Prod / HSE' },
+  { z:'Étage 1 — Production',    fam:'prod', t:['produit','plastique','carton','bois','divers'],  freq:'2 fois par shift', resp:'Prod / HSE' },
+  { z:'Les utilités',            fam:'util', t:['plastique','bois','speciaux','divers'],          freq:'Au besoin',        resp:'Tech / HSE' },
+  { z:'Magasin matières premières', fam:'mag', t:['plastique','carton','bois','divers'],          freq:'Au besoin',        resp:'Magasin / HSE' },
+  { z:'Cantine',                 fam:'cant', t:['plastique','carton','verre','cantine','divers'], freq:'Chaque shift',     resp:'HSE' }
+];
+// Nature de l'activité, par famille de zone
+var DECHETS_FAM = {
+  prod: 'Fabrication et conditionnement — fours, lignes, préparation',
+  util: 'Chaufferie, compresseurs, groupes électrogènes, entretien des moteurs et des équipements',
+  mag:  'Réception et stockage des matières premières — déballage, palettisation',
+  cant: 'Restauration du personnel — préparation et service des repas'
+};
+function dechetTypeRef(k){
+  for(var i=0;i<DECHETS_TYPES_REF.length;i++){ if(DECHETS_TYPES_REF[i].k===k) return DECHETS_TYPES_REF[i]; }
+  return null;
+}
+function dechetZonesForType(k){
+  return DECHETS_ZONES_REF.filter(function(z){ return z.t.indexOf(k)>-1; });
+}
+
+// ── Fiches : métadonnées documentaires ────────────────────────
+var DECHET_FICHES = {
+  sources: { ref:'ENR-HSE 39', ico:'🏭', etape:0,
+    titre:'Identification des sources génératrice des déchets',
+    sub:'Zones de génération, fréquence et responsable d\'évacuation — SOBCO 3' },
+  types:   { ref:'ENR-HSE 40', ico:'🗂️', etape:1,
+    titre:'Identification des types de déchets par source',
+    sub:'Matrice zones de génération × types de déchets' },
+  tri:     { ref:'ENR-HSE 41', ico:'♻️', etape:2,
+    titre:'Tri à la source et stockage temporaire',
+    sub:'Contenants, identification, stockage temporaire et filières d\'élimination' }
+};
+var DECHET_ETAPES = ['Identification des sources génératrice des déchets',
+                     'Identification des types de déchets par source',
+                     'Tri à la source et stockage temporaire'];
+var _dechetFicheCur = 'sources';
+
+// Logigramme du processus, l'étape courante mise en avant
+function dechetLogigramme(step){
+  var h='<div style="display:flex;flex-direction:column;align-items:center;margin:0 0 14px">';
+  DECHET_ETAPES.forEach(function(t,i){
+    var on=(i===step);
+    if(i>0) h+='<div style="width:0;height:0;border-left:7px solid transparent;border-right:7px solid transparent;border-top:11px solid #9bb4c9;margin:2px 0"></div>';
+    h+='<div style="width:420px;max-width:92%;text-align:center;padding:7px 12px;border:1.5px solid '
+      +(on?'#0c4a6e':'#7ba7c9')+';background:'+(on?'#e0f2fe':'#fff')+';color:'+(on?'#0c4a6e':'#334155')
+      +';font-size:10.5px;font-weight:'+(on?'800':'600')+'">'+esc(t)+'</div>';
+  });
+  h+='</div>';
+  return h;
+}
+function dechetFicheHeader(cfg,todayStr){
+  var logoSrc=ficheLogoSrc();
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var h='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:12px"><tr>';
+  h+='<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase">'+esc(cfg.titre)+'</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">'+esc(cfg.sub)+'</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+td+';width:190px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#3ca55c;letter-spacing:.05em">'+esc(cfg.ref)+'</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor(cfg.ref)+'</td></tr>';
+  h+='</table></td></tr></table>';
+  return h;
+}
+function dechetSignatures(td){
+  var h='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-top:12px"><tr>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="'+td+';width:33%;text-align:center;padding:16px 8px">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:26px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div></td>';
+  });
+  h+='</tr></table>';
+  return h;
+}
+
+/* ── Rendu des trois fiches ─────────────────────────────────── */
+function renderDechetFiche(kind){
+  var cfg=DECHET_FICHES[kind]||DECHET_FICHES.sources;
+  var body=document.getElementById('dechetFicheBody'); if(!body) return;
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'
+              +String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9.5px;vertical-align:top;color:#334155';
+  var TH=function(t,w){ return '<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase'+(w?';width:'+w:'')+'">'+esc(t)+'</th>'; };
+  var dngBadge='<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;font-weight:800;font-size:8.5px">DANGEREUX</span>';
+  var banBadge='<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:#dcfce7;border:1px solid #86efac;color:#166534;font-weight:700;font-size:8.5px">BANAL</span>';
+
+  var h='<div id="dechetFichePrint">';
+  h+=dechetFicheHeader(cfg,todayStr);
+  h+=dechetLogigramme(cfg.etape);
+
+  if(kind==='sources'){
+    // ── 1. Sources génératrices ──────────────────────────────
+    h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+    h+='<thead><tr style="background:#0c4a6e;color:#fff">'+TH('#','26px')+TH('Zone de génération','185px')
+      +TH('Activités à l\'origine des déchets')+TH('Déchets générés')
+      +TH('Fréquence d\'évacuation','104px')+TH('Responsable','92px')+'</tr></thead><tbody>';
+    DECHETS_ZONES_REF.forEach(function(z,i){
+      var dng=z.t.some(function(k){ var T=dechetTypeRef(k); return T&&T.danger; });
+      h+='<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">';
+      h+='<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>';
+      h+='<td style="'+tdc+';font-weight:700;color:#0f172a">'+esc(z.z)+(dng?' '+dngBadge:'')+'</td>';
+      h+='<td style="'+tdc+'">'+esc(DECHETS_FAM[z.fam]||'—')+'</td>';
+      h+='<td style="'+tdc+'">'+z.t.map(function(k){ var T=dechetTypeRef(k); return esc(T?T.lbl:k); }).join(' · ')+'</td>';
+      h+='<td style="'+tdc+';font-weight:600">'+esc(z.freq)+'</td>';
+      h+='<td style="'+tdc+';text-align:center;font-weight:600">'+esc(z.resp)+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:9px 12px;font-size:10px;color:#1e3a5f;margin-top:10px">'
+      +'<b>Règle de rattachement :</b> le processus de production est la source principale des déchets, mais il n\'est pas la seule. '
+      +'Les <b>déchets spéciaux</b> — huiles usagées des moteurs, filtres, chiffons souillés, batteries — proviennent des '
+      +'<b>utilités</b> (entretien des moteurs et des équipements) ; les emballages du <b>magasin matières premières</b> ; les déchets de cantine des <b>locaux sociaux</b>.</div>';
+  } else if(kind==='types'){
+    // ── 2. Matrice zones × types (support de référence) ───────
+    h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;table-layout:fixed">';
+    h+='<thead><tr style="background:#0c4a6e;color:#fff">';
+    h+='<th rowspan="2" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;width:168px;vertical-align:middle">Zones de génération de déchets</th>';
+    h+='<th colspan="'+DECHETS_TYPES_REF.length+'" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;text-align:center">Type de déchets</th>';
+    h+='<th rowspan="2" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;width:80px;vertical-align:middle">Fréquence d\'évacuation</th>';
+    h+='<th rowspan="2" style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase;width:70px;vertical-align:middle">Responsable d\'évacuation</th>';
+    h+='</tr><tr style="background:#155e83;color:#fff">';
+    DECHETS_TYPES_REF.forEach(function(T){
+      h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8px;text-align:center;width:50px">'
+        +(T.grp?'<span style="display:block;font-size:7px;opacity:.85">'+esc(T.grp)+'</span>':'')
+        +esc(T.lbl)+(T.danger?'<span style="display:block;font-size:7px;color:#ffd7dc">dangereux</span>':'')+'</th>';
+    });
+    h+='</tr></thead><tbody>';
+    DECHETS_ZONES_REF.forEach(function(z,i){
+      h+='<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">';
+      h+='<td style="'+tdc+';font-weight:700;color:#0f172a">'+esc(z.z)+'</td>';
+      DECHETS_TYPES_REF.forEach(function(T){
+        var on=z.t.indexOf(T.k)>-1;
+        h+='<td style="'+tdc+';text-align:center;font-weight:800;font-size:11px;color:'+(T.danger?'#991b1b':'#0f172a')
+          +(on?';background:'+(T.danger?'#fee2e2':'#eef6fb'):'')+'">'+(on?'X':'')+'</td>';
+      });
+      h+='<td style="'+tdc+';font-weight:600">'+esc(z.freq)+'</td>';
+      h+='<td style="'+tdc+';text-align:center;font-weight:600">'+esc(z.resp)+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="font-size:9.5px;color:#5a7684;margin-top:8px">'
+      +'Lecture : une croix indique que la zone génère ce type de déchet. Les colonnes en rouge correspondent aux déchets dangereux '
+      +'(déchets spéciaux), qui suivent une filière séparée avec bordereau de suivi.</div>';
+  } else {
+    // ── 3. Tri à la source et stockage temporaire ────────────
+    h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+    h+='<thead><tr style="background:#0c4a6e;color:#fff">'+TH('#','26px')+TH('Type de déchet','116px')
+      +TH('Contenant de tri')+TH('Identification','116px')+TH('Stockage temporaire')
+      +TH('Filière d\'élimination')+TH('Zones','48px')+'</tr></thead><tbody>';
+    DECHETS_TYPES_REF.forEach(function(T,i){
+      var nz=dechetZonesForType(T.k).length;
+      h+='<tr style="background:'+(T.danger?'#fff5f5':(i%2?'#f8fafc':'#fff'))+'">';
+      h+='<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>';
+      h+='<td style="'+tdc+';font-weight:700;color:#0f172a">'
+        +(T.grp?'<span style="display:block;font-size:8px;color:#64748b;font-weight:600">'+esc(T.grp)+'</span>':'')
+        +esc(T.lbl)+'<div style="margin-top:3px">'+(T.danger?dngBadge:banBadge)+'</div></td>';
+      h+='<td style="'+tdc+'">'+esc(T.contenant)+'</td>';
+      h+='<td style="'+tdc+'">'+esc(T.couleur)+'</td>';
+      h+='<td style="'+tdc+'">'+esc(T.lieu)+'</td>';
+      h+='<td style="'+tdc+'">'+esc(T.filiere)+'</td>';
+      h+='<td style="'+tdc+';text-align:center;font-weight:700;font-family:monospace">'+nz+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table>';
+    h+='<div style="background:#fefce8;border:1px solid #fde047;border-radius:5px;padding:9px 12px;font-size:10px;color:#78350f;margin-top:10px">'
+      +'<b>Consignes de tri :</b> le tri est réalisé <b>à la source</b>, au poste de travail, dans des contenants identifiés et jamais mélangés — <b>sacs rouges</b> pour les déchets de produit, <b>sacs noirs</b> pour les déchets de cantine, <b>palette dédiée</b> pour les cartons. '
+      +'Les déchets dangereux (déchets spéciaux) sont stockés à part, sur rétention, en local fermé et ventilé, à l\'écart des déchets banals et de toute denrée. '
+      +'Les fréquences d\'évacuation de la fiche ENR-HSE 39 sont respectées ; chaque enlèvement est enregistré, avec bordereau de suivi pour les déchets dangereux.</div>';
+  }
+
+  h+=dechetSignatures(td);
+  h+='<div style="font-size:8.5px;color:#94a3b8;margin-top:8px">SOBCO 3 — HSE · '+esc(cfg.titre)
+    +' ('+esc(cfg.ref)+') · édité le '+todayStr+'</div>';
+  h+='</div>';
+  body.innerHTML=h;
+}
+function openDechetFiche(kind){
+  if(!DECHET_FICHES[kind]) kind='sources';
+  _dechetFicheCur=kind;
+  var cfg=DECHET_FICHES[kind];
+  if(!document.getElementById('dechetFicheModal')) return;
+  var b=document.getElementById('dechetFicheBadge'); if(b) b.textContent=cfg.ico;
+  var t=document.getElementById('dechetFicheTitle'); if(t) t.textContent=cfg.titre;
+  var r=document.getElementById('dechetFicheRef'); if(r) r.textContent=cfg.ref;
+  var tabs=document.getElementById('dechetFicheTabs');
+  if(tabs) tabs.querySelectorAll('button').forEach(function(el){
+    el.classList.toggle('on', el.getAttribute('data-fiche')===kind);
+  });
+  renderDechetFiche(kind);
+  openModal('dechetFicheModal');
+}
+function printDechetFiche(){
+  var el=document.getElementById('dechetFichePrint');
+  if(!el){ window.print(); return; }
+  var cfg=DECHET_FICHES[_dechetFicheCur]||DECHET_FICHES.sources;
+  var w=window.open('','_blank','width=1100,height=800'); if(!w) return;
+  var styles='<style>*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'
+    +esc(cfg.ref+' - '+cfg.titre)+'</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },400);
+}
+
+/* ══════════════════════════════════════════════════════════════
    RAPPORT DE SUIVI DES DÉCHETS (PDF)
    ══════════════════════════════════════════════════════════════ */
 function printDechets(){
@@ -6699,7 +7080,7 @@ function printDechets(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 34')+'</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse : total par type
@@ -6907,7 +7288,7 @@ function printCphsPlan(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 33')+'</td></tr>'
     +'</table></td></tr></table>';
   var table;
   if(rows.length){
@@ -7303,7 +7684,7 @@ function printVeille(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 26')+'</td></tr>'
     +'</table></td></tr></table>';
 
   var scoreHtml=scoreEl
@@ -7344,7 +7725,7 @@ function printVeille(){
 function openModal(id){ document.getElementById(id).style.display='flex'; document.body.style.overflow='hidden'; }
 function closeModal(id){ document.getElementById(id).style.display='none'; document.body.style.overflow=''; }
 document.addEventListener('keydown',function(e){
-  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal','pestEnr07Modal'].forEach(function(id){closeModal(id);});
+  if(e.key==='Escape') ['incModal','accModal','tagModal','cleanModal','clnPlanModal','clnProductsModal','clnEmbedModal','permitDetailModal','kpiPointModal','pestEnr07Modal','pesticidesModal','dechetFicheModal'].forEach(function(id){closeModal(id);});
 });
 function switchTab(prefix,tab,el){
   var panel=el.closest('.modal-panel');
@@ -7795,7 +8176,7 @@ function printActionsPlan(){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 31')+'</td></tr>'
     +'</table></td></tr></table>';
 
   var synth='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:10px">'
@@ -7860,6 +8241,30 @@ function cleanMonths(arr,hdrs){
 function infoItem(lbl,val){ return val&&String(val).trim()&&val!=='—'?'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+esc(String(val))+'</div></div>':''; }
 function infoItemF(lbl,val){ return'<div class="info-item"><div class="info-lbl">'+lbl+'</div><div class="info-val">'+(val?esc(String(val)):'—')+'</div></div>'; }
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ══════════════════════════════════════════════════════════════
+   DATE DE CRÉATION DES ENREGISTREMENTS (cartouche des PDF)
+   ──────────────────────────────────────────────────────────────
+   Référence : la section « Enregistrements » (feuille du même nom).
+   Si cette feuille porte une date pour le code de l'ENR, c'est elle
+   qui fait foi ; sinon on retient la date d'entrée en vigueur du
+   système documentaire : 04/01/2026.
+   Tous les documents générés en PDF passent par cette fonction, afin
+   que la ligne « Créé le » soit présente et cohérente partout.
+   ══════════════════════════════════════════════════════════════ */
+var ENR_CREATED_DEFAULT = '04/01/2026';
+function enrRefKey(ref){ return String(ref||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function enrCreatedFor(ref){
+  var k = enrRefKey(ref);
+  if(k){
+    var rows = ((D||{}).enregistrements)||[];
+    for(var i=0;i<rows.length;i++){
+      if(rows[i] && rows[i].created && enrRefKey(rows[i].code)===k)
+        return String(rows[i].created).trim();
+    }
+  }
+  return ENR_CREATED_DEFAULT;
+}
 function escAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function fmtNum(v){
   if(v===null||v===undefined||v==='') return v;
@@ -7925,6 +8330,28 @@ function setPyrMode(m){
   renderPyramid();
 }
 
+// TAGs affichés hors de la section TAGs (vue globale, en-tête, pyramide,
+// bilan) : le REGISTRE de la section fait référence. La ligne
+// « Situations dangereuses (TAGs) » de la feuille KPI, souvent laissée
+// à 0, n'est plus qu'un repli quand le registre est vide ou pas encore
+// chargé.
+// Lignes valides du registre (mêmes exclusions que la liste de la section)
+function tagsRegistreRows(){
+  return ((D && D.tags) || []).filter(function(t){ return t && t.id && !t._err; });
+}
+// Sous-ensemble ANNÉE EN COURS — même règle que le filtre « YTD » de la
+// section TAGs : année en cours, un TAG sans date restant comptabilisé.
+function tagsYtdRows(){
+  var y = String(new Date().getFullYear());
+  return tagsRegistreRows().filter(function(t){
+    return !t.isoDate || String(t.isoDate).substring(0,4) === y;
+  });
+}
+function tagsGlobalCount(){
+  if(tagsRegistreRows().length) return tagsYtdRows().length;
+  var m = (D && D.metrics) || {};
+  return m.tags_ytd != null ? m.tags_ytd : 0;
+}
 // ══ PYRAMIDE ══════════════════════════════════════════════════
 function getCSSVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function populatePyrMonths(){
@@ -7955,12 +8382,12 @@ function renderPyramid(){
   populatePyrMonths();
   var sel=document.getElementById('pyrSel');
   var fatal,majeur,mineur,incident,tags;
-  if(pyrMode==='ytd'){ fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=m.tags_ytd; }
+  if(pyrMode==='ytd'){ fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=tagsGlobalCount(); }
   else{
     var idx=parseInt(sel&&sel.value,10);
     if(isNaN(idx)){
       // Aucun mois disponible : on bascule sur YTD
-      fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=m.tags_ytd;
+      fatal=m.at_fatal;majeur=m.at_majeur;mineur=m.at_mineur;incident=m.inc_ytd;tags=tagsGlobalCount();
     } else {
       var aMj=m.atM_months||[], aMn=m.atm_months||[], aI=m.inc_months||[], aT=m.tags_months||[];
       fatal=0;
@@ -8443,6 +8870,44 @@ function downloadDriveDoc(rawUrl,filename){ downloadAccPj(rawUrl,filename); }
    Compose un bilan UNIQUEMENT de graphiques à partir des accidents
    filtrés, avec téléchargement PDF (conversion canvas → image).
    ══════════════════════════════════════════════════════════════ */
+/* Pyramide accidents en HTML « imprimable » — même géométrie et mêmes
+   couleurs que la carte du tableau de bord (thème clair), mais tout en
+   styles en ligne : la fenêtre d'impression ne reçoit ni les classes
+   .pyr-* ni les variables de thème. Source : D.metrics (YTD), comme la
+   pyramide affichée à l'écran. */
+function accBilanPyramidHtml(){
+  var m=(D&&D.metrics)||{};
+  var LV=[
+    {l:'FATAL',    i:'',   v:m.at_fatal,  a:'#ffd6db', b:'#ff8599', t:'#7a0015', bd:'rgba(232,68,90,.4)'},
+    {l:'MAJEUR',   i:'🔴', v:m.at_majeur, a:'#ffe4cc', b:'#ffaa66', t:'#7a3000', bd:'rgba(249,115,22,.4)'},
+    {l:'MINEUR',   i:'🟠', v:m.at_mineur, a:'#fff5cc', b:'#ffd966', t:'#5a3a00', bd:'rgba(245,166,35,.4)'},
+    {l:'INCIDENTS',i:'🔵', v:m.inc_ytd,   a:'#d6eef7', b:'#7abfdb', t:'#003a55', bd:'rgba(9,99,126,.4)'},
+    {l:'TAGs',     i:'🟢', v:tagsGlobalCount(), a:'#ccf0e0', b:'#66c99a', t:'#00432a', bd:'rgba(16,201,133,.4)'}
+  ];
+  var W=[44,82,126,172,216], CONN=['#ff8599','#ffaa66','#ffd966','#7abfdb'];
+  var h='<div style="display:flex;flex-direction:column;align-items:center;padding:2px 0 4px">';
+  LV.forEach(function(l,i){
+    if(i>0){
+      var wc=W[i], df=Math.round((wc-W[i-1])/2);
+      h+='<div style="height:5px;overflow:hidden;margin:0 auto;width:'+wc+'px">'
+        +'<svg width="'+wc+'" height="5"><polygon points="'+df+',0 '+(wc-df)+',0 '+wc+',5 0,5" fill="'+CONN[i-1]+'"/></svg></div>';
+    }
+    h+='<div style="display:flex;justify-content:center;width:216px;margin:0 auto">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;'
+      +'width:'+W[i]+'px;height:28px;border-radius:6px;padding:6px 9px;'
+      +'background:linear-gradient(135deg,'+l.a+','+l.b+');border:1.5px solid '+l.bd+'">'
+      +(l.i?'<span style="font-size:11px;flex-shrink:0">'+l.i+'</span>':'')
+      +'<span style="font-size:8.5px;font-weight:700;flex:1;text-align:center;white-space:nowrap;letter-spacing:.3px;color:'+l.t+'">'+l.l+'</span>'
+      +'<span style="font-size:14px;font-weight:900;font-family:\'JetBrains Mono\',monospace;min-width:22px;text-align:right;color:'+l.t+'">'
+      + (l.v==null?'—':fmtNum(l.v)) + '</span>'
+      +'</div></div>';
+  });
+  h+='</div>';
+  h+='<div style="font-size:8.5px;color:#64748b;line-height:1.45;text-align:center;margin-top:2px">'
+    +'<b style="color:#334155">Accident mineur</b> : ≤ 3 jours d\'arrêt de travail · '
+    +'<b style="color:#334155">Accident majeur</b> : &gt; 3 jours d\'arrêt de travail</div>';
+  return h;
+}
 function accBilanSource(){
   var a=window._accFiltered;
   if(!a||!a.length) a=((D&&D.accidents)||[]).filter(function(x){return x.nom&&!x._err&&x.nom.length>=3;});
@@ -8484,8 +8949,10 @@ function renderAccBilan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR HSE 25</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR HSE 25')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   if(!accs.length){
@@ -8499,8 +8966,7 @@ function renderAccBilan(){
     {id:'accBilanMonth', title:'Accidents par mois'},
     {id:'accBilanZone',  title:'Accidents par zone (top 6)'},
     {id:'accBilanCause', title:'Accidents par cause racine (top 6)'},
-    {id:'accBilanFonc',  title:'Répartition par fonction'},
-    {id:'accBilanNature',title:'Siège / nature de lésion (top 6)'}
+    {id:'accBilanFonc',  title:'Répartition par fonction'}
   ];
   h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px">';
   cards.forEach(function(cd){
@@ -8509,6 +8975,21 @@ function renderAccBilan(){
     h+='<div style="height:165px;position:relative"><canvas id="'+cd.id+'"></canvas></div>';
     h+='</div>';
   });
+  // Pyramide accidents (6ᵉ case de la grille) — mêmes données que la
+  // carte du tableau de bord : cumul YTD fatal / majeur / mineur,
+  // complété des incidents et des TAGs (pyramide de sécurité).
+  h+='<div style="border:1px solid #cbd5e1;border-radius:6px;padding:9px 11px;background:#fff">';
+  h+='<div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:5px">Pyramide accidents (YTD)</div>';
+  h+='<div style="min-height:165px">'+accBilanPyramidHtml()+'</div>';
+  h+='</div>';
+  h+='</div>';
+
+  // ── Cartographie du corps : siège de lésion (pleine largeur) ────
+  h+='<div style="border:1px solid #cbd5e1;border-radius:6px;padding:9px 11px;background:#fff;margin-bottom:6px">';
+  h+='<div style="font-size:10px;font-weight:700;color:#0c4a6e;margin-bottom:5px">Répartition par siège de lésion '
+    +'<span style="font-weight:600;color:#64748b">· Cartographie du corps · partie touchée</span></div>';
+  h+='<div style="display:flex;gap:20px;flex-wrap:wrap;align-items:center;justify-content:center;padding:6px 4px 2px">'
+    + accSiegeBodyHtml(accs,true) + '</div>';
   h+='</div>';
 
   // ── Détail de tous les accidents (sous les graphiques) ─────────
@@ -8574,7 +9055,6 @@ function renderAccBilan(){
       data:{labels:fz.labels,datasets:[{data:fz.data,backgroundColor:PAL,borderWidth:0,hoverOffset:4}]},
       options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:true,position:'right',labels:{color:C.txt,font:{size:9},boxWidth:8}}},cutout:'50%'}});
   }
-  var nz=topCount('siege',6,22); if(nz.labels.length) mkChart('accBilanNature','bar',nz.labels,[{data:nz.data,backgroundColor:'rgba(124,58,237,.75)',borderRadius:4}],hbarOpts);
 }
 function printAccBilan(){
   var el=document.getElementById('accBilanPrint');
@@ -8682,8 +9162,10 @@ function renderAccActionPlan(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MAQ-09</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('PLA-MAQ-09')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Informations générales (statiques) ────────────────────────
@@ -9336,8 +9818,13 @@ function accSiegeRegion(s){
   if(/dos|colonne|lombaire|rachis|thorax|poitrine|torse|tronc|cote|cotes|abdomen|ventre|sternum|thoracique|dorsal|flanc|reins/.test(n)) return 'tronc';
   return null;   // non localisé → listé dans « Autres »
 }
-function renderAccSiegeBody(accs){
-  var box=document.getElementById('accSiegeBody'); if(!box) return;
+// Construit la cartographie (SVG + liste). `print` = variante pour les
+// documents PDF : couleurs fixes au lieu des variables de thème, qui ne
+// sont pas transmises à la fenêtre d'impression.
+function accSiegeBodyHtml(accs, print){
+  var P = print
+    ? { t2:'#334155', t3:'#64748b', red:'#e8445a', bd:'#cbd5e1' }
+    : { t2:'var(--text2)', t3:'var(--text3)', red:'var(--red)', bd:'var(--border)' };
   var counts={}, unmapped={}, totalMapped=0;
   (accs||[]).forEach(function(a){
     var r=accSiegeRegion(a&&a.siege);
@@ -9386,27 +9873,31 @@ function renderAccSiegeBody(accs){
   var RLBL={tete:'Tête',cou:'Cou',epaule:'Épaules',bras:'Bras / coude',main:'Mains / doigts',tronc:'Tronc / dos',bassin:'Bassin / hanche',jambe:'Jambes / genou',pied:'Pieds / chevilles'};
   var rows=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
   var lst='<div style="min-width:190px;flex:1;max-width:320px">';
-  lst+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:10px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
+  lst+='<div style="font-size:10px;color:'+P.t3+';text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-bottom:10px">Sièges de lésion · '+totalMapped+' localisé'+(totalMapped>1?'s':'')+'</div>';
   if(rows.length===0){
-    lst+='<div style="font-size:11px;color:var(--text3)">Aucun siège de lésion renseigné pour ce filtre.</div>';
+    lst+='<div style="font-size:11px;color:'+P.t3+'">Aucun siège de lésion renseigné pour ce filtre.</div>';
   }else{
     rows.forEach(function(r){
       var c=col(r), pct=max>0?Math.round(counts[r]/max*100):0;
       lst+='<div style="margin-bottom:9px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
         +'<span style="width:11px;height:11px;border-radius:3px;background:'+(c.f.indexOf('url')>-1?'#cfe2f0':c.f)+';border:1px solid '+c.s+';flex-shrink:0"></span>'
-        +'<span style="flex:1;font-size:11.5px;color:var(--text2);font-weight:500">'+esc(RLBL[r]||r)+'</span>'
-        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:800;color:var(--red)">'+counts[r]+'</span></div>'
+        +'<span style="flex:1;font-size:11.5px;color:'+P.t2+';font-weight:500">'+esc(RLBL[r]||r)+'</span>'
+        +'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;font-weight:800;color:'+P.red+'">'+counts[r]+'</span></div>'
         +'<div style="height:5px;border-radius:3px;background:rgba(120,150,175,.15);overflow:hidden"><div style="height:100%;width:'+pct+'%;border-radius:3px;background:linear-gradient(90deg,rgba(232,68,90,.55),#e8445a)"></div></div></div>';
     });
   }
   var uKeys=Object.keys(unmapped).sort(function(a,b){return unmapped[b]-unmapped[a];});
   if(uKeys.length){
-    lst+='<div style="font-size:9px;color:var(--text3);margin-top:10px;line-height:1.5;padding-top:8px;border-top:1px dashed var(--border)"><b>Non localisés :</b> '
+    lst+='<div style="font-size:9px;color:'+P.t3+';margin-top:10px;line-height:1.5;padding-top:8px;border-top:1px dashed '+P.bd+'"><b>Non localisés :</b> '
       +uKeys.slice(0,6).map(function(k){return esc(k)+' ('+unmapped[k]+')';}).join(' · ')
       +(uKeys.length>6?' …':'')+'</div>';
   }
   lst+='</div>';
-  box.innerHTML=svg+lst;
+  return svg+lst;
+}
+function renderAccSiegeBody(accs){
+  var box=document.getElementById('accSiegeBody'); if(!box) return;
+  box.innerHTML=accSiegeBodyHtml(accs,false);
 }
 function renderAccidents(accs){
   window._accFiltered=accs;   // conservé pour le Bilan AT (ENR HSE 25) et le plan d'action
@@ -9483,13 +9974,116 @@ function updateEnvCharts(){
       borderColor:'rgba(120,139,153,.9)',borderDash:[6,4],borderWidth:1.6,pointRadius:0,fill:false,tension:0};
   }
   var envOpts=Object.assign({},BASE,{plugins:{legend:{display:isR,labels:{color:C.txt,font:{size:9},boxWidth:12}}}});
+  // Clic sur un point mensuel → détail du calcul (comme TF / TG)
+  envOpts.onHover=function(e,els){ var t=e&&e.native&&e.native.target; if(t) t.style.cursor=(els&&els.length)?'pointer':'default'; };
+  // Un jeu d'options par graphique : l'identifiant est capturé dans la
+  // fermeture, sans dépendre de la signature du callback de Chart.js.
+  function envOptsFor(cid){
+    var o=Object.assign({},envOpts);
+    o.onClick=function(evt,els){ if(els&&els.length) showEnvPointDetail(cid,els[0].index); };
+    return o;
+  }
+  _envMeta.eltC=buildEnvMeta('elt',m,hdrs,ce.labels);
+  _envMeta.gazC=buildEnvMeta('gaz',m,hdrs,cg.labels);
+  _envMeta.eauC=buildEnvMeta('eau',m,hdrs,cw.labels);
   var eltDs=[{data:ce.data,borderColor:C.amber,backgroundColor:'rgba(245,166,35,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.amber,label:'Ratio ELT'}];
   var gazDs=[{data:cg.data,borderColor:C.red,backgroundColor:'rgba(232,68,90,.12)',fill:true,tension:.4,borderWidth:2.5,pointRadius:4,pointBackgroundColor:C.red,label:'Ratio GAZ'}];
   var eauDs=[{data:cw.data,backgroundColor:[C.p1,'rgba(9,99,126,.7)','rgba(9,99,126,.5)','rgba(9,99,126,.4)','rgba(9,99,126,.35)'],borderRadius:5,label:'Ratio EAU'}];
   if(isR){ eltDs.push(objDs(350,ce.labels)); gazDs.push(objDs(1200,cg.labels)); eauDs.push(objDs(5,cw.labels)); }
-  mkChart('eltC','line',ce.labels,eltDs,envOpts);
-  mkChart('gazC','line',cg.labels,gazDs,envOpts);
-  mkChart('eauC','bar',cw.labels,eauDs,envOpts);
+  mkChart('eltC','line',ce.labels,eltDs,envOptsFor('eltC'));
+  mkChart('gazC','line',cg.labels,gazDs,envOptsFor('gazC'));
+  mkChart('eauC','bar',cw.labels,eauDs,envOptsFor('eauC'));
+}
+
+/* ══ Détail du calcul au clic sur un point ÉNERGIE ══════════════
+   Même principe que les points TF / TG : la fenêtre rappelle la
+   formule du ratio et la substitue avec les valeurs du mois.
+   Les unités produites (UP) ne sont pas une ligne de la feuille KPI :
+   elles se déduisent de consommation ÷ ratio, en recoupant les trois
+   fluides du même mois (ELT, GAZ, EAU doivent donner la même UP). */
+var _envMeta={};
+var ENV_FLUIDS={
+  elt:{lbl:'Électricité',ratioLbl:'Ratio ELT',unit:'kWh',rUnit:'kWh/UP',obj:350, ico:'⚡',col:'var(--amber)',bg:'rgba(245,166,35,.18)'},
+  gaz:{lbl:'Gaz',        ratioLbl:'Ratio GAZ',unit:'m³', rUnit:'m³/UP', obj:1200,ico:'🔥',col:'var(--red)',  bg:'rgba(232,68,90,.18)'},
+  eau:{lbl:'Eau',        ratioLbl:'Ratio EAU',unit:'m³', rUnit:'m³/UP', obj:5,   ico:'💧',col:'var(--p4)',   bg:'rgba(13,168,210,.18)'}
+};
+// Unités produites du mois : consommation ÷ ratio, sur le premier
+// fluide exploitable (les trois donnent la même valeur).
+function envUpForMonth(m,i){
+  var pairs=[[m.elt_months,m.relt_months],[m.gaz_months,m.rgaz_months],[m.eau_months,m.reau_months]];
+  for(var p=0;p<pairs.length;p++){
+    var c=(pairs[p][0]||[])[i], r=(pairs[p][1]||[])[i];
+    if(c!=null&&r!=null&&parseFloat(r)>0) return parseFloat(c)/parseFloat(r);
+  }
+  return null;
+}
+function buildEnvMeta(fluid,m,hdrs,labels){
+  var consoA=(fluid==='elt')?m.elt_months:(fluid==='gaz')?m.gaz_months:m.eau_months;
+  var ratioA=(fluid==='elt')?m.relt_months:(fluid==='gaz')?m.rgaz_months:m.reau_months;
+  var shown=(envMode==='ratio')?ratioA:consoA;
+  var out=[];
+  for(var i=0;i<Math.min((shown||[]).length,12);i++){
+    if(shown[i]===null||shown[i]===undefined) continue;
+    out.push({fluid:fluid,mois:(hdrs&&hdrs[i]?String(hdrs[i]).replace(/-\d{2,4}$/,'').trim():ML[i]),
+              conso:(consoA||[])[i], ratio:(ratioA||[])[i], up:envUpForMonth(m,i)});
+  }
+  // Repli : si les libellés diffèrent (série incomplète), on s'aligne
+  // sur les libellés réellement tracés.
+  if(labels&&labels.length===out.length){
+    out.forEach(function(o,k){ o.mois=labels[k]; });
+  }
+  return out;
+}
+function showEnvPointDetail(cid,idx){
+  var meta=_envMeta[cid]; if(!meta||idx<0||!meta[idx]) return;
+  var d=meta[idx], F=ENV_FLUIDS[d.fluid]; if(!F) return;
+  var ratio=(d.ratio!=null)?parseFloat(d.ratio):null;
+  var conso=(d.conso!=null)?parseFloat(d.conso):null;
+  var up=(d.up!=null)?d.up:((conso!=null&&ratio)?conso/ratio:null);
+  var isR=(envMode==='ratio');
+
+  var badge=document.getElementById('kpiPtBadge');
+  badge.textContent=F.ico;
+  badge.style.background=F.bg;
+  badge.style.borderColor=F.col;
+  document.getElementById('kpiPtKind').textContent=(isR?'RATIO PAR UNITÉ PRODUITE · ':'CONSOMMATION MENSUELLE · ')+'DÉTAIL DU CALCUL';
+  document.getElementById('kpiPtTitle').textContent=F.ratioLbl+' — '+d.mois;
+
+  var row=function(lbl,v,c){ return '<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3);font-size:11px">'+lbl+'</span><span style="font-weight:700;font-size:12px;color:'+(c||'var(--text)')+'">'+v+'</span></div>'; };
+  var num=function(v,dec){ return (v==null)?'—':Number(v).toLocaleString('fr-FR',{maximumFractionDigits:(dec==null?2:dec)}); };
+
+  var h='';
+  h+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Portée : <b style="color:var(--text2)">mois de '+esc(d.mois)+'</b></div>';
+  h+=row('Consommation '+F.lbl+' du mois', num(conso,0)+' '+F.unit, F.col);
+  h+=row('Unités produites (UP) · tonnes', up==null?'non disponible':num(up,0)+' t');
+  h+=row('Objectif', '≤ '+num(F.obj,0)+' '+F.rUnit);
+
+  h+='<div style="margin-top:12px;padding:11px 12px;background:var(--bg2,rgba(127,127,127,.08));border-radius:8px;border:1px solid var(--border)">';
+  h+='<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Formule</div>';
+  h+='<div style="font-size:11.5px;color:var(--text2);line-height:1.5">'+F.ratioLbl+' = consommation '+F.lbl.toLowerCase()+' du mois ('+F.unit+') ÷ unités produites du mois (tonnes)</div>';
+  if(conso!=null&&up){
+    h+='<div style="font-size:12px;color:var(--text);margin-top:8px;font-family:\'JetBrains Mono\',monospace">= '+num(conso,0)+' '+F.unit+' ÷ '+num(up,0)+' t</div>';
+    h+='<div style="font-size:16px;font-weight:800;color:'+F.col+';margin-top:6px">= '+num(ratio!=null?ratio:conso/up,2)+' '+F.rUnit+'</div>';
+  }else if(ratio!=null){
+    h+='<div style="font-size:16px;font-weight:800;color:'+F.col+';margin-top:8px">= '+num(ratio,2)+' '+F.rUnit+'</div>';
+    h+='<div style="font-size:11px;color:var(--text3);margin-top:6px">Unités produites indisponibles pour ce mois : seul le ratio de la feuille KPI est affiché.</div>';
+  }else{
+    h+='<div style="font-size:11px;color:var(--red);margin-top:8px">Données du mois incomplètes → ratio non calculé.</div>';
+  }
+  // Écart à l'objectif
+  if(ratio!=null){
+    var ok=(ratio<=F.obj), ecart=ratio-F.obj;
+    var pct=F.obj?Math.round(Math.abs(ecart)/F.obj*100):null;
+    h+='<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border);font-size:11.5px;font-weight:700;color:'+(ok?'var(--green)':'var(--red)')+'">'
+      + (ok?'✔ Conforme':'✖ Écart')+' — '+(ok?'−':'+')+num(Math.abs(ecart),2)+' '+F.rUnit
+      + (pct!=null?' ('+(ok?'−':'+')+pct+'% vs objectif)':'')+'</div>';
+  }
+  h+='</div>';
+  h+='<div style="font-size:9.5px;color:var(--text3);margin-top:10px;line-height:1.4">'
+    +'Valeur du mois isolé (non cumulée). Consommations et ratios issus de la feuille KPI ; '
+    +'les unités produites sont déduites du rapport consommation ÷ ratio.</div>';
+  document.getElementById('kpiPtBody').innerHTML=h;
+  openModal('kpiPointModal');
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -9544,7 +10138,7 @@ function printEnergyReport(){
     +'<td style="'+td+';width:170px;padding:0;vertical-align:top"><table style="width:100%;border-collapse:collapse;font-size:10.5px">'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE 32</td></tr>'
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>'
-    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;font-weight:600">04/01/2026</td></tr>'
+    +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td><td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 32')+'</td></tr>'
     +'</table></td></tr></table>';
 
   // Synthèse YTD
@@ -9989,8 +10583,82 @@ function isNuisibleTag(t){
   if(!s) return false;
   return /nuisible|rongeur|\brat\b|\brats\b|souris|insecte|mouche|moustique|cafard|blatte|termite|derat|desinsect|desinfect|raticide|appat|fly ?killer|\bfk\b|vermine|parasite/.test(s);
 }
+// Thème d'un TAG : on n'examine que le TYPE DE DANGER (type / risque),
+// exactement comme le filtre « Type de danger » de la section TAGs et
+// comme le plan d'action nuisibles. Le libellé du danger fait foi : la
+// description libre n'est jamais scannée, ce qui évite les lignes hors
+// sujet et rend le tri lisible depuis la section TAGs.
+function tagHazardText(t){
+  return veilleNorm((t.type||'') + ' ' + (t.risque||''));
+}
+// Déchets et environnement : hors périmètre des deux plans d'action.
+var TAG_ENV_DECHETS = /environnement|pollution|\brejet|effluent|dechet|ordure|poubelle|recyclage|tri selectif|emission|carbone|\bco2\b/;
+// Énergie : énergie et fluides (gaz, eau, air comprimé, vapeur,
+// éclairage, chauffage / climatisation) — hors environnement. Le danger
+// « Électrique » n'est PAS retenu : il désigne un risque de sécurité
+// (contact, coffret ouvert), pas une consommation ; « consommation
+// électrique » ou « énergie » sont eux bien reconnus.
+function isEnergieTag(t){
+  if(!t || !t.id || t._err) return false;
+  var s = tagHazardText(t); if(!s) return false;
+  if(TAG_ENV_DECHETS.test(s)) return false;
+  return /energ|eclairage|gaspill|consommation|fluide|air comprime|vapeur|calorifug|chauffage|climatis|\bclim\b|\bgaz\b|\beau\b|carburant|compteur/.test(s);
+}
+// Nettoyage : propreté des locaux, hygiène, ordre et rangement.
+function isNettoyageTag(t){
+  if(!t || !t.id || t._err) return false;
+  var s = tagHazardText(t); if(!s) return false;
+  if(TAG_ENV_DECHETS.test(s)) return false;
+  return /nettoy|proprete|salubr|salete|souill|hygiene|sanitaire|desinfect|entretien|poussiere|\b5s\b|ordre|rangement|encombr/.test(s);
+}
 function sapPayload(section){
   var v = function(x){ return (x==null||String(x).trim()==='') ? '—' : String(x).trim(); };
+  // Plans d'action thématiques extraits de la section TAGs : même
+  // structure de tableau, seuls le filtre, le titre et la codification
+  // changent d'un thème à l'autre.
+  var THEMES = {
+    energie: {
+      filter: isEnergieTag,
+      title:  "Plan d'action HSE — Énergie",
+      sub:    "TAGs « énergie » — économie d'énergie · gaspillage · consommations (électricité, gaz, eau)",
+      ref:    'ENR-HSE 36',
+      lbl:    'énergie'
+    },
+    nettoyage: {
+      filter: isNettoyageTag,
+      title:  "Plan d'action HSE — Nettoyage & Hygiène",
+      sub:    'TAGs « nettoyage » — propreté des locaux · hygiène · ordre et rangement',
+      ref:    'ENR-HSE 37',
+      lbl:    'nettoyage / hygiène'
+    }
+  };
+  if (THEMES[section]) {
+    var TH    = THEMES[section];
+    var ttags = ((D && D.tags) || []).filter(TH.filter);
+    var nOpenT = ttags.filter(function(t){ return tagIsOpen(t); }).length;
+    return {
+      title:    TH.title,
+      subtitle: TH.sub,
+      ref:      TH.ref,
+      rev:      '01',
+      created:  enrCreatedFor(TH.ref),
+      meta:  ttags.length + ' TAG(s) « ' + TH.lbl + ' » · ' + nOpenT + ' ouvert(s) · '
+           + (ttags.length - nOpenT) + ' fermé(s) — extraits automatiquement de la section TAGs',
+      cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
+              {k:'zone',l:'Zone',w:7},{k:'empl',l:'Emplacement',w:9},
+              {k:'type',l:'Danger',w:9},
+              {k:'desc',l:'Description',w:15},{k:'action',l:'Action urgente',w:14},
+              {k:'prop',l:'Propositions',w:14},{k:'resp',l:'Responsable',w:8},
+              {k:'statut',l:'Statut',w:6} ],
+      rows: ttags.map(function(t){ return {
+        id:v(t.id), date:v(t.date), cible:v(t.dateCible),
+        zone:v(t.zone), empl:v(t.emplacement), type:v(t.type||t.risque),
+        desc:v(t.description),
+        action:(t.action&&String(t.action).trim())?String(t.action).trim():'À définir',
+        prop:v(t.propositions), resp:v(t.responsable),
+        statut:t.statut?String(t.statut).trim():(tagIsOpen(t)?'Ouvert':'Fermé') }; })
+    };
+  }
   if (section === 'incidents') {
     var incs = (D && D.incidents) || [];
     var nAct = incs.filter(function(x){ return x.actions && String(x.actions).trim(); }).length;
@@ -10038,7 +10706,7 @@ function sapPayload(section){
       subtitle: 'TAGs « nuisibles » — dératisation · désinsectisation · désinfection',
       ref:      'ENR-HSE 35',
       rev:      '01',
-      created:  '04/01/2026',
+      created:  enrCreatedFor('ENR-HSE 35'),
       meta:  ntags.length + ' TAG(s) « nuisibles » · ' + nOpenN + ' ouvert(s) · '
            + (ntags.length - nOpenN) + ' fermé(s) — extraits automatiquement de la section TAGs',
       cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
@@ -10064,7 +10732,7 @@ function sapPayload(section){
       subtitle: 'Suivi des situations dangereuses signalées — SOBCO 3',
       ref:      'ENR-HSE 30',
       rev:      '01',
-      created:  '04/01/2026',      // date de création du document
+      created:  enrCreatedFor('ENR-HSE 30'),   // date de création du document
       meta:  tags.length + ' TAG(s) · ' + nOpen + ' ouvert(s) · '
            + (tags.length - nOpen) + ' fermé(s)',
       cols: [ {k:'id',l:'N°',w:4},{k:'date',l:'Date',w:6},{k:'cible',l:'Cible',w:6},
@@ -10084,7 +10752,8 @@ function sapPayload(section){
 }
 var sapLoading = false;
 function openSectionActionPlan(section){
-  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS', nuisibles:'NUISIBLES' };
+  var LBL  = { incidents:'INCIDENTS', accidents:'ACCIDENTS', tags:'TAGS', nuisibles:'NUISIBLES',
+               energie:'ÉNERGIE', nettoyage:'NETTOYAGE & HYGIÈNE' };
   var p    = sapPayload(section);
   // Badge de la visionneuse : affiche la codification quand elle existe
   var kind = (p && p.ref)
@@ -10152,7 +10821,8 @@ function sapRun(p, kind){
 // Génère le plan d'action d'une section et le TÉLÉCHARGE directement
 // (sans passer par la visionneuse).
 function downloadSectionActionPlan(section){
-  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs',nuisibles:'Nuisibles'};
+  var LBL={incidents:'Incidents',accidents:'Accidents',tags:'TAGs',nuisibles:'Nuisibles',
+           energie:'Énergie',nettoyage:'Nettoyage & Hygiène'};
   var p=sapPayload(section);
   if (p) { try{ p.logo = ficheLogoSrc(); }catch(eL){} }
   if(!p || !p.rows.length){ showToast('Aucune donnée dans cette section.','error'); return; }
@@ -10464,18 +11134,22 @@ function render(data){
   window._lastDataTs=Date.now();   // horodatage pour l'actualisation auto
 
   // ── Synchronisation « Résol. TAGs » (Vue Globale) avec
-  // « Clôture » (page TAGs, filtre YTD 2026) ──
-  // Même logique de filtre/calcul que applyTagF() pour p==='ytd' :
-  // on ne garde que les TAGs dont l'année isoDate vaut 2026, puis
-  // taux = fermés / total * 100.
-  (function syncResolTagsYTD2026(){
-    var tags=(D.tags||[]).filter(function(t){
-      if(!t.id||t._err||!t.isoDate) return false;
-      return parseInt(t.isoDate.split('-')[0])===2026;
-    });
+  // « Clôture » — aligné sur le REGISTRE de la section TAGs, année en
+  // cours (comme la carte TAGs de la vue globale) : taux = fermés /
+  // total × 100 sur les TAGs de l'année (un TAG sans date reste
+  // comptabilisé, comme dans le filtre YTD de la section).
+  // La ligne « Taux de résolution Tags » de la feuille KPI ne sert que
+  // de repli, quand le registre est vide ou pas encore chargé.
+  (function syncResolTagsRegistre(){
+    if(!tagsRegistreRows().length) return;    // registre vide → valeur KPI conservée
+    var tags=tagsYtdRows();
+    if(!tags.length){ m.total_tags=0; m.open_tags=0; m.closed_tags=0; m.taux_res_tags=0; return; }
     var open=tags.filter(tagIsOpen).length;
     var closed=tags.length-open;
-    m.taux_res_tags=tags.length>0?Math.round(closed/tags.length*100):0;
+    m.total_tags=tags.length;
+    m.open_tags=open;
+    m.closed_tags=closed;
+    m.taux_res_tags=Math.round(closed/tags.length*100);
   })();
 
   // ── MODE TV : re-rendu AU PLUS TÔT ───────────────────────────
@@ -10504,7 +11178,7 @@ function render(data){
   document.getElementById('ts').textContent=new Date(data.ts).toLocaleString('fr-FR');
   document.getElementById('h-at').textContent='AT: '+fmtNum(m.at_total);
   document.getElementById('h-tf').textContent='TF: '+fmtNum(m.tf1_ytd);
-  document.getElementById('h-tags').textContent='TAGs: '+fmtNum(m.tags_ytd);
+  document.getElementById('h-tags').textContent='TAGs: '+fmtNum(tagsGlobalCount());
   document.getElementById('footer').textContent='SOBCO 3 – HSE Dashboard v9.2 · BK Design · '+new Date().toLocaleDateString('fr-FR')+' · BRAHIM KAOUACHI';
   document.getElementById('alertTxt').innerHTML=
     '<strong>SOBCO 3 HSE 2026 :</strong> TF=<strong>'+fmtNum(m.tf1_ytd)+'</strong>(obj≤30) · '
@@ -10528,7 +11202,7 @@ function render(data){
             'k-g',null,null),
     kpiCard('Jours Perdus',m.jp_ytd,         'b','YTD',          'k-b',null,null),
     kpiCard('Incidents',   (m.nb_incidents!=null?m.nb_incidents:((D&&D.incidents)?D.incidents.length:m.inc_ytd)), 'b','Sans AT · enregistrés', 'k-b',null,null),
-    kpiCard('TAGs',        m.tags_ytd,       'g','YTD cumulé',   'k-g',null,null),
+    kpiCard('TAGs',        tagsGlobalCount(),'g','YTD · registre TAGs','k-g',null,null),
     kpiCard('TVM',         fmtNum(m.tvm)+'%',        'r','Obj.95%',      'k-r',p(m.tvm,95,false),      bc(m.tvm,95,false)),
     kpiCard('Résol.TAGs',  fmtNum(m.taux_res_tags)+'%','g','Obj.95%',    'k-g',p(m.taux_res_tags,95,false),bc(m.taux_res_tags,95,false))
   ].join('');
@@ -10713,7 +11387,33 @@ function renderTvDash(){
           tvStatus(m.taux_res_tags,95,false))
   ].join('');
 
+  renderTvNews();
   tvUpdateStamp();
+}
+/* ══ Bandeau d'information défilant (feuille « news ») ══════════
+   • Cellule de texte vide → bandeau masqué, aucune place perdue.
+   • Sens de défilement selon la langue du message : de gauche à
+     droite en arabe (le début de la phrase, à droite, entre en
+     premier), de droite à gauche sinon — même animation, jouée à
+     l'envers pour l'arabe.
+   • Vitesse proportionnelle à la longueur, pour rester lisible. */
+function tvNewsIsArabic(s){ return /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/.test(String(s||'')); }
+function renderTvNews(){
+  var box=document.getElementById('tvNews'), track=document.getElementById('tvNewsTrack');
+  if(!box||!track) return;
+  var msgs=((D&&D.news)||[]).map(function(x){ return String(x==null?'':x).trim(); })
+                            .filter(function(x){ return x.length>0; });
+  if(!msgs.length){ box.classList.remove('on'); track.textContent=''; return; }
+
+  var txt=msgs.join('    ✦    ');
+  var rtl=tvNewsIsArabic(txt);
+  track.textContent=txt;
+  track.dir = rtl ? 'rtl' : 'ltr';
+  track.classList.toggle('rev', rtl);           // arabe : défile vers la droite
+  // ~11 caractères par seconde, borné pour rester confortable
+  var dur=Math.min(90,Math.max(16,Math.round(txt.length/11*2)));
+  track.style.animationDuration=dur+'s';
+  box.classList.add('on');
 }
 // Pied de page : heure des données + ÂGE réel, pour que toute panne de
 // synchronisation soit visible immédiatement (au lieu d'afficher
@@ -13905,19 +14605,19 @@ var PEST_RAT_LEGEND = [
 ];
 var PEST_ENR = {
   fk: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi des fly-killers',
     sub:'Insectes volants — relevés de captures par piège',
     parts:[{src:'fk', label:''}]
   },
   rat: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi des boîtes à raticide (extérieur)',
     sub:'Lutte contre les rongeurs — périmètre extérieur',
     parts:[{src:'rat', label:'', legend:PEST_RAT_LEGEND}]
   },
   indoor: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi des pièges mécaniques et boîtes à colles (intérieur usine)',
     sub:'Lutte contre les rongeurs — intérieur usine',
     parts:[{src:'mech', label:'Pièges mécaniques'},
@@ -13925,7 +14625,7 @@ var PEST_ENR = {
   },
   // Document unique regroupant les trois suivis (bouton en tête de section)
   all: {
-    ref:'ENR-HSE 07', rev:'01', created:'04/01/2026',
+    ref:'ENR-HSE 07', rev:'01',
     title:'Suivi et vérification des pièges',
     sub:'Fly-killers · boîtes à raticide (extérieur) · pièges mécaniques et boîtes à colles (intérieur usine)',
     parts:[{src:'fk',   label:'Fly-killers — insectes volants'},
@@ -13967,7 +14667,7 @@ function printPestEnr(kind){
     +'<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
       +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">'+esc(cfg.rev)+'</td></tr>'
     +'<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
-      +'<td style="padding:4px 8px;font-weight:600">'+esc(cfg.created)+'</td></tr>'
+      +'<td style="padding:4px 8px;font-weight:600">'+esc(cfg.created||enrCreatedFor(cfg.ref))+'</td></tr>'
     +'</table></td></tr></table>';
 
   var body = '', totalRows = 0;
@@ -15819,8 +16519,10 @@ function renderRapportTendanceNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0a7a9a;letter-spacing:.05em">ENR-HSE 23</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 23')+'</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16184,8 +16886,10 @@ function renderRecensementNuisibles(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#16a34a;letter-spacing:.05em">ENR-HSE-20</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE-20')+'</td></tr>';
   h+='</table>';
   h+='</td>';
   h+='</tr>';
@@ -16538,6 +17242,172 @@ function printFichesTechniques(){
   setTimeout(function(){w.print();},400);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   ENR-HSE 38 — SUIVI DE L'APPLICATION DES PESTICIDES
+   ──────────────────────────────────────────────────────────────
+   Restitue la feuille « Suivi de l'application des pesticides
+   (ENR HSE 13) » sous le cartouche documentaire commun : toutes les
+   colonnes du Sheet sont reprises telles quelles (donc une colonne
+   ajoutée au classeur apparaît ici sans toucher au code), les
+   traitements les plus récents en tête, et la colonne « Lien drive »
+   devient un bouton d'ouverture / téléchargement.
+   ══════════════════════════════════════════════════════════════ */
+function openPesticides(){
+  if(!document.getElementById('pesticidesModal')) return;
+  openModal('pesticidesModal');
+  renderPesticides();
+}
+function renderPesticides(){
+  var body=document.getElementById('pesticidesBody');
+  if(!body) return;
+  var headers=((D||{}).pesticidesHeaders)||[];
+  var rows=(((D||{}).pesticides)||[]).slice();
+  var linkCol=((D||{}).pesticidesLinkCol);
+  if(linkCol===undefined||linkCol===null) linkCol=-1;
+  var srcUrl=((D||{}).pesticidesSourceUrl)||'';
+
+  var metaEl=document.getElementById('pesticidesMeta');
+  if(metaEl) metaEl.textContent=rows.length
+    ? rows.length+' application(s) enregistrée(s)'
+    : 'aucune application enregistrée';
+
+  if(!headers.length){
+    body.innerHTML='<div style="text-align:center;padding:32px;color:var(--text3)">'
+      +'<div style="font-size:30px">🧴</div><b>Feuille introuvable.</b><br>'
+      +'Vérifiez l\'onglet <code>Suivi de l\'application des pesticides (ENR HSE 13)</code> du classeur, puis redéployez.</div>';
+    return;
+  }
+
+  // Plus récent en tête (quand une colonne date est exploitable)
+  if(rows.some(function(e){return !!e.isoDate;})){
+    rows.sort(function(a,b){
+      if(!a.isoDate&&!b.isoDate) return 0;
+      if(!a.isoDate) return 1;
+      if(!b.isoDate) return -1;
+      return b.isoDate.localeCompare(a.isoDate);
+    });
+  }
+
+  var today=new Date();
+  var todayStr=String(today.getDate()).padStart(2,'0')+'/'
+              +String(today.getMonth()+1).padStart(2,'0')+'/'+today.getFullYear();
+  var logoSrc=ficheLogoSrc();
+  if(!logoSrc){ var _li=document.getElementById('logoImg'); if(_li&&_li.src&&_li.naturalWidth>0) logoSrc=_li.src; }
+  var logoHtml=logoSrc
+    ?'<img src="'+logoSrc+'" style="height:44px;max-width:120px;object-fit:contain" crossorigin="anonymous" alt="Logo">'
+    :'<div style="font-size:18px;font-weight:800;color:#c00018;letter-spacing:-.5px">SOBCO&nbsp;3</div>';
+  var td='padding:6px 8px;border:1px solid #d0d0d0;font-size:10px;vertical-align:top';
+  var tdc='padding:5px 7px;border:1px solid #d0d0d0;font-size:9.5px;vertical-align:top;color:#334155';
+
+  var h='<div id="pesticidesPrint">';
+  // ── Cartouche documentaire ────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px"><tr>';
+  h+='<td style="'+td+';width:130px;text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 12px">'+logoHtml+'</td>';
+  h+='<td style="'+td+';text-align:center;vertical-align:middle;border-right:1.5px solid #b0b0b0;padding:10px 16px">';
+  h+='<div style="font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase">Suivi de l\'application des pesticides</div>';
+  h+='<div style="font-size:11px;color:#444;margin-top:3px">Traitements réalisés — produit, localisation, cible, dosage et méthode</div>';
+  h+='<div style="font-size:11px;font-weight:600;margin-top:4px">Date : <span style="color:#0369a1">'+todayStr+'</span></div>';
+  h+='</td>';
+  h+='<td style="'+td+';width:190px;padding:0;vertical-align:top">';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:10.5px">';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Réf :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0f766e;letter-spacing:.05em">ENR-HSE 38</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE 38')+'</td></tr>';
+  h+='</table></td></tr></table>';
+
+  h+='<p style="font-size:9px;color:#5a7684;margin:0 0 10px">SOBCO 3 — HSE Master Dashboard · '
+    +rows.length+' application(s) · édité le '+todayStr+'</p>';
+
+  // ── Tableau des applications ──────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0;margin-bottom:14px">';
+  h+='<thead><tr style="background:#0f766e;color:#fff">';
+  h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;width:26px;text-align:center">#</th>';
+  headers.forEach(function(hd,ci){
+    if(ci===linkCol) return;   // la colonne lien devient un bouton
+    h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;text-transform:uppercase">'+esc(hd||'—')+'</th>';
+  });
+  h+='<th style="'+tdc+';color:#fff;font-weight:700;font-size:8.5px;width:70px;text-align:center">Document</th>';
+  h+='</tr></thead><tbody>';
+  if(rows.length){
+    rows.forEach(function(e,i){
+      var cells=e.raw||[];
+      h+='<tr style="background:'+(i%2?'#f8fafc':'#fff')+'">';
+      h+='<td style="'+tdc+';text-align:center;color:#94a3b8">'+(i+1)+'</td>';
+      headers.forEach(function(hd,ci){
+        if(ci===linkCol) return;
+        var v=cells[ci];
+        v=(v==null||String(v).trim()==='')?'—':String(v);
+        h+='<td style="'+tdc+'">'+esc(v)+'</td>';
+      });
+      if(e.url){
+        var lbl='ENR-HSE 38 - '+((e.date||'')+' '+(cells[1]||'')).replace(/[\\/:*?"<>|]+/g,' ').replace(/\s+/g,' ').trim();
+        h+='<td style="'+tdc+';text-align:center;white-space:nowrap">'
+          +'<a href="#" onclick="openPesticideDoc('+jsq(e.url)+','+jsq(e.date||'Traitement')+');return false;" '
+          +'style="text-decoration:none;font-size:12px" title="Consulter le document">📄</a> '
+          +'<a href="#" onclick="downloadDriveDoc('+jsq(e.url)+','+jsq(lbl)+');return false;" '
+          +'style="text-decoration:none;font-size:12px" title="Télécharger le document">⬇️</a></td>';
+      } else {
+        h+='<td style="'+tdc+';text-align:center;color:#cbd5e1">—</td>';
+      }
+      h+='</tr>';
+    });
+  } else {
+    h+='<tr><td colspan="'+Math.max(2,headers.length+1)+'" style="'+tdc+';text-align:center;font-style:italic;color:#94a3b8">Aucune application enregistrée</td></tr>';
+  }
+  h+='</tbody></table>';
+
+  // ── Note réglementaire ────────────────────────────────────────
+  h+='<div style="background:#fefce8;border:1px solid #fde047;border-radius:4px;padding:8px 12px;font-size:9.5px;color:#78350f;margin-bottom:14px">';
+  h+='⚠️ <strong>Note :</strong> toute application de pesticide doit être réalisée par un applicateur habilité, avec les EPI adaptés, '
+    +'hors présence de denrées non protégées, et consignée le jour même. La fiche de données de sécurité (FDS) du produit doit être disponible sur site.';
+  h+='</div>';
+
+  // ── Signatures ────────────────────────────────────────────────
+  h+='<table style="width:100%;border-collapse:collapse;border:1.5px solid #b0b0b0">';
+  h+='<tr>';
+  ['Établi par','Vérifié par','Approuvé par'].forEach(function(lbl){
+    h+='<td style="'+td+';width:33%;text-align:center;padding:18px 8px">';
+    h+='<div style="font-size:10px;font-weight:700;margin-bottom:28px">'+lbl+'</div>';
+    h+='<div style="border-top:1px solid #999;width:80%;margin:0 auto;padding-top:4px;font-size:9px;color:#777">Nom / Signature</div>';
+    h+='</td>';
+  });
+  h+='</tr></table>';
+  h+='</div>';
+
+  if(srcUrl){
+    h+='<div style="margin-top:12px;text-align:right">'
+      +'<a href="'+escAttr(srcUrl)+'" target="_blank" rel="noopener noreferrer" '
+      +'style="font-size:11px;color:var(--p4);text-decoration:none">↗ Ouvrir la feuille dans Sheets</a></div>';
+  }
+  body.innerHTML=h;
+}
+function openPesticideDoc(url,label){
+  if(!url) return;
+  openCleaningEmbed(url,'Application de pesticide — '+(label||''),'NUISIBLES · ENR-HSE 38','🧴');
+}
+function printPesticides(){
+  var el=document.getElementById('pesticidesPrint');
+  if(!el){ window.print(); return; }
+  var w=window.open('','_blank','width=1100,height=800');
+  if(!w) return;
+  var styles='<style>*{box-sizing:border-box}'
+    +'body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111;padding:18px 24px;margin:0;font-size:10px}'
+    +'table{border-collapse:collapse;width:100%}'
+    +'a{color:#111;text-decoration:none}'
+    +'@media print{body{padding:10px 14px}@page{margin:1cm;size:A4 landscape}tr{page-break-inside:avoid}}</style>';
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8">'
+    +'<title>ENR-HSE 38 - Suivi de l\'application des pesticides</title>'+styles+'</head><body>');
+  w.document.write(el.innerHTML);
+  w.document.write('</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); },400);
+}
+
 function openListeProduitsChimiques(){
   var modal=document.getElementById('listeProduitsChimiquesModal');
   if(!modal) return;
@@ -16577,8 +17447,10 @@ function renderListeProduitsChimiques(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">ENR-HSE-22</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('ENR-HSE-22')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Légende types de documents ─────────────────────────────────
@@ -16727,8 +17599,10 @@ function renderKpiFiche(){
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:700;font-family:monospace;color:#0369a1;letter-spacing:.05em">PLA-MQA-05</td></tr>';
   h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Rév :</td>'
     +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;font-weight:600">01</td></tr>';
-  h+='<tr><td style="padding:4px 8px;color:#555">Page :</td>'
-    +'<td style="padding:4px 8px">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;border-bottom:1px solid #d0d0d0;color:#555">Page :</td>'
+    +'<td style="padding:4px 8px;border-bottom:1px solid #d0d0d0">1 / 1</td></tr>';
+  h+='<tr><td style="padding:4px 8px;color:#555;white-space:nowrap">Créé le :</td>'
+    +'<td style="padding:4px 8px;font-weight:600">'+enrCreatedFor('PLA-MQA-05')+'</td></tr>';
   h+='</table></td></tr></table>';
 
   // ── Synthèse des indicateurs (YTD) ────────────────────────────
