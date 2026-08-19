@@ -1522,6 +1522,104 @@ html.light .pests-search-input{background:#edf2f7}
 .tv-theme-sw{width:36px;height:22px;border-radius:5px;flex-shrink:0;
   border:1px solid rgba(255,255,255,.28)}
 
+/* ── DIAPORAMA MULTI-PAGES (bouton « ⚙️ Configuration écran ») ──
+   L'écran usine ne diffuse plus une page unique : la page KPI et des
+   pages média (photo / vidéo Drive) se succèdent en boucle, chacune
+   avec sa durée réglée dans la fenêtre de configuration. Une seule
+   page active → aucun défilement, aucune barre de progression. */
+.tv-body{flex:1;display:flex;min-height:0}
+.tv-page{display:none;flex:1;flex-direction:column;min-height:0}
+.tv-page.on{display:flex;animation:tvPageIn .45s ease}
+@keyframes tvPageIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.tv-page.on{animation:none}}
+
+/* Page média — photo ou vidéo hébergée sur Drive */
+.tv-media-head{flex-shrink:0;display:flex;align-items:center;gap:clamp(8px,1vw,16px);
+  margin:clamp(8px,1.6vh,20px) 0 clamp(6px,1vh,12px)}
+.tv-media-title{font-size:clamp(15px,1.9vw,32px);font-weight:900;letter-spacing:.5px;
+  color:var(--tv-text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-media-kind{flex-shrink:0;font-size:clamp(9px,.85vw,13px);font-weight:800;
+  text-transform:uppercase;letter-spacing:1.4px;color:var(--tv-accent);
+  border:1px solid color-mix(in srgb,var(--tv-accent) 45%,transparent);
+  background:color-mix(in srgb,var(--tv-accent) 12%,transparent);
+  border-radius:20px;padding:3px 14px}
+.tv-media-stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;
+  background:var(--tv-card);border:1px solid var(--tv-border);
+  border-radius:var(--tv-radius);overflow:hidden;box-shadow:var(--tv-shadow)}
+.tv-media-stage img,.tv-media-stage video{width:100%;height:100%;object-fit:contain;display:block}
+.tv-media-stage.fit-cover img,.tv-media-stage.fit-cover video{object-fit:cover}
+.tv-media-stage iframe{width:100%;height:100%;border:0;background:#000}
+.tv-media-msg{padding:clamp(16px,3vh,34px);text-align:center;line-height:1.75;
+  font-size:clamp(11px,1.1vw,17px);font-weight:600;color:var(--tv-sub)}
+.tv-media-msg b{color:var(--tv-lbl)}
+.tv-media-msg .ico{font-size:clamp(26px,4vh,46px);display:block;margin-bottom:8px}
+
+/* Barre de progression de la page en cours (haut de l'écran) */
+.tv-prog{position:fixed;top:0;left:0;right:0;height:4px;z-index:9;display:none;
+  background:color-mix(in srgb,var(--tv-text) 12%,transparent)}
+.tv-prog.on{display:block}
+.tv-prog-bar{height:100%;width:0;background:var(--tv-accent);border-radius:0 4px 4px 0}
+
+/* Navigation entre pages : précédent · pause · suivant + pastilles */
+.tv-nav{display:none;align-items:center;gap:6px;margin-left:12px;flex-shrink:0}
+.tv-nav.on{display:flex}
+.tv-nav-btn{width:clamp(26px,2.2vw,36px);height:clamp(26px,2.2vw,36px);border-radius:8px;
+  border:1px solid var(--tv-border);background:color-mix(in srgb,var(--tv-text) 7%,transparent);
+  color:var(--tv-lbl);font-size:clamp(11px,1vw,16px);font-weight:800;cursor:pointer;
+  transition:all .2s;opacity:.7;font-family:'Inter',sans-serif;padding:0;line-height:1}
+.tv-nav-btn:hover{opacity:1;border-color:var(--tv-accent);color:var(--tv-accent)}
+.tv-dots{display:flex;align-items:center;gap:6px;margin-left:5px}
+.tv-dot{width:clamp(8px,.65vw,12px);height:clamp(8px,.65vw,12px);border-radius:50%;padding:0;
+  cursor:pointer;border:1px solid var(--tv-border);transition:all .2s;
+  background:color-mix(in srgb,var(--tv-text) 20%,transparent)}
+.tv-dot.on{background:var(--tv-accent);border-color:var(--tv-accent);transform:scale(1.3)}
+
+/* ── Fenêtre « Configuration de l'affichage écran » ───────────── */
+.tvcfg-hint{display:flex;gap:10px;align-items:flex-start;padding:11px 14px;margin-bottom:14px;
+  border-radius:10px;background:rgba(13,168,210,.07);border:1px solid rgba(13,168,210,.25);
+  font-size:11px;line-height:1.65;color:var(--text2)}
+.tvcfg-hint b{color:var(--text)}
+.tvcfg-page{border:1px solid var(--border);background:var(--bg3);border-radius:12px;
+  padding:12px 13px;margin-bottom:10px;transition:opacity .2s,border-color .2s}
+.tvcfg-page.kpi{border-color:rgba(13,168,210,.4);background:rgba(13,168,210,.05)}
+.tvcfg-page.off{opacity:.5}
+.tvcfg-head{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.tvcfg-num{width:24px;height:24px;border-radius:7px;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;
+  font-size:11px;font-weight:700;color:#fff;background:linear-gradient(135deg,var(--p1),var(--p2))}
+.tvcfg-name{font-size:12px;font-weight:700;color:var(--text);min-width:0;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tvcfg-badge{font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+  padding:2px 8px;border-radius:20px;background:var(--bg5);color:var(--text3);flex-shrink:0}
+.tvcfg-tools{margin-left:auto;display:flex;gap:5px;flex-shrink:0}
+.tvcfg-ico{width:27px;height:27px;border-radius:7px;border:1px solid var(--border);
+  background:var(--bg4);color:var(--text2);cursor:pointer;font-size:12px;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;padding:0}
+.tvcfg-ico:hover{background:var(--bg5);color:var(--text);border-color:var(--p2)}
+.tvcfg-ico.del:hover{border-color:var(--red);color:var(--red)}
+.tvcfg-ico:disabled{opacity:.35;cursor:not-allowed}
+.tvcfg-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:11px}
+.tvcfg-grid .full{grid-column:1/-1}
+.tvcfg-dur{display:flex;align-items:center;gap:8px}
+.tvcfg-dur input[type=range]{flex:1;min-width:70px;accent-color:var(--p3)}
+.tvcfg-dur input[type=number]{width:72px;text-align:center}
+.tvcfg-dur span{font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace}
+.tvcfg-media{display:flex;gap:11px;align-items:flex-start;margin-top:11px}
+.tvcfg-thumb{width:104px;height:66px;flex-shrink:0;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg5);overflow:hidden;display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:var(--text3)}
+.tvcfg-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.tvcfg-help{font-size:10px;color:var(--text3);line-height:1.6;flex:1;min-width:0}
+.tvcfg-help code{font-family:'JetBrains Mono',monospace;color:var(--p4);font-size:9px;
+  word-break:break-all}
+.tvcfg-add{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
+.tvcfg-total{margin-left:auto;font-size:11px;font-weight:600;color:var(--text2);
+  font-family:'JetBrains Mono',monospace}
+.tv-cfg-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;
+  height:18px;padding:0 5px;border-radius:20px;background:rgba(255,255,255,.22);
+  font-size:10px;font-weight:800;font-family:'JetBrains Mono',monospace}
+@media(max-width:600px){.tvcfg-grid{grid-template-columns:1fr}}
+
 /* ── Thème 1 : SAFETY INDUSTRIAL — bandes noires & jaunes, style usine ──
    Le ruban de signalisation est peint en fond ; un ::before recouvre
    la zone intérieure, ne laissant visible qu'un cadre de danger. */
@@ -2017,6 +2115,11 @@ html.light .pests-search-input{background:#edf2f7}
     </button>
     <button class="tv-launch-btn" onclick="openTvDash()" title="Tableau de bord KPI HSE plein écran — diffusion continue sur écran usine">
       📺 Affichage écran usine — KPI HSE
+    </button>
+    <button class="tv-launch-btn" onclick="openTvCfg()"
+            style="background:linear-gradient(135deg,#334155,#4b5c6e);border-color:#64748b"
+            title="Configurer l'affichage écran : pages diffusées, durée de chaque page, photos et vidéos Drive">
+      ⚙️ Configuration écran <span class="tv-cfg-badge" id="tvCfgBadge">1</span>
     </button>
   </div>
   <div class="fumig-alert" id="fumigAlert">
@@ -5151,6 +5254,48 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
 </div>
 
+<!-- ══ CONFIGURATION DE L'AFFICHAGE ÉCRAN USINE — pages & durées ══
+     Ouvert par le bouton « ⚙️ Configuration écran » de la Vue Globale,
+     juste à côté du bouton de lancement de l'affichage. -->
+<div id="tvCfgModal" class="crud-modal-bg" onclick="if(event.target===this)closeTvCfg()">
+  <div class="crud-modal" style="width:min(880px,96%)">
+    <div class="crud-modal-top">
+      <div style="font-size:19px">⚙️</div>
+      <div class="crud-modal-title">Configuration de l'affichage écran usine
+        <div style="font-size:10px;font-weight:500;color:var(--text3);margin-top:2px">
+          Pages diffusées en boucle · durée de chaque page · photos et vidéos Drive
+        </div>
+      </div>
+      <button class="crud-modal-close" onclick="closeTvCfg()">✕</button>
+    </div>
+    <div class="crud-modal-body">
+      <div class="tvcfg-hint">
+        <span style="font-size:15px">💡</span>
+        <div>
+          L'écran usine diffuse les pages <b>l'une après l'autre, en boucle</b>, dans l'ordre
+          ci-dessous. Réglez la <b>durée</b> de chaque page, ajoutez des pages
+          <b>photo</b> ou <b>vidéo</b> à partir d'un <b>lien Google&nbsp;Drive</b>
+          (le fichier doit être partagé « Tous les utilisateurs disposant du lien »).
+          Une seule page active&nbsp;: pas de défilement.
+          <br>Sur l'écran&nbsp;: <b>←</b> / <b>→</b> pour changer de page, <b>Espace</b> pour
+          mettre en pause. Réglages enregistrés sur ce poste.
+        </div>
+      </div>
+      <div id="tvCfgList"></div>
+      <div class="tvcfg-add">
+        <button class="crud-btn add" onclick="tvCfgAdd('photo')">➕ Ajouter une page photo</button>
+        <button class="crud-btn add" onclick="tvCfgAdd('video')">➕ Ajouter une page vidéo</button>
+        <span class="tvcfg-total" id="tvCfgTotal"></span>
+      </div>
+    </div>
+    <div class="crud-actions">
+      <button class="crud-submit" onclick="tvCfgApply()">💾 Enregistrer</button>
+      <button class="crud-cancel" onclick="closeTvCfg()">Annuler</button>
+      <button class="crud-cancel" style="margin-left:auto" onclick="tvCfgReset()">↺ Réinitialiser</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODE TV — TABLEAU DE BORD KPI HSE (écran entrée usine) ══ -->
 <div class="tv-overlay" id="tvDash">
   <div class="tv-hdr">
@@ -5165,6 +5310,12 @@ html.light .pests-search-input{background:#edf2f7}
     <div class="tv-clockbox">
       <div class="tv-clock" id="tvClock">--:--:--</div>
       <div class="tv-date" id="tvDate">—</div>
+    </div>
+    <div class="tv-nav" id="tvNav">
+      <button class="tv-nav-btn" onclick="tvPrevPage()" title="Page précédente (←)">‹</button>
+      <button class="tv-nav-btn" id="tvPauseBtn" onclick="tvTogglePause()" title="Mettre en pause (Espace)">⏸</button>
+      <button class="tv-nav-btn" onclick="tvNextPage()" title="Page suivante (→)">›</button>
+      <div class="tv-dots" id="tvDots"></div>
     </div>
     <div class="tv-theme-box">
       <button class="tv-theme-btn" onclick="toggleTvThemeMenu(event)" title="Choisir un thème d'affichage">🎨 Thème ▾</button>
@@ -5194,6 +5345,11 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
     <button class="tv-close" onclick="closeTvDash()" title="Quitter l'affichage écran (Échap)">✕</button>
   </div>
+  <!-- Progression de la page en cours (masquée si une seule page) -->
+  <div class="tv-prog" id="tvProg"><div class="tv-prog-bar" id="tvProgBar"></div></div>
+  <div class="tv-body" id="tvBody">
+  <!-- Page fixe — tableau de bord KPI HSE -->
+  <div class="tv-page on" id="tvPage-kpi">
   <div class="tv-hero">
     <div class="tv-hero-main">
       <div class="tv-hero-lbl">⛑️ Jours sans accident de travail</div>
@@ -5212,8 +5368,18 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
   </div>
   <div class="tv-grid" id="tvGrid"></div>
+  </div><!-- /page KPI -->
+  <!-- Pages média — photo ou vidéo Drive (« ⚙️ Configuration écran ») -->
+  <div class="tv-page" id="tvPage-media">
+    <div class="tv-media-head">
+      <div class="tv-media-title" id="tvMediaTitle">—</div>
+      <div class="tv-media-kind" id="tvMediaKind">🖼️ Photo</div>
+    </div>
+    <div class="tv-media-stage" id="tvMediaStage"></div>
+  </div>
+  </div><!-- /tv-body -->
   <div class="tv-footer">
-    <span>🎯 <b>Objectifs 2026 :</b> 0 accident · TF ≤ 30 · TG ≤ 0.8 · TVM ≥ 95% · Résolution TAGs ≥ 95%</span>
+    <span id="tvObjectives">🎯 <b>Objectifs 2026 :</b> 0 accident · TF ≤ 30 · TG ≤ 0.8 · TVM ≥ 95% · Résolution TAGs ≥ 95%</span>
     <span class="tv-upd" id="tvUpd">—</span>
   </div>
   <!-- Bandeau d'information défilant — feuille « news » (masqué si vide) -->
@@ -11504,6 +11670,7 @@ function openTvDash(){
   renderTvDash(); tvTick();
   document.getElementById('tvDash').classList.add('show');
   document.body.style.overflow='hidden';
+  tvStartShow();                       // diaporama : pages + durées configurées
   // Purge d'éventuelles minuteries d'une session précédente (pas de cumul)
   if(tvClockTimer){ clearInterval(tvClockTimer); }
   if(tvRefreshTimer){ clearInterval(tvRefreshTimer); }
@@ -11524,6 +11691,7 @@ function openTvDash(){
 }
 function closeTvDash(){
   tvOpen=false;
+  tvStopShow();
   document.getElementById('tvDash').classList.remove('show');
   document.body.style.overflow='';
   if(tvClockTimer){ clearInterval(tvClockTimer); tvClockTimer=null; }
@@ -11534,6 +11702,481 @@ function closeTvDash(){
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&tvOpen) closeTvDash();
 });
+
+// ══ AFFICHAGE ÉCRAN — PAGES, DURÉES & MÉDIAS DRIVE ════════════
+// L'écran usine diffuse un diaporama : la page KPI (toujours
+// présente) puis les pages média ajoutées par l'utilisateur, chacune
+// avec sa propre durée. Le réglage se fait dans « ⚙️ Configuration
+// écran », à côté du bouton de lancement, et reste enregistré sur le
+// poste qui pilote l'écran (localStorage), exactement comme le thème.
+var TV_CFG_KEY='hseTvPagesCfg';
+var TV_DUR_MIN=5, TV_DUR_MAX=600;                 // secondes
+var TV_DEF_DUR={kpi:30,photo:15,video:60};
+var TV_KPI_TITLE='Tableau de bord KPI HSE';
+var tvCfg=null;        // configuration appliquée à l'écran
+var tvCfgDraft=null;   // copie de travail, tant que le modal est ouvert
+
+function tvCfgNewId(){ return 'p'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36); }
+function tvCfgDefaultTitle(type){
+  return type==='kpi'?TV_KPI_TITLE:(type==='video'?'Vidéo HSE':'Photo HSE');
+}
+function tvCfgClampDur(v,type){
+  var n=parseInt(v,10);
+  if(isNaN(n)) n=TV_DEF_DUR[type]||30;
+  return Math.min(TV_DUR_MAX,Math.max(TV_DUR_MIN,n));
+}
+function tvCfgKpiPage(){
+  return {id:'kpi',type:'kpi',title:TV_KPI_TITLE,url:'',dur:TV_DEF_DUR.kpi,fit:'contain',on:true};
+}
+// Nettoyage défensif : la configuration vient du navigateur, elle peut
+// être partielle ou corrompue. La page KPI est garantie unique et
+// toujours présente — l'écran ne peut jamais se retrouver vide.
+function tvCfgNormalize(raw){
+  var out={pages:[]}, hasKpi=false;
+  var pages=(raw&&raw.pages&&raw.pages.length)?raw.pages:[];
+  for(var i=0;i<pages.length;i++){
+    var p=pages[i]; if(!p||typeof p!=='object') continue;
+    var type=(p.type==='photo'||p.type==='video'||p.type==='kpi')?p.type:'photo';
+    if(type==='kpi'){
+      if(hasKpi) continue;                        // une seule page KPI
+      hasKpi=true;
+      var k=tvCfgKpiPage(); k.dur=tvCfgClampDur(p.dur,'kpi'); k.on=p.on!==false;
+      out.pages.push(k); continue;
+    }
+    out.pages.push({
+      id:  String(p.id||'')||tvCfgNewId(),
+      type:type,
+      title:String(p.title||'').slice(0,90)||tvCfgDefaultTitle(type),
+      url: String(p.url||'').trim().slice(0,600),
+      dur: tvCfgClampDur(p.dur,type),
+      fit: p.fit==='cover'?'cover':'contain',
+      on:  p.on!==false
+    });
+  }
+  if(!hasKpi) out.pages.unshift(tvCfgKpiPage());
+  return out;
+}
+function tvCfgLoad(){
+  var raw=null;
+  try{ raw=JSON.parse(localStorage.getItem(TV_CFG_KEY)||'null'); }catch(e){ raw=null; }
+  tvCfg=tvCfgNormalize(raw);
+  return tvCfg;
+}
+function tvCfgStore(cfg){
+  tvCfg=tvCfgNormalize(cfg);
+  try{ localStorage.setItem(TV_CFG_KEY,JSON.stringify(tvCfg)); }catch(e){}
+  tvCfgUpdateBadge();
+  return tvCfg;
+}
+function tvCfgClone(cfg){ return JSON.parse(JSON.stringify(cfg)); }
+// Pages réellement diffusables : actives, et pour un média, avec un lien.
+function tvActivePages(){
+  var src=(tvCfg&&tvCfg.pages)?tvCfg.pages:[];
+  var out=[];
+  for(var i=0;i<src.length;i++){
+    var p=src[i];
+    if(!p.on) continue;
+    if(p.type!=='kpi'&&!p.url) continue;
+    out.push(p);
+  }
+  return out;
+}
+function tvFmtDur(sec){
+  sec=Math.max(0,Math.round(sec));
+  if(sec<60) return sec+' s';
+  var m=Math.floor(sec/60), s=sec%60;
+  return m+' min'+(s?' '+s+' s':'');
+}
+// Compteur discret sur le bouton « ⚙️ Configuration écran ».
+function tvCfgUpdateBadge(){
+  var el=document.getElementById('tvCfgBadge'); if(!el) return;
+  if(!tvCfg) tvCfgLoad();
+  el.textContent=tvActivePages().length;
+}
+
+// ── Diaporama : enchaînement des pages sur l'écran ─────────────
+var tvPlaylist=[], tvPageIdx=0, tvPageTimer=null;
+var tvPaused=false, tvPageEndTs=0, tvPageLeftMs=0;
+
+function tvStartShow(){
+  tvCfgLoad();
+  tvPlaylist=tvActivePages();
+  if(!tvPlaylist.length) tvPlaylist=[tvCfgKpiPage()];   // filet de sécurité
+  tvPaused=false;
+  var btn=document.getElementById('tvPauseBtn');
+  if(btn){ btn.textContent='⏸'; btn.title='Mettre en pause (Espace)'; }
+  tvShowPage(0);
+}
+function tvStopShow(){
+  if(tvPageTimer){ clearTimeout(tvPageTimer); tvPageTimer=null; }
+  tvMediaClear();                                        // coupe une vidéo en cours
+  tvProgShow(false);
+}
+function tvShowPage(i){
+  if(!tvPlaylist.length) return;
+  var n=tvPlaylist.length;
+  tvPageIdx=((i%n)+n)%n;
+  var p=tvPlaylist[tvPageIdx], isKpi=(p.type==='kpi');
+  var pk=document.getElementById('tvPage-kpi'), pm=document.getElementById('tvPage-media');
+  if(pk) pk.classList.toggle('on',isKpi);
+  if(pm) pm.classList.toggle('on',!isKpi);
+  var obj=document.getElementById('tvObjectives');
+  if(obj) obj.style.display=isKpi?'':'none';             // objectifs : page KPI
+  if(isKpi){ tvMediaClear(); renderTvDash(); } else { tvRenderMedia(p); }
+  tvRenderDots();
+  tvArmPage(tvCfgClampDur(p.dur,p.type)*1000);
+}
+function tvGoPage(i){ tvShowPage(i); }
+function tvNextPage(){ tvShowPage(tvPageIdx+1); }
+function tvPrevPage(){ tvShowPage(tvPageIdx-1); }
+// Programme le passage à la page suivante et relance la barre de
+// progression. Une seule page : ni minuterie, ni barre.
+function tvArmPage(ms){
+  if(tvPageTimer){ clearTimeout(tvPageTimer); tvPageTimer=null; }
+  if(tvPlaylist.length<2){ tvProgShow(false); return; }
+  tvProgShow(true);
+  tvPageLeftMs=ms;
+  if(tvPaused){ tvProgSet(0); return; }
+  tvPageEndTs=Date.now()+ms;
+  tvProgRun(ms,true);
+  tvPageTimer=setTimeout(function(){ tvNextPage(); },ms);
+}
+function tvTogglePause(){
+  if(tvPlaylist.length<2) return;
+  tvPaused=!tvPaused;
+  var btn=document.getElementById('tvPauseBtn');
+  if(tvPaused){
+    if(tvPageTimer){ clearTimeout(tvPageTimer); tvPageTimer=null; }
+    tvPageLeftMs=Math.max(0,tvPageEndTs-Date.now());
+    tvProgFreeze();
+    if(btn){ btn.textContent='▶'; btn.title='Reprendre le défilement (Espace)'; }
+  }else{
+    var ms=tvPageLeftMs||(tvCfgClampDur(tvPlaylist[tvPageIdx].dur,tvPlaylist[tvPageIdx].type)*1000);
+    tvPageEndTs=Date.now()+ms;
+    tvProgRun(ms,false);
+    tvPageTimer=setTimeout(function(){ tvNextPage(); },ms);
+    if(btn){ btn.textContent='⏸'; btn.title='Mettre en pause (Espace)'; }
+  }
+}
+function tvProgShow(on){
+  var el=document.getElementById('tvProg');
+  if(el) el.classList.toggle('on',!!on);
+}
+function tvProgSet(pct){
+  var b=document.getElementById('tvProgBar'); if(!b) return;
+  b.style.transition='none'; b.style.width=pct+'%';
+}
+// Anime la barre jusqu'à 100 % sur la durée restante. fromZero = début
+// d'une nouvelle page ; sinon on repart de la position figée (reprise).
+function tvProgRun(ms,fromZero){
+  var b=document.getElementById('tvProgBar'); if(!b) return;
+  if(fromZero){ b.style.transition='none'; b.style.width='0%'; }
+  void b.offsetWidth;                                    // reflow : sans lui, pas d'animation
+  b.style.transition='width '+(ms/1000)+'s linear';
+  b.style.width='100%';
+}
+function tvProgFreeze(){
+  var b=document.getElementById('tvProgBar'); if(!b||!b.parentNode) return;
+  var w=b.getBoundingClientRect().width, tot=b.parentNode.getBoundingClientRect().width||1;
+  b.style.transition='none';
+  b.style.width=(w/tot*100).toFixed(2)+'%';
+}
+function tvRenderDots(){
+  var nav=document.getElementById('tvNav'), dots=document.getElementById('tvDots');
+  if(!nav||!dots) return;
+  var multi=tvPlaylist.length>1;
+  nav.classList.toggle('on',multi);
+  if(!multi){ dots.innerHTML=''; return; }
+  var h='';
+  for(var i=0;i<tvPlaylist.length;i++){
+    var p=tvPlaylist[i];
+    h+='<button class="tv-dot'+(i===tvPageIdx?' on':'')+'" onclick="tvGoPage('+i+')" title="'
+      +escAttr(p.title+' · '+tvFmtDur(p.dur))+'"></button>';
+  }
+  dots.innerHTML=h;
+}
+
+// ── Rendu d'une page média (photo ou vidéo) ────────────────────
+// Le lien Drive est converti en source affichable :
+//   photo → image directe (lh3, repli miniature Drive)
+//   vidéo → lecteur intégré Drive /preview (ou balise <video> pour un
+//           fichier .mp4 direct, ou lecteur YouTube si le lien en est un).
+function tvMediaSources(p){
+  var url=String(p.url||'').trim();
+  if(!url) return {kind:'',urls:[]};
+  var id=extractDriveIdFront(url);
+  if(p.type==='photo'){
+    if(id) return {kind:'img',urls:['https://lh3.googleusercontent.com/d/'+id+'=w2000',
+                                    'https://drive.google.com/thumbnail?id='+id+'&sz=w2000']};
+    return {kind:'img',urls:[url]};
+  }
+  var yt=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
+  if(yt) return {kind:'frame',urls:['https://www.youtube.com/embed/'+yt[1]
+        +'?autoplay=1&mute=1&loop=1&controls=0&rel=0&playlist='+yt[1]]};
+  if(/\.(mp4|webm|ogv|ogg|m4v)(\?|#|$)/i.test(url)) return {kind:'video',urls:[url]};
+  if(id) return {kind:'frame',urls:['https://drive.google.com/file/d/'+id+'/preview']};
+  return {kind:'frame',urls:[url]};
+}
+function tvMediaClear(){
+  var st=document.getElementById('tvMediaStage');
+  if(st){ st.innerHTML=''; }                              // vide = lecture stoppée
+}
+function tvMediaMsg(html){
+  var st=document.getElementById('tvMediaStage');
+  if(st) st.innerHTML='<div class="tv-media-msg">'+html+'</div>';
+}
+function tvRenderMedia(p){
+  var st=document.getElementById('tvMediaStage');
+  var tt=document.getElementById('tvMediaTitle'), kd=document.getElementById('tvMediaKind');
+  if(!st) return;
+  if(tt) tt.textContent=p.title||tvCfgDefaultTitle(p.type);
+  if(kd) kd.textContent=(p.type==='video'?'🎬 Vidéo':'🖼️ Photo');
+  st.className='tv-media-stage'+(p.fit==='cover'?' fit-cover':'');
+  st.innerHTML='';
+  var src=tvMediaSources(p);
+  if(!src.kind){
+    tvMediaMsg('<span class="ico">🔗</span><b>Aucun lien renseigné pour cette page.</b><br>'
+      +'Ouvrez « ⚙️ Configuration écran » depuis la Vue Globale pour ajouter le lien Drive.');
+    return;
+  }
+  if(src.kind==='img'){
+    var img=document.createElement('img'), ci=0;
+    img.alt=p.title||'';
+    img.onerror=function(){
+      ci++;
+      if(ci<src.urls.length){ img.src=src.urls[ci]; return; }
+      tvMediaMsg('<span class="ico">🖼️</span><b>Image inaccessible.</b><br>'
+        +'Vérifiez le partage du fichier Drive (« Tous les utilisateurs disposant du lien »).');
+    };
+    st.appendChild(img);
+    img.src=src.urls[0];
+    return;
+  }
+  if(src.kind==='video'){
+    var v=document.createElement('video');
+    v.src=src.urls[0]; v.autoplay=true; v.muted=true; v.loop=true;
+    v.setAttribute('playsinline','');                     // lecture sans plein écran forcé
+    v.onerror=function(){
+      tvMediaMsg('<span class="ico">🎬</span><b>Vidéo illisible.</b><br>'
+        +'Vérifiez le lien et le partage du fichier.');
+    };
+    st.appendChild(v);
+    try{ v.play(); }catch(e){}
+    return;
+  }
+  var fr=document.createElement('iframe');
+  fr.setAttribute('allow','autoplay; fullscreen; encrypted-media');
+  fr.setAttribute('referrerpolicy','no-referrer');
+  fr.setAttribute('allowfullscreen','');
+  fr.src=src.urls[0];
+  st.appendChild(fr);
+}
+
+// ── Fenêtre de configuration ───────────────────────────────────
+function openTvCfg(){
+  tvCfgLoad();
+  tvCfgDraft=tvCfgClone(tvCfg);
+  tvCfgRender();
+  document.getElementById('tvCfgModal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeTvCfg(){
+  document.getElementById('tvCfgModal').classList.remove('open');
+  document.body.style.overflow=tvOpen?'hidden':'';
+  tvCfgDraft=null;
+}
+function tvCfgIdx(id){
+  var pg=tvCfgDraft?tvCfgDraft.pages:[];
+  for(var i=0;i<pg.length;i++) if(pg[i].id===id) return i;
+  return -1;
+}
+function tvCfgGet(id){ var i=tvCfgIdx(id); return i<0?null:tvCfgDraft.pages[i]; }
+function tvCfgAdd(type){
+  if(!tvCfgDraft) return;
+  tvCfgDraft.pages.push({id:tvCfgNewId(),type:type,title:'',url:'',
+    dur:TV_DEF_DUR[type]||30,fit:'contain',on:true});
+  tvCfgRender();
+  // Curseur prêt sur le titre de la page qui vient d'être ajoutée
+  var last=tvCfgDraft.pages[tvCfgDraft.pages.length-1];
+  var el=document.getElementById('tvcfgTitle-'+last.id);
+  if(el){ el.focus(); }
+}
+function tvCfgDel(id){
+  var i=tvCfgIdx(id); if(i<0) return;
+  if(tvCfgDraft.pages[i].type==='kpi') return;            // page KPI non supprimable
+  tvCfgDraft.pages.splice(i,1);
+  tvCfgRender();
+}
+function tvCfgMove(id,dir){
+  var i=tvCfgIdx(id); if(i<0) return;
+  var j=i+dir;
+  if(j<0||j>=tvCfgDraft.pages.length) return;
+  var tmp=tvCfgDraft.pages[i];
+  tvCfgDraft.pages[i]=tvCfgDraft.pages[j];
+  tvCfgDraft.pages[j]=tmp;
+  tvCfgRender();
+}
+function tvCfgToggle(id){
+  var p=tvCfgGet(id); if(!p) return;
+  p.on=!p.on;
+  tvCfgRender();
+}
+function tvCfgSet(id,field,val){
+  var p=tvCfgGet(id); if(!p) return;
+  if(field==='title') p.title=String(val||'').slice(0,90);
+  else if(field==='url') p.url=String(val||'').trim().slice(0,600);
+  else if(field==='fit') p.fit=(val==='cover')?'cover':'contain';
+  else if(field==='type') p.type=(val==='video')?'video':'photo';
+  tvCfgTotalTxt();
+}
+// Durée : le curseur et le champ numérique pilotent la même valeur.
+function tvCfgDur(id,val,src){
+  var p=tvCfgGet(id); if(!p) return;
+  p.dur=tvCfgClampDur(val,p.type);
+  var rg=document.getElementById('tvcfgRange-'+id), nb=document.getElementById('tvcfgNum-'+id);
+  if(src!=='range'&&rg) rg.value=Math.min(300,p.dur);
+  if(src!=='num'&&nb)   nb.value=p.dur;
+  tvCfgTotalTxt();
+}
+// Aperçu (miniature) rafraîchi à la sortie du champ « lien ».
+function tvCfgPreview(id){
+  var p=tvCfgGet(id); if(!p) return;
+  var box=document.getElementById('tvcfgThumb-'+id); if(!box) return;
+  var fid=extractDriveIdFront(p.url||'');
+  if(!p.url){ box.innerHTML=(p.type==='video'?'🎬':'🖼️'); return; }
+  if(!fid){ box.innerHTML='🔗'; return; }
+  var img=document.createElement('img');
+  img.onerror=function(){ box.innerHTML='⚠️'; };
+  box.innerHTML=''; box.appendChild(img);
+  img.src='https://drive.google.com/thumbnail?id='+fid+'&sz=w320';
+}
+function tvCfgTotalTxt(){
+  var el=document.getElementById('tvCfgTotal'); if(!el||!tvCfgDraft) return;
+  var n=0,sec=0;
+  tvCfgDraft.pages.forEach(function(p){
+    if(!p.on) return;
+    if(p.type!=='kpi'&&!String(p.url||'').trim()) return;
+    n++; sec+=tvCfgClampDur(p.dur,p.type);
+  });
+  el.textContent='🔁 Cycle complet : '+tvFmtDur(sec)+' · '+n+' page'+(n>1?'s':'')+' active'+(n>1?'s':'');
+}
+function tvCfgRender(){
+  var box=document.getElementById('tvCfgList'); if(!box||!tvCfgDraft) return;
+  var pages=tvCfgDraft.pages, h='';
+  for(var i=0;i<pages.length;i++){
+    var p=pages[i], isKpi=(p.type==='kpi'), id=escAttr(p.id);
+    var noLink=(!isKpi&&!String(p.url||'').trim());
+    h+='<div class="tvcfg-page'+(isKpi?' kpi':'')+(p.on?'':' off')+'">'
+      +'<div class="tvcfg-head">'
+        +'<span class="tvcfg-num">'+(i+1)+'</span>'
+        +'<span class="tvcfg-name">'+(isKpi?'📊 ':(p.type==='video'?'🎬 ':'🖼️ '))
+          +esc(p.title||tvCfgDefaultTitle(p.type))+'</span>'
+        +(isKpi?'<span class="tvcfg-badge">page fixe</span>':'')
+        +(noLink?'<span class="tvcfg-badge" style="color:var(--amber)">lien manquant</span>':'')
+        +(p.on?'':'<span class="tvcfg-badge">désactivée</span>')
+        +'<span class="tvcfg-tools">'
+          +'<button class="tvcfg-ico" title="Monter" onclick="tvCfgMove(\''+id+'\',-1)"'
+            +(i===0?' disabled':'')+'>↑</button>'
+          +'<button class="tvcfg-ico" title="Descendre" onclick="tvCfgMove(\''+id+'\',1)"'
+            +(i===pages.length-1?' disabled':'')+'>↓</button>'
+          +'<button class="tvcfg-ico" title="'+(p.on?'Ne plus diffuser cette page':'Diffuser cette page')
+            +'" onclick="tvCfgToggle(\''+id+'\')">'+(p.on?'👁':'🚫')+'</button>'
+          +'<button class="tvcfg-ico del" title="'+(isKpi?'La page KPI ne peut pas être supprimée':'Supprimer la page')
+            +'" onclick="tvCfgDel(\''+id+'\')"'+(isKpi?' disabled':'')+'>🗑</button>'
+        +'</span>'
+      +'</div>'
+      +'<div class="tvcfg-grid">'
+        +'<div class="crud-field">'
+          +'<label class="crud-label">Titre de la page</label>'
+          +'<input class="crud-input" id="tvcfgTitle-'+id+'" value="'+escAttr(p.title)+'"'
+            +(isKpi?' disabled':'')+' placeholder="'+escAttr(tvCfgDefaultTitle(p.type))+'"'
+            +' oninput="tvCfgSet(\''+id+'\',\'title\',this.value)">'
+        +'</div>'
+        +'<div class="crud-field">'
+          +'<label class="crud-label">Durée d\'affichage</label>'
+          +'<div class="tvcfg-dur">'
+            +'<input type="range" id="tvcfgRange-'+id+'" min="'+TV_DUR_MIN+'" max="300" step="5"'
+              +' value="'+Math.min(300,p.dur)+'" oninput="tvCfgDur(\''+id+'\',this.value,\'range\')">'
+            +'<input type="number" class="crud-input" id="tvcfgNum-'+id+'" min="'+TV_DUR_MIN+'"'
+              +' max="'+TV_DUR_MAX+'" value="'+p.dur+'" oninput="tvCfgDur(\''+id+'\',this.value,\'num\')">'
+            +'<span>sec</span>'
+          +'</div>'
+        +'</div>';
+    if(!isKpi){
+      h+='<div class="crud-field full">'
+          +'<label class="crud-label">Lien Google Drive '
+            +(p.type==='video'?'(vidéo)':'(photo)')+'</label>'
+          +'<input class="crud-input" id="tvcfgUrl-'+id+'" value="'+escAttr(p.url)+'"'
+            +' placeholder="https://drive.google.com/file/d/.../view"'
+            +' oninput="tvCfgSet(\''+id+'\',\'url\',this.value)"'
+            +' onchange="tvCfgPreview(\''+id+'\')">'
+        +'</div>'
+        +'<div class="crud-field">'
+          +'<label class="crud-label">Type de média</label>'
+          +'<select class="crud-select" onchange="tvCfgSet(\''+id+'\',\'type\',this.value);tvCfgRender()">'
+            +'<option value="photo"'+(p.type==='photo'?' selected':'')+'>🖼️ Photo</option>'
+            +'<option value="video"'+(p.type==='video'?' selected':'')+'>🎬 Vidéo</option>'
+          +'</select>'
+        +'</div>'
+        +'<div class="crud-field">'
+          +'<label class="crud-label">Cadrage à l\'écran</label>'
+          +'<select class="crud-select" onchange="tvCfgSet(\''+id+'\',\'fit\',this.value)">'
+            +'<option value="contain"'+(p.fit!=='cover'?' selected':'')+'>Entier (sans rognage)</option>'
+            +'<option value="cover"'+(p.fit==='cover'?' selected':'')+'>Plein écran (rogné)</option>'
+          +'</select>'
+        +'</div>'
+        +'<div class="tvcfg-media full">'
+          +'<div class="tvcfg-thumb" id="tvcfgThumb-'+id+'">'+(p.type==='video'?'🎬':'🖼️')+'</div>'
+          +'<div class="tvcfg-help">'
+            +'Collez le lien de partage du fichier Drive '
+            +'(<code>https://drive.google.com/file/d/…/view</code>). Le fichier doit être partagé '
+            +'« Tous les utilisateurs disposant du lien ».<br>'
+            +(p.type==='video'
+              ? 'Vidéo : réglez une durée au moins égale à celle de la vidéo, sinon la page change avant la fin. Les liens YouTube et les fichiers .mp4 directs sont également acceptés.'
+              : 'Photo : formats JPG, PNG, WebP.')
+          +'</div>'
+        +'</div>';
+    }
+    h+='</div></div>';
+  }
+  box.innerHTML=h;
+  // Miniatures des pages média déjà renseignées
+  for(var k=0;k<pages.length;k++) if(pages[k].type!=='kpi') tvCfgPreview(pages[k].id);
+  tvCfgTotalTxt();
+}
+function tvCfgApply(){
+  if(!tvCfgDraft) return;
+  var kept=[];
+  tvCfgDraft.pages.forEach(function(p){
+    // Une page média sans lien n'a rien à diffuser : elle est écartée.
+    if(p.type!=='kpi'&&!String(p.url||'').trim()) return;
+    kept.push(p);
+  });
+  var dropped=tvCfgDraft.pages.length-kept.length;
+  tvCfgStore({pages:kept});
+  closeTvCfg();
+  var n=tvActivePages().length;
+  showToast('Configuration écran enregistrée · '+n+' page'+(n>1?'s':'')+' en diffusion'
+    +(dropped?(' · '+dropped+' page'+(dropped>1?'s':'')+' sans lien ignorée'+(dropped>1?'s':'')):''),
+    'success');
+  if(tvOpen) tvStartShow();                               // prise en compte immédiate
+}
+function tvCfgReset(){
+  if(!confirm('Réinitialiser l\'affichage écran ? Toutes les pages ajoutées seront supprimées.')) return;
+  tvCfgDraft={pages:[tvCfgKpiPage()]};
+  tvCfgRender();
+}
+// Raccourcis clavier de l'écran : navigation et pause.
+document.addEventListener('keydown',function(e){
+  var cfg=document.getElementById('tvCfgModal');
+  if(e.key==='Escape'&&cfg&&cfg.classList.contains('open')){ closeTvCfg(); return; }
+  if(!tvOpen) return;
+  if(e.key==='ArrowRight'){ e.preventDefault(); tvNextPage(); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); tvPrevPage(); }
+  else if(e.key===' '||e.key==='Spacebar'){ e.preventDefault(); tvTogglePause(); }
+});
+// Compteur du bouton dès le chargement de la page.
+try{ tvCfgLoad(); tvCfgUpdateBadge(); }catch(e){}
 
 
 // ══ PROCÉDURES HSE ════════════════════════════════════════════
