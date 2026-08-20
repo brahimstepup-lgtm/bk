@@ -1622,8 +1622,14 @@ html.light .pests-search-input{background:#edf2f7}
   text-decoration:none;border:1px solid var(--border);border-radius:6px;padding:6px 11px}
 .tvcfg-sheet-link:hover{border-color:var(--p2);background:var(--bg4)}
 .tvcfg-page.sheet{border-style:dashed;background:var(--bg2)}
-.tvcfg-sheet-url{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);
-  word-break:break-all;background:var(--bg4);border-radius:6px;padding:7px 10px}
+.tvcfg-sheet-url{display:block;font-family:'JetBrains Mono',monospace;font-size:9px;
+  color:var(--p4);text-decoration:none;word-break:break-all;background:var(--bg4);
+  border:1px solid transparent;border-radius:6px;padding:7px 10px}
+.tvcfg-sheet-url:hover{border-color:var(--p2);background:var(--bg5)}
+.tvcfg-sheet-note{font-size:10px;line-height:1.6;color:var(--text3);margin:-4px 0 10px;
+  padding:8px 12px;border-radius:8px;background:rgba(245,166,35,.07);
+  border:1px solid rgba(245,166,35,.22)}
+.tvcfg-sheet-note b{color:var(--amber)}
 .tvcfg-sheet-empty{font-size:11px;color:var(--text3);line-height:1.7;padding:12px 14px;
   border:1px dashed var(--border);border-radius:10px;background:var(--bg3)}
 .tvcfg-sheet-empty code{font-family:'JetBrains Mono',monospace;color:var(--p4);font-size:10px}
@@ -11868,15 +11874,22 @@ function tvSyncSheetPages(){
 // Ordre : pages du poste, puis pages du classeur.
 function tvActivePages(){
   var src=(tvCfg&&tvCfg.pages)?tvCfg.pages:[];
+  var sheet=tvSheetOn()?tvSheetPages():[];
   var out=[];
   for(var i=0;i<src.length;i++){
     var p=src[i];
     if(!p.on) continue;
-    if(p.type!=='kpi'&&!p.url) continue;
+    if(p.type==='kpi'){ out.push(p); continue; }
+    if(!p.url) continue;
+    if(sheet.length) continue;      // la feuille remplace les pages du poste
     out.push(p);
   }
-  if(tvSheetOn()) out=out.concat(tvSheetPages());
-  return out;
+  return out.concat(sheet);
+}
+// Dès que la feuille fournit une page, elle prend la main sur les pages
+// média réglées sur le poste : un seul endroit fait foi, pas de doublon.
+function tvLocalReplaced(){
+  return tvSheetOn()&&tvSheetPages().length>0;
 }
 function tvFmtDur(sec){
   sec=Math.max(0,Math.round(sec));
@@ -12340,29 +12353,34 @@ function tvCfgPreview(id){
 function tvCfgTotalTxt(){
   var el=document.getElementById('tvCfgTotal'); if(!el||!tvCfgDraft) return;
   var n=0,sec=0;
+  var sp=(tvCfgDraft.sheet!==false)?tvSheetPages():[];
   tvCfgDraft.pages.forEach(function(p){
     if(!p.on) return;
-    if(p.type!=='kpi'&&!String(p.url||'').trim()) return;
+    if(p.type!=='kpi'){
+      if(!String(p.url||'').trim()) return;
+      if(sp.length) return;                 // remplacée par la feuille
+    }
     n++; sec+=tvCfgClampDur(p.dur,p.type);
   });
-  if(tvCfgDraft.sheet!==false) tvSheetPages().forEach(function(p){
-    n++; sec+=tvCfgClampDur(p.dur,p.type);
-  });
+  sp.forEach(function(p){ n++; sec+=tvCfgClampDur(p.dur,p.type); });
   el.textContent='🔁 Cycle complet : '+tvFmtDur(sec)+' · '+n+' page'+(n>1?'s':'')+' active'+(n>1?'s':'');
 }
 function tvCfgRender(){
   var box=document.getElementById('tvCfgList'); if(!box||!tvCfgDraft) return;
   var pages=tvCfgDraft.pages, h='';
+  var draftSheetOn=(tvCfgDraft.sheet!==false), sheetCount=tvSheetPages().length;
   for(var i=0;i<pages.length;i++){
     var p=pages[i], isKpi=(p.type==='kpi'), id=escAttr(p.id);
     var noLink=(!isKpi&&!String(p.url||'').trim());
-    h+='<div class="tvcfg-page'+(isKpi?' kpi':'')+(p.on?'':' off')+'">'
+    var replaced=(!isKpi&&draftSheetOn&&sheetCount>0);
+    h+='<div class="tvcfg-page'+(isKpi?' kpi':'')+((p.on&&!replaced)?'':' off')+'">'
       +'<div class="tvcfg-head">'
         +'<span class="tvcfg-num">'+(i+1)+'</span>'
         +'<span class="tvcfg-name">'+(isKpi?'📊 ':(p.type==='video'?'🎬 ':'🖼️ '))
           +esc(p.title||tvCfgDefaultTitle(p.type))+'</span>'
         +(isKpi?'<span class="tvcfg-badge">page fixe</span>':'')
         +(noLink?'<span class="tvcfg-badge" style="color:var(--amber)">lien manquant</span>':'')
+        +(replaced?'<span class="tvcfg-badge" style="color:var(--amber)">remplacée par la feuille</span>':'')
         +(p.on?'':'<span class="tvcfg-badge">désactivée</span>')
         +'<span class="tvcfg-tools">'
           +'<button class="tvcfg-ico" title="Monter" onclick="tvCfgMove(\''+id+'\',-1)"'
@@ -12457,9 +12475,15 @@ function tvCfgSheetHtml(startNum){
   var h='<div class="tvcfg-sheet-bar">'
     +'<span class="tvcfg-sheet-ttl">📄 Pages du classeur'+(name?' — feuille « '+esc(name)+' »':'')+'</span>'
     +'<label class="tvcfg-chk"><input type="checkbox"'+(on?' checked':'')
-      +' onchange="tvCfgSheetToggle(this.checked)"> Diffuser ces '+sp.length+' page'+(sp.length>1?'s':'')+'</label>'
+      +' onchange="tvCfgSheetToggle(this.checked)"> '
+      +(sp.length>1?('Diffuser ces '+sp.length+' pages'):'Diffuser cette page')+'</label>'
     +(url?'<a class="tvcfg-sheet-link" href="'+escAttr(url)+'" target="_blank" rel="noopener noreferrer">↗ Ouvrir la feuille</a>':'')
-    +'</div>';
+    +'</div>'
+    +(on&&sp.length
+      ? '<div class="tvcfg-sheet-note">La feuille fait foi&nbsp;: ces pages <b>remplacent</b> les pages '
+        +'photo et vidéo réglées sur ce poste (la page KPI est conservée). Décochez la case ci-dessus '
+        +'pour revenir aux pages du poste.</div>'
+      : '');
   if(!sp.length){
     return h+'<div class="tvcfg-sheet-empty">La feuille ne contient encore aucune ligne avec un lien. '
       +'Renseignez la colonne <code>lien</code> (et la durée en secondes) : la page apparaîtra ici '
@@ -12476,7 +12500,8 @@ function tvCfgSheetHtml(startNum){
         +'<span class="tvcfg-badge">'+(p.fit==='cover'?'plein écran':'ajusté')+'</span>'
         +(p.type==='video'&&p.snd?'<span class="tvcfg-badge">🔊 son</span>':'')
       +'</div>'
-      +'<div class="tvcfg-sheet-url">'+esc(p.url)+'</div>'
+      +'<a class="tvcfg-sheet-url" href="'+escAttr(p.url)+'" target="_blank" rel="noopener noreferrer" '
+        +'title="Ouvrir le fichier dans un onglet">↗ '+esc(p.url)+'</a>'
     +'</div>';
   }
   return h;
