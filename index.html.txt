@@ -1615,6 +1615,18 @@ html.light .pests-search-input{background:#edf2f7}
 .tvcfg-chk{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--bg3);
   border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text2);cursor:pointer}
 .tvcfg-chk input{accent-color:var(--p3);width:14px;height:14px;cursor:pointer}
+.tvcfg-sheet-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0 10px;
+  padding-top:14px;border-top:1px dashed var(--border)}
+.tvcfg-sheet-ttl{font-size:11px;font-weight:700;color:var(--text2)}
+.tvcfg-sheet-link{margin-left:auto;font-size:10px;font-weight:600;color:var(--p4);
+  text-decoration:none;border:1px solid var(--border);border-radius:6px;padding:6px 11px}
+.tvcfg-sheet-link:hover{border-color:var(--p2);background:var(--bg4)}
+.tvcfg-page.sheet{border-style:dashed;background:var(--bg2)}
+.tvcfg-sheet-url{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);
+  word-break:break-all;background:var(--bg4);border-radius:6px;padding:7px 10px}
+.tvcfg-sheet-empty{font-size:11px;color:var(--text3);line-height:1.7;padding:12px 14px;
+  border:1px dashed var(--border);border-radius:10px;background:var(--bg3)}
+.tvcfg-sheet-empty code{font-family:'JetBrains Mono',monospace;color:var(--p4);font-size:10px}
 .tvcfg-add{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px}
 .tvcfg-total{margin-left:auto;font-size:11px;font-weight:600;color:var(--text2);
   font-family:'JetBrains Mono',monospace}
@@ -5308,6 +5320,9 @@ html.light .pests-search-input{background:#edf2f7}
           Une seule page active&nbsp;: pas de défilement. Le cadrage
           <b>Plein écran</b> diffuse le média sans bordures ni entête. Les vidéos
           démarrent toutes seules, sans le moindre clic.
+          <br>Les pages peuvent aussi être saisies <b>directement dans le classeur</b>&nbsp;:
+          une ligne = une page (intitulé, <b>lien</b> Drive, <b>durée</b> en secondes). Elles
+          sont listées en bas de cette fenêtre et se mettent à jour toutes seules.
           <br>Sur l'écran&nbsp;: <b>←</b> / <b>→</b> pour changer de page, <b>Espace</b> pour
           mettre en pause. Réglages enregistrés sur ce poste.
         </div>
@@ -11505,7 +11520,7 @@ function render(data){
   if(data.sensibilisation)initSensib(data);
 
   // ── MODE TV : re-rendu si l'affichage écran est actif ────
-  if(tvOpen) renderTvDash();
+  if(tvOpen){ tvSyncSheetPages(); renderTvDash(); }
 }
 
 // ══ MODE TV — TABLEAU DE BORD KPI HSE (écran entrée usine) ════
@@ -11793,6 +11808,7 @@ function tvCfgNormalize(raw){
     });
   }
   if(!hasKpi) out.pages.unshift(tvCfgKpiPage());
+  out.sheet=!(raw&&raw.sheet===false);      // pages du classeur : diffusées par défaut
   return out;
 }
 function tvCfgLoad(){
@@ -11808,7 +11824,48 @@ function tvCfgStore(cfg){
   return tvCfg;
 }
 function tvCfgClone(cfg){ return JSON.parse(JSON.stringify(cfg)); }
+// ── Pages pilotées par le classeur (feuille dédiée) ────────────
+// Une ligne de la feuille = une page. Le tableau arrive avec les
+// données du tableau de bord : ajouter un lien ou changer une durée
+// dans la feuille suffit, sans toucher au navigateur de l'écran.
+function tvSheetPages(){
+  var raw=(D&&D.tvPages)||[], out=[];
+  for(var i=0;i<raw.length;i++){
+    var p=raw[i];
+    if(!p||!p.url) continue;
+    var type=(p.type==='video')?'video':'photo';
+    out.push({
+      id:   String(p.id||('sh'+i)),
+      type: type,
+      title:String(p.title||'').slice(0,90)||tvCfgDefaultTitle(type),
+      url:  String(p.url||'').trim(),
+      dur:  tvCfgClampDur(p.dur,type),
+      fit:  (p.fit==='contain')?'contain':'cover',
+      snd:  p.snd===true,
+      row:  p.row||0,
+      on:true, sheet:true
+    });
+  }
+  return out;
+}
+function tvSheetOn(){ return !(tvCfg&&tvCfg.sheet===false); }
+// Signature du contenu de la feuille : sert à détecter une modification.
+function tvSheetSig(){
+  var l=tvSheetPages(), s='';
+  for(var i=0;i<l.length;i++)
+    s+=l[i].id+'~'+l[i].type+'~'+l[i].url+'~'+l[i].dur+'~'+l[i].fit+'~'+l[i].snd+';';
+  return s;
+}
+var tvSheetSigCur='';
+// La feuille a changé (page ajoutée, durée modifiée) : le diaporama est
+// reconstruit sans attendre une réouverture de l'écran.
+function tvSyncSheetPages(){
+  if(!tvOpen) return;
+  if(tvSheetSig()===tvSheetSigCur) return;
+  tvStartShow();
+}
 // Pages réellement diffusables : actives, et pour un média, avec un lien.
+// Ordre : pages du poste, puis pages du classeur.
 function tvActivePages(){
   var src=(tvCfg&&tvCfg.pages)?tvCfg.pages:[];
   var out=[];
@@ -11818,6 +11875,7 @@ function tvActivePages(){
     if(p.type!=='kpi'&&!p.url) continue;
     out.push(p);
   }
+  if(tvSheetOn()) out=out.concat(tvSheetPages());
   return out;
 }
 function tvFmtDur(sec){
@@ -11839,6 +11897,7 @@ var tvPaused=false, tvPageEndTs=0, tvPageLeftMs=0;
 
 function tvStartShow(){
   tvCfgLoad();
+  tvSheetSigCur=tvSheetSig();
   tvPlaylist=tvActivePages();
   if(!tvPlaylist.length) tvPlaylist=[tvCfgKpiPage()];   // filet de sécurité
   tvPaused=false;
@@ -12286,6 +12345,9 @@ function tvCfgTotalTxt(){
     if(p.type!=='kpi'&&!String(p.url||'').trim()) return;
     n++; sec+=tvCfgClampDur(p.dur,p.type);
   });
+  if(tvCfgDraft.sheet!==false) tvSheetPages().forEach(function(p){
+    n++; sec+=tvCfgClampDur(p.dur,p.type);
+  });
   el.textContent='🔁 Cycle complet : '+tvFmtDur(sec)+' · '+n+' page'+(n>1?'s':'')+' active'+(n>1?'s':'');
 }
 function tvCfgRender(){
@@ -12374,10 +12436,55 @@ function tvCfgRender(){
     }
     h+='</div></div>';
   }
+  h+=tvCfgSheetHtml(pages.length);
   box.innerHTML=h;
   // Miniatures des pages média déjà renseignées
   for(var k=0;k<pages.length;k++) if(pages[k].type!=='kpi') tvCfgPreview(pages[k].id);
   tvCfgTotalTxt();
+}
+// Bloc « pages du classeur » : lecture seule, la feuille fait foi.
+function tvCfgSheetHtml(startNum){
+  var sp=tvSheetPages();
+  var name=(D&&D.tvPagesSheetName)||'';
+  var url=(D&&D.tvPagesSourceUrl)||'';
+  if(!sp.length&&!name){
+    return '<div class="tvcfg-sheet-bar"><span class="tvcfg-sheet-ttl">📄 Pages du classeur</span></div>'
+      +'<div class="tvcfg-sheet-empty">Aucune feuille de pages détectée dans le classeur. '
+      +'Créez une feuille avec les entêtes <code>lien</code> et <code>durée</code> '
+      +'(intitulé de la page en colonne A) : chaque ligne renseignée deviendra une page de l\'écran.</div>';
+  }
+  var on=!(tvCfgDraft&&tvCfgDraft.sheet===false);
+  var h='<div class="tvcfg-sheet-bar">'
+    +'<span class="tvcfg-sheet-ttl">📄 Pages du classeur'+(name?' — feuille « '+esc(name)+' »':'')+'</span>'
+    +'<label class="tvcfg-chk"><input type="checkbox"'+(on?' checked':'')
+      +' onchange="tvCfgSheetToggle(this.checked)"> Diffuser ces '+sp.length+' page'+(sp.length>1?'s':'')+'</label>'
+    +(url?'<a class="tvcfg-sheet-link" href="'+escAttr(url)+'" target="_blank" rel="noopener noreferrer">↗ Ouvrir la feuille</a>':'')
+    +'</div>';
+  if(!sp.length){
+    return h+'<div class="tvcfg-sheet-empty">La feuille ne contient encore aucune ligne avec un lien. '
+      +'Renseignez la colonne <code>lien</code> (et la durée en secondes) : la page apparaîtra ici '
+      +'à la prochaine actualisation des données.</div>';
+  }
+  for(var i=0;i<sp.length;i++){
+    var p=sp[i];
+    h+='<div class="tvcfg-page sheet'+(on?'':' off')+'">'
+      +'<div class="tvcfg-head">'
+        +'<span class="tvcfg-num">'+(startNum+i+1)+'</span>'
+        +'<span class="tvcfg-name">'+(p.type==='video'?'🎬 ':'🖼️ ')+esc(p.title)+'</span>'
+        +'<span class="tvcfg-badge">'+(p.row?('ligne '+p.row):'feuille')+'</span>'
+        +'<span class="tvcfg-badge">'+tvFmtDur(p.dur)+'</span>'
+        +'<span class="tvcfg-badge">'+(p.fit==='cover'?'plein écran':'ajusté')+'</span>'
+        +(p.type==='video'&&p.snd?'<span class="tvcfg-badge">🔊 son</span>':'')
+      +'</div>'
+      +'<div class="tvcfg-sheet-url">'+esc(p.url)+'</div>'
+    +'</div>';
+  }
+  return h;
+}
+function tvCfgSheetToggle(on){
+  if(!tvCfgDraft) return;
+  tvCfgDraft.sheet=!!on;
+  tvCfgRender();
 }
 function tvCfgApply(){
   if(!tvCfgDraft) return;
@@ -12388,7 +12495,7 @@ function tvCfgApply(){
     kept.push(p);
   });
   var dropped=tvCfgDraft.pages.length-kept.length;
-  tvCfgStore({pages:kept});
+  tvCfgStore({pages:kept,sheet:tvCfgDraft.sheet!==false});
   closeTvCfg();
   var n=tvActivePages().length;
   showToast('Configuration écran enregistrée · '+n+' page'+(n>1?'s':'')+' en diffusion'
@@ -12398,7 +12505,7 @@ function tvCfgApply(){
 }
 function tvCfgReset(){
   if(!confirm('Réinitialiser l\'affichage écran ? Toutes les pages ajoutées seront supprimées.')) return;
-  tvCfgDraft={pages:[tvCfgKpiPage()]};
+  tvCfgDraft={pages:[tvCfgKpiPage()],sheet:true};
   tvCfgRender();
 }
 // Raccourcis clavier de l'écran : navigation et pause.

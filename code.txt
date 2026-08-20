@@ -3840,6 +3840,192 @@ function readNews(ss) {
   return out;
 }
 
+
+// ════════════════════════════════════════════════════════════
+// ── PAGES DE L'ÉCRAN USINE PILOTÉES PAR LE CLASSEUR ──────────
+// Feuille dédiée (gid ci-dessous) : une ligne = une page diffusée
+// sur l'écran d'entrée. Colonnes reconnues par leur entête, dans
+// les trois premières lignes :
+//   • « lien »   (obligatoire) : lien Drive de la photo ou de la vidéo
+//   • « durée »  : durée d'affichage en secondes (défaut 15 s / 60 s)
+//   • « titre » / colonne A : intitulé de la page — s'il contient
+//     « vidéo » ou « image/photo », il donne aussi le type
+//   • « type », « cadrage », « son », « actif » : facultatives
+// Une ligne sans lien est ignorée : les intitulés préparés à l'avance
+// (« video 5 », « image 6 »…) n'apparaissent donc pas à l'écran tant
+// qu'aucun fichier ne leur est associé.
+// Le lien est lu tel quel, mais aussi derrière un texte cliquable
+// (Insertion ▸ Lien) ou une formule LIEN_HYPERTEXTE.
+// ════════════════════════════════════════════════════════════
+var TV_PAGES_SHEET_GID   = 1165199091;
+var TV_PAGES_SHEET_NAMES = ['ecran usine','affichage ecran','pages ecran','diaporama','ecran'];
+var TV_PAGES_MAX         = 40;
+var TV_PAGES_DEF_DUR     = { photo: 15, video: 60 };
+
+function findTvPagesSheet_(ss) {
+  var sheets = ss.getSheets(), i;
+  for (i = 0; i < sheets.length; i++)
+    if (sheets[i].getSheetId() === TV_PAGES_SHEET_GID) return sheets[i];
+  for (i = 0; i < sheets.length; i++) {
+    var n = normalize(sheets[i].getName());
+    for (var k = 0; k < TV_PAGES_SHEET_NAMES.length; k++)
+      if (n.indexOf(TV_PAGES_SHEET_NAMES[k]) > -1) return sheets[i];
+  }
+  // Dernier recours (feuille recréée, donc nouveau gid) : une feuille
+  // étroite dont l'entête porte à la fois « lien » et « durée ». La
+  // double condition évite de confondre avec les feuilles de suivi,
+  // qui comportent bien d'autres colonnes.
+  for (i = 0; i < sheets.length; i++) {
+    try {
+      var head = sheets[i].getRange(1, 1, 1, Math.min(6, sheets[i].getMaxColumns())).getValues()[0] || [];
+      var lien = false, duree = false, remplies = 0;
+      for (var c = 0; c < head.length; c++) {
+        var h = normalize(String(head[c] || ''));
+        if (!h) continue;
+        remplies++;
+        if (h.indexOf('lien') > -1 || h.indexOf('url') > -1) lien = true;
+        if (h.indexOf('duree') > -1 || h.indexOf('seconde') > -1) duree = true;
+      }
+      if (lien && duree && remplies <= 5) return sheets[i];
+    } catch (eH) {}
+  }
+  return null;
+}
+
+// Durée en secondes : « 45 », « 45 s », « 1:30 » (mm:ss) → 45, 45, 90.
+function tvParseDuree_(v) {
+  if (isNull(v)) return 0;
+  if (v instanceof Date) return v.getMinutes() * 60 + v.getSeconds();
+  var t = safeText(v).trim();
+  if (!t) return 0;
+  var mmss = t.match(/^(\d{1,2})\s*:\s*(\d{1,2})$/);
+  if (mmss) return parseInt(mmss[1], 10) * 60 + parseInt(mmss[2], 10);
+  var n = parseFloat(t.replace(',', '.').replace(/[^0-9.,]/g, ''));
+  return isNaN(n) ? 0 : Math.round(n);
+}
+
+// Type d'une page : colonne « type », à défaut l'intitulé, à défaut
+// l'extension du lien.
+function tvGuessType_(typeCell, titre, url) {
+  var hay = normalize(safeText(typeCell) + ' ' + safeText(titre));
+  if (hay.indexOf('video') > -1 || hay.indexOf('film') > -1 || hay.indexOf('clip') > -1) return 'video';
+  if (hay.indexOf('image') > -1 || hay.indexOf('photo') > -1 || hay.indexOf('affiche') > -1) return 'photo';
+  var u = String(url || '').toLowerCase();
+  if (/\.(mp4|webm|mov|avi|mkv|m4v|ogv)(\?|#|$)/.test(u) || u.indexOf('youtu') > -1) return 'video';
+  if (/\.(jpg|jpeg|png|webp|gif|bmp)(\?|#|$)/.test(u)) return 'photo';
+  return 'photo';
+}
+
+function tvIsOui_(v) {
+  var t = normalize(safeText(v));
+  if (!t) return false;
+  return t === 'oui' || t === 'x' || t === 'vrai' || t === 'true' || t === '1' ||
+         t.indexOf('avec') > -1 || t.indexOf('active') > -1;
+}
+function tvIsNon_(v) {
+  var t = normalize(safeText(v));
+  if (!t) return false;
+  return t === 'non' || t === 'faux' || t === 'false' || t === '0' ||
+         t.indexOf('desactive') > -1 || t.indexOf('inactif') > -1 || t.indexOf('sans') > -1;
+}
+
+function readTvPages(ss) {
+  var out = { pages: [], sheetName: '', sourceUrl: '' };
+  try {
+    var sh = findTvPagesSheet_(ss);
+    if (!sh) { Logger.log('TV pages sheet NOT found'); return out; }
+    out.sheetName = sh.getName();
+    out.sourceUrl = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+                    '/edit?gid=' + sh.getSheetId() + '#gid=' + sh.getSheetId();
+
+    var rg = sh.getDataRange();
+    var data = rg.getValues();
+    if (!data || data.length < 1) return out;
+    var formulas = rg.getFormulas();
+    var rich = null;
+    try { rich = rg.getRichTextValues(); } catch (eR) { rich = null; }
+
+    // ── Ligne d'entête : celle qui porte la colonne « lien » ──
+    var hdrRow = -1, col = { titre: -1, lien: -1, duree: -1, type: -1, cadrage: -1, son: -1, actif: -1 };
+    for (var r0 = 0; r0 < Math.min(data.length, 3) && hdrRow < 0; r0++) {
+      var row = data[r0] || [], found = {};
+      for (var c0 = 0; c0 < row.length; c0++) {
+        var h = normalize(String(row[c0] || ''));
+        if (!h) continue;
+        if (found.lien == null && (h.indexOf('lien') > -1 || h.indexOf('url') > -1 ||
+            h.indexOf('drive') > -1 || h.indexOf('fichier') > -1)) found.lien = c0;
+        else if (found.duree == null && (h.indexOf('duree') > -1 || h.indexOf('temps') > -1 ||
+            h.indexOf('seconde') > -1)) found.duree = c0;
+        else if (found.titre == null && (h.indexOf('titre') > -1 || h.indexOf('intitule') > -1 ||
+            h.indexOf('page') > -1 || h.indexOf('nom') > -1)) found.titre = c0;
+        else if (found.type == null && (h.indexOf('type') > -1 || h.indexOf('media') > -1)) found.type = c0;
+        else if (found.cadrage == null && (h.indexOf('cadrage') > -1 || h.indexOf('plein') > -1 ||
+            h.indexOf('affichage') > -1)) found.cadrage = c0;
+        else if (found.son == null && (h.indexOf('son') > -1 || h.indexOf('audio') > -1)) found.son = c0;
+        else if (found.actif == null && (h.indexOf('actif') > -1 || h.indexOf('diffus') > -1 ||
+            h.indexOf('active') > -1)) found.actif = c0;
+      }
+      if (found.lien != null) {
+        hdrRow = r0;
+        col.lien    = found.lien;
+        col.duree   = (found.duree   == null) ? col.lien + 1 : found.duree;
+        col.titre   = (found.titre   == null) ? (col.lien > 0 ? col.lien - 1 : -1) : found.titre;
+        col.type    = (found.type    == null) ? -1 : found.type;
+        col.cadrage = (found.cadrage == null) ? -1 : found.cadrage;
+        col.son     = (found.son     == null) ? -1 : found.son;
+        col.actif   = (found.actif   == null) ? -1 : found.actif;
+      }
+    }
+    // Aucune entête reconnue : disposition par défaut A=titre, B=lien, C=durée.
+    if (hdrRow < 0) { hdrRow = 0; col.titre = 0; col.lien = 1; col.duree = 2; }
+
+    for (var r = hdrRow + 1; r < data.length && out.pages.length < TV_PAGES_MAX; r++) {
+      var line = data[r] || [];
+
+      // Lien : valeur brute, puis formule LIEN_HYPERTEXTE, puis texte cliquable.
+      var url = safeText(line[col.lien]).trim();
+      if (url.indexOf('http') !== 0) {
+        var f = ((formulas[r] || [])[col.lien] || '');
+        var mh = f.match(/HYPERLINK\s*\(\s*"([^"]+)"/i) || f.match(/HYPERLINK\s*\(\s*'([^']+)'/i);
+        if (mh) url = mh[1];
+      }
+      if (url.indexOf('http') !== 0 && rich) {
+        try {
+          var rt = (rich[r] || [])[col.lien];
+          var lk = rt ? (rt.getLinkUrl() || '') : '';
+          if (!lk && rt && rt.getRuns) {
+            var runs = rt.getRuns() || [];
+            for (var q = 0; q < runs.length && !lk; q++) lk = runs[q].getLinkUrl() || '';
+          }
+          if (lk) url = lk;
+        } catch (eL) {}
+      }
+      if (url.indexOf('http') !== 0) continue;              // ligne sans fichier : ignorée
+
+      var titre = col.titre >= 0 ? safeText(line[col.titre]).trim() : '';
+      var type  = tvGuessType_(col.type >= 0 ? line[col.type] : '', titre, url);
+      var dur   = tvParseDuree_(col.duree >= 0 ? line[col.duree] : '');
+      if (!dur) dur = TV_PAGES_DEF_DUR[type] || 20;
+      if (col.actif >= 0 && tvIsNon_(line[col.actif])) continue;
+
+      out.pages.push({
+        id:    'sh' + (r + 1),
+        type:  type,
+        title: titre || (type === 'video' ? 'Vidéo HSE' : 'Photo HSE'),
+        url:   url,
+        dur:   Math.min(600, Math.max(5, dur)),
+        fit:   (col.cadrage >= 0 && tvIsNon_(line[col.cadrage])) ? 'contain' : 'cover',
+        snd:   col.son >= 0 ? tvIsOui_(line[col.son]) : false,
+        row:   r + 1
+      });
+    }
+    Logger.log('TV pages : ' + out.pages.length + ' page(s) — ' + out.sheetName);
+  } catch (e) {
+    Logger.log('readTvPages error: ' + e.message);
+  }
+  return out;
+}
+
 function readCartoNuisibles(ss) { return readCartoSheet(ss, 'nuisible'); }
 function readCartoFlyKiller(ss) { return readCartoSheet(ss, 'fly'); }
 
@@ -4375,6 +4561,12 @@ function getData() {
 
   // ── Bandeau d'information du Mode TV (feuille « news ») ─────
   out.news = readNews(ss);
+
+  // ── Pages de l'écran usine pilotées par le classeur ─────────
+  var tvp = readTvPages(ss);
+  out.tvPages          = tvp.pages     || [];
+  out.tvPagesSheetName = tvp.sheetName || '';
+  out.tvPagesSourceUrl = tvp.sourceUrl || '';
 
   // ── ENR-HSE 38 — suivi de l'application des pesticides ──────
   var pest13 = readPesticides(ss);
