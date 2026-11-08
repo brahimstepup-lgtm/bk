@@ -1741,6 +1741,17 @@ html.light .pests-search-input{background:#edf2f7}
 .tv-overlay.tv-fs .tv-body{position:absolute;inset:0;margin:0}
 .tv-overlay.tv-fs .tv-media-stage{border:0;border-radius:0;background:#000;box-shadow:none}
 .tv-overlay.tv-fs .tv-prog{opacity:.5}
+.tv-offline{display:none;align-items:center;gap:8px;flex-shrink:0;
+  padding:4px 13px;border-radius:20px;background:rgba(245,166,35,.12);
+  border:1px solid rgba(245,166,35,.5);color:#f5c76a;
+  font-family:'Inter',sans-serif;font-size:clamp(9px,.9vw,13px);font-weight:700}
+.tv-offline.on{display:inline-flex}
+/* Plein écran : le pied de page est masqué, le badge flotte au-dessus. */
+.tv-overlay.tv-fs .tv-offline.on{position:fixed;left:16px;bottom:14px;z-index:13;
+  background:rgba(12,10,6,.74);backdrop-filter:blur(6px);padding:7px 14px}
+.tv-offline .dot{width:9px;height:9px;border-radius:50%;background:#f5a623;
+  animation:tvOffBlink 1.8s ease-in-out infinite}
+@keyframes tvOffBlink{0%,100%{opacity:1}50%{opacity:.25}}
 .tv-fs-ctrl{position:fixed;top:14px;right:16px;z-index:12;display:none;gap:8px;
   padding:6px;border-radius:12px;background:rgba(8,12,16,.6);backdrop-filter:blur(6px);
   transition:opacity .45s ease}
@@ -5438,6 +5449,11 @@ html.light .pests-search-input{background:#edf2f7}
   </div>
   </div><!-- /tv-body -->
   <div class="tv-footer">
+    <!-- Coupure réseau : l'affichage reste en place, les données gèlent -->
+    <span class="tv-offline" id="tvOffline">
+      <span class="dot"></span>
+      <span>Hors connexion — affichage conservé</span>
+    </span>
     <span id="tvObjectives">🎯 <b>Objectifs 2026 :</b> 0 accident · TF ≤ 30 · TG ≤ 0.8 · TVM ≥ 95% · Résolution TAGs ≥ 95%</span>
     <span class="tv-upd" id="tvUpd">—</span>
   </div>
@@ -11527,6 +11543,7 @@ function render(data){
 
   // ── MODE TV : re-rendu si l'affichage écran est actif ────
   if(tvOpen){ tvSyncSheetPages(); renderTvDash(); }
+  else tvResumeIfNeeded();
 }
 
 // ══ MODE TV — TABLEAU DE BORD KPI HSE (écran entrée usine) ════
@@ -11675,8 +11692,58 @@ var TV_HEARTBEAT_MS=60*1000;       // fréquence de vérification
 var TV_RETRY_MS=90*1000;           // nouvelle tentative après un échec
 var TV_STALE_WARN_MIN=20;          // au-delà : pied de page en orange
 var TV_FETCH_TIMEOUT_MS=75*1000;   // chien de garde : appel resté sans réponse
-var TV_HARD_RELOAD_MIN=30;         // au-delà : rechargement complet de la page
-var tvLastTryTs=0, tvFetchSeq=0, tvFailStreak=0;
+var TV_HARD_RELOAD_MIN=30;         // au-delà : rechargement, SI le réseau répond
+var TV_RELOAD_GUARD_MS=10*60*1000; // jamais deux rechargements coup sur coup
+var tvLastTryTs=0, tvFetchSeq=0, tvFailStreak=0, tvReloadAt=0;
+
+// ══ RÉSEAU — L'ÉCRAN NE DOIT JAMAIS DISPARAÎTRE ══════════════
+// Une coupure de connexion ne doit pas faire perdre l'affichage :
+// un rechargement tenté hors connexion remplace la page par l'écran
+// d'erreur du navigateur, et plus rien ne revient tout seul. Avant
+// tout rechargement, on vérifie donc que le réseau répond vraiment ;
+// sinon on garde l'affichage en place, avec les dernières données,
+// et on réessaie au battement suivant.
+var tvNetOk=true;
+function tvNetSet(ok){
+  ok=!!ok;
+  if(ok===tvNetOk){ tvNetBadge(); return; }
+  tvNetOk=ok;
+  tvNetBadge();
+  if(ok) tvSilentRefresh(true);                 // retour du réseau : on rattrape
+}
+function tvNetBadge(){
+  var el=document.getElementById('tvOffline'); if(!el) return;
+  var show=tvOpen&&(!tvNetOk||navigator.onLine===false);
+  el.classList.toggle('on',show);
+}
+// Sonde indépendante de la session Apps Script : une requête opaque
+// aboutit dès que le réseau est là, quel que soit le code renvoyé.
+function tvNetProbe(cb){
+  if(navigator.onLine===false){ cb(false); return; }
+  if(!window.fetch){ cb(true); return; }        // pas de sonde possible
+  var done=false;
+  var t=setTimeout(function(){ if(!done){ done=true; cb(false); } },8000);
+  try{
+    fetch('https://www.gstatic.com/generate_204',{mode:'no-cors',cache:'no-store'})
+      .then(function(){ if(!done){ done=true; clearTimeout(t); cb(true); } })
+      .catch(function(){ if(!done){ done=true; clearTimeout(t); cb(false); } });
+  }catch(e){ if(!done){ done=true; clearTimeout(t); cb(false); } }
+}
+// Rechargement de dernier recours — uniquement réseau confirmé.
+function tvTryHardReload(){
+  var now=Date.now();
+  if(tvReloadAt&&now-tvReloadAt<TV_RELOAD_GUARD_MS) return;   // pas de boucle
+  tvNetProbe(function(ok){
+    tvNetSet(ok);
+    if(!ok) return;                             // hors connexion : on garde l'écran
+    tvReloadAt=Date.now();
+    try{ sessionStorage.setItem(TV_RESUME_KEY,'1'); }catch(e){}
+    try{ location.reload(); }catch(e){}
+  });
+}
+window.addEventListener('offline',function(){ tvNetSet(false); });
+window.addEventListener('online', function(){ tvNetProbe(tvNetSet); });
+
 function tvSilentRefresh(force){
   if(!tvOpen) return;
   var now=Date.now();
@@ -11685,11 +11752,15 @@ function tvSilentRefresh(force){
   // Sur une page ouverte en continu, la session de la Web App Apps
   // Script finit par mourir : google.script.run ne rappelle alors NI le
   // succès NI l'échec, et aucun réessai ne peut aboutir. Seul un
-  // rechargement complet rétablit la session.
+  // rechargement rétablit la session — mais JAMAIS sans avoir vérifié
+  // que le réseau répond : hors connexion, l'écran reste affiché avec
+  // les dernières données plutôt que de laisser place à une page
+  // d'erreur du navigateur.
   if(dataTs && now-dataTs > TV_HARD_RELOAD_MIN*60000){
-    try{ location.reload(); }catch(e){}
+    tvTryHardReload();
     return;
   }
+  if(navigator.onLine===false){ tvNetSet(false); return; }    // inutile d'appeler
   if(tvRefreshBusy) return;
   if(!force){
     if(dataTs&&now-dataTs<TV_REFRESH_MS) return;          // encore frais
@@ -11708,7 +11779,7 @@ function tvSilentRefresh(force){
   google.script.run
     .withSuccessHandler(function(data){
       if(seq!==tvFetchSeq) return;                        // réponse tardive : ignorée
-      tvRefreshBusy=false; tvFailStreak=0;
+      tvRefreshBusy=false; tvFailStreak=0; tvNetSet(true);
       // Ne pas avaler l'erreur en silence : c'est ce qui masquait un
       // rendu partiel (données fraîches mais tuiles TV non redessinées).
       if(data){ try{ render(data); }catch(e){ console.error('[TV] render:',e); } }
@@ -11717,6 +11788,7 @@ function tvSilentRefresh(force){
     .withFailureHandler(function(){
       if(seq!==tvFetchSeq) return;
       tvRefreshBusy=false; tvFailStreak++; tvUpdateStamp();   // réessai au prochain battement
+      if(tvFailStreak>=2) tvNetProbe(tvNetSet);               // coupure ou session morte ?
     })
     .getDataForClient();
 }
@@ -11730,6 +11802,8 @@ function openTvDash(){
   document.getElementById('tvDash').classList.add('show');
   document.body.style.overflow='hidden';
   tvStartShow();                       // diaporama : pages + durées configurées
+  try{ sessionStorage.setItem(TV_RESUME_KEY,'1'); }catch(e){}
+  tvNetBadge();
   // Purge d'éventuelles minuteries d'une session précédente (pas de cumul)
   if(tvClockTimer){ clearInterval(tvClockTimer); }
   if(tvRefreshTimer){ clearInterval(tvRefreshTimer); }
@@ -11750,7 +11824,9 @@ function openTvDash(){
 }
 function closeTvDash(){
   tvOpen=false;
+  try{ sessionStorage.removeItem(TV_RESUME_KEY); }catch(e){}
   tvStopShow();
+  tvNetBadge();
   document.getElementById('tvDash').classList.remove('show');
   document.body.style.overflow='';
   if(tvClockTimer){ clearInterval(tvClockTimer); tvClockTimer=null; }
@@ -11908,6 +11984,20 @@ function tvCfgUpdateBadge(){
 var tvPlaylist=[], tvPageIdx=0, tvPageTimer=null;
 var tvPaused=false, tvPageEndTs=0, tvPageLeftMs=0;
 
+// Reprise automatique : si l'écran usine était affiché avant un
+// rechargement (session expirée, coupure de courant, onglet rouvert),
+// il se rouvre tout seul dès que les données sont là — personne n'a à
+// remonter cliquer sur le bouton.
+var TV_RESUME_KEY='hseTvOpen';
+var tvResumeDone=false;
+function tvResumeIfNeeded(){
+  if(tvResumeDone||tvOpen||!D) return;
+  var want='';
+  try{ want=sessionStorage.getItem(TV_RESUME_KEY)||''; }catch(e){}
+  if(want!=='1') return;
+  tvResumeDone=true;
+  setTimeout(function(){ try{ openTvDash(); }catch(e){} },400);
+}
 function tvStartShow(){
   tvCfgLoad();
   tvSheetSigCur=tvSheetSig();
@@ -12043,8 +12133,16 @@ function tvMediaSources(p){
   if(!url) return {kind:'',urls:[]};
   var id=extractDriveIdFront(url);
   if(p.type==='photo'){
-    if(id) return {kind:'img',urls:['https://lh3.googleusercontent.com/d/'+id+'=w2000',
-                                    'https://drive.google.com/thumbnail?id='+id+'&sz=w2000']};
+    if(id){
+      var cached=tvPicState(id);
+      var list=[];
+      // Copie locale d'abord : affichage immédiat, et insensible à une
+      // coupure de connexion.
+      if(cached.state==='ready'&&cached.url) list.push(cached.url);
+      list.push('https://lh3.googleusercontent.com/d/'+id+'=w2000');
+      list.push('https://drive.google.com/thumbnail?id='+id+'&sz=w2000');
+      return {kind:'img',urls:list};
+    }
     return {kind:'img',urls:[url]};
   }
   var yt=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
@@ -12091,7 +12189,9 @@ function tvRenderMedia(p){
       ci++;
       if(ci<src.urls.length){ img.src=src.urls[ci]; return; }
       tvMediaMsg('<span class="ico">🖼️</span><b>Image inaccessible.</b><br>'
-        +'Vérifiez le partage du fichier Drive (« Tous les utilisateurs disposant du lien »).');
+        +(navigator.onLine===false||!tvNetOk
+          ? 'Connexion interrompue — l\'image reviendra dès le rétablissement du réseau.'
+          : 'Vérifiez le partage du fichier Drive (« Tous les utilisateurs disposant du lien »).'));
     };
     st.appendChild(img);
     img.src=src.urls[0];
@@ -12195,13 +12295,51 @@ function tvVideoPrepare(id){
   }catch(e){ st.state='error'; st.err=String(e&&e.message||e); }
   return st;
 }
-// Lance le rapatriement de toutes les vidéos du diaporama, à l'ouverture.
+// ── Photos : même principe que les vidéos ──────────────────────
+// Rapatriées à l'ouverture de l'écran et gardées en mémoire, elles
+// restent affichables si la liaison Internet tombe ensuite.
+var tvPic={};
+function tvPicState(id){ return tvPic[id]||(tvPic[id]={state:'idle'}); }
+function tvPhotoPrepare(id){
+  var st=tvPicState(id);
+  if(st.state==='loading'||st.state==='ready') return st;
+  if(st.state==='error'&&(st.tries||0)>=2) return st;
+  st.tries=(st.tries||0)+1;
+  st.state='loading';
+  try{
+    google.script.run
+      .withSuccessHandler(function(r){
+        if(!r||!r.ok||!r.dataUrl){
+          st.state='error'; st.err=(r&&r.error)||'Image indisponible'; return;
+        }
+        st.url=r.dataUrl; st.state='ready';
+        tvPicRefresh(id);
+      })
+      .withFailureHandler(function(e){ st.state='error'; st.err=String((e&&e.message)||e); })
+      .getTvPhotoForClient(id);
+  }catch(e){ st.state='error'; st.err=String(e&&e.message||e); }
+  return st;
+}
+// Photo prête : si sa page est à l'écran et que l'image affichée a
+// échoué (coupure réseau), on la redessine depuis la copie locale.
+function tvPicRefresh(id){
+  if(!tvOpen||!tvPlaylist.length) return;
+  var p=tvPlaylist[tvPageIdx];
+  if(!p||p.type!=='photo'||extractDriveIdFront(p.url||'')!==id) return;
+  var st=document.getElementById('tvMediaStage');
+  if(st&&st.querySelector('img')) return;            // déjà affichée : on ne clignote pas
+  tvRenderMedia(p);
+}
+// Lance le rapatriement de tous les médias du diaporama, à l'ouverture.
+// L'écran devient alors autonome : plus rien à télécharger ensuite,
+// et une coupure de connexion ne vide plus les pages.
 function tvVideoPrefetch(){
   for(var i=0;i<tvPlaylist.length;i++){
     var p=tvPlaylist[i];
-    if(p.type!=='video') continue;
     var id=extractDriveIdFront(p.url||'');
-    if(id) tvVideoPrepare(id);
+    if(!id) continue;
+    if(p.type==='video') tvVideoPrepare(id);
+    else if(p.type==='photo') tvPhotoPrepare(id);
   }
 }
 // Vidéo prête (ou en échec) : si sa page est à l'écran, on la redessine
@@ -19571,17 +19709,38 @@ function dispoStatutBadge(s){
   return '<span class="dispo-badge b-'+cls+'">'+esc(s)+'</span>';
 }
 
-window.onload=function(){
+// Chargement initial — avec réessais sans fin. Un écran d'usine n'a
+// personne devant lui : si la connexion manque au démarrage (coupure
+// de courant, box qui redémarre), la page ne doit pas rester bloquée
+// sur un message d'erreur, mais réessayer jusqu'à y arriver, puis
+// rouvrir l'affichage écran s'il était actif avant.
+var _bootTries=0, _bootTimer=null;
+var BOOT_RETRY_MS=30000;
+function bootLoadData(){
+  if(_bootTimer){ clearTimeout(_bootTimer); _bootTimer=null; }
   google.script.run
-    .withSuccessHandler(render)
+    .withSuccessHandler(function(data){
+      _bootTries=0;
+      try{ render(data); }catch(e){ console.error('[boot] render:',e); }
+    })
     .withFailureHandler(function(err){
-      document.getElementById('loader').innerHTML=
-        '<div style="color:var(--red);text-align:center;max-width:380px">'
-        +'<div style="font-size:36px;margin-bottom:10px">⚠️</div>'
-        +'<strong>Erreur de chargement</strong><br><br>'+esc(err.message)+'</div>';
+      _bootTries++;
+      var loader=document.getElementById('loader');
+      if(loader){
+        loader.innerHTML='<div style="text-align:center;max-width:420px">'
+          +'<div style="font-size:36px;margin-bottom:10px">📡</div>'
+          +'<strong style="color:var(--amber)">Connexion indisponible</strong><br><br>'
+          +'<span style="color:var(--text3);font-size:12px">'
+          +esc((err&&err.message)||'Impossible de joindre le serveur')+'</span><br><br>'
+          +'<span style="color:var(--text3);font-size:12px">Nouvelle tentative automatique '
+          +'dans 30 s · essai n°'+_bootTries+'</span><br><br>'
+          +'<button class="btn" onclick="bootLoadData()">Réessayer maintenant</button></div>';
+      }
+      _bootTimer=setTimeout(bootLoadData,BOOT_RETRY_MS);
     })
     .getDataForClient();
-};
+}
+window.onload=function(){ bootLoadData(); };
 
 // ══ REFRESH ═══════════════════════════════════════════════════
 // Rechargement fiable des données dans un Web App Apps Script :
@@ -19641,6 +19800,7 @@ var VERSION_POLL_TV_MS=15*1000;    // écran usine : réactivité maximale
 var VERSION_POLL_DASH_MS=30*1000;  // tableau de bord
 var _dataVersion=0, _versionBusy=false, _versionSeq=0;
 function pollDataVersion(onChanged){
+  if(navigator.onLine===false) return;        // hors connexion : inutile d'appeler
   if(_versionBusy) return;
   _versionBusy=true;
   var seq=++_versionSeq;

@@ -6998,3 +6998,32 @@ function getTvVideoChunk(fileId, index) {
     return { ok: false, error: e.toString() };
   }
 }
+
+// ── Photo de l'écran usine, encodée pour l'affichage hors connexion ──
+// Les photos sont rapatriées à l'ouverture de l'écran, comme les
+// vidéos : une fois en mémoire du navigateur, le diaporama continue de
+// tourner même si la liaison Internet est coupée. Le fichier n'a pas
+// besoin d'être partagé publiquement.
+var TV_PHOTO_MAX_BYTES = 25 * 1024 * 1024;
+
+function getTvPhotoForClient(fileId) {
+  try {
+    var id = String(fileId || '').trim();
+    if (!id) return { ok: false, error: 'Identifiant de fichier manquant' };
+    var file = DriveApp.getFileById(id);
+    var size = file.getSize();
+    if (size > TV_PHOTO_MAX_BYTES)
+      return { ok: false, error: 'Image trop volumineuse : ' + Math.round(size / 1048576) + ' Mo' };
+    var blob = file.getBlob();
+    var mime = blob.getContentType() || '';
+    if (mime.indexOf('image/') !== 0)
+      return { ok: false, error: 'Ce fichier n\'est pas une image (' + (mime || 'type inconnu') + ')' };
+    return {
+      ok: true, size: size, mime: mime,
+      dataUrl: 'data:' + mime + ';base64,' + Utilities.base64Encode(blob.getBytes())
+    };
+  } catch (e) {
+    Logger.log('getTvPhotoForClient: ' + e.message);
+    return { ok: false, error: e.toString() };
+  }
+}
