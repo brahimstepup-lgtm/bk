@@ -1752,6 +1752,13 @@ html.light .pests-search-input{background:#edf2f7}
 .tv-offline .dot{width:9px;height:9px;border-radius:50%;background:#f5a623;
   animation:tvOffBlink 1.8s ease-in-out infinite}
 @keyframes tvOffBlink{0%,100%{opacity:1}50%{opacity:.25}}
+.tv-flash{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(14px);
+  z-index:14;max-width:80vw;padding:9px 20px;border-radius:22px;opacity:0;
+  pointer-events:none;transition:opacity .35s ease,transform .35s ease;
+  background:rgba(6,32,28,.86);backdrop-filter:blur(6px);
+  border:1px solid rgba(16,201,133,.55);color:#9ff0cd;white-space:nowrap;
+  font-family:'Inter',sans-serif;font-size:clamp(10px,1vw,15px);font-weight:700}
+.tv-flash.on{opacity:1;transform:translateX(-50%) translateY(0)}
 .tv-fs-ctrl{position:fixed;top:14px;right:16px;z-index:12;display:none;gap:8px;
   padding:6px;border-radius:12px;background:rgba(8,12,16,.6);backdrop-filter:blur(6px);
   transition:opacity .45s ease}
@@ -5408,6 +5415,8 @@ html.light .pests-search-input{background:#edf2f7}
     </div>
     <button class="tv-close" onclick="closeTvDash()" title="Quitter l'affichage écran (Échap)">✕</button>
   </div>
+  <!-- Confirmation fugace : pages rechargées depuis le classeur -->
+  <div class="tv-flash" id="tvFlash"></div>
   <!-- Commandes flottantes du mode plein écran (s'effacent au repos) -->
   <div class="tv-fs-ctrl idle" id="tvFsCtrl">
     <button onclick="tvPrevPage()" title="Page précédente (←)">‹</button>
@@ -11783,6 +11792,10 @@ function tvSilentRefresh(force){
       // Ne pas avaler l'erreur en silence : c'est ce qui masquait un
       // rendu partiel (données fraîches mais tuiles TV non redessinées).
       if(data){ try{ render(data); }catch(e){ console.error('[TV] render:',e); } }
+      // Indépendant de render() : une erreur dans une section du
+      // tableau de bord ne doit pas empêcher l'écran de prendre en
+      // compte les pages du classeur. D est déjà à jour ici.
+      try{ tvSyncSheetPages(); renderTvDash(); }catch(e){ console.error('[TV] sync:',e); }
       tvUpdateStamp();
     })
     .withFailureHandler(function(){
@@ -11812,6 +11825,10 @@ function openTvDash(){
   // Sonde de version : toute modification du classeur déclenche une
   // actualisation immédiate, sans attendre le cycle de 10 minutes.
   if(tvVersionTimer) clearInterval(tvVersionTimer);
+  // Référence de version prise TOUT DE SUITE : sans cela, la première
+  // sonde (15 s plus tard) prenait pour référence une feuille déjà
+  // modifiée entre-temps, et la modification passait inaperçue.
+  pollDataVersion(function(){ tvSilentRefresh(true); });
   tvVersionTimer=setInterval(function(){
     if(!tvOpen) return;
     pollDataVersion(function(){ tvSilentRefresh(true); });
@@ -11943,8 +11960,26 @@ var tvSheetSigCur='';
 // reconstruit sans attendre une réouverture de l'écran.
 function tvSyncSheetPages(){
   if(!tvOpen) return;
+  var before=tvSheetPages().length;
   if(tvSheetSig()===tvSheetSigCur) return;
-  tvStartShow();
+  var cur=(tvPlaylist[tvPageIdx]||{}).id||'';
+  var wasCount=tvPlaylist.length;
+  tvStartShow(cur);
+  // L'écran le dit lui-même : la personne qui vient de saisir le lien
+  // dans le classeur voit sa modification prise en compte.
+  var n=tvSheetPages().length;
+  tvFlash(n!==wasCount||before!==n
+    ? '🔄 Pages mises à jour depuis le classeur — '+n+' page'+(n>1?'s':'')
+    : '🔄 Pages mises à jour depuis le classeur');
+}
+// Message fugace en bas de l'écran (4 s), lisible de loin.
+var tvFlashTimer=null;
+function tvFlash(txt){
+  var el=document.getElementById('tvFlash'); if(!el) return;
+  el.textContent=txt;
+  el.classList.add('on');
+  if(tvFlashTimer) clearTimeout(tvFlashTimer);
+  tvFlashTimer=setTimeout(function(){ el.classList.remove('on'); },4000);
 }
 // Pages réellement diffusables : actives, et pour un média, avec un lien.
 // Ordre : pages du poste, puis pages du classeur.
@@ -11998,15 +12033,22 @@ function tvResumeIfNeeded(){
   tvResumeDone=true;
   setTimeout(function(){ try{ openTvDash(); }catch(e){} },400);
 }
-function tvStartShow(){
+// keepId : identifiant de la page à retrouver après reconstruction du
+// diaporama. Une modification du classeur ne doit pas renvoyer l'écran
+// à la première page — il reprend là où il en était quand la page
+// existe encore.
+function tvStartShow(keepId){
   tvCfgLoad();
   tvSheetSigCur=tvSheetSig();
   tvPlaylist=tvActivePages();
   if(!tvPlaylist.length) tvPlaylist=[tvCfgKpiPage()];   // filet de sécurité
   tvPaused=false;
   tvSetPauseIcon(false);
-  tvShowPage(0);
-  tvVideoPrefetch();                                     // vidéos prêtes d'avance
+  var at=0;
+  if(keepId) for(var i=0;i<tvPlaylist.length;i++)
+    if(tvPlaylist[i].id===keepId){ at=i; break; }
+  tvShowPage(at);
+  tvVideoPrefetch();                                     // médias prêts d'avance
 }
 function tvStopShow(){
   if(tvPageTimer){ clearTimeout(tvPageTimer); tvPageTimer=null; }
@@ -19722,6 +19764,7 @@ function bootLoadData(){
     .withSuccessHandler(function(data){
       _bootTries=0;
       try{ render(data); }catch(e){ console.error('[boot] render:',e); }
+      try{ tvResumeIfNeeded(); }catch(e){}
     })
     .withFailureHandler(function(err){
       _bootTries++;
@@ -19836,6 +19879,7 @@ function silentRefresh(){
       if(seq!==_silentSeq) return;
       _silentBusy=false;
       if(data){ try{ render(data); }catch(e){ console.error('[refresh] render:',e); } }
+      try{ if(tvOpen){ tvSyncSheetPages(); renderTvDash(); } }catch(e){}
     })
     .withFailureHandler(function(){
       if(seq!==_silentSeq) return;
