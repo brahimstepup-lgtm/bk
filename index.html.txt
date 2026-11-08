@@ -1746,6 +1746,7 @@ html.light .pests-search-input{background:#edf2f7}
   border:1px solid rgba(245,166,35,.5);color:#f5c76a;
   font-family:'Inter',sans-serif;font-size:clamp(9px,.9vw,13px);font-weight:700}
 .tv-offline.on{display:inline-flex}
+.tv-stale{border-color:rgba(232,68,90,.55);background:rgba(232,68,90,.12);color:#ff9fab}
 /* Plein écran : le pied de page est masqué, le badge flotte au-dessus. */
 .tv-overlay.tv-fs .tv-offline.on{position:fixed;left:16px;bottom:14px;z-index:13;
   background:rgba(12,10,6,.74);backdrop-filter:blur(6px);padding:7px 14px}
@@ -5463,6 +5464,7 @@ html.light .pests-search-input{background:#edf2f7}
       <span class="dot"></span>
       <span>Hors connexion — affichage conservé</span>
     </span>
+    <span class="tv-offline tv-stale" id="tvStale">⚠ Données figées</span>
     <span id="tvObjectives">🎯 <b>Objectifs 2026 :</b> 0 accident · TF ≤ 30 · TG ≤ 0.8 · TVM ≥ 95% · Résolution TAGs ≥ 95%</span>
     <span class="tv-upd" id="tvUpd">—</span>
   </div>
@@ -11701,9 +11703,8 @@ var TV_HEARTBEAT_MS=60*1000;       // fréquence de vérification
 var TV_RETRY_MS=90*1000;           // nouvelle tentative après un échec
 var TV_STALE_WARN_MIN=20;          // au-delà : pied de page en orange
 var TV_FETCH_TIMEOUT_MS=75*1000;   // chien de garde : appel resté sans réponse
-var TV_HARD_RELOAD_MIN=30;         // au-delà : rechargement, SI le réseau répond
-var TV_RELOAD_GUARD_MS=10*60*1000; // jamais deux rechargements coup sur coup
-var tvLastTryTs=0, tvFetchSeq=0, tvFailStreak=0, tvReloadAt=0;
+var TV_STALE_HARD_MIN=45;          // au-delà : bandeau « données figées »
+var tvLastTryTs=0, tvFetchSeq=0, tvFailStreak=0;
 
 // ══ RÉSEAU — L'ÉCRAN NE DOIT JAMAIS DISPARAÎTRE ══════════════
 // Une coupure de connexion ne doit pas faire perdre l'affichage :
@@ -11738,17 +11739,28 @@ function tvNetProbe(cb){
       .catch(function(){ if(!done){ done=true; clearTimeout(t); cb(false); } });
   }catch(e){ if(!done){ done=true; clearTimeout(t); cb(false); } }
 }
-// Rechargement de dernier recours — uniquement réseau confirmé.
-function tvTryHardReload(){
-  var now=Date.now();
-  if(tvReloadAt&&now-tvReloadAt<TV_RELOAD_GUARD_MS) return;   // pas de boucle
-  tvNetProbe(function(ok){
-    tvNetSet(ok);
-    if(!ok) return;                             // hors connexion : on garde l'écran
-    tvReloadAt=Date.now();
-    try{ sessionStorage.setItem(TV_RESUME_KEY,'1'); }catch(e){}
-    try{ location.reload(); }catch(e){}
-  });
+// ── Données figées : on le DIT, on ne recharge pas ─────────────
+// L'écran ne se recharge jamais de lui-même. Dans l'iframe sandbox
+// d'Apps Script, location.reload() redemande l'URL de session
+// (…-script.googleusercontent.com) : quand la session a expiré —
+// c'est-à-dire précisément quand on voudrait recharger — cette URL
+// ne répond plus et le navigateur remplace TOUT l'affichage par
+// « unexpectedly closed the connection ». L'écran était alors perdu
+// jusqu'à une intervention humaine. On garde donc l'affichage, on
+// continue d'interroger le serveur, et on signale simplement que les
+// données ne bougent plus.
+function tvStaleBanner(minutes){
+  var el=document.getElementById('tvStale'); if(!el) return;
+  var show=tvOpen&&minutes>=TV_STALE_HARD_MIN;
+  if(show) el.firstChild.nodeValue='⚠ Données figées depuis '+tvFmtMin(minutes)
+    +' — appuyez sur F5 pour recharger la page';
+  el.classList.toggle('on',show);
+}
+function tvFmtMin(m){
+  m=Math.round(m);
+  if(m<60) return m+' min';
+  var h=Math.floor(m/60), r=m%60;
+  return h+' h'+(r?' '+r+' min':'');
 }
 window.addEventListener('offline',function(){ tvNetSet(false); });
 window.addEventListener('online', function(){ tvNetProbe(tvNetSet); });
@@ -11757,18 +11769,9 @@ function tvSilentRefresh(force){
   if(!tvOpen) return;
   var now=Date.now();
   var dataTs=window._lastDataTs||Date.parse((D&&D.ts)||'')||0;
-  // ── Dernier recours ─────────────────────────────────────────
-  // Sur une page ouverte en continu, la session de la Web App Apps
-  // Script finit par mourir : google.script.run ne rappelle alors NI le
-  // succès NI l'échec, et aucun réessai ne peut aboutir. Seul un
-  // rechargement rétablit la session — mais JAMAIS sans avoir vérifié
-  // que le réseau répond : hors connexion, l'écran reste affiché avec
-  // les dernières données plutôt que de laisser place à une page
-  // d'erreur du navigateur.
-  if(dataTs && now-dataTs > TV_HARD_RELOAD_MIN*60000){
-    tvTryHardReload();
-    return;
-  }
+  // Données anciennes : on prévient à l'écran, et on continue d'essayer
+  // — jamais de rechargement automatique (voir tvStaleBanner).
+  if(dataTs) tvStaleBanner((now-dataTs)/60000);
   if(navigator.onLine===false){ tvNetSet(false); return; }    // inutile d'appeler
   if(tvRefreshBusy) return;
   if(!force){
