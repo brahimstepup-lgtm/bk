@@ -7,7 +7,7 @@
 // RESPONSABLE : col[13] (détection dynamique confirmée)
 // ============================================================
 var SHEET_ID       = '1P7zX7HbyJeBeqECw4RSqkpUB7ZHrazx6TuEJeaBdfBo';
-var GEMINI_KEY     = 'AIzaSyDdp7ZxwL1f3_OsvjbXB39_u_MadHul8q8';
+var GEMINI_KEY     = 'REMPLACER_PAR_VOTRE_CLE_GEMINI';
 var LOGO_FILE_ID   = '1O578vyK1FrZgcZ34Jkiy60lWAolaNtRu';   // logo de l'en-tête (SOBCO)
 var ENR_LOGO_FILE_ID = '1_eG3fiBoKImvH8uh46bUrChtN_KvZxAv'; // logo des fiches/ENR & PDF (Palmary)
 var TAGS_FOLDER_ID = '1AE6QUkG0hLSmnyzKAVOqWadtjVzUEUQ7';
@@ -6545,30 +6545,42 @@ function _riskLevel(v) {
   return (n && map[n]) ? map[n] : s;
 }
 
+function _rNum(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return isNaN(v) ? null : v;
+  var s = String(v).replace(/\s/g, '').replace(/%$/, '').replace(',', '.');
+  var n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
 function getRiskAnalysis() {
   var ORDER = ['1- Acceptable','2- Marginal','3- Significatif','4- Très Fort','5- Inacceptable'];
   try {
     var ss = SpreadsheetApp.openById(RISK_SOURCE_ID);
-    var sh = findSheetByKeywords(ss, ['analysedonnees','analyse donnees','analyse données','analyse']);
-    if (!sh) return { ok:false, error:'Onglet « ANALYSE DONNEES » introuvable dans le classeur source.' };
+    // Onglet principal du registre : « Évaluation » (1 ligne = 1 situation évaluée).
+    // Repli sur l'ancien onglet « ANALYSE DONNEES » si présent.
+    var sh = ss.getSheetByName('Évaluation') ||
+             findSheetByKeywords(ss, ['evaluation','analysedonnees','analyse donnees']);
+    if (!sh) return { ok:false, error:'Onglet « Évaluation » introuvable dans le classeur source.' };
     var values = sh.getDataRange().getValues();
 
-    // Localise la ligne d'en-tête (contient « classement » ou « taux risk »)
+    // Ligne d'en-tête : celle qui contient « ID » et « R actuel » (ligne 4 actuellement)
     var hRow = -1;
     for (var i = 0; i < Math.min(values.length, 15); i++) {
-      var joined = values[i].join('|').toLowerCase();
-      if (joined.indexOf('classement') > -1 || joined.indexOf('taux risk') > -1) { hRow = i; break; }
+      var jn = values[i].map(function(x){ return normalize(String(x)); }).join('|');
+      if (jn.indexOf('r actuel') > -1 && jn.indexOf('classe') > -1) { hRow = i; break; }
     }
-    if (hRow < 0) hRow = 4;
+    if (hRow < 0) hRow = 3;
 
     var H = values[hRow].map(function(x){ return normalize(String(x)); });
     function col(def, kw) { for (var c = 0; c < H.length; c++) if (kw.test(H[c])) return c; return def; }
-    var iNum  = col(0,/numero|^n°|^#$/),  iDir  = col(3,/direction/),     iServ = col(4,/service/),
-        iLieu = col(5,/^lieu/),  iLoc = col(6,/^local/),  iZone = col(7,/zone|machine/),  iTac = col(8,/tache/),
-        iDan  = col(9,/danger/),          iRis  = col(10,/^risk|risque/), iFam  = col(11,/famille/),
-        iF    = col(13,/frequenc/),       iP    = col(14,/probab/),       iG    = col(15,/gravit/),
-        iS0   = col(25,/fact.?risk0|taux.*fact.*0/), iC0 = col(26,/classement.*0/),
-        iS1   = col(28,/fact.?risk1|taux.*fact.*1/), iC1 = col(29,/classement.*1/);
+    var iNum  = col(0,/^id$/),            iDir  = col(4,/^direction/),    iServ = col(5,/^service/),
+        iLieu = col(6,/^lieu/),           iLoc  = col(7,/^local/),        iZone = col(8,/^zone/),
+        iTac  = col(9,/^tache/),          iDan  = col(10,/^danger/),      iRis  = col(11,/^risque$/),
+        iFam  = col(12,/famille/),        iF    = col(14,/^f$/),          iP    = col(15,/^p$/),
+        iG    = col(16,/^g$/),            iS0   = col(27,/^r actuel/),    iC0   = col(28,/classe actuelle/),
+        iS1   = col(42,/^r cible/),       iC1   = col(43,/classe cible/),
+        iAct  = col(29,/action a mener/), iResp = col(30,/^responsable/), iStat = col(32,/statut action/);
 
     var rows = [];
     for (var r = hRow + 1; r < values.length; r++) {
@@ -6581,8 +6593,9 @@ function getRiskAnalysis() {
         lieu: safeText(row[iLieu]), zone: safeText(row[iZone]), tache: safeText(row[iTac]),
         danger: safeText(row[iDan]), risque: safeText(row[iRis]), fam: safeText(row[iFam]),
         ligne: _ligne(safeText(row[iLoc])), local: safeText(row[iLoc]),
-        F: toNum(row[iF]), P: toNum(row[iP]), G: toNum(row[iG]),
-        s0: toNum(row[iS0]), c0: c0, s1: toNum(row[iS1]), c1: _riskLevel(row[iC1])
+        F: _rNum(row[iF]), P: _rNum(row[iP]), G: _rNum(row[iG]),
+        s0: _rNum(row[iS0]), c0: c0, s1: _rNum(row[iS1]), c1: _riskLevel(row[iC1]),
+        action: safeText(row[iAct]), resp: safeText(row[iResp]), statut: safeText(row[iStat])
       });
     }
 
@@ -6600,15 +6613,17 @@ function getRiskAnalysis() {
     var s0sum=0,s0n=0,s1sum=0,s1n=0;
     rows.forEach(function(x){ if(typeof x.s0==='number'){s0sum+=x.s0;s0n++;} if(typeof x.s1==='number'){s1sum+=x.s1;s1n++;} });
 
-    var Fv=[2,3,4,5], Gv=[5,10,15,20], cells={};
+    // Matrice F × G construite à partir des valeurs réellement présentes
+    var fSet={}, gSet={}, cells={};
+    rows.forEach(function(x){ if(typeof x.F==='number' && typeof x.G==='number'){ fSet[x.F]=1; gSet[x.G]=1; } });
+    var Fv=Object.keys(fSet).map(Number).sort(function(a,b){return a-b;});
+    var Gv=Object.keys(gSet).map(Number).sort(function(a,b){return a-b;});
     Fv.forEach(function(f){ Gv.forEach(function(g){ cells[f+'x'+g]=0; }); });
-    rows.forEach(function(x){ if(Fv.indexOf(x.F)>-1 && Gv.indexOf(x.G)>-1) cells[x.F+'x'+x.G]++; });
+    rows.forEach(function(x){ var k=x.F+'x'+x.G; if(k in cells) cells[k]++; });
 
     var crit = rows.filter(function(x){ return sig(x.c0); })
       .sort(function(a,b){ return (b.s0||0)-(a.s0||0); });
 
-    // Agrégat par ligne de production (col Local). Le libellé conserve le
-    // code d'origine : « Nom (CODE) » quand un renommage LINE_MAP s'applique.
     var lmap = {};
     rows.forEach(function(x){
       var key = x.ligne || '—';
